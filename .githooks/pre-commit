@@ -1,0 +1,5 @@
+#!/bin/sh
+# Enabled by `make install` (git config core.hooksPath .githooks).
+set -e
+pnpm lint
+pnpm -r run typecheck

@@ -141,3 +141,11 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# pewterdesk
+node_modules
+dist
+*.tsbuildinfo
+apps/desktop/src-tauri/target
+apps/desktop/dist
+.DS_Store
