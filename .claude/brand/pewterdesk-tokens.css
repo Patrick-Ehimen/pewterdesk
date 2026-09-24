@@ -1,0 +1,56 @@
+/* Pewterdesk color tokens. Dark is the default; set data-theme="light" or
+   data-market="colorblind" on <html> to switch. Full rules: .claude/brand/BRAND.md */
+:root {
+  --pd-bg: #111110;
+  --pd-surface: #1a1a18;
+  --pd-surface-raised: #222220;
+  --pd-border: #2a2a27;
+  --pd-border-strong: #3a3a36;
+  --pd-text: #ecebe6;
+  --pd-pewter: #a3a7a6;
+  --pd-pewter-dim: #6e7271;
+  --pd-brass: #c9a45c;
+  --pd-brass-text: #c9a45c;
+  --pd-brass-hover: #d6b574;
+  --pd-on-brass: #111110;
+  --pd-buy: #4cb782;
+  --pd-on-buy: #0b1f14;
+  --pd-buy-tint: rgb(76 183 130 / 0.12);
+  --pd-sell: #e0584f;
+  --pd-on-sell: #2a0b09;
+  --pd-sell-tint: rgb(224 88 79 / 0.12);
+  --pd-warning: #e8894a;
+  --pd-info: #8fb3d9;
+  --pd-focus: 0 0 0 2px var(--pd-brass);
+}
+
+[data-theme="light"] {
+  --pd-bg: #f4f3ef;
+  --pd-surface: #ffffff;
+  --pd-surface-raised: #fafaf7;
+  --pd-border: #e3e1da;
+  --pd-border-strong: #cfccc3;
+  --pd-text: #1a1a18;
+  --pd-pewter: #6b6f6e;
+  --pd-pewter-dim: #8a8e8d;
+  --pd-brass: #b08a3e;
+  --pd-brass-text: #8a6a2a;
+  --pd-brass-hover: #9c7932;
+  --pd-on-brass: #111110;
+  --pd-buy: #177a4f;
+  --pd-on-buy: #ffffff;
+  --pd-buy-tint: rgb(23 122 79 / 0.1);
+  --pd-sell: #c23a30;
+  --pd-on-sell: #ffffff;
+  --pd-sell-tint: rgb(194 58 48 / 0.1);
+  --pd-warning: #a04f12;
+  --pd-info: #2f6fa8;
+}
+
+[data-market="colorblind"] {
+  --pd-buy: #4c9be8;
+  --pd-buy-tint: rgb(76 155 232 / 0.12);
+  --pd-sell: #e8894a;
+  --pd-sell-tint: rgb(232 137 74 / 0.12);
+  --pd-warning: #d96bc7;
+}
