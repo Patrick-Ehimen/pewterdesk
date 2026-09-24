@@ -1,48 +1,157 @@
-# Thin wrapper over pnpm and cargo — every target maps to a script, so the
-# two can't drift. `make` on its own prints this menu.
+# pewterdesk — task runner
+#
+# A thin, discoverable wrapper over pnpm and cargo. Every target here shells out
+# to the underlying tool rather than reimplementing it, so `make` and the
+# pnpm scripts can never drift apart. Run `make` on its own for the menu.
+#
+# Targeted at GNU Make 3.81 (the version macOS ships), so no .ONESHELL and no
+# 4.x-only builtins.
 
-TAURI_MANIFEST := apps/desktop/src-tauri/Cargo.toml
+PNPM        := pnpm
+CARGO       := cargo
+DESKTOP_PKG := @pewterdesk/desktop
+WEB_PKG     := @pewterdesk/web
+SRC_TAURI   := apps/desktop/src-tauri
+ICON_SRC    := ../../assets/icon/pewterdesk-icon-dark-1024.png
+DEV_PORT    := 1420
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint fix typecheck test build check check-rust check-all dev dev-ui clean
 
-help: ## Show this menu
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+# ---------------------------------------------------------------------------
 
-install: ## Resolve the workspace and enable the git hooks
-	pnpm install
-	git config core.hooksPath .githooks
+##@ Getting started
 
-lint: ## Biome lint + format check, whole repo
-	pnpm lint
+.PHONY: help
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*##"; printf "\npewterdesk — make <target>\n"} \
+		/^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 } \
+		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } \
+		END { printf "\n" }' $(MAKEFILE_LIST)
 
-fix: ## Apply Biome's safe fixes and formatting
-	pnpm fix
+.PHONY: install
+install: ## Install workspace dependencies (also enables the git hooks)
+	$(PNPM) install
 
-typecheck: ## tsc --noEmit every package
-	pnpm -r run typecheck
+.PHONY: doctor
+doctor: ## Check that the local toolchain can actually build and run the app
+	@echo "node    $$(node --version 2>/dev/null || echo 'MISSING — need >= 22.12')"
+	@echo "pnpm    $$(pnpm --version 2>/dev/null || echo 'MISSING — corepack enable')"
+	@echo "cargo   $$(cargo --version 2>/dev/null || echo 'MISSING — https://rustup.rs')"
+	@echo "rustc   $$(rustc --version 2>/dev/null || echo MISSING)"
+	@printf 'tauri   '
+	@$(PNPM) --filter $(DESKTOP_PKG) exec tauri --version 2>/dev/null \
+		|| echo "BROKEN — native binding missing for $$(uname -m); re-run 'make install'"
+	@printf 'hooks   '
+	@h=$$(git config core.hooksPath 2>/dev/null); \
+		if [ "$$h" = ".githooks" ]; then echo "enabled (.githooks)"; \
+		else echo "NOT enabled — run 'make hooks'"; fi
 
-test: ## Vitest every package
-	pnpm -r run test
+##@ Running
 
-build: ## Build every package and app
-	pnpm -r run build
+.PHONY: dev
+dev: ## Run the desktop app in a native window (Tauri; needs Rust)
+	$(PNPM) --filter $(DESKTOP_PKG) run tauri dev
 
-check: lint typecheck test build ## What CI runs, in CI's order
+.PHONY: dev-ui
+dev-ui: ## Run the desktop frontend in a browser only (no Rust, port 1420)
+	$(PNPM) --filter $(DESKTOP_PKG) run dev
 
-check-rust: ## fmt, clippy and tests for the Tauri shell
-	cargo fmt --manifest-path $(TAURI_MANIFEST) -- --check
-	cargo clippy --manifest-path $(TAURI_MANIFEST) -- -D warnings
-	cargo test --manifest-path $(TAURI_MANIFEST)
+.PHONY: dev-web
+dev-web: ## Run the deferred v2 web app
+	$(PNPM) --filter $(WEB_PKG) run dev
 
-check-all: check check-rust ## check plus the Rust side (not in CI yet)
+.PHONY: stop
+stop: ## Kill a stray Vite dev server holding port 1420
+	@pid=$$(lsof -nP -iTCP:$(DEV_PORT) -sTCP:LISTEN -t 2>/dev/null); \
+		if [ -n "$$pid" ]; then kill $$pid && echo "stopped pid $$pid on :$(DEV_PORT)"; \
+		else echo "nothing listening on :$(DEV_PORT)"; fi
 
-dev: ## Desktop app in a native window (needs Rust)
-	pnpm --filter @pewterdesk/desktop tauri dev
+##@ Checks
 
-dev-ui: ## Desktop frontend in a browser only, no Rust
-	pnpm --filter @pewterdesk/desktop dev
+.PHONY: check
+check: lint typecheck test build ## Run everything CI runs, in CI's order
+	@echo "all checks passed"
 
-clean: ## Remove build output (keeps node_modules and cargo target)
-	find packages apps -name dist -type d -prune -not -path '*/node_modules/*' -exec rm -r {} +
+# ci.yml has no cargo steps, so CI currently cannot catch a broken Rust build.
+# Until it does, this is the target to run before pushing anything touching
+# src-tauri.
+.PHONY: check-all
+check-all: check rust-fmt-check rust-clippy rust-test ## check + the Rust side that CI does not cover
+	@echo "all checks passed (JS + Rust)"
+
+.PHONY: lint
+lint: ## Lint every package
+	$(PNPM) run lint
+
+.PHONY: typecheck
+typecheck: ## Typecheck every package
+	$(PNPM) run typecheck
+
+.PHONY: test
+test: ## Run unit tests
+	$(PNPM) run test
+
+.PHONY: build
+build: ## Build every package (tsc + vite)
+	$(PNPM) run build
+
+##@ Rust (apps/desktop/src-tauri)
+
+.PHONY: rust-check
+rust-check: ## cargo check the Tauri shell
+	$(CARGO) check --manifest-path $(SRC_TAURI)/Cargo.toml
+
+.PHONY: rust-clippy
+rust-clippy: ## Lint the Rust side, warnings as errors
+	$(CARGO) clippy --manifest-path $(SRC_TAURI)/Cargo.toml -- -D warnings
+
+.PHONY: rust-fmt
+rust-fmt: ## Format the Rust side in place
+	$(CARGO) fmt --manifest-path $(SRC_TAURI)/Cargo.toml
+
+.PHONY: rust-fmt-check
+rust-fmt-check: ## Fail if the Rust side is unformatted
+	$(CARGO) fmt --manifest-path $(SRC_TAURI)/Cargo.toml -- --check
+
+.PHONY: rust-test
+rust-test: ## Run Rust tests
+	$(CARGO) test --manifest-path $(SRC_TAURI)/Cargo.toml
+
+##@ Packaging
+
+.PHONY: bundle
+bundle: ## Build a distributable desktop app (.app/.dmg on macOS) — slow, release profile
+	$(PNPM) --filter $(DESKTOP_PKG) run tauri build
+
+.PHONY: icons
+icons: ## Regenerate every icon size from the source PNG
+	$(PNPM) --filter $(DESKTOP_PKG) run tauri icon $(ICON_SRC)
+	@# tauri icon has no desktop-only flag; drop the mobile sets we don't ship
+	rm -rf $(SRC_TAURI)/icons/android $(SRC_TAURI)/icons/ios
+
+##@ Git hooks
+
+.PHONY: hooks
+hooks: ## Enable the repo's git hooks
+	$(PNPM) run hooks:install
+
+.PHONY: hooks-off
+hooks-off: ## Disable the repo's git hooks
+	$(PNPM) run hooks:uninstall
+
+##@ Cleaning
+
+.PHONY: clean
+clean: ## Remove JS/TS build output (dist/, *.tsbuildinfo)
+	rm -rf apps/web/dist apps/desktop/dist
+	rm -rf packages/core/dist packages/ui/dist packages/exchange-hyperliquid/dist
+	find . -name '*.tsbuildinfo' -not -path './node_modules/*' -not -path '*/node_modules/*' -delete
+
+.PHONY: clean-rust
+clean-rust: ## Remove the Rust build cache (forces a full recompile next run)
+	$(CARGO) clean --manifest-path $(SRC_TAURI)/Cargo.toml
+
+.PHONY: distclean
+distclean: clean clean-rust ## Everything clean removes, plus node_modules
+	rm -rf node_modules apps/*/node_modules packages/*/node_modules
+	@echo "run 'make install' before building again"
