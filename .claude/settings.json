@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm install --frozen-lockfile)",
+      "Bash(pnpm -r run typecheck)",
+      "Bash(pnpm -r run lint)",
+      "Bash(pnpm -r run test)",
+      "Bash(pnpm -r run build)",
+      "Bash(pnpm --filter * run dev)",
+      "Bash(pnpm --filter * run build)",
+      "Bash(pnpm --filter * run typecheck)",
+      "Bash(cargo check*)",
+      "Bash(cargo build*)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)"
+    ],
+    "deny": [
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(rm -rf*)",
+      "Bash(pnpm publish*)",
+      "Bash(npm publish*)",
+      "Bash(cargo publish*)"
+    ]
+  }
+}
