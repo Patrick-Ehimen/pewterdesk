@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # pnpm workspace root — Dependabot reads pnpm-lock.yaml and covers every
+  # package in the workspace (packages/*, apps/*) from this one entry.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dev-dependencies:
+        dependency-type: "development"
+      production-dependencies:
+        dependency-type: "production"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+
+  # keep the CI workflow's own actions (checkout, setup-node, pnpm/action-setup, ...) current
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # apps/desktop/src-tauri's Cargo.toml now exists (Tauri shell scaffolded)
+  - package-ecosystem: "cargo"
+    directory: "/apps/desktop/src-tauri"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "rust"
