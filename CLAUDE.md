@@ -89,6 +89,12 @@ only feature actually implemented. `.claude/prd-rust-desktop-features.md` has
 the rest of the Rust-side backlog (notifications, tray, deep links, local
 persistence), none of it started.
 
+## Brand
+
+UI colors come only from the `--pd-*` variables in `.claude/brand/pewterdesk-tokens.css`;
+never hardcode hex. Brass is the sole accent and never means buy/sell/PnL; green and red
+are market data only. Full rules and palette: `.claude/brand/BRAND.md`. Logos: `assets/`.
+
 ## Related repos (same org)
 
 - `.github` — org profile, issue/PR templates, shared CI workflow
