@@ -146,6 +146,7 @@ vite.config.ts.timestamp-*
 node_modules
 dist
 *.tsbuildinfo
+/target
 apps/desktop/src-tauri/target
 apps/desktop/dist
 .DS_Store

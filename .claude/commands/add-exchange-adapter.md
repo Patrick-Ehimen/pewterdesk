@@ -1,33 +1,38 @@
 ---
-description: Scaffold a new packages/exchange-<venue> package following the exchange-hyperliquid pattern
+description: Scaffold a new crates/exchange-<venue> Rust crate following the exchange-hyperliquid pattern
 ---
 
-Scaffold a new exchange adapter package for the venue named in $ARGUMENTS
-(e.g. `/add-exchange-adapter dydx` → `packages/exchange-dydx`).
+Scaffold a new venue adapter crate for the venue named in $ARGUMENTS
+(e.g. `/add-exchange-adapter aevo` → `crates/exchange-aevo`). Venue adapters
+are Rust, per `docs/adr/0001-venues-in-rust.md`.
 
-Before writing anything, read `packages/exchange-hyperliquid` in full — it's
-the reference pattern, and this new package should mirror its shape exactly,
-not reinvent it:
+Before writing anything, read `crates/exchange-hyperliquid` and `crates/core`
+in full — the first is the reference pattern, the second the contract. Mirror
+their shape exactly rather than reinventing it:
 
-- `package.json` — name `@pewterdesk/exchange-<venue>`, depends on
-  `@pewterdesk/core` (workspace:*), plus whatever signing/HTTP libs the venue
-  actually needs
-- `tsconfig.json` — extends the root `tsconfig.base.json`, references `../core`
-- `src/constants.ts` — the venue's REST/WS URLs (mainnet + testnet if it has one)
-- `src/signing.ts` — isolated signing logic ONLY, no networking or UI imports.
-  If the venue doesn't need EIP-712 or a comparable signing scheme, say so
-  explicitly rather than silently omitting the file.
-- `src/client.ts` — a class implementing `ExchangeAdapter` from
-  `@pewterdesk/core`. Match every method on the interface exactly. Stub each
-  with `throw new Error("not implemented")` — do NOT write real
-  implementations unless the user explicitly asks for that in this same
-  request. The goal here is the scaffold, not the client.
-- `src/index.ts` — re-exports from `client.ts` and `signing.ts`
+- `Cargo.toml` — package `pewterdesk-exchange-<venue>`, `edition.workspace`
+  and `rust-version.workspace`, `publish = false`, depends on
+  `pewterdesk-core = { path = "../core" }`. The root workspace picks up
+  `crates/*` automatically.
+- `src/constants.rs` — the venue's REST/WS (and RPC, if any) endpoints,
+  mainnet + testnet if it has one. Check them against the venue's docs; don't
+  write them from memory.
+- `src/lib.rs` — a doc comment covering the venue's chain, execution model
+  (order book or not, whether orders come back `Pending`) and its trade-only
+  key mechanism, plus a struct implementing `ExchangeAdapter` that takes a
+  `KeySource` (an `Arc<dyn KeySource>`) in its constructor and never
+  constructs one. Implement every required method as
+  `Err(VenueError::Unsupported("not implemented"))`, and leave the order-book
+  defaults alone if the venue has none. Do NOT write real implementations
+  unless the user explicitly asks for that in this same request.
 
-After scaffolding, run `pnpm install` and `pnpm --filter @pewterdesk/exchange-<venue> run typecheck`
-to confirm it resolves and compiles before considering the task done.
+Don't write signing code as part of the scaffold. It's security-sensitive and
+gets its own task, reviewed against `.claude/commands/security-review.md`.
 
-Do not modify `packages/core`'s `ExchangeAdapter` interface as part of this
-task — if the new venue needs something the interface doesn't support, stop
-and flag that as a separate decision rather than changing the shared contract
-inline.
+After scaffolding, run `cargo clippy -p pewterdesk-exchange-<venue> -- -D warnings`
+to confirm it compiles cleanly before considering the task done.
+
+Do not modify `crates/core` (the `ExchangeAdapter` trait or the domain types)
+as part of this task. If the new venue needs something the contract doesn't
+support, stop and flag it as a separate decision rather than changing the
+shared contract inline.

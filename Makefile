@@ -95,27 +95,35 @@ test: ## Run unit tests
 build: ## Build every package (tsc + vite)
 	$(PNPM) run build
 
-##@ Rust (apps/desktop/src-tauri)
+##@ Rust (Cargo workspace: crates/* + apps/desktop/src-tauri)
 
 .PHONY: rust-check
-rust-check: ## cargo check the Tauri shell
-	$(CARGO) check --manifest-path $(SRC_TAURI)/Cargo.toml
+rust-check: ## cargo check the whole Rust workspace
+	$(CARGO) check --workspace
 
 .PHONY: rust-clippy
 rust-clippy: ## Lint the Rust side, warnings as errors
-	$(CARGO) clippy --manifest-path $(SRC_TAURI)/Cargo.toml -- -D warnings
+	$(CARGO) clippy --workspace --all-targets -- -D warnings
 
 .PHONY: rust-fmt
 rust-fmt: ## Format the Rust side in place
-	$(CARGO) fmt --manifest-path $(SRC_TAURI)/Cargo.toml
+	$(CARGO) fmt --all
 
 .PHONY: rust-fmt-check
 rust-fmt-check: ## Fail if the Rust side is unformatted
-	$(CARGO) fmt --manifest-path $(SRC_TAURI)/Cargo.toml -- --check
+	$(CARGO) fmt --all -- --check
 
+# Running the tests is also what regenerates the TS bindings (ts-rs), so this
+# fails if the committed packages/core/src/generated is stale.
 .PHONY: rust-test
-rust-test: ## Run Rust tests
-	$(CARGO) test --manifest-path $(SRC_TAURI)/Cargo.toml
+rust-test: ## Run Rust tests and check the generated TS types are committed
+	$(CARGO) test --workspace
+	@git diff --exit-code --stat -- packages/core/src/generated \
+		|| (echo "generated TS types changed — commit packages/core/src/generated" && exit 1)
+
+.PHONY: rust-bindings
+rust-bindings: ## Regenerate packages/core/src/generated from crates/core
+	$(CARGO) test -p pewterdesk-core
 
 ##@ Packaging
 
@@ -144,12 +152,12 @@ hooks-off: ## Disable the repo's git hooks
 .PHONY: clean
 clean: ## Remove JS/TS build output (dist/, *.tsbuildinfo)
 	rm -rf apps/web/dist apps/desktop/dist
-	rm -rf packages/core/dist packages/ui/dist packages/exchange-hyperliquid/dist
+	rm -rf packages/core/dist packages/ui/dist
 	find . -name '*.tsbuildinfo' -not -path './node_modules/*' -not -path '*/node_modules/*' -delete
 
 .PHONY: clean-rust
 clean-rust: ## Remove the Rust build cache (forces a full recompile next run)
-	$(CARGO) clean --manifest-path $(SRC_TAURI)/Cargo.toml
+	$(CARGO) clean
 
 .PHONY: distclean
 distclean: clean clean-rust ## Everything clean removes, plus node_modules

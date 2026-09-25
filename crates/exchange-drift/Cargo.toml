@@ -1,0 +1,10 @@
+[package]
+name = "pewterdesk-exchange-drift"
+version = "0.0.0"
+description = "Drift adapter for pewterdesk"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+pewterdesk-core = { path = "../core" }
