@@ -2,12 +2,12 @@
 
 Non-custodial, multi-venue crypto derivatives trading terminal for desktop and
 web. No backend, no custody — talks directly to exchange APIs from your own
-machine. Hyperliquid first. TypeScript + Tauri.
+machine. Launch venues: Hyperliquid, GMX, dYdX v4 and Drift. TypeScript + Tauri.
 
 > **Status: early scaffold.** The workspace, build tooling, and package
 > boundaries are in place; the trading functionality is not. `packages/core`
-> does not yet define `ExchangeAdapter`, and the Hyperliquid adapter is an
-> empty module. The `apps/desktop` Tauri shell builds and runs, but it opens a
+> defines the `ExchangeAdapter` and `Signer` contracts, but the Hyperliquid
+> adapter is an empty module and nothing signs yet. The `apps/desktop` Tauri shell builds and runs, but it opens a
 > window containing one line of placeholder text — no chart, no order ticket,
 > no exchange connection. Don't point this at a funded account; there's
 > nothing there to point yet.
@@ -20,16 +20,18 @@ Two decisions drive the rest of the design:
   is no pewterdesk server to trust, to breach, or to go down. The desktop app
   can do this because Tauri's Rust side makes requests natively; the browser
   can't, which is why the web build is v2 (see below).
-- **No custody.** Keys are expected to live in the OS keychain and be read
-  through the Tauri app layer — never from disk, env vars, or logs. Nothing in
-  the TypeScript packages should ever hold a key longer than a signing call
-  needs it.
+- **No custody, and keys stay in Rust.** Keys live in the OS keychain — never
+  on disk, in env vars, or in logs — and signing happens in the Tauri Rust
+  layer, so the webview never holds a key at all. Rust only signs specific
+  typed actions (orders, cancels, leverage), and the key it holds is a
+  venue's trade-only delegated key rather than your main wallet key. See
+  [ADR 0001](docs/adr/0001-sign-in-rust.md).
 
 ## Layout
 
 ```
-packages/core                   exchange-agnostic types + the ExchangeAdapter interface
-packages/exchange-hyperliquid   Hyperliquid adapter (REST/WS client, EIP-712 signing via viem)
+packages/core                   exchange-agnostic types + the ExchangeAdapter and Signer interfaces
+packages/exchange-hyperliquid   Hyperliquid adapter (REST/WS protocol logic; GMX, dYdX, Drift to follow)
 packages/ui                     shared React components (order ticket, position table, chart, hotkeys)
 apps/desktop                    the shipped app: Tauri 2 shell (Rust) + its own Vite/React frontend
 apps/web                        v2, deferred — same frontend stack, needs a proxy for CORS
@@ -37,9 +39,10 @@ apps/web                        v2, deferred — same frontend stack, needs a pr
 
 ### The one architectural rule
 
-`packages/core` owns the only cross-cutting contract: the `ExchangeAdapter`
+`packages/core` owns the only cross-cutting contracts: the `ExchangeAdapter`
 interface plus the domain types (`Order`, `Position`, `Market`, `OrderBook`,
-…). Dependencies point one way:
+…), and the `Signer` an adapter is handed to get actions signed. Dependencies
+point one way:
 
 ```
 apps/*  ─┬─→  packages/ui  ──→  packages/core  ←──  packages/exchange-hyperliquid
@@ -160,11 +163,12 @@ for CI, which runs on a clean checkout.
 
 ## Security-sensitive code
 
-`packages/exchange-hyperliquid/src/signing.ts` (not yet written) will be the
-highest-stakes file in the repo: it turns a private key into a signed exchange
-action. Changes there, or to key storage generally, need extra scrutiny and
-should be called out explicitly in the PR description, under a "Security-relevant
-changes" heading.
+The Rust signers in `apps/desktop/src-tauri/src/signing/` (not yet written)
+will be the highest-stakes code in the repo: they turn a key into a signed
+venue action. Changes there, to the keychain bridge, to the network transport's
+host allowlist, or to the webview CSP need extra scrutiny and should be called
+out explicitly in the PR description, under a "Security-relevant changes"
+heading.
 
 There's a `security-review` checklist in
 [.claude/commands/](.claude/commands/security-review.md) covering signing, key
@@ -175,13 +179,18 @@ those paths.
 
 1. ~~Stand up the `apps/desktop` Tauri shell.~~ Done — it builds, runs, and
    opens a window; there's just nothing in it yet.
-2. Define `ExchangeAdapter` and the domain types in `packages/core`.
-3. Implement the Hyperliquid adapter against it — REST/WS client, then signing.
-4. Add the first Tauri command: OS keychain access, so a key can reach the
-   signer without ever touching disk or an env var.
-5. Build out `packages/ui` and wire it to the adapter.
-6. Revisit `apps/web` once the desktop app ships — it needs a thin proxy in
-   front of it for most venues, because browsers enforce CORS.
+2. ~~OS keychain access from Tauri.~~ Done.
+3. ~~Decide where signing lives.~~ Rust, typed actions only, trade-only keys —
+   [ADR 0001](docs/adr/0001-sign-in-rust.md).
+4. Define `ExchangeAdapter`, `Signer` and the domain types in `packages/core`.
+5. Rust network transport with a per-venue host allowlist.
+6. Hyperliquid adapter: read-only market and account data first, then the
+   Rust signer and order placement.
+7. GMX, dYdX v4 and Drift adapters.
+8. Build out `packages/ui` and wire it to the adapters.
+9. Revisit `apps/web` once the desktop app ships — it needs a thin proxy in
+   front of it for most venues, because browsers enforce CORS, and a
+   browser-wallet `Signer`.
 
 ## License
 
