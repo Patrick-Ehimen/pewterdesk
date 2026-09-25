@@ -29,9 +29,9 @@ point explicitly rather than skimming for "looks fine":
 6. **Tests exist for the signing logic in isolation** (not just via an
    end-to-end flow), covering at least one wrong-input case, not only the
    happy path.
-7. **The PR description calls this out explicitly**, per the org's
-   `.github` pull request template's security-relevant-changes section —
-   don't leave a reviewer to discover this touches signing on their own.
+7. **The PR description calls this out explicitly** under a
+   "Security-relevant changes" heading — don't leave a reviewer to discover
+   this touches signing on their own.
 
 If any point can't be verified from the diff alone (e.g. because the
 venue's signing spec isn't in this repo), say so explicitly rather than

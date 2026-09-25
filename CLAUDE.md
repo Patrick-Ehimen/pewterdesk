@@ -58,7 +58,7 @@ output; nothing imports it.
 
 Two files. Any change to either needs review against
 `.claude/commands/security-review.md`, and an explicit callout in the PR
-description (see the org's `.github` PR template) — don't leave a reviewer to
+description under a "Security-relevant changes" heading — don't leave a reviewer to
 discover it on their own.
 
 - `apps/desktop/src-tauri/src/keychain.rs` — the OS keychain bridge, and the
@@ -95,7 +95,8 @@ UI colors come only from the `--pd-*` variables in `.claude/brand/pewterdesk-tok
 never hardcode hex. Brass is the sole accent and never means buy/sell/PnL; green and red
 are market data only. Full rules and palette: `.claude/brand/BRAND.md`. Logos: `assets/`.
 
-## Related repos (same org)
+## Repo
 
-- `.github` — org profile, issue/PR templates, shared CI workflow
-- `pewterdesk-docs` — install guide, security policy (not yet created)
+Everything lives in this one repo (`Patrick-Ehimen/pewterdesk`); there are no
+companion repos. CI and Dependabot config are in `.github/` here. The install
+guide and security policy, once written, belong here too.

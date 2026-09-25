@@ -163,8 +163,8 @@ for CI, which runs on a clean checkout.
 `packages/exchange-hyperliquid/src/signing.ts` (not yet written) will be the
 highest-stakes file in the repo: it turns a private key into a signed exchange
 action. Changes there, or to key storage generally, need extra scrutiny and
-should be called out explicitly in the PR description — see the org's `.github`
-PR template.
+should be called out explicitly in the PR description, under a "Security-relevant
+changes" heading.
 
 There's a `security-review` checklist in
 [.claude/commands/](.claude/commands/security-review.md) covering signing, key
@@ -182,11 +182,6 @@ those paths.
 5. Build out `packages/ui` and wire it to the adapter.
 6. Revisit `apps/web` once the desktop app ships — it needs a thin proxy in
    front of it for most venues, because browsers enforce CORS.
-
-## Related repos
-
-- `.github` — org profile, issue/PR templates, shared CI workflow
-- `pewterdesk-docs` — install guide, security policy (not yet created)
 
 ## License
 
