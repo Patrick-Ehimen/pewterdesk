@@ -1,0 +1,4 @@
+[env]
+# `cargo test` writes the ts-rs bindings for pewterdesk-core here, so the
+# TypeScript side consumes the Rust domain types rather than a copy of them.
+TS_RS_EXPORT_DIR = { value = "packages/core/src/generated", relative = true }

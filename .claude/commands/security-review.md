@@ -3,29 +3,29 @@ description: Focused review checklist for changes touching signing, key storage,
 ---
 
 The diff for this task touches signing, key handling, or exchange auth code
-(e.g. `apps/desktop/src-tauri/src/signing/`, the keychain bridge, the network
-transport's host allowlist, the webview CSP, or anything that constructs or
-transmits an authenticated request). Review it against this checklist before
-considering the task done — go through each point explicitly rather than
-skimming for "looks fine". The rules come from `docs/adr/0001-sign-in-rust.md`.
+(e.g. signing code in a `crates/exchange-<venue>`, the `ExchangeAdapter`
+trait or the Tauri commands exposing it, `KeySource` or the keychain bridge,
+the webview CSP, or anything that constructs or transmits an authenticated
+request). Review it against this checklist before considering the task done —
+go through each point explicitly rather than skimming for "looks fine". The
+rules come from `docs/adr/0001-venues-in-rust.md`.
 
 1. **No key material leaves Rust.** No private key, seed, or
    signed-but-unsent payload is written to disk, logged (including error
-   logs, `Debug` impls and `console.*`), returned to JS, sent over network to
-   anywhere other than the intended venue endpoint, or stored anywhere but
-   the OS keychain.
-2. **Signing logic stays isolated.** Signer modules depend on nothing from
-   UI code, and nothing from networking code beyond the minimal types needed
-   to describe what's being signed. If this boundary got blurred by the
-   change, flag it.
-3. **Signing commands take typed actions, never raw payloads.** Every Tauri
-   command that signs accepts structured parameters and builds the venue
-   payload itself. Nothing signs caller-supplied bytes, hashes or typed data.
-   Withdrawals, transfers and key approvals are absent or gated behind a
-   native OS confirmation the webview can't drive.
-4. **The transport allowlist stays tight, and the CSP isn't widened.** New
-   hosts are a specific venue or RPC endpoint, never a wildcard or a
-   caller-supplied URL.
+   logs, `Debug` impls and `console.*`), returned to JS, put in a
+   `VenueError`, sent over network to anywhere other than the intended venue
+   endpoint, or stored anywhere but the OS keychain. Keys are held as
+   `Zeroizing` and only for the signing call.
+2. **Signing logic stays isolated.** A venue's signing module depends on
+   nothing from networking code beyond the minimal types needed to describe
+   what's being signed. If this boundary got blurred by the change, flag it.
+3. **The signing surface doesn't grow.** `ExchangeAdapter` and the Tauri
+   commands that expose it place and cancel orders, nothing else. Nothing
+   signs caller-supplied bytes, hashes or typed data; withdrawals, transfers
+   and key approvals are absent.
+4. **Hosts stay pinned, and the CSP isn't widened.** A venue crate connects
+   only to its own hosts and explicitly configured RPC endpoints — never a
+   wildcard or a URL taken from a command argument.
 5. **The signed payload matches the venue's documented spec exactly** —
    domain, types, and action shape for EIP-712, the transaction for GMX,
    the Cosmos SDK message for dYdX, the instruction for Drift. A subtly

@@ -1,0 +1,10 @@
+[package]
+name = "pewterdesk-exchange-dydx"
+version = "0.0.0"
+description = "dYdX v4 adapter for pewterdesk"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+pewterdesk-core = { path = "../core" }

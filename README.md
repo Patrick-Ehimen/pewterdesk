@@ -2,12 +2,14 @@
 
 Non-custodial, multi-venue crypto derivatives trading terminal for desktop and
 web. No backend, no custody — talks directly to exchange APIs from your own
-machine. Launch venues: Hyperliquid, GMX, dYdX v4 and Drift. TypeScript + Tauri.
+machine. Launch venues: Hyperliquid, GMX, dYdX v4 and Drift. Rust adapters, a
+TypeScript/React UI, Tauri in between.
 
 > **Status: early scaffold.** The workspace, build tooling, and package
-> boundaries are in place; the trading functionality is not. `packages/core`
-> defines the `ExchangeAdapter` and `Signer` contracts, but the Hyperliquid
-> adapter is an empty module and nothing signs yet. The `apps/desktop` Tauri shell builds and runs, but it opens a
+> boundaries are in place; the trading functionality is not. `crates/core`
+> defines the `ExchangeAdapter` contract and domain types, but the four venue
+> crates are empty and nothing signs yet. The `apps/desktop` Tauri shell builds
+> and runs, but it opens a
 > window containing one line of placeholder text — no chart, no order ticket,
 > no exchange connection. Don't point this at a funded account; there's
 > nothing there to point yet.
@@ -21,38 +23,40 @@ Two decisions drive the rest of the design:
   can do this because Tauri's Rust side makes requests natively; the browser
   can't, which is why the web build is v2 (see below).
 - **No custody, and keys stay in Rust.** Keys live in the OS keychain — never
-  on disk, in env vars, or in logs — and signing happens in the Tauri Rust
-  layer, so the webview never holds a key at all. Rust only signs specific
-  typed actions (orders, cancels, leverage), and the key it holds is a
-  venue's trade-only delegated key rather than your main wallet key. See
-  [ADR 0001](docs/adr/0001-sign-in-rust.md).
+  on disk, in env vars, or in logs. The venue adapters, signing included, are
+  Rust, so the webview never holds a key at all. The adapters can place and
+  cancel orders and nothing else, and the key they hold is a venue's
+  trade-only delegated key rather than your main wallet key. See
+  [ADR 0001](docs/adr/0001-venues-in-rust.md).
 
 ## Layout
 
 ```
-packages/core                   exchange-agnostic types + the ExchangeAdapter and Signer interfaces
-packages/exchange-hyperliquid   Hyperliquid adapter (REST/WS protocol logic; GMX, dYdX, Drift to follow)
+crates/core                     domain types, the ExchangeAdapter trait, KeySource
+crates/exchange-<venue>         one adapter per venue: hyperliquid, gmx, dydx, drift
+packages/core                   TS domain types (generated from crates/core) + SecretStore
 packages/ui                     shared React components (order ticket, position table, chart, hotkeys)
 apps/desktop                    the shipped app: Tauri 2 shell (Rust) + its own Vite/React frontend
-apps/web                        v2, deferred — same frontend stack, needs a proxy for CORS
+apps/web                        v2, deferred — same frontend stack; can't run the Rust adapters as-is
 ```
 
 ### The one architectural rule
 
-`packages/core` owns the only cross-cutting contracts: the `ExchangeAdapter`
-interface plus the domain types (`Order`, `Position`, `Market`, `OrderBook`,
-…), and the `Signer` an adapter is handed to get actions signed. Dependencies
-point one way:
+`crates/core` owns the only cross-cutting contracts: the `ExchangeAdapter`
+trait plus the domain types (`Order`, `Position`, `Market`, `OrderBook`, …).
+Dependencies point one way:
 
 ```
-apps/*  ─┬─→  packages/ui  ──→  packages/core  ←──  packages/exchange-hyperliquid
-         └───────────────────────────────────┘
+apps/desktop (Tauri) ──→ crates/core ←── crates/exchange-<venue>
+      │
+      └─ frontend ──→ packages/ui ──→ packages/core (generated types)
 ```
 
-Every exchange package implements `ExchangeAdapter` and depends on `core` —
-never the reverse. `packages/ui` and the apps depend on `core` for types and
-must **not** import a specific exchange package. That constraint is the whole
-point: adding a second venue should be a new adapter, not a rewrite of the UI.
+Every venue crate implements `ExchangeAdapter` and depends on `core` — never
+the reverse. The frontend reaches venues only through Tauri commands, and its
+TypeScript types are generated from `crates/core` by ts-rs (`make
+rust-bindings`), so the two sides can't disagree about the wire format. Adding
+a venue should be a new crate, not a rewrite of the UI.
 
 To start a new venue, use the `add-exchange-adapter` scaffold in
 [.claude/commands/](.claude/commands/add-exchange-adapter.md).
@@ -163,12 +167,12 @@ for CI, which runs on a clean checkout.
 
 ## Security-sensitive code
 
-The Rust signers in `apps/desktop/src-tauri/src/signing/` (not yet written)
-will be the highest-stakes code in the repo: they turn a key into a signed
-venue action. Changes there, to the keychain bridge, to the network transport's
-host allowlist, or to the webview CSP need extra scrutiny and should be called
-out explicitly in the PR description, under a "Security-relevant changes"
-heading.
+The signing code in each `crates/exchange-<venue>` (not yet written) will be
+the highest-stakes code in the repo: it turns a key into a signed venue
+action. Changes there, to the `ExchangeAdapter` trait or the Tauri commands
+that expose it, to the keychain bridge, or to the webview CSP need extra
+scrutiny and should be called out explicitly in the PR description, under a
+"Security-relevant changes" heading.
 
 There's a `security-review` checklist in
 [.claude/commands/](.claude/commands/security-review.md) covering signing, key
@@ -180,17 +184,17 @@ those paths.
 1. ~~Stand up the `apps/desktop` Tauri shell.~~ Done — it builds, runs, and
    opens a window; there's just nothing in it yet.
 2. ~~OS keychain access from Tauri.~~ Done.
-3. ~~Decide where signing lives.~~ Rust, typed actions only, trade-only keys —
-   [ADR 0001](docs/adr/0001-sign-in-rust.md).
-4. Define `ExchangeAdapter`, `Signer` and the domain types in `packages/core`.
-5. Rust network transport with a per-venue host allowlist.
-6. Hyperliquid adapter: read-only market and account data first, then the
-   Rust signer and order placement.
-7. GMX, dYdX v4 and Drift adapters.
-8. Build out `packages/ui` and wire it to the adapters.
-9. Revisit `apps/web` once the desktop app ships — it needs a thin proxy in
-   front of it for most venues, because browsers enforce CORS, and a
-   browser-wallet `Signer`.
+3. ~~Decide where venue logic and signing live.~~ Rust adapters, trade-only
+   keys — [ADR 0001](docs/adr/0001-venues-in-rust.md).
+4. ~~Define `ExchangeAdapter` and the domain types in `crates/core`.~~ Done,
+   with generated TS types.
+5. Hyperliquid adapter: read-only market and account data first, exposed
+   through Tauri commands, then signing and order placement.
+6. GMX, dYdX v4 and Drift adapters.
+7. Build out `packages/ui` and wire it to the adapters.
+8. Revisit `apps/web` once the desktop app ships — it can't run the Rust
+   adapters as-is, needs a browser-wallet signer, and needs a thin proxy for
+   most venues because browsers enforce CORS.
 
 ## License
 

@@ -84,12 +84,6 @@ importers:
 
   packages/core: {}
 
-  packages/exchange-hyperliquid:
-    dependencies:
-      '@pewterdesk/core':
-        specifier: workspace:*
-        version: link:../core
-
   packages/ui:
     dependencies:
       '@pewterdesk/core':
