@@ -658,6 +658,12 @@ input {
   display: block;
   width: 100%;
 }
+/* …except a trade's first line, which holds price and time apart like the real row */
+[data-mode="stacked"] .pd-skel-row > .pd-row-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
 /* "⋮" options button and its menu */
 .pd-icon-button {
@@ -1129,4 +1135,64 @@ input {
 .pd-picker-empty {
   margin: 8px;
   color: var(--pd-pewter);
+}
+
+/* Text menu trigger, e.g. the header's "Trade ▾" page switcher */
+.pd-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding: 0 5px;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+/* Hover and open: text and chevron turn the theme's accent, like the header icons */
+.pd-menu-trigger:hover,
+.pd-menu-trigger:focus-visible,
+.pd-menu-trigger[aria-expanded="true"] {
+  color: var(--pd-brass-text);
+  background: var(--pd-surface-raised);
+}
+.pd-menu-trigger svg {
+  color: var(--pd-pewter);
+  transition:
+    transform 150ms ease,
+    color 120ms ease;
+}
+.pd-menu-trigger:hover svg,
+.pd-menu-trigger:focus-visible svg,
+.pd-menu-trigger[aria-expanded="true"] svg {
+  color: currentColor;
+}
+.pd-menu-trigger[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.pd-menu-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 20px;
+  color: var(--pd-pewter);
+  transition: color 120ms ease;
+}
+/* Hovering or arrowing onto an item lights its icon in the accent */
+.pd-menu-item:hover .pd-menu-icon,
+.pd-menu-item:focus-visible .pd-menu-icon {
+  color: var(--pd-brass-text);
+}
+/* List menus whose items carry icons mark the current one in the accent */
+.pd-menu:not([data-grid]) .pd-menu-item[aria-checked="true"] {
+  background: var(--pd-surface);
+}
+.pd-menu:not([data-grid]) .pd-menu-item[aria-checked="true"] .pd-menu-icon {
+  color: var(--pd-brass-text);
 }

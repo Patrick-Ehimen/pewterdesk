@@ -116,6 +116,79 @@ export const messages: Messages = {
 
   "header.home": "Ir al trading",
 
+  // Pages and navigation
+
+  "nav.menu": "Páginas",
+
+  "nav.trade": "Trading",
+
+  "nav.tradeDesc": "Mercados, libro de órdenes y posiciones",
+
+  "nav.portfolio": "Portafolio",
+
+  "nav.portfolioDesc": "Saldos y exposición de tu cuenta",
+
+  "nav.journal": "Diario",
+
+  "nav.journalDesc": "Tus operaciones, etiquetadas y revisadas",
+
+  "nav.news": "Noticias",
+
+  "nav.newsDesc": "Titulares de exchanges, on-chain y macro",
+
+  "nav.settingsDesc": "Preferencias, wallets y claves",
+
+  "portfolio.subtitle": "Cuenta seguida · solo lectura",
+
+  "portfolio.empty":
+    "Conecta una wallet para ver un portafolio. Solo lectura: no se necesita clave.",
+
+  "portfolio.equityNote": "{quote} en {venue}",
+
+  "portfolio.positionsNote": "Posiciones abiertas: {count}",
+
+  "portfolio.marginNote": "{percent} del patrimonio",
+
+  "portfolio.gross": "Exposición bruta",
+
+  "portfolio.grossNote": "{ratio}x el patrimonio",
+
+  "portfolio.net": "Exposición neta",
+
+  "portfolio.netLong": "Sesgo largo",
+
+  "portfolio.netShort": "Sesgo corto",
+
+  "portfolio.netFlat": "Neutral",
+
+  "portfolio.byAsset": "Exposición por activo",
+
+  "portfolio.byAssetNote": "Aquí se compensan las posiciones de distintos exchanges",
+
+  "portfolio.col.asset": "Activo",
+
+  "portfolio.col.venue": "Exchange",
+
+  "portfolio.col.netSize": "Tamaño neto",
+
+  "portfolio.col.netNotional": "Nocional neto",
+
+  "portfolio.col.share": "Parte de la bruta",
+
+  "portfolio.byVenue": "Por exchange",
+
+  "portfolio.byVenueNote": "dYdX, Drift y GMX aparecerán aquí cuando lleguen sus adaptadores.",
+
+  "journal.subtitle": "Guardado solo en este dispositivo · nunca se sube",
+
+  "journal.soon":
+    "El diario registrará cada ejecución con tus etiquetas y notas, y mostrará PnL neto, tasa de acierto y PnL por mercado y por hora. Necesita el historial de ejecuciones, que llega con la colocación de órdenes.",
+
+  "news.subtitle": "Lo obtiene la app en tu equipo · sin servidor de Pewterdesk",
+
+  "news.soon":
+    "Noticias reunirá anuncios de exchanges, alertas on-chain y un calendario económico, cada fuente activable por separado.",
+
   // Market stats bar
 
   "stats.chooseMarket": "Elige un mercado",

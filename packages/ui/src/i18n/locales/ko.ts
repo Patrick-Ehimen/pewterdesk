@@ -115,6 +115,78 @@ export const messages: Messages = {
 
   "header.home": "거래 화면으로",
 
+  // Pages and navigation
+
+  "nav.menu": "페이지",
+
+  "nav.trade": "거래",
+
+  "nav.tradeDesc": "마켓, 호가창, 포지션",
+
+  "nav.portfolio": "포트폴리오",
+
+  "nav.portfolioDesc": "계정의 잔고와 익스포저",
+
+  "nav.journal": "저널",
+
+  "nav.journalDesc": "거래에 태그를 달고 되돌아보기",
+
+  "nav.news": "뉴스",
+
+  "nav.newsDesc": "거래소, 온체인, 거시 헤드라인",
+
+  "nav.settingsDesc": "환경설정, 지갑, 키",
+
+  "portfolio.subtitle": "조회 중인 계정 · 읽기 전용",
+
+  "portfolio.empty": "지갑을 연결하면 포트폴리오를 볼 수 있습니다. 읽기 전용 — 키가 필요 없습니다.",
+
+  "portfolio.equityNote": "{venue}의 {quote}",
+
+  "portfolio.positionsNote": "보유 포지션: {count}",
+
+  "portfolio.marginNote": "자산의 {percent}",
+
+  "portfolio.gross": "총 익스포저",
+
+  "portfolio.grossNote": "자산의 {ratio}배",
+
+  "portfolio.net": "순 익스포저",
+
+  "portfolio.netLong": "롱 우위",
+
+  "portfolio.netShort": "숏 우위",
+
+  "portfolio.netFlat": "중립",
+
+  "portfolio.byAsset": "자산별 익스포저",
+
+  "portfolio.byAssetNote": "여러 거래소의 포지션이 여기서 상계됩니다",
+
+  "portfolio.col.asset": "자산",
+
+  "portfolio.col.venue": "거래소",
+
+  "portfolio.col.netSize": "순 수량",
+
+  "portfolio.col.netNotional": "순 명목가치",
+
+  "portfolio.col.share": "총 익스포저 대비 비중",
+
+  "portfolio.byVenue": "거래소별",
+
+  "portfolio.byVenueNote": "dYdX, Drift, GMX는 어댑터가 추가되면 여기에 표시됩니다.",
+
+  "journal.subtitle": "이 기기에만 저장 · 업로드하지 않음",
+
+  "journal.soon":
+    "저널은 각 체결을 태그와 메모와 함께 기록하고, 순손익, 승률, 마켓별·시간대별 손익을 보여줍니다. 체결 내역이 필요하며, 주문 기능과 함께 제공됩니다.",
+
+  "news.subtitle": "앱이 내 기기에서 가져옴 · Pewterdesk 서버 없음",
+
+  "news.soon":
+    "뉴스는 거래소 공지, 온체인 알림, 경제 캘린더를 한곳에 모으며, 소스마다 켜고 끌 수 있습니다.",
+
   // Market stats bar
 
   "stats.chooseMarket": "마켓 선택",

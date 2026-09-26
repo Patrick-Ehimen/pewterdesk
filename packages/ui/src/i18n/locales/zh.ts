@@ -112,6 +112,77 @@ export const messages: Messages = {
 
   "header.home": "前往交易",
 
+  // Pages and navigation
+
+  "nav.menu": "页面",
+
+  "nav.trade": "交易",
+
+  "nav.tradeDesc": "市场、订单簿和持仓",
+
+  "nav.portfolio": "资产组合",
+
+  "nav.portfolioDesc": "账户的余额与敞口",
+
+  "nav.journal": "交易日志",
+
+  "nav.journalDesc": "为你的交易打标签并复盘",
+
+  "nav.news": "资讯",
+
+  "nav.newsDesc": "交易所、链上与宏观消息",
+
+  "nav.settingsDesc": "偏好设置、钱包与密钥",
+
+  "portfolio.subtitle": "查看的账户 · 只读",
+
+  "portfolio.empty": "连接钱包即可查看资产组合。只读——无需密钥。",
+
+  "portfolio.equityNote": "{venue} 上的 {quote}",
+
+  "portfolio.positionsNote": "持仓数：{count}",
+
+  "portfolio.marginNote": "占权益的 {percent}",
+
+  "portfolio.gross": "总敞口",
+
+  "portfolio.grossNote": "权益的 {ratio} 倍",
+
+  "portfolio.net": "净敞口",
+
+  "portfolio.netLong": "偏多",
+
+  "portfolio.netShort": "偏空",
+
+  "portfolio.netFlat": "持平",
+
+  "portfolio.byAsset": "按资产的敞口",
+
+  "portfolio.byAssetNote": "不同交易所的持仓在此相互抵消",
+
+  "portfolio.col.asset": "资产",
+
+  "portfolio.col.venue": "交易所",
+
+  "portfolio.col.netSize": "净数量",
+
+  "portfolio.col.netNotional": "净名义价值",
+
+  "portfolio.col.share": "占总敞口比例",
+
+  "portfolio.byVenue": "按交易所",
+
+  "portfolio.byVenueNote": "dYdX、Drift 和 GMX 接入后会显示在这里。",
+
+  "journal.subtitle": "仅保存在本设备 · 从不上传",
+
+  "journal.soon":
+    "交易日志会记录每笔成交以及你的标签和备注，并展示净盈亏、胜率，以及按市场和按小时的盈亏。它需要成交历史，将随下单功能一同推出。",
+
+  "news.subtitle": "由应用在你的设备上获取 · 不经过 Pewterdesk 服务器",
+
+  "news.soon": "资讯将汇集交易所公告、链上提醒和经济日历，每个来源都可以单独开关。",
+
   // Market stats bar
 
   "stats.chooseMarket": "选择市场",

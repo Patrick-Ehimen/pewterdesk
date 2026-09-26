@@ -13,6 +13,7 @@ import {
   sanitizeLayout,
   sanitizeWorkspace,
   saveAs,
+  upgradeDefault,
   withStatsBar,
 } from "../src/lib/workspace";
 
@@ -76,13 +77,13 @@ describe("fillGaps", () => {
     // Default: stats bar over markets | orderBook, account on the right, positions below.
     const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "account:account")));
     expect(layout[STATS_BAR_ID]).toEqual({ x: 0, y: 0, w: 24, h: STATS_BAR_ROWS });
-    expect(layout["orderBook:orderBook"]).toEqual({ x: 14, y: 2, w: 10, h: 14 });
-    expect(layout["markets:markets"]).toEqual({ x: 0, y: 2, w: 14, h: 14 });
+    expect(layout["orderBook:orderBook"]).toEqual({ x: 14, y: 2, w: 10, h: 18 });
+    expect(layout["markets:markets"]).toEqual({ x: 0, y: 2, w: 14, h: 18 });
   });
 
   it("widens rightwards into a gap on the left", () => {
     const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "markets:markets")));
-    expect(layout["orderBook:orderBook"]).toEqual({ x: 0, y: 2, w: 19, h: 14 });
+    expect(layout["orderBook:orderBook"]).toEqual({ x: 0, y: 2, w: 19, h: 18 });
   });
 
   it("grows panels down to the bottom of the grid", () => {
@@ -239,5 +240,27 @@ describe("stats bar", () => {
   it("is restored on load", () => {
     const state = sanitizeWorkspace({ layout: [{ i: "markets:a", x: 0, y: 0, w: 24, h: 24 }] });
     expect(bar(state.layout)).toHaveLength(1);
+  });
+});
+
+describe("upgradeDefault", () => {
+  const oldDefault = [
+    { i: STATS_BAR_ID, x: 0, y: 0, w: 19, h: STATS_BAR_ROWS },
+    { i: "markets:markets", x: 0, y: 2, w: 14, h: 14 },
+    { i: "orderBook:orderBook", x: 14, y: 2, w: 5, h: 14 },
+    { i: "account:account", x: 19, y: 0, w: 5, h: 16 },
+    { i: "positions:positions", x: 0, y: 16, w: 24, h: 8 },
+  ];
+
+  it("replaces an untouched old Default with the current one", () => {
+    expect(upgradeDefault(oldDefault)).toEqual(DEFAULT_PRESET.layout);
+    expect(sanitizeWorkspace({ layout: oldDefault }).layout).toEqual(DEFAULT_PRESET.layout);
+  });
+
+  it("leaves a customised layout alone", () => {
+    const moved = oldDefault.map((p) =>
+      p.i === "positions:positions" ? { ...p, h: 7, y: 17 } : p,
+    );
+    expect(upgradeDefault(moved)).toBe(moved);
   });
 });

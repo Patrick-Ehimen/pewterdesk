@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { LuChevronDown } from "react-icons/lu";
 import { IconButton } from "./IconButton";
 
 export interface MenuOption<V extends string> {
@@ -36,6 +37,11 @@ interface OptionsMenuProps<V extends string> {
   columns?: number;
   /** Extra class for the menu itself, e.g. to size a grid's cells. */
   menuClassName?: string;
+  /**
+   * A text trigger with a chevron ("Trade ▾") instead of an icon button.
+   * `label` stays the accessible name.
+   */
+  triggerText?: ReactNode;
 }
 
 /** Gap between the trigger and the menu, and minimum distance from the viewport edge. */
@@ -82,6 +88,7 @@ export function OptionsMenu<V extends string>({
   className = "pd-kebab",
   columns,
   menuClassName,
+  triggerText,
 }: OptionsMenuProps<V>) {
   const menuId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -95,22 +102,24 @@ export function OptionsMenu<V extends string>({
     if (refocus) buttonRef.current?.focus();
   }, []);
 
-  // Place under the button, right edges aligned, then focus the current choice.
+  const alignLeft = triggerText !== undefined;
+
+  // Place under the button, then focus the current choice.
   useLayoutEffect(() => {
     if (!open) return;
     const button = buttonRef.current?.getBoundingClientRect();
     const menu = menuRef.current?.getBoundingClientRect();
     if (!button || !menu) return;
-    const left = Math.max(
-      GAP,
-      Math.min(button.right - menu.width, window.innerWidth - menu.width - GAP),
-    );
+    // Text triggers sit at the left of the header, so their menu aligns left;
+    // icon triggers sit at the right and align right.
+    const preferred = alignLeft ? button.left : button.right - menu.width;
+    const left = Math.max(GAP, Math.min(preferred, window.innerWidth - menu.width - GAP));
     const below = button.bottom + GAP;
     const top =
       below + menu.height > window.innerHeight - GAP ? button.top - GAP - menu.height : below;
     setPosition({ top, left });
     menuRef.current?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
-  }, [open]);
+  }, [open, alignLeft]);
 
   // Any click outside, a resize or a scroll closes it.
   useEffect(() => {
@@ -176,17 +185,33 @@ export function OptionsMenu<V extends string>({
 
   return (
     <>
-      <IconButton
-        ref={buttonRef}
-        label={label}
-        className={className}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={open ? menuId : undefined}
-        onClick={() => (open ? close() : setOpen(true))}
-      >
-        {icon ?? <KebabIcon />}
-      </IconButton>
+      {triggerText !== undefined ? (
+        <button
+          ref={buttonRef}
+          type="button"
+          className={`pd-menu-trigger ${className}`}
+          aria-label={label}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          onClick={() => (open ? close() : setOpen(true))}
+        >
+          {triggerText}
+          <LuChevronDown size={11} aria-hidden />
+        </button>
+      ) : (
+        <IconButton
+          ref={buttonRef}
+          label={label}
+          className={className}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
+          onClick={() => (open ? close() : setOpen(true))}
+        >
+          {icon ?? <KebabIcon />}
+        </IconButton>
+      )}
       {open &&
         createPortal(
           <div

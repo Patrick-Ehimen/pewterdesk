@@ -116,6 +116,79 @@ export const messages: Messages = {
 
   "header.home": "Aller au trading",
 
+  // Pages and navigation
+
+  "nav.menu": "Pages",
+
+  "nav.trade": "Trading",
+
+  "nav.tradeDesc": "Marchés, carnet d'ordres et positions",
+
+  "nav.portfolio": "Portefeuille",
+
+  "nav.portfolioDesc": "Soldes et exposition de votre compte",
+
+  "nav.journal": "Journal",
+
+  "nav.journalDesc": "Vos trades, tagués et analysés",
+
+  "nav.news": "Actualités",
+
+  "nav.newsDesc": "Titres des plateformes, on-chain et macro",
+
+  "nav.settingsDesc": "Préférences, wallets et clés",
+
+  "portfolio.subtitle": "Compte suivi · lecture seule",
+
+  "portfolio.empty":
+    "Connectez un wallet pour voir un portefeuille. Lecture seule — aucune clé requise.",
+
+  "portfolio.equityNote": "{quote} sur {venue}",
+
+  "portfolio.positionsNote": "Positions ouvertes : {count}",
+
+  "portfolio.marginNote": "{percent} des capitaux",
+
+  "portfolio.gross": "Exposition brute",
+
+  "portfolio.grossNote": "{ratio}x les capitaux",
+
+  "portfolio.net": "Exposition nette",
+
+  "portfolio.netLong": "Biais long",
+
+  "portfolio.netShort": "Biais short",
+
+  "portfolio.netFlat": "Neutre",
+
+  "portfolio.byAsset": "Exposition par actif",
+
+  "portfolio.byAssetNote": "Les positions sur différentes plateformes se compensent ici",
+
+  "portfolio.col.asset": "Actif",
+
+  "portfolio.col.venue": "Plateforme",
+
+  "portfolio.col.netSize": "Taille nette",
+
+  "portfolio.col.netNotional": "Notionnel net",
+
+  "portfolio.col.share": "Part de la brute",
+
+  "portfolio.byVenue": "Par plateforme",
+
+  "portfolio.byVenueNote": "dYdX, Drift et GMX apparaîtront ici avec leurs adaptateurs.",
+
+  "journal.subtitle": "Stocké uniquement sur cet appareil · jamais envoyé",
+
+  "journal.soon":
+    "Le journal enregistrera chaque exécution avec vos tags et notes, puis affichera le PnL net, le taux de réussite et le PnL par marché et par heure. Il lui faut l'historique des exécutions, qui arrive avec le passage d'ordres.",
+
+  "news.subtitle": "Récupéré par l'application sur votre machine · aucun serveur Pewterdesk",
+
+  "news.soon":
+    "Les actualités rassembleront annonces des plateformes, alertes on-chain et calendrier économique, chaque source activable séparément.",
+
   // Market stats bar
 
   "stats.chooseMarket": "Choisir un marché",

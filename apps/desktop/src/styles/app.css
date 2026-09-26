@@ -56,7 +56,10 @@
 }
 .app-logo {
   display: block;
-  height: 26px;
+  height: 32px;
+}
+.app-page-menu {
+  margin-right: 4px;
 }
 .app-chip {
   display: inline-flex;

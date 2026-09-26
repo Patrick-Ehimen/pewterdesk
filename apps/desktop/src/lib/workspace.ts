@@ -47,10 +47,10 @@ export const PRESETS: readonly SavedLayout[] = [
     name: "Default",
     layout: [
       bar(19),
-      place("markets", 0, 2, 14, 14),
-      place("orderBook", 14, 2, 5, 14),
-      place("account", 19, 0, 5, 16),
-      place("positions", 0, 16, 24, 8),
+      place("markets", 0, 2, 14, 18),
+      place("orderBook", 14, 2, 5, 18),
+      place("account", 19, 0, 5, 20),
+      place("positions", 0, 20, 24, 4),
     ],
   },
   {
@@ -77,6 +77,42 @@ export const PRESETS: readonly SavedLayout[] = [
 
 // biome-ignore lint/style/noNonNullAssertion: PRESETS is a non-empty literal
 export const DEFAULT_PRESET = PRESETS[0]!;
+
+/**
+ * Earlier versions of the Default preset. A stored layout that still matches
+ * one exactly was never customised, so it's upgraded to the current Default
+ * on load; anything the user changed is left alone.
+ */
+const PREVIOUS_DEFAULTS: readonly Layout[] = [
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 14),
+    place("orderBook", 14, 2, 5, 14),
+    place("account", 19, 0, 5, 16),
+    place("positions", 0, 16, 24, 8),
+  ],
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 16),
+    place("orderBook", 14, 2, 5, 16),
+    place("account", 19, 0, 5, 18),
+    place("positions", 0, 18, 24, 6),
+  ],
+];
+
+const sameLayout = (a: Layout, b: Layout) => {
+  const key = (l: Layout) =>
+    l
+      .map((p) => `${p.i}@${p.x},${p.y},${p.w},${p.h}`)
+      .sort()
+      .join("|");
+  return key(a) === key(b);
+};
+
+/** Swaps an untouched old Default for the current one. */
+export function upgradeDefault(layout: Layout): Layout {
+  return PREVIOUS_DEFAULTS.some((old) => sameLayout(old, layout)) ? DEFAULT_PRESET.layout : layout;
+}
 
 export function initialWorkspace(): WorkspaceState {
   return { layout: DEFAULT_PRESET.layout, active: DEFAULT_PRESET.name, saved: [] };
@@ -222,7 +258,7 @@ export function sanitizeWorkspace(raw: unknown): WorkspaceState {
     : [];
   const current = sanitizeLayout(layout);
   return {
-    layout: current.length > 0 ? fillGaps(withStatsBar(current)) : fallback.layout,
+    layout: current.length > 0 ? upgradeDefault(fillGaps(withStatsBar(current))) : fallback.layout,
     active: typeof active === "string" ? active : fallback.active,
     saved: savedLayouts,
   };

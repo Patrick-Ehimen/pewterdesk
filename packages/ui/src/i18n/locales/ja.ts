@@ -115,6 +115,79 @@ export const messages: Messages = {
 
   "header.home": "取引画面へ",
 
+  // Pages and navigation
+
+  "nav.menu": "ページ",
+
+  "nav.trade": "取引",
+
+  "nav.tradeDesc": "銘柄・板情報・ポジション",
+
+  "nav.portfolio": "ポートフォリオ",
+
+  "nav.portfolioDesc": "口座の残高とエクスポージャー",
+
+  "nav.journal": "ジャーナル",
+
+  "nav.journalDesc": "取引にタグを付けて振り返る",
+
+  "nav.news": "ニュース",
+
+  "nav.newsDesc": "取引所・オンチェーン・マクロのヘッドライン",
+
+  "nav.settingsDesc": "設定・ウォレット・鍵",
+
+  "portfolio.subtitle": "閲覧中の口座 · 閲覧のみ",
+
+  "portfolio.empty":
+    "ウォレットを接続するとポートフォリオを表示できます。閲覧のみ — 鍵は不要です。",
+
+  "portfolio.equityNote": "{venue} の {quote}",
+
+  "portfolio.positionsNote": "保有ポジション：{count}",
+
+  "portfolio.marginNote": "資産の {percent}",
+
+  "portfolio.gross": "グロスエクスポージャー",
+
+  "portfolio.grossNote": "資産の {ratio} 倍",
+
+  "portfolio.net": "ネットエクスポージャー",
+
+  "portfolio.netLong": "ロング寄り",
+
+  "portfolio.netShort": "ショート寄り",
+
+  "portfolio.netFlat": "フラット",
+
+  "portfolio.byAsset": "資産別エクスポージャー",
+
+  "portfolio.byAssetNote": "取引所をまたぐポジションはここで相殺されます",
+
+  "portfolio.col.asset": "資産",
+
+  "portfolio.col.venue": "取引所",
+
+  "portfolio.col.netSize": "ネット数量",
+
+  "portfolio.col.netNotional": "ネット想定元本",
+
+  "portfolio.col.share": "グロスに占める割合",
+
+  "portfolio.byVenue": "取引所別",
+
+  "portfolio.byVenueNote": "dYdX・Drift・GMX はアダプターの追加後にここに表示されます。",
+
+  "journal.subtitle": "この端末にのみ保存 · アップロードしません",
+
+  "journal.soon":
+    "ジャーナルは各約定をタグとメモとともに記録し、純損益、勝率、銘柄別・時間帯別の損益を表示します。約定履歴が必要で、注文機能と同時に提供予定です。",
+
+  "news.subtitle": "アプリがお使いの端末で取得 · Pewterdesk のサーバーは使いません",
+
+  "news.soon":
+    "ニュースは取引所のお知らせ、オンチェーンアラート、経済指標カレンダーをまとめ、ソースごとにオン・オフできます。",
+
   // Market stats bar
 
   "stats.chooseMarket": "銘柄を選択",

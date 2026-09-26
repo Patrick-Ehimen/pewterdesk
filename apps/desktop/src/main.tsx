@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "@pewterdesk/ui/src/styles/styles.css";
 import "./styles/app.css";
 import "./styles/layout.css";
+import "./styles/pages.css";
 import "./styles/settings.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";

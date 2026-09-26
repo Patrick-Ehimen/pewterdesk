@@ -1,0 +1,165 @@
+/* Full pages (Portfolio, Journal, News), after the design's page screens.
+   Colors only from --pd-* tokens. */
+
+.page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 4px 4px 2px;
+}
+.page-head h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.page-head span {
+  color: var(--pd-pewter);
+}
+
+/* Summary cards */
+.page-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px;
+}
+.page-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.page-card-label {
+  color: var(--pd-pewter);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.page-card-value {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 24px;
+  font-weight: 600;
+}
+.page-card-note {
+  color: var(--pd-pewter);
+}
+
+/* Two columns of panels */
+.page-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
+  gap: 10px;
+  align-items: start;
+}
+.page-panel {
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.page-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 12px;
+}
+.page-panel-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.page-panel-head span {
+  color: var(--pd-pewter);
+}
+.page-asset {
+  font-size: 14px;
+}
+
+/* By venue */
+.page-venues {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 20px 20px;
+}
+.page-venue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.page-venue-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-venue-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.page-venue-badge {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 22px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.page-meter {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--pd-border);
+  overflow: hidden;
+}
+.page-meter > div {
+  height: 100%;
+  background: var(--pd-pewter);
+}
+/* A venue's share of equity takes the accent, as in the design */
+.page-meter > div[data-accent] {
+  background: var(--pd-brass);
+}
+.page-note {
+  margin: 0;
+  color: var(--pd-pewter);
+}
+
+/* Empty and not-built states */
+.page-empty,
+.page-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 24px;
+  background: var(--pd-surface);
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-pewter);
+  text-align: center;
+}
+.page-empty p,
+.page-soon p {
+  max-width: 560px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .page-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

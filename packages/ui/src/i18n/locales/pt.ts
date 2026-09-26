@@ -116,6 +116,79 @@ export const messages: Messages = {
 
   "header.home": "Ir para o trading",
 
+  // Pages and navigation
+
+  "nav.menu": "Páginas",
+
+  "nav.trade": "Trading",
+
+  "nav.tradeDesc": "Mercados, livro de ofertas e posições",
+
+  "nav.portfolio": "Portfólio",
+
+  "nav.portfolioDesc": "Saldos e exposição da sua conta",
+
+  "nav.journal": "Diário",
+
+  "nav.journalDesc": "Suas negociações, com tags e revisadas",
+
+  "nav.news": "Notícias",
+
+  "nav.newsDesc": "Manchetes de corretoras, on-chain e macro",
+
+  "nav.settingsDesc": "Preferências, carteiras e chaves",
+
+  "portfolio.subtitle": "Conta acompanhada · somente leitura",
+
+  "portfolio.empty":
+    "Conecte uma carteira para ver um portfólio. Somente leitura — nenhuma chave necessária.",
+
+  "portfolio.equityNote": "{quote} na {venue}",
+
+  "portfolio.positionsNote": "Posições abertas: {count}",
+
+  "portfolio.marginNote": "{percent} do patrimônio",
+
+  "portfolio.gross": "Exposição bruta",
+
+  "portfolio.grossNote": "{ratio}x o patrimônio",
+
+  "portfolio.net": "Exposição líquida",
+
+  "portfolio.netLong": "Viés comprado",
+
+  "portfolio.netShort": "Viés vendido",
+
+  "portfolio.netFlat": "Neutro",
+
+  "portfolio.byAsset": "Exposição por ativo",
+
+  "portfolio.byAssetNote": "Posições em corretoras diferentes se compensam aqui",
+
+  "portfolio.col.asset": "Ativo",
+
+  "portfolio.col.venue": "Corretora",
+
+  "portfolio.col.netSize": "Tamanho líquido",
+
+  "portfolio.col.netNotional": "Nocional líquido",
+
+  "portfolio.col.share": "Parte da bruta",
+
+  "portfolio.byVenue": "Por corretora",
+
+  "portfolio.byVenueNote": "dYdX, Drift e GMX aparecerão aqui quando seus adaptadores chegarem.",
+
+  "journal.subtitle": "Armazenado só neste dispositivo · nunca enviado",
+
+  "journal.soon":
+    "O diário vai registrar cada execução com suas tags e notas, e mostrar PnL líquido, taxa de acerto e PnL por mercado e por hora. Ele precisa do histórico de execuções, que chega com o envio de ordens.",
+
+  "news.subtitle": "Obtido pelo app na sua máquina · sem servidor da Pewterdesk",
+
+  "news.soon":
+    "Notícias vai reunir anúncios das corretoras, alertas on-chain e um calendário econômico, cada fonte com seu próprio botão.",
+
   // Market stats bar
 
   "stats.chooseMarket": "Escolha um mercado",

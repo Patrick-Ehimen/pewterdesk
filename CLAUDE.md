@@ -118,7 +118,10 @@ account's balances, positions and open orders. In `apps/desktop/src/`,
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
 `styles/`. `packages/ui` holds the shared presentational components, fed by
-props. No chart or order ticket yet.
+props. No chart or order ticket yet. The header's page menu switches between
+Trade (the workspace), Portfolio (the watched account's equity and exposure),
+Settings, and Journal and News, which are placeholders until fill history and
+news sources exist.
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up. `.claude/prd-rust-desktop-features.md` has

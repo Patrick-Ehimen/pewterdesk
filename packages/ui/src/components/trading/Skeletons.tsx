@@ -46,6 +46,41 @@ function SkeletonRow({ i, mode }: { i: number; mode: RowMode }) {
   );
 }
 
+/**
+ * A trade row's placeholder. Unlike book levels, a trade's price has the
+ * market's fixed number of digits and its time is always "HH:MM:SS", so those
+ * bars keep one width; only the size varies.
+ */
+function TradeSkeletonRow({ i, mode }: { i: number; mode: RowMode }) {
+  if (mode === "stacked") {
+    // Line 1: price left, time right. Line 2: "250 HYPE · Buy".
+    return (
+      <div className="pd-book-row pd-skel-row">
+        <span className="pd-row-line">
+          <Bar width={30} />
+          <Bar width={24} style={{ height: 7 }} />
+        </span>
+        <span>
+          <Bar width={pick(SIZE_W, i * 3) * 0.8 + 12} style={{ height: 7 }} />
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="pd-book-row pd-skel-row">
+      <span>
+        <Bar width={60} />
+      </span>
+      <span>
+        <Bar width={pick(SIZE_W, i * 3)} />
+      </span>
+      <span>
+        <Bar width={66} />
+      </span>
+    </div>
+  );
+}
+
 function StaticHeader({ labels }: { labels: string[] }) {
   return (
     <div className="pd-book-head">
@@ -105,7 +140,7 @@ export function TradesSkeleton({ mode = "table" }: { mode?: RowMode }) {
       {mode === "table" && <StaticHeader labels={[t("col.price"), t("col.size"), t("col.time")]} />}
       <div className="pd-trades-list pd-skel-list" aria-hidden>
         {rows.map((i) => (
-          <SkeletonRow key={i} i={i + 3} mode={mode} />
+          <TradeSkeletonRow key={i} i={i + 3} mode={mode} />
         ))}
       </div>
     </div>

@@ -115,6 +115,78 @@ export const messages: Messages = {
 
   "header.home": "К торговле",
 
+  // Pages and navigation
+
+  "nav.menu": "Разделы",
+
+  "nav.trade": "Торговля",
+
+  "nav.tradeDesc": "Рынки, стакан и позиции",
+
+  "nav.portfolio": "Портфель",
+
+  "nav.portfolioDesc": "Балансы и экспозиция аккаунта",
+
+  "nav.journal": "Журнал",
+
+  "nav.journalDesc": "Ваши сделки с тегами и разбором",
+
+  "nav.news": "Новости",
+
+  "nav.newsDesc": "Заголовки бирж, ончейн и макро",
+
+  "nav.settingsDesc": "Настройки, кошельки и ключи",
+
+  "portfolio.subtitle": "Отслеживаемый аккаунт · только просмотр",
+
+  "portfolio.empty": "Подключите кошелёк, чтобы увидеть портфель. Только просмотр — ключ не нужен.",
+
+  "portfolio.equityNote": "{quote} на {venue}",
+
+  "portfolio.positionsNote": "Открытых позиций: {count}",
+
+  "portfolio.marginNote": "{percent} капитала",
+
+  "portfolio.gross": "Валовая экспозиция",
+
+  "portfolio.grossNote": "{ratio}x капитала",
+
+  "portfolio.net": "Чистая экспозиция",
+
+  "portfolio.netLong": "Перевес в лонг",
+
+  "portfolio.netShort": "Перевес в шорт",
+
+  "portfolio.netFlat": "Нейтрально",
+
+  "portfolio.byAsset": "Экспозиция по активам",
+
+  "portfolio.byAssetNote": "Здесь взаимозачитываются позиции на разных биржах",
+
+  "portfolio.col.asset": "Актив",
+
+  "portfolio.col.venue": "Биржа",
+
+  "portfolio.col.netSize": "Чистый объём",
+
+  "portfolio.col.netNotional": "Чистая номинальная стоимость",
+
+  "portfolio.col.share": "Доля валовой",
+
+  "portfolio.byVenue": "По биржам",
+
+  "portfolio.byVenueNote": "dYdX, Drift и GMX появятся здесь, когда будут добавлены их адаптеры.",
+
+  "journal.subtitle": "Хранится только на этом устройстве · никуда не загружается",
+
+  "journal.soon":
+    "Журнал будет записывать каждое исполнение с вашими тегами и заметками и показывать чистый PnL, долю прибыльных сделок и PnL по рынкам и часам. Для этого нужна история исполнений — она появится вместе с выставлением заявок.",
+
+  "news.subtitle": "Загружается приложением на вашем устройстве · без сервера Pewterdesk",
+
+  "news.soon":
+    "Новости объединят объявления бирж, ончейн-оповещения и экономический календарь; каждый источник можно включить или выключить.",
+
   // Market stats bar
 
   "stats.chooseMarket": "Выберите рынок",

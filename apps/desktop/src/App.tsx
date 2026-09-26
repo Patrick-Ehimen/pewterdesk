@@ -24,7 +24,15 @@ import { HeaderActions } from "./components/header/HeaderActions";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
-import { ROW_MODES, rowModeOptions, VIEW_KEYS } from "./components/preferences";
+import { ComingSoonPage } from "./components/pages/ComingSoonPage";
+import { PortfolioPage } from "./components/pages/PortfolioPage";
+import {
+  pageLabel,
+  pageOptions,
+  ROW_MODES,
+  rowModeOptions,
+  VIEW_KEYS,
+} from "./components/preferences";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { isLightTheme, useAppearance } from "./hooks/useAppearance";
@@ -40,6 +48,7 @@ import {
 } from "./hooks/useVenueFeeds";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useWorkspace } from "./hooks/useWorkspace";
+import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { loadAddress, saveAddress } from "./lib/watchAddress";
 import { addPanel, DEFAULT_PRESET, fillGaps, removePanel, saveAs } from "./lib/workspace";
@@ -221,7 +230,7 @@ export function App() {
   const [workspace, setWorkspace] = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState<PanelKind>();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [page, setPage] = useState<Page>("trade");
   const [walletOpen, setWalletOpen] = useState(false);
   // Nothing plays sounds yet; this is the preference fill alerts will read.
   const [sound, setSound] = useStoredChoice("pd.sound", SOUND, "on");
@@ -244,6 +253,12 @@ export function App() {
     (id: string) => marketList.find((m) => m.id === id)?.symbol ?? id,
     [marketList],
   );
+
+  /** Switches page; leaving the workspace ends layout editing (closing its gaps). */
+  const goTo = (next: Page) => {
+    if (next !== "trade" && editing) finishEditing();
+    setPage(next);
+  };
 
   /** Leaving edit mode closes any gaps the edits left behind. */
   const finishEditing = () => {
@@ -323,10 +338,7 @@ export function App() {
           className="app-logo-button"
           aria-label={t("header.home")}
           title={t("header.home")}
-          onClick={() => {
-            setSettingsOpen(false);
-            if (editing) finishEditing();
-          }}
+          onClick={() => goTo("trade")}
         >
           <img
             className="app-logo"
@@ -334,6 +346,15 @@ export function App() {
             alt="pewterdesk"
           />
         </button>
+        <OptionsMenu
+          label={t("nav.menu")}
+          heading={t("nav.menu")}
+          triggerText={pageLabel(page)}
+          className="app-page-menu"
+          options={pageOptions()}
+          value={page}
+          onChange={goTo}
+        />
         <span className="app-chip">
           <span className="pd-live-dot" data-live={book.status === "live" || undefined} />
           {VENUE_LABEL}
@@ -357,16 +378,17 @@ export function App() {
           onToggleStar={() => selected && watchlist.toggle(selected.id)}
           editing={editing}
           onToggleLayout={() => {
-            setSettingsOpen(false);
-            editing ? finishEditing() : setEditing(true);
+            if (editing) {
+              finishEditing();
+            } else {
+              setPage("trade");
+              setEditing(true);
+            }
           }}
           soundOn={sound === "on"}
           onSound={(on) => setSound(on ? "on" : "off")}
-          settingsOpen={settingsOpen}
-          onToggleSettings={() => {
-            if (editing) finishEditing();
-            setSettingsOpen((open) => !open);
-          }}
+          settingsOpen={page === "settings"}
+          onToggleSettings={() => goTo(page === "settings" ? "trade" : "settings")}
           theme={appearance.theme}
           onTheme={themeTransition.switchTheme}
           address={address}
@@ -374,9 +396,24 @@ export function App() {
         />
       </header>
 
-      {settingsOpen ? (
+      {page === "portfolio" ? (
+        <PortfolioPage
+          account={account}
+          markets={marketList}
+          venue={VENUE_LABEL}
+          onConnect={() => setWalletOpen(true)}
+        />
+      ) : page === "journal" ? (
+        <ComingSoonPage
+          title="nav.journal"
+          subtitle="journal.subtitle"
+          description="journal.soon"
+        />
+      ) : page === "news" ? (
+        <ComingSoonPage title="nav.news" subtitle="news.subtitle" description="news.soon" />
+      ) : page === "settings" ? (
         <SettingsPage
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => goTo("trade")}
           soundOn={sound === "on"}
           onSound={(on) => setSound(on ? "on" : "off")}
           theme={appearance.theme}

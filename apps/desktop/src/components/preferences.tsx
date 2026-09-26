@@ -3,8 +3,16 @@
 // interface language has loaded.
 
 import { type Locale, languageName, type MenuOption, type RowMode, t } from "@pewterdesk/ui";
+import {
+  LuBriefcaseBusiness,
+  LuChartCandlestick,
+  LuNewspaper,
+  LuNotebookPen,
+  LuSettings,
+} from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
+import type { Page } from "../lib/pages";
 import { ThemeSwatch } from "./header/ThemeSwatch";
 
 /** Each language in its own name, then in the current interface language. */
@@ -40,3 +48,31 @@ export const rowModeOptions = (): readonly MenuOption<RowMode>[] => [
 
 /** Storage keys for the order book and trades views, shared by the panel and the settings page. */
 export const VIEW_KEYS = { book: "pd.view.book", trades: "pd.view.trades" } as const;
+
+const PAGE_ICONS = {
+  trade: LuChartCandlestick,
+  portfolio: LuBriefcaseBusiness,
+  journal: LuNotebookPen,
+  news: LuNewspaper,
+  settings: LuSettings,
+} as const;
+
+/** A page's name in the interface language. */
+export const pageLabel = (page: Page) =>
+  page === "settings" ? t("settings.title") : t(`nav.${page}`);
+
+/** The header's page menu: each page with an icon and a line about it. */
+export const pageOptions = (): readonly MenuOption<Page>[] =>
+  (Object.keys(PAGE_ICONS) as Page[]).map((page) => {
+    const Icon = PAGE_ICONS[page];
+    return {
+      value: page,
+      label: pageLabel(page),
+      description: t(`nav.${page}Desc`),
+      icon: (
+        <span className="pd-menu-icon">
+          <Icon size={17} aria-hidden />
+        </span>
+      ),
+    };
+  });
