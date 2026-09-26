@@ -188,8 +188,8 @@ those paths.
    keys — [ADR 0001](docs/adr/0001-venues-in-rust.md).
 4. ~~Define `ExchangeAdapter` and the domain types in `crates/core`.~~ Done,
    with generated TS types.
-5. Hyperliquid adapter: read-only market and account data first, exposed
-   through Tauri commands, then signing and order placement.
+5. Hyperliquid adapter: ~~read-only market and account data first, exposed
+   through Tauri commands~~ (done), then signing and order placement.
 6. GMX, dYdX v4 and Drift adapters.
 7. Build out `packages/ui` and wire it to the adapters.
 8. Revisit `apps/web` once the desktop app ships — it can't run the Rust

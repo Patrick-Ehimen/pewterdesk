@@ -35,7 +35,7 @@ has no implementation and is not meant to get one.
 ## Layout
 
 - `crates/core` — domain types, the `ExchangeAdapter` trait, `KeySource`
-- `crates/exchange-hyperliquid`, `-gmx`, `-dydx`, `-drift` — one adapter per venue (all stubs so far)
+- `crates/exchange-hyperliquid`, `-gmx`, `-dydx`, `-drift` — one adapter per venue (Hyperliquid is read-only so far; the rest are stubs)
 - `packages/core` — the generated TS domain types and the `SecretStore` contract
 - `packages/ui` — shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` — the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -60,6 +60,8 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` — desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk -- --ignored` — the keychain tests that touch the
   real OS store, skipped by default
+- `cargo test -p pewterdesk-exchange-hyperliquid -- --ignored` — read-only
+  tests against Hyperliquid mainnet (needs the network, no key)
 
 Packages are consumed from source: every `package.json` points `main`/`types`
 at `./src/index.ts`, and the tsconfigs deliberately carry no `references`.
@@ -103,12 +105,14 @@ explicitly configured RPC endpoints.
 
 ## Status
 
-Early scaffold. `crates/core` defines the contracts; the four venue crates and
-`packages/ui` are still empty, and no Tauri command exposes an adapter yet.
+Early scaffold. `crates/core` defines the contracts. `crates/exchange-hyperliquid`
+is read-only (markets, order books and account state over REST and WS) and is
+exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
+it can't place orders yet. The other three venue crates and `packages/ui` are
+still empty, and no frontend code calls the venue commands yet.
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
-Tauri shell runs with the keychain commands wired up. Secure key storage is the
-only feature actually implemented. `.claude/prd-rust-desktop-features.md` has
+Tauri shell runs with the keychain and read-only venue commands wired up. `.claude/prd-rust-desktop-features.md` has
 the rest of the Rust-side backlog (notifications, tray, deep links, local
 persistence), none of it started.
 
