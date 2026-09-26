@@ -48,6 +48,34 @@ thing that matters, and green and red belong to the market.
 
 Colorblind mode (`data-market="colorblind"`): buy #4C9BE8, sell #E8894A, warning #D96BC7.
 
+## Themes
+
+Six themes in the app's picker, set with `data-theme` on `<html>`. Every text
+token passes WCAG AA (4.5:1) on bg, surface and surface-raised, with the
+exceptions noted under Contrast.
+
+| `data-theme` | Name | Character | bg | Accent |
+| --- | --- | --- | --- | --- |
+| `dark` (default) | Pewter | Pewter and brass on near-black | #111110 | brass #C9A45C |
+| `graphite` | Graphite | Cooler, a step lighter; for long sessions | #17181A | brass #C9A45C |
+| `synthwave` | Synthwave '84 | Neon pink on retro purple | #241B2F | pink #FF7EDB |
+| `monokai` | Monokai Pro | Filter Machine: yellow on cool teal-grey | #1D2528 | yellow #FFED72 |
+| `palenight` | Palenight | Soft purple on slate blue | #202331 | purple #C792EA |
+| `parchment` | Parchment | Warm, paper-toned light | #F2ECDF | brass #A9803A |
+
+`light` (Porcelain, the light column of the core palette) stays defined in the
+tokens but isn't offered in the picker.
+
+**Exception to "brass is the sole accent":** the three editor-inspired themes
+(Synthwave '84, Monokai Pro, Palenight) replace brass with their own signature
+color through the same `--pd-brass*` tokens. Each still has exactly one accent,
+used only where brass would be, and green/red remain market-only in all six.
+Their market reds are lightened slightly from the editor originals where the
+original fails contrast. Don't carry these accents into the pewter themes.
+
+Full values are in the tokens file. A new theme defines every `--pd-*` color
+token; check it with a contrast script before adding it here.
+
 ## Logo
 
 Depth-ladder mark: five pill bars forming a diamond; only the middle bar (mid price) is brass.
@@ -65,3 +93,8 @@ bar height. Minimum size: mark 16px, horizontal lockup 96px wide. Don't recolor 
 
 All text tokens pass AA (4.5:1) on their background. Exceptions, by design:
 `pewter-dim` (3.88 dark) is for hints only; light-mode `brass` fill (2.89) is for fills only.
+
+Known gaps in the original two themes, found when the other four were added
+(not yet changed): Pewter's `sell` on `surface-raised` is 4.31:1 (hovered
+rows), and Porcelain's `pewter-dim` on `bg` is 2.99:1, just under the 3:1
+hint floor.
