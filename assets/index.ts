@@ -6,6 +6,14 @@
 import appleTouchIcon from "./favicon/apple-touch-icon.png";
 import faviconIco from "./favicon/favicon.ico";
 import faviconSvg from "./favicon/favicon.svg";
+import flagBr from "./flags/br.svg";
+import flagCn from "./flags/cn.svg";
+import flagEs from "./flags/es.svg";
+import flagFr from "./flags/fr.svg";
+import flagJp from "./flags/jp.svg";
+import flagKr from "./flags/kr.svg";
+import flagRu from "./flags/ru.svg";
+import flagUs from "./flags/us.svg";
 import appIconDark from "./icon/pewterdesk-icon-dark-1024.png";
 import horizontalDarkBg from "./logo/pewterdesk-horizontal-dark-bg.svg";
 import horizontalLightBg from "./logo/pewterdesk-horizontal-light-bg.svg";
@@ -27,4 +35,16 @@ export const favicon = {
   svg: faviconSvg,
   ico: faviconIco,
   appleTouch: appleTouchIcon,
+} as const;
+
+/** 4:3 country flags, keyed by ISO 3166-1 code. Source and license: flags/README.md. */
+export const flags = {
+  br: flagBr,
+  cn: flagCn,
+  es: flagEs,
+  fr: flagFr,
+  jp: flagJp,
+  kr: flagKr,
+  ru: flagRu,
+  us: flagUs,
 } as const;

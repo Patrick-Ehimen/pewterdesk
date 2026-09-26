@@ -13,11 +13,14 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@pewterdesk/assets": "workspace:*",
     "@pewterdesk/core": "workspace:*",
     "@pewterdesk/ui": "workspace:*",
     "@tauri-apps/api": "^2.11.1",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "react-grid-layout": "^2.2.4",
+    "react-icons": "^5.7.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.5",

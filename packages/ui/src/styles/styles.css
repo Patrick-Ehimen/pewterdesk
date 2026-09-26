@@ -1,0 +1,1132 @@
+/* Shared component styles. Colors come only from the --pd-* tokens; see
+   .claude/brand/BRAND.md for which token means what. */
+@import "../../../../.claude/brand/pewterdesk-tokens.css";
+
+:root {
+  --pd-font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --pd-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --pd-radius: 6px;
+  color-scheme: dark;
+}
+
+[data-theme="light"],
+[data-theme="parchment"] {
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: 13px / 1.4 var(--pd-font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+
+/* Text roles */
+.pd-muted {
+  color: var(--pd-pewter);
+}
+.pd-strong {
+  font-weight: 600;
+}
+.pd-up {
+  color: var(--pd-buy);
+}
+.pd-down {
+  color: var(--pd-sell);
+}
+.pd-warn {
+  color: var(--pd-warning);
+}
+.pd-num {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* Inputs */
+.pd-input {
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  padding: 6px 10px;
+}
+.pd-input::placeholder {
+  color: var(--pd-pewter-dim);
+}
+.pd-input[aria-invalid="true"] {
+  border-color: var(--pd-warning);
+}
+
+/* Tabs — brass underline marks the active tab */
+.pd-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--pd-border);
+  padding: 0 12px;
+  min-height: 42px;
+}
+.pd-tabs-list {
+  display: flex;
+  gap: 4px;
+  align-self: stretch;
+}
+.pd-tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 12px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+  font-size: 14px;
+}
+.pd-tab:hover {
+  color: var(--pd-text);
+}
+.pd-tab[aria-selected="true"] {
+  color: var(--pd-text);
+  font-weight: 600;
+  border-bottom-color: var(--pd-brass);
+}
+.pd-tabs-aside {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+
+/* Empty / error placeholder */
+.pd-empty {
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  color: var(--pd-pewter);
+  text-align: center;
+}
+.pd-empty[data-error] {
+  color: var(--pd-warning);
+}
+
+/* Tables */
+.pd-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.pd-table th {
+  position: sticky;
+  top: 0;
+  background: var(--pd-surface);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-table th.pd-num {
+  font-family: inherit;
+  text-align: right;
+}
+.pd-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  white-space: nowrap;
+}
+.pd-table tbody tr:hover {
+  background: var(--pd-surface-raised);
+}
+.pd-row-select[aria-selected="true"] {
+  background: var(--pd-surface-raised);
+}
+.pd-row-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: var(--pd-font-mono);
+}
+.pd-row-select[aria-selected="true"] .pd-row-button {
+  color: var(--pd-brass-text);
+}
+
+/* Market list */
+.pd-markets {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pd-markets-search {
+  margin: 12px;
+  max-width: 280px;
+}
+
+/* Order book — fills its container; each side takes half the leftover height
+   and shows as many rows as fit (see OrderBookView) */
+.pd-book {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+.pd-book-side {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+/* Asks hug the spread when there are fewer levels than room */
+.pd-book-side[data-side="ask"] {
+  justify-content: flex-end;
+}
+.pd-book-head,
+.pd-book-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 0 12px;
+}
+.pd-book-head {
+  font-family: var(--pd-font-sans);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-top: 8px;
+  padding-bottom: 6px;
+}
+.pd-book-head span:not(:first-child),
+.pd-book-row span:not(:first-child) {
+  text-align: right;
+}
+/* 24px including the 1px separator (40px stacked): keep in sync with ROW_HEIGHT */
+.pd-book-row {
+  position: relative;
+  flex: none;
+  height: 24px;
+  line-height: 23px;
+  border-bottom: 1px solid color-mix(in srgb, var(--pd-border) 55%, transparent);
+  cursor: default;
+}
+.pd-book-row:hover {
+  background: var(--pd-surface-raised);
+}
+/* The spread row already draws a line under the best ask */
+.pd-book-side[data-side="ask"] .pd-book-row:last-child {
+  border-bottom-color: transparent;
+}
+.pd-book-row span {
+  position: relative;
+}
+.pd-book-row span:last-child {
+  color: var(--pd-pewter);
+}
+.pd-book-depth {
+  position: absolute;
+  inset: 0 0 0 auto;
+}
+.pd-book-row[data-side="ask"] .pd-book-price {
+  color: var(--pd-sell);
+}
+.pd-book-row[data-side="ask"] .pd-book-depth {
+  background: var(--pd-sell-tint);
+}
+.pd-book-row[data-side="bid"] .pd-book-price {
+  color: var(--pd-buy);
+}
+.pd-book-row[data-side="bid"] .pd-book-depth {
+  background: var(--pd-buy-tint);
+}
+.pd-book-spread {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--pd-border);
+  border-bottom: 1px solid var(--pd-border);
+  font-size: 12px;
+}
+.pd-book-mid {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pd-text);
+  transition: color 200ms ease;
+}
+/* Green after an uptick, red after a downtick; plain until the first move */
+.pd-book-mid[data-trend="up"] {
+  color: var(--pd-buy);
+}
+.pd-book-mid[data-trend="down"] {
+  color: var(--pd-sell);
+}
+.pd-book-trend {
+  font-size: 10px;
+}
+
+/* Bid/ask ratio: a split bar with the two shares either side of it */
+.pd-book-ratio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--pd-border);
+  font-size: 12px;
+}
+.pd-ratio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 4.5em;
+}
+.pd-ratio-label[data-side="bid"] {
+  color: var(--pd-buy);
+}
+.pd-ratio-label[data-side="ask"] {
+  justify-content: flex-end;
+  color: var(--pd-sell);
+}
+.pd-ratio-label b {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-family: var(--pd-font-sans);
+  font-size: 11px;
+  font-weight: 700;
+}
+.pd-ratio-label[data-side="bid"] b {
+  background: var(--pd-buy-tint);
+}
+.pd-ratio-label[data-side="ask"] b {
+  background: var(--pd-sell-tint);
+}
+.pd-ratio-bar {
+  flex: 1;
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+.pd-ratio-bar > div {
+  min-width: 3px;
+  border-radius: 3px;
+  transition: width 300ms ease;
+}
+.pd-ratio-bar > [data-side="bid"] {
+  background: var(--pd-buy);
+}
+.pd-ratio-bar > [data-side="ask"] {
+  background: var(--pd-sell);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-ratio-bar > div {
+    transition: none;
+  }
+}
+
+/* Account summary */
+.pd-account {
+  margin: 0;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pd-account > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.pd-account dt {
+  color: var(--pd-pewter);
+}
+.pd-account dd {
+  margin: 0;
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.pd-account-equity dd {
+  font-size: 18px;
+  font-weight: 600;
+}
+.pd-meter {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pd-border);
+  overflow: hidden;
+}
+.pd-meter > div {
+  height: 100%;
+  background: var(--pd-pewter);
+}
+
+/* Tooltip — raised card with an arrow, fades in; positioned by Tooltip.tsx */
+.pd-tip-trigger {
+  /* A bare button: looks like the text it wraps */
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: help;
+  border-radius: 3px;
+  text-decoration: underline dotted var(--pd-pewter-dim);
+  text-underline-offset: 3px;
+}
+.pd-tip-trigger:hover,
+.pd-tip-trigger:focus-visible {
+  color: var(--pd-text);
+  text-decoration-color: var(--pd-pewter);
+}
+.pd-tip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 260px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  box-shadow:
+    0 12px 32px -8px color-mix(in srgb, var(--pd-bg) 80%, transparent),
+    0 2px 6px color-mix(in srgb, var(--pd-bg) 50%, transparent);
+  color: var(--pd-pewter);
+  font: 12px / 1.45 var(--pd-font-sans);
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  /* Slides in from the anchor's direction */
+  transform: translate(var(--pd-tip-dx, 0), var(--pd-tip-dy, 4px));
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.pd-tip[data-placement="top"] {
+  --pd-tip-dy: -4px;
+}
+.pd-tip[data-placement="left"] {
+  --pd-tip-dx: -4px;
+  --pd-tip-dy: 0;
+}
+.pd-tip[data-placement="right"] {
+  --pd-tip-dx: 4px;
+  --pd-tip-dy: 0;
+}
+.pd-tip[data-visible] {
+  opacity: 1;
+  transform: none;
+}
+/* Arrow: a rotated square sharing the card's border */
+.pd-tip::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  border: inherit;
+  border-width: 1px 0 0 1px;
+  transform: rotate(45deg);
+}
+.pd-tip[data-placement="bottom"]::before,
+.pd-tip[data-placement="top"]::before {
+  left: calc(var(--pd-tip-arrow) - 5px);
+}
+.pd-tip[data-placement="left"]::before,
+.pd-tip[data-placement="right"]::before {
+  top: calc(var(--pd-tip-arrow) - 5px);
+}
+.pd-tip[data-placement="bottom"]::before {
+  top: -5px;
+}
+.pd-tip[data-placement="top"]::before {
+  bottom: -5px;
+  transform: rotate(225deg);
+}
+.pd-tip[data-placement="left"]::before {
+  right: -5px;
+  transform: rotate(135deg);
+}
+.pd-tip[data-placement="right"]::before {
+  left: -5px;
+  transform: rotate(-45deg);
+}
+.pd-tip-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-text);
+  font-weight: 600;
+}
+
+/* Row tooltips: a title, then label/value pairs */
+.pd-tip-row {
+  min-width: 230px;
+  gap: 8px;
+}
+.pd-tip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.pd-tip-dot[data-side="bid"] {
+  background: var(--pd-buy);
+}
+.pd-tip-dot[data-side="ask"] {
+  background: var(--pd-sell);
+}
+.pd-tip-grid {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--pd-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pd-tip-grid > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.pd-tip-grid dd {
+  margin: 0;
+  color: var(--pd-text);
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-tip {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Trades tape — same row grid as the book */
+.pd-trades {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+}
+.pd-trades-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.pd-trade[data-side="bid"] .pd-book-price {
+  color: var(--pd-buy);
+}
+.pd-trade[data-side="ask"] .pd-book-price {
+  color: var(--pd-sell);
+}
+.pd-trade[data-fresh][data-side="bid"] {
+  animation: pd-flash-buy 700ms ease-out;
+}
+.pd-trade[data-fresh][data-side="ask"] {
+  animation: pd-flash-sell 700ms ease-out;
+}
+@keyframes pd-flash-buy {
+  from {
+    background: var(--pd-buy-tint);
+  }
+}
+@keyframes pd-flash-sell {
+  from {
+    background: var(--pd-sell-tint);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-trade[data-fresh] {
+    animation: none;
+  }
+}
+
+/* Loading skeletons — a soft shimmer sweeping across placeholder bars */
+.pd-skel {
+  display: inline-block;
+  height: 9px;
+  border-radius: 4px;
+  vertical-align: middle;
+  background: linear-gradient(
+    90deg,
+    var(--pd-surface-raised) 25%,
+    var(--pd-border-strong) 50%,
+    var(--pd-surface-raised) 75%
+  );
+  background-size: 300% 100%;
+  animation: pd-shimmer 1.6s ease-in-out infinite;
+}
+/* Lines up one sweep across a whole row, not per bar */
+.pd-skel-row .pd-skel {
+  background-attachment: fixed;
+  background-size: 200vw 100%;
+}
+.pd-skel-row,
+.pd-skel-row:hover {
+  background: none;
+}
+.pd-skel-list {
+  overflow: hidden;
+}
+.pd-skel-ratio {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+}
+@keyframes pd-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-skel {
+    animation: none;
+    background: var(--pd-surface-raised);
+  }
+}
+
+/* Stacked rows — two lines per order or trade, no column header */
+[data-mode="stacked"] .pd-book-row {
+  height: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1.25;
+}
+[data-mode="stacked"] .pd-book-row span {
+  text-align: left;
+}
+[data-mode="stacked"] .pd-book-row .pd-book-price {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.pd-row-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.pd-row-sub,
+.pd-row-time {
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+/* Skeleton bars in stacked rows size against the row, not a grid cell */
+[data-mode="stacked"] .pd-skel-row > span {
+  display: block;
+  width: 100%;
+}
+
+/* "⋮" options button and its menu */
+.pd-icon-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+/* Hover/focus turns the icon brass — --pd-brass-text is the theme-aware
+   brass for text and line art (deeper in light mode, so it keeps contrast) */
+.pd-icon-button:hover,
+.pd-icon-button:focus-visible,
+.pd-icon-button[aria-expanded="true"] {
+  color: var(--pd-brass-text);
+  background: var(--pd-surface-raised);
+  border-color: var(--pd-border);
+}
+/* Toggled on: brass outline, the brand's focus/active accent */
+/* Toggled on (settings open, editing layout): no outline, just a brass icon
+   on a slightly lifted background */
+.pd-icon-button[aria-pressed="true"],
+.pd-icon-button[aria-pressed="true"]:hover {
+  color: var(--pd-brass-text);
+  background: var(--pd-surface-raised);
+  border-color: transparent;
+}
+.pd-kebab {
+  width: 28px;
+  height: 28px;
+}
+/* One-line label tooltips, e.g. on icon buttons */
+.pd-tip-label {
+  padding: 5px 9px;
+  color: var(--pd-text);
+  white-space: nowrap;
+}
+.pd-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow:
+    0 16px 40px -10px color-mix(in srgb, var(--pd-bg) 85%, transparent),
+    0 2px 8px color-mix(in srgb, var(--pd-bg) 50%, transparent);
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+  transform-origin: top right;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.pd-menu[data-visible] {
+  opacity: 1;
+  transform: none;
+}
+.pd-menu-heading {
+  padding: 6px 10px 4px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--pd-text);
+  text-align: left;
+  cursor: pointer;
+}
+.pd-menu-item:hover,
+.pd-menu-item:focus-visible {
+  background: var(--pd-surface);
+  box-shadow: none;
+}
+.pd-menu-check {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 18px;
+  flex: none;
+  color: var(--pd-brass-text);
+}
+.pd-menu-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pd-menu-text small {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-menu {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Watchlist star — outline by default, filled brass when starred */
+/* A starred market shows only the filled star — no lifted background */
+.pd-star[aria-pressed="true"] {
+  color: var(--pd-brass-text);
+  background: none;
+  border-color: transparent;
+}
+.pd-star[aria-pressed="true"]:hover {
+  background: var(--pd-surface-raised);
+}
+.pd-star-small {
+  width: 24px;
+  height: 24px;
+}
+.pd-table .pd-star-col {
+  width: 36px;
+  padding-right: 0;
+}
+
+/* Market list toolbar: search plus the All / Watchlist switch */
+.pd-markets-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px;
+}
+.pd-markets-bar .pd-markets-search {
+  margin: 0;
+}
+.pd-segmented {
+  display: inline-flex;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+}
+.pd-segmented label {
+  padding: 4px 12px;
+  border-radius: 4px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-segmented label[data-checked] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.pd-segmented label:has(:focus-visible) {
+  box-shadow: var(--pd-focus);
+}
+.pd-segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.pd-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Menu items: a list by default, a grid when the menu has columns */
+.pd-menu-items {
+  display: flex;
+  flex-direction: column;
+}
+/* Grid menus are a fixed size whatever the language: fixed-width columns,
+   fixed-height cells, and text that truncates rather than stretching them */
+.pd-menu[data-grid] {
+  --pd-menu-cell: 100px;
+  min-width: 0;
+  padding: 4px;
+}
+.pd-menu[data-grid] .pd-menu-items {
+  display: grid;
+  gap: 2px;
+}
+.pd-menu[data-grid] .pd-menu-item {
+  height: 72px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px;
+  text-align: center;
+  border: 1px solid transparent;
+}
+.pd-menu[data-grid] .pd-menu-text {
+  align-items: center;
+  gap: 1px;
+  width: 100%;
+  min-width: 0;
+}
+.pd-menu[data-grid] .pd-menu-text > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-menu[data-grid] .pd-menu-text small {
+  font-size: 11px;
+}
+.pd-menu[data-grid] .pd-menu-item[aria-checked="true"] {
+  border-color: var(--pd-brass);
+  background: var(--pd-surface);
+}
+.pd-flag {
+  display: block;
+  width: 24px;
+  height: 18px;
+  border-radius: 3px;
+  object-fit: cover;
+  /* A hairline so white-edged flags (Japan, Korea) don't vanish on light surfaces */
+  box-shadow: 0 0 0 1px var(--pd-border);
+}
+
+/* Synthwave '84's signature: a soft neon glow on the accent and the mid price */
+[data-theme="synthwave"] .pd-book-mid,
+[data-theme="synthwave"] .pd-icon-button:hover,
+[data-theme="synthwave"] .pd-icon-button[aria-pressed="true"] {
+  text-shadow: 0 0 10px currentColor;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 60%, transparent));
+}
+
+/* Toggle switch — brass track when on */
+.pd-switch {
+  position: relative;
+  flex: none;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: var(--pd-bg);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease;
+}
+.pd-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pd-pewter);
+  transition:
+    transform 150ms ease,
+    background 150ms ease;
+}
+.pd-switch[aria-checked="true"] {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+}
+.pd-switch[aria-checked="true"] .pd-switch-thumb {
+  transform: translateX(20px);
+  background: var(--pd-on-brass);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-switch,
+  .pd-switch-thumb {
+    transition: none;
+  }
+}
+
+/* Market stats bar — one row of headline numbers; scrolls sideways if the
+   window is too narrow rather than wrapping */
+.pd-stats {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding-left: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* Picker, market and price: pinned, never shrink */
+.pd-stats-fixed {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+}
+/* Stat columns: scroll sideways (wheel or trackpad) with the scrollbar hidden;
+   a fade marks whichever edge has more */
+.pd-stats-scroll {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding-right: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.pd-stats-scroll::-webkit-scrollbar {
+  display: none;
+}
+.pd-stats-scroll[data-more-after] {
+  mask-image: linear-gradient(to right, black calc(100% - 40px), transparent);
+}
+.pd-stats-scroll[data-more-before] {
+  mask-image: linear-gradient(to right, transparent, black 40px);
+}
+.pd-stats-scroll[data-more-before][data-more-after] {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 40px,
+    black calc(100% - 40px),
+    transparent
+  );
+}
+.pd-stats-market {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: -14px;
+}
+/* Letter badge until the repo has token icons */
+.pd-coin {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pd-surface-raised);
+  box-shadow: 0 0 0 1px var(--pd-border-strong);
+  color: var(--pd-text);
+  font-weight: 700;
+}
+.pd-stats-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.pd-stats-name strong {
+  font-size: 16px;
+}
+.pd-stats-name .pd-muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+.pd-stats-info {
+  display: inline-grid;
+  color: var(--pd-pewter);
+  text-decoration: none;
+}
+.pd-stats-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.pd-stats-price .pd-tip-trigger {
+  text-decoration: none;
+}
+.pd-stats-mark {
+  font-size: 18px;
+  font-weight: 600;
+  transition: color 200ms ease;
+}
+.pd-stats-mid {
+  font-size: 12px;
+  color: var(--pd-text);
+  text-decoration: underline dotted var(--pd-pewter-dim);
+  text-underline-offset: 3px;
+}
+.pd-stats-divider {
+  flex: none;
+  align-self: stretch;
+  width: 1px;
+  margin: 10px 0;
+  background: var(--pd-border);
+}
+.pd-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+.pd-stat-label {
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.pd-stat-value {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+/* Funding is the palette's "funding info" color, not market green/red */
+.pd-stats-funding {
+  color: var(--pd-info);
+}
+
+/* Market picker popover */
+.pd-picker {
+  position: fixed;
+  z-index: 1000;
+  width: 280px;
+  max-height: min(420px, 70vh);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px -10px color-mix(in srgb, var(--pd-bg) 85%, transparent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.pd-picker[data-visible] {
+  opacity: 1;
+}
+.pd-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+.pd-picker-list button {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pd-picker-list button:hover,
+.pd-picker-list button:focus-visible {
+  background: var(--pd-surface);
+  box-shadow: none;
+}
+.pd-picker-list button[aria-current="true"] {
+  color: var(--pd-brass-text);
+}
+.pd-picker-empty {
+  margin: 8px;
+  color: var(--pd-pewter);
+}

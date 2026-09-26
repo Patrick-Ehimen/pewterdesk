@@ -1,0 +1,278 @@
+/* Settings page, after the design's settings screen. Colors only from --pd-*
+   tokens; brass marks the active nav item, checked cards and switches. */
+
+.settings {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Sidebar */
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 14px;
+  border-right: 1px solid var(--pd-border);
+  overflow-y: auto;
+}
+.settings-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 10px;
+  padding: 4px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.settings-back:hover {
+  color: var(--pd-text);
+  border-color: var(--pd-border);
+}
+.settings-nav h1 {
+  margin: 0 12px 12px;
+  font-size: 20px;
+}
+.settings-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-nav li button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: none;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--pd-radius) var(--pd-radius) 0;
+  color: var(--pd-pewter);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-nav li button:hover {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+}
+.settings-nav li button[aria-current="page"] {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+  border-left-color: var(--pd-brass);
+}
+.settings-soon {
+  padding: 1px 7px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+
+/* Content */
+.settings-main {
+  padding: 28px 40px 40px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-head h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+.settings-head p,
+.settings-help {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 14px;
+}
+.settings-group {
+  margin: 18px 0 0;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.settings-empty {
+  margin: 12px 0 0;
+  padding: 28px;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-pewter);
+  text-align: center;
+}
+
+/* Rows: text left, control right, divided like the design's safeguards list */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--pd-border);
+}
+.settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.settings-row-text span {
+  color: var(--pd-pewter);
+}
+.settings-row-control {
+  flex: none;
+}
+
+/* Two bordered panels side by side (watched account, keys) */
+.settings-cards-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.settings-panel .settings-group {
+  margin: 0;
+}
+.settings-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.settings-identity > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.settings-identity strong {
+  font-size: 15px;
+}
+.settings-identity span:not(.pd-live-dot) {
+  color: var(--pd-pewter);
+}
+.settings-identity .pd-live-dot {
+  margin-top: 6px;
+}
+.settings-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+}
+.settings-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Buttons */
+.settings-button {
+  padding: 8px 16px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.settings-button:hover {
+  background: var(--pd-surface-raised);
+}
+.settings-button[data-primary] {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.settings-button[data-primary]:hover {
+  background: var(--pd-brass-hover);
+}
+/* Destructive: the warning token — red is reserved for market data */
+.settings-button[data-danger] {
+  border-color: var(--pd-warning);
+  color: var(--pd-warning);
+}
+.settings-button[data-danger][data-armed] {
+  background: var(--pd-warning);
+  color: var(--pd-bg);
+  font-weight: 600;
+}
+.settings-danger {
+  margin-top: 18px;
+  padding: 2px 20px;
+  border: 1px solid var(--pd-warning);
+  border-radius: 8px;
+}
+.settings-danger .settings-row {
+  border-bottom: 0;
+}
+
+/* Choice cards (language, theme, colors, views) */
+.settings-cards {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.settings-card:hover {
+  border-color: var(--pd-border-strong);
+}
+.settings-card[data-checked] {
+  border-color: var(--pd-brass);
+  background: var(--pd-surface-raised);
+}
+.settings-card:has(:focus-visible) {
+  box-shadow: var(--pd-focus);
+}
+.settings-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.settings-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.settings-card-text span {
+  color: var(--pd-pewter);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
