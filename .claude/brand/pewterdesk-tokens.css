@@ -1,6 +1,14 @@
-/* Pewterdesk color tokens. Dark is the default; set data-theme="light" or
-   data-market="colorblind" on <html> to switch. Full rules: .claude/brand/BRAND.md */
-:root {
+/* Pewterdesk color tokens. Pewter (dark) is the default; set data-theme on
+   <html> to dark | graphite | synthwave | monokai | palenight | parchment
+   (or light, the brand light palette), and data-market="colorblind" for
+   colorblind-safe market colors. The brand themes vary only the neutrals —
+   brass is the one accent. The editor-inspired themes (synthwave, monokai,
+   palenight) swap in their own single accent through the --pd-brass tokens;
+   green/red stay market-only everywhere. Selectors work on any element, so a
+   subtree (e.g. a theme preview swatch) can show another theme. Full rules:
+   .claude/brand/BRAND.md */
+:root,
+[data-theme="dark"] {
   --pd-bg: #111110;
   --pd-surface: #1a1a18;
   --pd-surface-raised: #222220;
@@ -45,6 +53,129 @@
   --pd-sell-tint: rgb(194 58 48 / 0.1);
   --pd-warning: #a04f12;
   --pd-info: #2f6fa8;
+}
+
+/* Graphite: cooler and a step lighter than Pewter, for long sessions */
+[data-theme="graphite"] {
+  --pd-bg: #17181a;
+  --pd-surface: #1f2023;
+  --pd-surface-raised: #27282c;
+  --pd-border: #313237;
+  --pd-border-strong: #42444a;
+  --pd-text: #eceef0;
+  --pd-pewter: #a8abb0;
+  --pd-pewter-dim: #7a7d83;
+  --pd-brass: #c9a45c;
+  --pd-brass-text: #d0ad68;
+  --pd-brass-hover: #d6b574;
+  --pd-on-brass: #111110;
+  --pd-buy: #52bd88;
+  --pd-on-buy: #0b1f14;
+  --pd-buy-tint: rgb(82 189 136 / 0.13);
+  --pd-sell: #ec6d65;
+  --pd-on-sell: #2a0b09;
+  --pd-sell-tint: rgb(236 109 101 / 0.13);
+  --pd-warning: #ec9255;
+  --pd-info: #96b9dd;
+}
+
+/* Synthwave '84: neon pink on retro purple. Red is lightened from the
+   original #fe4450, which fails contrast on these purples. */
+[data-theme="synthwave"] {
+  --pd-bg: #241b2f;
+  --pd-surface: #262335;
+  --pd-surface-raised: #34294f;
+  --pd-border: #3b3154;
+  --pd-border-strong: #544a78;
+  --pd-text: #ffffff;
+  --pd-pewter: #c0bbe0;
+  --pd-pewter-dim: #8f95c4;
+  --pd-brass: #ff7edb;
+  --pd-brass-text: #ff7edb;
+  --pd-brass-hover: #ff9ce4;
+  --pd-on-brass: #241b2f;
+  --pd-buy: #72f1b8;
+  --pd-on-buy: #0d2a1f;
+  --pd-buy-tint: rgb(114 241 184 / 0.13);
+  --pd-sell: #fe6a74;
+  --pd-on-sell: #2a0b0d;
+  --pd-sell-tint: rgb(254 106 116 / 0.14);
+  --pd-warning: #fede5d;
+  --pd-info: #36f9f6;
+}
+
+/* Monokai Pro, Filter Machine: yellow on cool teal-grey. Red is nudged from
+   #ff6d7e to pass on hovered rows. */
+[data-theme="monokai"] {
+  --pd-bg: #1d2528;
+  --pd-surface: #273136;
+  --pd-surface-raised: #2f3b40;
+  --pd-border: #3a4449;
+  --pd-border-strong: #545f62;
+  --pd-text: #f2fffc;
+  --pd-pewter: #bac5c6;
+  --pd-pewter-dim: #8b9798;
+  --pd-brass: #ffed72;
+  --pd-brass-text: #ffed72;
+  --pd-brass-hover: #fff29a;
+  --pd-on-brass: #1d2528;
+  --pd-buy: #a2e57b;
+  --pd-on-buy: #16230f;
+  --pd-buy-tint: rgb(162 229 123 / 0.12);
+  --pd-sell: #ff7a89;
+  --pd-on-sell: #2b0d11;
+  --pd-sell-tint: rgb(255 122 137 / 0.13);
+  --pd-warning: #ffb270;
+  --pd-info: #7cd5f1;
+}
+
+/* Palenight: soft purple on slate blue. Red is nudged from #f07178 to pass
+   on hovered rows. */
+[data-theme="palenight"] {
+  --pd-bg: #202331;
+  --pd-surface: #292d3e;
+  --pd-surface-raised: #34324a;
+  --pd-border: #3a3f58;
+  --pd-border-strong: #4e5579;
+  --pd-text: #eeffff;
+  --pd-pewter: #a6accd;
+  --pd-pewter-dim: #7c84b0;
+  --pd-brass: #c792ea;
+  --pd-brass-text: #c792ea;
+  --pd-brass-hover: #d5aaf0;
+  --pd-on-brass: #202331;
+  --pd-buy: #c3e88d;
+  --pd-on-buy: #1b240f;
+  --pd-buy-tint: rgb(195 232 141 / 0.12);
+  --pd-sell: #f27980;
+  --pd-on-sell: #2b0f11;
+  --pd-sell-tint: rgb(242 121 128 / 0.13);
+  --pd-warning: #ffcb6b;
+  --pd-info: #89ddff;
+}
+
+/* Parchment: a warm, paper-toned light theme */
+[data-theme="parchment"] {
+  --pd-bg: #f2ecdf;
+  --pd-surface: #fbf7ee;
+  --pd-surface-raised: #fffdf7;
+  --pd-border: #e2d9c6;
+  --pd-border-strong: #cdbfa4;
+  --pd-text: #221e17;
+  --pd-pewter: #5f5a50;
+  --pd-pewter-dim: #857e70;
+  --pd-brass: #a9803a;
+  --pd-brass-text: #7a5b22;
+  --pd-brass-hover: #946f30;
+  --pd-on-brass: #111110;
+  --pd-buy: #17704a;
+  --pd-on-buy: #ffffff;
+  --pd-buy-tint: rgb(23 112 74 / 0.1);
+  --pd-sell: #b3352b;
+  --pd-on-sell: #ffffff;
+  --pd-sell-tint: rgb(179 53 43 / 0.1);
+  --pd-warning: #964710;
+  --pd-info: #2a6499;
 }
 
 [data-market="colorblind"] {
