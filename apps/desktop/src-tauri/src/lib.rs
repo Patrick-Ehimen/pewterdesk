@@ -16,6 +16,8 @@ pub fn run() {
             venues::order_book,
             venues::account,
             venues::subscribe_order_book,
+            venues::subscribe_trades,
+            venues::subscribe_market_stats,
             venues::subscribe_account,
             venues::unsubscribe,
         ])

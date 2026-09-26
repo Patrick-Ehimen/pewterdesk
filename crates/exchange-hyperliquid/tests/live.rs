@@ -58,6 +58,37 @@ async fn streams_order_book() {
 
 #[tokio::test]
 #[ignore = "hits Hyperliquid mainnet"]
+async fn streams_trades() {
+    let mut rx = adapter().subscribe_trades("BTC").await.unwrap();
+    let trades = timeout(Duration::from_secs(10), rx.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!trades.is_empty());
+    assert!(trades.iter().all(|t| t.market == "BTC"));
+    assert!(
+        trades.windows(2).all(|w| w[0].time >= w[1].time),
+        "newest first"
+    );
+}
+
+#[tokio::test]
+#[ignore = "hits Hyperliquid mainnet"]
+async fn streams_market_stats() {
+    let mut rx = adapter().subscribe_market_stats("BTC").await.unwrap();
+    let stats = timeout(Duration::from_secs(15), rx.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(stats.market, "BTC");
+    let (high, low) = (stats.day_high.unwrap(), stats.day_low.unwrap());
+    assert!(low <= high, "{low:?} > {high:?}");
+    assert!(stats.next_funding_time > stats.time);
+    assert_eq!(stats.funding_interval_secs, 3600);
+}
+
+#[tokio::test]
+#[ignore = "hits Hyperliquid mainnet"]
 async fn streams_account() {
     let mut rx = adapter().subscribe_account(ACTIVE_ACCOUNT).await.unwrap();
     let account = timeout(Duration::from_secs(10), rx.recv())

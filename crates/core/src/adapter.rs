@@ -6,7 +6,8 @@ use tokio::sync::mpsc;
 use ts_rs::TS;
 
 use crate::domain::{
-    AccountSnapshot, Capabilities, Market, Order, OrderBook, OrderRequest, TradingAccount, VenueId,
+    AccountSnapshot, Capabilities, Market, MarketStats, Order, OrderBook, OrderRequest, Trade,
+    TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
 
@@ -61,6 +62,25 @@ pub trait ExchangeAdapter: Send + Sync {
         _market: &str,
     ) -> Result<mpsc::Receiver<OrderBook>, VenueError> {
         Err(VenueError::Unsupported("order book"))
+    }
+
+    /// The market's most recent trades, newest first, re-sent whole whenever
+    /// one prints — a snapshot like the other streams, so a consumer that
+    /// misses an update misses nothing. Until the receiver is dropped.
+    async fn subscribe_trades(
+        &self,
+        _market: &str,
+    ) -> Result<mpsc::Receiver<Vec<Trade>>, VenueError> {
+        Err(VenueError::Unsupported("trades"))
+    }
+
+    /// The market's headline stats, re-sent whole on every change, until the
+    /// receiver is dropped.
+    async fn subscribe_market_stats(
+        &self,
+        _market: &str,
+    ) -> Result<mpsc::Receiver<MarketStats>, VenueError> {
+        Err(VenueError::Unsupported("market stats"))
     }
 
     async fn account(&self, address: &str) -> Result<AccountSnapshot, VenueError>;

@@ -5,8 +5,8 @@
 //! `Decimal` without passing through a float.
 
 use pewterdesk_core::{
-    AccountSnapshot, BookLevel, Decimal, Market, Order, OrderBook, OrderStatus, OrderType,
-    Position, PositionSide, Side, VenueError, VenueId,
+    AccountSnapshot, BookLevel, Decimal, Market, MarketStats, Order, OrderBook, OrderStatus,
+    OrderType, Position, PositionSide, Side, Trade, VenueError, VenueId,
 };
 use rust_decimal::Decimal as RawDecimal;
 use serde::Deserialize;
@@ -120,6 +120,47 @@ pub struct WsOpenOrders {
     pub orders: Vec<OpenOrder>,
 }
 
+/// A perp's live context: the `activeAssetCtx` push is `{coin, ctx}`, and the
+/// same shape is the second half of a `metaAndAssetCtxs` response.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PerpAssetCtx {
+    pub funding: Decimal,
+    pub open_interest: Decimal,
+    pub prev_day_px: Decimal,
+    pub day_ntl_vlm: Decimal,
+    pub oracle_px: Decimal,
+    pub mark_px: Decimal,
+    pub mid_px: Option<Decimal>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct WsActiveAssetCtx {
+    pub coin: String,
+    pub ctx: PerpAssetCtx,
+}
+
+/// A price candle, from `candleSnapshot` and the `candle` channel.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Candle {
+    /// Open time, milliseconds since the Unix epoch.
+    pub t: u64,
+    pub h: Decimal,
+    pub l: Decimal,
+}
+
+/// One entry of a `trades` push; the channel's data is an array of these.
+#[derive(Clone, Debug, Deserialize)]
+pub struct WsTrade {
+    pub coin: String,
+    /// The aggressor's side: "B" (bought) or "A" (sold).
+    pub side: String,
+    pub px: Decimal,
+    pub sz: Decimal,
+    pub time: u64,
+    pub tid: u64,
+}
+
 fn step(decimals: u32) -> Decimal {
     Decimal(RawDecimal::new(1, decimals))
 }
@@ -195,16 +236,53 @@ fn position(p: PerpPosition) -> Option<Position> {
     })
 }
 
+/// Hyperliquid marks sides "B" (bid) and "A" (ask).
+fn side(side: &str) -> Result<Side, VenueError> {
+    match side {
+        "B" => Ok(Side::Buy),
+        "A" => Ok(Side::Sell),
+        other => Err(VenueError::Network(format!("unexpected side {other:?}"))),
+    }
+}
+
+/// Stats from the live context plus what's derived locally (the day's range
+/// and the funding clock).
+pub fn market_stats(
+    coin: String,
+    ctx: &PerpAssetCtx,
+    day_range: Option<(Decimal, Decimal)>,
+    now_ms: u64,
+) -> MarketStats {
+    MarketStats {
+        market: coin,
+        mark_price: ctx.mark_px,
+        mid_price: ctx.mid_px,
+        index_price: Some(ctx.oracle_px),
+        prev_day_price: ctx.prev_day_px,
+        day_high: day_range.map(|(high, _)| high),
+        day_low: day_range.map(|(_, low)| low),
+        day_volume: ctx.day_ntl_vlm,
+        open_interest: ctx.open_interest,
+        funding_rate: ctx.funding,
+        funding_interval_secs: crate::stats::FUNDING_INTERVAL_SECS,
+        next_funding_time: crate::stats::next_funding_time(now_ms),
+        time: now_ms,
+    }
+}
+
+pub fn trade(t: WsTrade) -> Result<Trade, VenueError> {
+    Ok(Trade {
+        side: side(&t.side)?,
+        market: t.coin,
+        id: t.tid.to_string(),
+        price: t.px,
+        size: t.sz,
+        time: t.time,
+    })
+}
+
 pub fn order(o: OpenOrder) -> Result<Order, VenueError> {
-    let side = match o.side.as_str() {
-        "B" => Side::Buy,
-        "A" => Side::Sell,
-        other => {
-            return Err(VenueError::Network(format!(
-                "unexpected order side {other:?}"
-            )))
-        }
-    };
+    let side = side(&o.side)?;
     // A trigger order's limit price only applies once it fires, and a
     // market trigger has none.
     let (order_type, price, trigger_price) = if o.is_trigger {
@@ -280,6 +358,88 @@ mod tests {
         assert_eq!(btc.tick_size, dec("0.1"));
         assert_eq!(btc.size_step, dec("0.00001"));
         assert_eq!(btc.max_leverage, 40);
+    }
+
+    #[test]
+    fn maps_market_stats() {
+        // Shapes as sampled from mainnet (fields we don't use included).
+        let pushed: WsActiveAssetCtx = serde_json::from_value(json!({
+            "coin": "HYPE",
+            "ctx": {
+                "funding": "0.0000125", "openInterest": "20578685.7", "prevDayPx": "90.821",
+                "dayNtlVlm": "205852676.89", "premium": "-0.00016", "oraclePx": "92.5447",
+                "markPx": "92.5217", "midPx": "92.5285", "impactPxs": ["92.5244", "92.529"],
+                "dayBaseVlm": "2243176.8"
+            }
+        }))
+        .unwrap();
+        let stats = market_stats(
+            pushed.coin,
+            &pushed.ctx,
+            Some((dec("92.8"), dec("90.67"))),
+            1_790_440_000_000,
+        );
+        assert_eq!(stats.market, "HYPE");
+        assert_eq!(stats.mark_price, dec("92.5217"));
+        assert_eq!(stats.index_price, Some(dec("92.5447")));
+        assert_eq!(stats.prev_day_price, dec("90.821"));
+        assert_eq!(stats.day_high, Some(dec("92.8")));
+        assert_eq!(stats.day_volume, dec("205852676.89"));
+        assert_eq!(stats.funding_rate, dec("0.0000125"));
+        assert_eq!(stats.funding_interval_secs, 3600);
+        assert_eq!(stats.next_funding_time, 1_790_442_000_000);
+
+        let candle: Candle = serde_json::from_value(json!({
+            "t": 1790438400000u64, "T": 1790441999999u64, "s": "HYPE", "i": "1h",
+            "o": "92.521", "c": "92.528", "h": "92.575", "l": "92.503", "v": "1699.7", "n": 198
+        }))
+        .unwrap();
+        assert_eq!(
+            (candle.t, candle.h, candle.l),
+            (1790438400000, dec("92.575"), dec("92.503"))
+        );
+    }
+
+    #[test]
+    fn a_missing_mid_is_absent_not_an_error() {
+        let ctx: PerpAssetCtx = serde_json::from_value(json!({
+            "funding": "0", "openInterest": "0", "prevDayPx": "1", "dayNtlVlm": "0",
+            "oraclePx": "1", "markPx": "1", "midPx": null
+        }))
+        .unwrap();
+        assert_eq!(ctx.mid_px, None);
+    }
+
+    #[test]
+    fn maps_trades() {
+        let trades: Vec<WsTrade> = serde_json::from_value(json!([{
+            "coin": "BTC",
+            "side": "A",
+            "px": "83915.0",
+            "sz": "0.0123",
+            "hash": "0xabc",
+            "time": 1790362349195u64,
+            "tid": 887766,
+            "users": ["0x1", "0x2"]
+        }]))
+        .unwrap();
+
+        let trade = trade(trades.into_iter().next().unwrap()).unwrap();
+        assert_eq!(trade.market, "BTC");
+        assert_eq!(trade.id, "887766");
+        assert_eq!(trade.side, Side::Sell);
+        assert_eq!(trade.price, dec("83915.0"));
+        assert_eq!(trade.size, dec("0.0123"));
+        assert_eq!(trade.time, 1790362349195);
+    }
+
+    #[test]
+    fn rejects_an_unknown_trade_side() {
+        let t: WsTrade = serde_json::from_value(json!({
+            "coin": "BTC", "side": "X", "px": "1", "sz": "1", "time": 0, "tid": 1
+        }))
+        .unwrap();
+        assert!(matches!(trade(t), Err(VenueError::Network(_))));
     }
 
     #[test]

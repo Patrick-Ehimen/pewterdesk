@@ -92,6 +92,64 @@ pub struct OrderBook {
     pub time: u64,
 }
 
+/// A market's headline numbers: prices, the day's range and volume, open
+/// interest and funding. Re-sent whole on every update.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE, optional_fields)]
+pub struct MarketStats {
+    /// `Market::id`.
+    pub market: String,
+    /// The venue's mark price, used for margin and PnL.
+    pub mark_price: Decimal,
+    /// Midpoint of the best bid and ask; absent when a side is empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mid_price: Option<Decimal>,
+    /// The index (oracle) price the mark tracks.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub index_price: Option<Decimal>,
+    /// The price 24 hours ago, for the day's change.
+    pub prev_day_price: Decimal,
+    /// Highest and lowest trade over the last 24 hours, where the venue can say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub day_high: Option<Decimal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub day_low: Option<Decimal>,
+    /// Traded value over the last 24 hours, in the quote asset.
+    pub day_volume: Decimal,
+    /// In base units.
+    pub open_interest: Decimal,
+    /// The rate for the current funding interval, as a fraction (0.0001 = 0.01%).
+    pub funding_rate: Decimal,
+    /// Length of one funding interval, in seconds (3600 on Hyperliquid).
+    pub funding_interval_secs: u32,
+    /// When the current interval's funding is paid; milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub next_funding_time: u64,
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// One print on a market's public trade tape.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct Trade {
+    /// `Market::id`.
+    pub market: String,
+    /// The venue's trade id, unique within the market.
+    pub id: String,
+    /// The aggressor's side: `buy` means a taker lifted an ask.
+    pub side: Side,
+    pub price: Decimal,
+    /// In base units.
+    pub size: Decimal,
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = TS_FILE)]
