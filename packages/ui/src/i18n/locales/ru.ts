@@ -1,0 +1,282 @@
+import type { Messages } from "./en";
+
+// Russian.
+export const messages: Messages = {
+  "col.price": "Цена",
+  "col.size": "Объём",
+  "col.total": "Всего",
+  "col.time": "Время",
+  "col.market": "Рынок",
+  "col.side": "Сторона",
+  "col.type": "Тип",
+  "col.filled": "Исполнено",
+  "col.trigger": "Триггер",
+  "col.reduceOnly": "Только уменьшение",
+  "col.status": "Статус",
+  "col.entry": "Вход",
+  "col.mark": "Маркировка",
+  "col.liq": "Ликв.",
+  "col.upnl": "Нереал. PnL (ROE)",
+  "col.margin": "Маржа",
+  "col.maxLeverage": "Макс. плечо",
+  "col.tickSize": "Шаг цены",
+  "col.sizeStep": "Шаг объёма",
+  "col.minSize": "Мин. объём",
+
+  "side.buy": "Покупка",
+  "side.sell": "Продажа",
+  "side.long": "Лонг",
+  "side.short": "Шорт",
+  "side.bid": "Бид",
+  "side.ask": "Аск",
+  "common.yes": "Да",
+  "common.no": "Нет",
+  "orderType.market": "Рыночный",
+  "orderType.limit": "Лимитный",
+  "orderType.trigger": "Условный",
+  "orderStatus.pending": "Ожидает",
+  "orderStatus.open": "Активен",
+  "orderStatus.filled": "Исполнен",
+  "orderStatus.cancelled": "Отменён",
+  "orderStatus.rejected": "Отклонён",
+
+  "hint.unit": "В {asset}.",
+  "hint.book.price":
+    "Лимитная цена заявок на этом уровне. Аски (продавцы) выше спреда, биды (покупатели) ниже.",
+  "hint.book.size": "Всё, что стоит ровно по этой цене.",
+  "hint.book.total":
+    "Накопленный объём от спреда до этого уровня — сколько должна «съесть» рыночная заявка, чтобы дойти сюда. Заштрихованная полоса показывает то же самое.",
+  "hint.trades.price":
+    "Цена исполнения сделки. Зелёная, если покупатель забрал аск; красная, если продавец ударил в бид.",
+  "hint.trades.size": "Сколько перешло из рук в руки.",
+  "hint.trades.time": "Когда прошла сделка, по вашему местному времени.",
+
+  "tip.sizeHere": "Объём здесь",
+  "tip.valueHere": "Стоимость здесь",
+  "tip.totalToHere": "Всего до сюда",
+  "tip.valueToHere": "Стоимость до сюда",
+  "tip.avgFill": "Средняя цена исполнения",
+  "tip.fromMid": "От средней цены",
+  "tip.value": "Стоимость",
+  "tip.tradeBuy": "Покупка — тейкер забрал аск",
+  "tip.tradeSell": "Продажа — тейкер ударил в бид",
+
+  "book.spread": "спред {spread} · {bps} б.п.",
+  "book.ratio": "Биды {bids}, аски {asks}",
+  "book.ratioBid": "Б",
+  "book.ratioAsk": "А",
+  "book.loading": "Загрузка стакана",
+  "trades.loading": "Загрузка сделок",
+  "trades.empty": "Сделок пока нет.",
+
+  "account.equity": "Капитал",
+  "account.upnl": "Нереализованный PnL",
+  "account.marginUsed": "Использовано маржи",
+  "account.available": "Доступно",
+  "account.marginRatio": "Уровень маржи",
+  "positions.empty": "Открытых позиций нет.",
+  "orders.empty": "Открытых заявок нет.",
+
+  "markets.search": "Поиск рынков",
+  "markets.show": "Показать",
+  "markets.all": "Все",
+  "markets.watchlist": "Избранное ({count})",
+  "markets.watchlistColumn": "Избранное",
+  "markets.watchlistEmpty": "Список избранного пуст. Отметьте рынок звёздочкой, чтобы добавить.",
+  "markets.noMatch": "Нет рынков, соответствующих «{query}».",
+  "star.add": "Добавить {name} в избранное",
+  "star.remove": "Удалить {name} из избранного",
+
+  "panel.markets": "Рынки",
+  "panel.orderBook": "Стакан",
+  "panel.account": "Аккаунт",
+  "panel.positions": "Позиции",
+  "panel.remove": "Убрать «{panel}»",
+  "tab.orderBook": "Стакан",
+  "tab.trades": "Сделки",
+  "tab.positions": "Позиции",
+  "tab.openOrders": "Открытые заявки",
+  "menu.view": "Вид",
+  "menu.bookOptions": "Настройки стакана",
+  "menu.tradesOptions": "Настройки сделок",
+  "view.table": "Таблица",
+  "view.tableDesc": "Одна строка на запись, по столбцам",
+  "view.stacked": "Карточки",
+  "view.stackedDesc": "Две строки на запись, легче читать",
+
+  "feed.loading": "Загрузка…",
+  "feed.closed": "Поток закрыт — показано последнее обновление.",
+  "feed.pickMarket": "Выберите рынок.",
+  "feed.noAccount": "Нет аккаунта для показа.",
+  "feed.connectToWatch":
+    "Подключите кошелёк (справа вверху), чтобы следить за аккаунтом. Только просмотр — ключ не нужен.",
+
+  "header.mid": "Средняя",
+
+  "header.home": "К торговле",
+
+  // Market stats bar
+
+  "stats.chooseMarket": "Выберите рынок",
+
+  "stats.marketInfo": "{venue} · до {leverage}x · шаг цены {tick} · мин. объём {min}",
+
+  "stats.markHint": "Цена маркировки: по ней считаются маржа, PnL и ликвидации.",
+
+  "stats.mid": "Средняя цена",
+
+  "stats.midHint": "Середина между лучшими бидом и аском.",
+
+  "stats.index": "Индексная цена",
+
+  "stats.indexHint": "Цена оракула, за которой следует маркировка.",
+
+  "stats.change": "Изменение за 24ч",
+
+  "stats.high": "Макс. за 24ч",
+
+  "stats.low": "Мин. за 24ч",
+
+  "stats.volume": "Объём за 24ч ({asset})",
+
+  "stats.openInterest": "Открытый интерес ({asset})",
+
+  "stats.funding": "Фандинг / отсчёт",
+
+  "stats.fundingHint":
+    "Выплачивается каждые {hours} ч между лонгами и шортами. Положительный: лонги платят шортам; отрицательный: шорты платят лонгам.",
+
+  "stats.loading": "Загрузка статистики рынка",
+  "header.upTo": "до {leverage}x",
+  "action.editLayout": "Изменить раскладку",
+  "action.doneLayout": "Завершить изменение раскладки",
+  "action.mute": "Выключить звук",
+  "action.unmute": "Включить звук",
+  "action.settings": "Настройки",
+  "action.language": "Язык: {language}",
+  "menu.language": "Язык",
+  "menu.theme": "Тема",
+  "action.theme": "Тема: {theme}",
+  "theme.dark.name": "Олово",
+  "theme.dark.desc": "Олово и латунь на почти чёрном",
+  "theme.graphite.name": "Графит",
+  "theme.graphite.desc": "Холоднее и чуть светлее",
+  "theme.synthwave.name": "Synthwave '84",
+  "theme.synthwave.desc": "Неоновый розовый на ретро-фиолетовом",
+  "theme.monokai.name": "Monokai Pro",
+  "theme.monokai.desc": "Фильтр Machine: жёлтый на холодном сером",
+  "theme.palenight.name": "Palenight",
+  "theme.palenight.desc": "Мягкий фиолетовый на сланцево-синем",
+  "theme.parchment.name": "Пергамент",
+  "theme.parchment.desc": "Тёплая светлая, как бумага",
+
+  // Settings page
+  "settings.title": "Настройки",
+  "settings.back": "Назад к торговле",
+  "settings.soon": "Скоро",
+  "settings.comingSoon": "Пока недоступно",
+  "settings.nav.general": "Общие",
+  "settings.nav.wallets": "Кошельки и ключи",
+  "settings.nav.trading": "Торговля",
+  "settings.nav.hotkeys": "Горячие клавиши",
+  "settings.nav.notifications": "Уведомления",
+  "settings.nav.appearance": "Оформление",
+  "settings.nav.network": "Сеть",
+  "settings.nav.advanced": "Дополнительно",
+  "settings.general.desc": "Язык и звук.",
+  "settings.languageHelp": "После смены приложение перезагрузится на новом языке.",
+  "settings.sounds": "Звуки",
+  "settings.soundsHelp":
+    "Звуки для исполнений и предупреждений о ликвидации — появятся вместе с торговлей.",
+  "settings.wallets.desc":
+    "Следите за любым аккаунтом в режиме просмотра. Торговые ключи появятся вместе с выставлением заявок.",
+  "settings.watched": "Отслеживаемый аккаунт",
+  "settings.watchedHelp": "Только просмотр: балансы, позиции и открытые заявки, без подписи.",
+  "settings.noWatched": "Пока ни один аккаунт не отслеживается.",
+  "settings.copyAddress": "Копировать адрес",
+  "settings.copied": "Скопировано",
+  "settings.keys": "Торговые ключи",
+  "settings.keysNone": "На этом устройстве нет ключей.",
+  "settings.keysHelp":
+    "Ключи только для торговли появятся вместе с выставлением заявок. Они хранятся только в системной связке ключей и не могут выводить средства.",
+  "settings.safeguards": "Защита подписи",
+  "settings.safeguardsHelp":
+    "Touch ID перед подписью, блокировка при простое и подтверждение крупных заявок появятся вместе с выставлением заявок.",
+  "settings.trading.desc":
+    "Размер заявки, проскальзывание и плечо по умолчанию. Появится вместе с выставлением заявок.",
+  "settings.hotkeys.desc":
+    "Горячие клавиши для выставления и отмены заявок. Появится вместе с выставлением заявок.",
+  "settings.notifications.desc": "Оповещения об исполнениях и риске ликвидации.",
+  "settings.network.desc": "Адреса бирж и состояние подключения.",
+  "settings.appearance.desc": "Тема, цвета рынка и вид стакана и сделок.",
+  "settings.bookView": "Вид стакана",
+  "settings.tradesView": "Вид сделок",
+  "settings.advanced.desc":
+    "Сброс того, что запомнило это устройство. Ключи и биржи не затрагиваются.",
+  "settings.resetLayout": "Сбросить раскладку",
+  "settings.resetLayoutHelp": "Вернуть панели в исходное расположение.",
+  "settings.clearWatchlist": "Очистить избранное",
+  "settings.clearWatchlistHelp": "Снять звёздочки со всех рынков.",
+  "settings.resetAll": "Сбросить все настройки",
+  "settings.resetAllHelp":
+    "Тема, язык, раскладки, избранное и отслеживаемый аккаунт вернутся к исходным, приложение перезагрузится.",
+  "settings.resetAllButton": "Сбросить всё",
+  "settings.confirm": "Нажмите ещё раз для подтверждения",
+  "settings.doneFeedback": "Готово",
+  "settings.marketColors": "Цвета рынка",
+  "colors.standard": "Зелёный / красный",
+  "colors.standardDesc": "Стандартные цвета рынка",
+  "colors.colorblind": "Синий / оранжевый",
+  "colors.colorblindDesc": "Легче различать при нарушениях цветовосприятия",
+
+  "layout.editor": "Редактор раскладки",
+  "layout.editing": "Изменение раскладки",
+  "layout.hint": "Перетаскивайте заголовки, чтобы двигать · края — чтобы менять размер",
+  "layout.saveAs": "Сохранить как…",
+  "layout.done": "Готово",
+  "layout.name": "Название раскладки",
+  "layout.nameTaken": "Это название встроенной раскладки",
+  "layout.delete": "Удалить раскладку {name}",
+  "preset.Default": "По умолчанию",
+  "preset.Scalping": "Скальпинг",
+  "preset.Swing": "Свинг",
+  "palette.title": "Панели",
+  "palette.help":
+    "Перетащите на сетку или нажмите, чтобы добавить вниз. Одна панель может быть добавлена несколько раз.",
+  "palette.inLayout": "в раскладке",
+
+  "wallet.connect": "Подключить кошелёк",
+  "wallet.close": "Закрыть",
+  "wallet.watchingAddress": "Отслеживается {address}",
+  "wallet.wc": "WalletConnect",
+  "wallet.wcDetail": "Отсканируйте QR-код кошельком на телефоне",
+  "wallet.ledger": "Ledger",
+  "wallet.ledgerDetail": "Аппаратный кошелёк по USB",
+  "wallet.api": "Импорт API-кошелька",
+  "wallet.apiDetail": "Используйте уже одобренный агентский ключ",
+  "wallet.watch": "Следить за адресом",
+  "wallet.watchDetail": "Только просмотр, без подписи",
+  "wallet.soon": "Пока недоступно",
+  "wallet.note":
+    "Для торговли нужен ключ только для торговли на каждой бирже — он появится вместе с выставлением заявок. А пока следите за любым адресом, чтобы видеть его позиции и заявки.",
+  "wallet.watchTitle": "Следить за адресом",
+  "wallet.watchHelp":
+    "Смотрите балансы, позиции и открытые заявки любого аккаунта без подписи. Отсюда торговать нельзя.",
+  "wallet.stopWatching": "Перестать следить",
+  "wallet.watchAnother": "Следить за другим адресом",
+  "wallet.address": "Адрес",
+  "wallet.invalid": "Это не адрес — нужно 0x и 40 шестнадцатеричных символов.",
+  "wallet.footer":
+    "Pewterdesk никогда не видит вашу сид-фразу. Подключения идут напрямую с этого устройства на каждую биржу.",
+
+  "error.noTauri":
+    "Данные биржи доступны только в настольном приложении — запустите `make dev`, а не `make dev-ui`.",
+  "error.failed": "Запрос к бирже не выполнен.",
+  "error.unsupported": "Не поддерживается: {detail}",
+  "error.invalidRequest": "Неверный запрос: {detail}",
+  "error.rejected": "Отклонено биржей: {detail}",
+  "error.network": "Ошибка сети: {detail}",
+  "error.noKey": "Для этого аккаунта нет сохранённого ключа.",
+  "error.key": "Ошибка ключа: {detail}",
+  "error.feedClosed": "Биржа закрыла поток.",
+};

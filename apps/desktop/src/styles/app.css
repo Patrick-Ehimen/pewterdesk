@@ -1,0 +1,440 @@
+/* App shell, after the design's main screen. Panel placement lives in
+   styles/layout.css; component styles in @pewterdesk/ui. Colors only from
+   --pd-* tokens. */
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.app-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* For panels that size their own content to the space, like the order book */
+.app-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.app-logo-button {
+  display: flex;
+  margin-right: 8px;
+  padding: 4px 6px;
+  background: none;
+  border: 0;
+  border-radius: var(--pd-radius);
+  cursor: pointer;
+}
+.app-logo-button:hover {
+  background: var(--pd-surface-raised);
+}
+.app-logo {
+  display: block;
+  height: 26px;
+}
+.app-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  font-weight: 600;
+}
+.app-chip-market {
+  font-family: var(--pd-font-mono);
+}
+.app-chip-market .pd-muted {
+  font-family: var(--pd-font-sans);
+  font-weight: 400;
+  font-size: 12px;
+}
+.app-stat {
+  display: flex;
+  flex-direction: column;
+  margin-left: 8px;
+}
+.app-stat-value {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 600;
+}
+.app-stat-label {
+  color: var(--pd-pewter);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.app-spacer {
+  flex: 1;
+}
+
+/* Live dot: brass when the feed is streaming — one of brass's few jobs */
+.pd-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pd-pewter-dim);
+}
+.pd-live-dot[data-live] {
+  background: var(--pd-brass);
+}
+
+/* Header actions: icon buttons, then the wallet */
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.app-connect,
+.app-wallet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin-left: 8px;
+  padding: 0 14px;
+  border-radius: var(--pd-radius);
+  cursor: pointer;
+}
+/* The header's one brass element: the key action */
+.app-connect {
+  background: var(--pd-brass);
+  border: 1px solid var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.app-connect:hover {
+  background: var(--pd-brass-hover);
+}
+.app-wallet-chip {
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+}
+.app-wallet-chip:hover {
+  background: var(--pd-surface-raised);
+}
+
+/* Connect wallet dialog, after the design's connect screen */
+.wallet-dialog {
+  width: min(880px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px -16px color-mix(in srgb, var(--pd-bg) 90%, transparent);
+}
+.wallet-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  animation: wallet-in 160ms ease-out;
+}
+.wallet-dialog::backdrop {
+  background: color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  backdrop-filter: blur(2px);
+}
+@keyframes wallet-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wallet-dialog[open] {
+    animation: none;
+  }
+}
+.wallet-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.wallet-dialog-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.wallet-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 0;
+  overflow: auto;
+}
+.wallet-methods {
+  list-style: none;
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid var(--pd-border);
+}
+.wallet-method {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.wallet-method[aria-current="true"] {
+  border-color: var(--pd-brass);
+  background: var(--pd-bg);
+}
+.wallet-method[aria-disabled="true"] {
+  opacity: 0.55;
+}
+.wallet-badge {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.wallet-method-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.wallet-method-text span {
+  color: var(--pd-pewter);
+}
+.wallet-soon {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.wallet-note {
+  margin-top: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  color: var(--pd-pewter);
+}
+.wallet-pane {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wallet-pane h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.wallet-pane p {
+  margin: 0;
+}
+.wallet-watching {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.wallet-watching .ws-button {
+  margin-left: auto;
+}
+.wallet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wallet-form label {
+  color: var(--pd-pewter);
+}
+.wallet-form .pd-input {
+  text-align: left;
+}
+.wallet-form .ws-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wallet-error {
+  color: var(--pd-warning);
+  font-size: 12px;
+}
+.wallet-dialog-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter);
+}
+
+.pd-stale {
+  margin: 0;
+  padding: 6px 12px;
+  color: var(--pd-warning);
+  font-size: 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+
+/* Splash — shown while the interface language loads, then fades out over
+   the app (350ms: keep in sync with SPLASH_FADE_MS) */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--pd-bg);
+  animation: splash-in 200ms ease-out;
+}
+.splash-bar {
+  fill: var(--pd-pewter);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: splash-breathe 1.1s ease-in-out infinite;
+}
+.splash-bar[data-mid] {
+  fill: var(--pd-brass);
+}
+.splash-word {
+  color: var(--pd-pewter);
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+.splash-word strong {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.splash[data-leaving] {
+  pointer-events: none;
+  animation: splash-out 350ms ease-in forwards;
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    transform: scale(1.02);
+  }
+}
+@keyframes splash-breathe {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scaleX(0.55);
+    opacity: 0.55;
+  }
+}
+@keyframes splash-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .splash-bar {
+    animation: none;
+  }
+  /* Still leaves, just without moving */
+  .splash[data-leaving] {
+    animation: splash-out-still 350ms linear forwards;
+  }
+  @keyframes splash-out-still {
+    to {
+      opacity: 0;
+    }
+  }
+}
+
+/* Theme swatches in the theme menu — each scoped to its own data-theme */
+.theme-swatch {
+  display: block;
+  width: 46px;
+  height: 30px;
+  padding: 4px;
+  border-radius: 6px;
+  background: var(--pd-bg);
+  box-shadow: 0 0 0 1px var(--pd-border-strong);
+}
+.theme-swatch-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 3px 4px;
+  border-radius: 3px;
+  background: var(--pd-surface);
+}
+.theme-swatch-text {
+  width: 70%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pd-text);
+}
+.theme-swatch-row {
+  display: flex;
+  gap: 3px;
+}
+.theme-swatch-row > span {
+  height: 5px;
+  border-radius: 2px;
+}
+.theme-swatch-brass {
+  width: 5px;
+  background: var(--pd-brass);
+}
+.theme-swatch-buy {
+  flex: 1;
+  background: var(--pd-buy);
+}
+.theme-swatch-sell {
+  flex: 1;
+  background: var(--pd-sell);
+}
+
+/* The theme menu's cells fit a swatch, a name and a description */
+.theme-menu.pd-menu[data-grid] {
+  --pd-menu-cell: 120px;
+}
+.theme-menu.pd-menu[data-grid] .pd-menu-item {
+  height: 88px;
+  gap: 6px;
+}

@@ -1,0 +1,8 @@
+/* Linked straight from index.html, so it blocks the first paint: the page is
+   the brand background from frame one instead of the browser's white. */
+@import "../../../../.claude/brand/pewterdesk-tokens.css";
+
+html,
+body {
+  background: var(--pd-bg);
+}

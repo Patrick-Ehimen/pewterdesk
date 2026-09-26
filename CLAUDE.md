@@ -109,13 +109,31 @@ Early scaffold. `crates/core` defines the contracts. `crates/exchange-hyperliqui
 is read-only (markets, order books, the trade tape, market stats and account
 state over REST and WS) and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
-it can't place orders yet. The other three venue crates and `packages/ui` are
-still empty, and no frontend code calls the venue commands yet.
+it can't place orders yet. The other three venue crates are still empty.
+
+The desktop frontend is a read-only trading screen (after the main-screen
+mockup in the local, gitignored `design/`): market list, live order book and trade tape, and a watched
+account's balances, positions and open orders. In `apps/desktop/src/`,
+`App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
+commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
+`components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
+`styles/`. `packages/ui` holds the shared presentational components, fed by
+props. No chart or order ticket yet.
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up. `.claude/prd-rust-desktop-features.md` has
 the rest of the Rust-side backlog (notifications, tray, deep links, local
 persistence), none of it started.
+
+## Interface strings
+
+Every user-facing string goes through `t("key")` from `@pewterdesk/ui`; don't
+hardcode text in components. English in `packages/ui/src/i18n/locales/en.ts` is
+the source of truth, and the other seven locales are typed against it, so a
+new key fails the typecheck until every language has it. The language is fixed
+per session (switching reloads the app behind the splash), so never call `t` at
+module scope — it would run before the locale loads. Numbers stay en-US in
+every language on purpose; dates follow the locale via `dateFormat`.
 
 ## Brand
 

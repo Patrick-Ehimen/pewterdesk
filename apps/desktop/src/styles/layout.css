@@ -1,0 +1,268 @@
+/* Workspace grid and layout editor, after the design's layout editor screen.
+   Includes the structural rules react-grid-layout needs, restyled with
+   --pd-* tokens (its own stylesheet hardcodes colors, so it isn't imported). */
+
+.ws {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* react-grid-layout structure */
+.react-grid-layout {
+  position: relative;
+}
+.react-grid-item {
+  transition:
+    transform 150ms ease,
+    width 150ms ease,
+    height 150ms ease;
+}
+.react-grid-item.resizing,
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+}
+.react-grid-item.dropping {
+  visibility: hidden;
+}
+.react-grid-item.react-grid-placeholder {
+  background: var(--pd-brass);
+  opacity: 0.12;
+  border-radius: 8px;
+  transition-duration: 100ms;
+  z-index: 2;
+  user-select: none;
+}
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  z-index: 1;
+}
+.react-grid-item > .react-resizable-handle-se {
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: se-resize;
+}
+.react-grid-item > .react-resizable-handle-se::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--pd-pewter);
+  border-bottom: 2px solid var(--pd-pewter);
+}
+.react-grid-item > .react-resizable-handle-e {
+  top: 0;
+  right: -4px;
+  bottom: 18px;
+  width: 8px;
+  cursor: ew-resize;
+}
+.react-grid-item > .react-resizable-handle-s {
+  left: 0;
+  right: 18px;
+  bottom: -4px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+/* Panels */
+.ws-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ws-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.ws-panel-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ws-panel-aside {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ws-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ws-panel-remove {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-pewter);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ws-panel-remove:hover {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+
+/* Edit mode: dashed outlines, dimmed content, headers become drag handles */
+.ws[data-editing] {
+  border-radius: 8px;
+  background-image: radial-gradient(var(--pd-border) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.ws[data-editing] .ws-panel {
+  border-style: dashed;
+  border-color: var(--pd-border-strong);
+}
+.ws[data-editing] .ws-panel-head {
+  cursor: grab;
+  user-select: none;
+}
+.ws[data-editing] .react-draggable-dragging .ws-panel,
+.ws[data-editing] .react-draggable-dragging.ws-panel {
+  border-style: solid;
+  border-color: var(--pd-brass);
+  cursor: grabbing;
+}
+.ws[data-editing] .ws-panel-body {
+  opacity: 0.25;
+}
+
+/* Editing bar — the one brass-framed element on screen while it's open */
+.ws-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-brass);
+  border-radius: 8px;
+}
+.ws-bar-title {
+  color: var(--pd-brass-text);
+  font-weight: 600;
+  margin-right: 4px;
+}
+.ws-bar-hint {
+  color: var(--pd-pewter);
+  margin-left: 8px;
+}
+.ws-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+}
+.ws-chip button {
+  background: none;
+  border: 0;
+  padding: 5px 14px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+  border-radius: 999px;
+}
+.ws-chip button:hover {
+  color: var(--pd-text);
+}
+.ws-chip .ws-chip-remove {
+  padding: 5px 10px 5px 0;
+}
+.ws-chip[aria-current="true"] {
+  border-color: var(--pd-brass);
+}
+.ws-chip[aria-current="true"] button {
+  color: var(--pd-text);
+}
+.ws-button {
+  padding: 6px 14px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  cursor: pointer;
+}
+.ws-button:hover {
+  background: var(--pd-surface-raised);
+}
+.ws-button-primary {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.ws-button-primary:hover {
+  background: var(--pd-brass-hover);
+}
+
+/* Panel palette */
+.ws-palette {
+  width: 280px;
+  flex-shrink: 0;
+  overflow: auto;
+  padding: 16px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.ws-palette h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+.ws-palette p {
+  margin: 0 0 16px;
+}
+.ws-palette ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ws-palette-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  cursor: grab;
+  text-align: left;
+}
+.ws-palette-item:hover {
+  border-color: var(--pd-border-strong);
+}
+.ws-grip {
+  color: var(--pd-pewter-dim);
+}
+.ws-palette-tag {
+  margin-left: auto;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+
+/* The fixed market stats bar: a panel with no title bar */
+.ws-stats {
+  display: flex;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}

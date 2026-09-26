@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PewterDesk</title>
+    <!-- Both before first paint, so a reload never flashes white: the saved
+         theme goes on <html>, then the background is painted from the tokens. -->
+    <script src="/boot.js"></script>
+    <link rel="stylesheet" href="/src/styles/boot.css" />
   </head>
   <body>
     <div id="root"></div>
