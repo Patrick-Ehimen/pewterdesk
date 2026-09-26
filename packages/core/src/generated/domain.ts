@@ -62,6 +62,60 @@ symbol: string, base: string, quote: string, tickSize: Decimal,
  */
 sizeStep: Decimal, minSize: Decimal, maxLeverage: number, };
 
+/**
+ * A market's headline numbers: prices, the day's range and volume, open
+ * interest and funding. Re-sent whole on every update.
+ */
+export type MarketStats = { 
+/**
+ * `Market::id`.
+ */
+market: string, 
+/**
+ * The venue's mark price, used for margin and PnL.
+ */
+markPrice: Decimal, 
+/**
+ * Midpoint of the best bid and ask; absent when a side is empty.
+ */
+midPrice?: Decimal, 
+/**
+ * The index (oracle) price the mark tracks.
+ */
+indexPrice?: Decimal, 
+/**
+ * The price 24 hours ago, for the day's change.
+ */
+prevDayPrice: Decimal, 
+/**
+ * Highest and lowest trade over the last 24 hours, where the venue can say.
+ */
+dayHigh?: Decimal, dayLow?: Decimal, 
+/**
+ * Traded value over the last 24 hours, in the quote asset.
+ */
+dayVolume: Decimal, 
+/**
+ * In base units.
+ */
+openInterest: Decimal, 
+/**
+ * The rate for the current funding interval, as a fraction (0.0001 = 0.01%).
+ */
+fundingRate: Decimal, 
+/**
+ * Length of one funding interval, in seconds (3600 on Hyperliquid).
+ */
+fundingIntervalSecs: number, 
+/**
+ * When the current interval's funding is paid; milliseconds since the Unix epoch.
+ */
+nextFundingTime: number, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, };
+
 export type Order = { venue: VenueId, 
 /**
  * The venue's order id. For GMX this is the order key.
@@ -171,6 +225,31 @@ export type PositionSide = "long" | "short";
 export type Side = "buy" | "sell";
 
 export type TimeInForce = "gtc" | "ioc" | "postOnly";
+
+/**
+ * One print on a market's public trade tape.
+ */
+export type Trade = { 
+/**
+ * `Market::id`.
+ */
+market: string, 
+/**
+ * The venue's trade id, unique within the market.
+ */
+id: string, 
+/**
+ * The aggressor's side: `buy` means a taker lifted an ask.
+ */
+side: Side, price: Decimal, 
+/**
+ * In base units.
+ */
+size: Decimal, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, };
 
 /**
  * Who is trading, for calls that need a signature.

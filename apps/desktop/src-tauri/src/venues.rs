@@ -1,5 +1,6 @@
 //! Tauri commands exposing the venue adapters — the only way the UI reaches a
-//! venue. Read-only so far: markets, order books and account state.
+//! venue. Read-only so far: markets, order books, trades, market stats and
+//! account state.
 //!
 //! Security invariants — review any change here against
 //! `.claude/commands/security-review.md`:
@@ -12,7 +13,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
-use pewterdesk_core::{AccountSnapshot, ExchangeAdapter, Market, OrderBook, VenueError, VenueId};
+use pewterdesk_core::{
+    AccountSnapshot, ExchangeAdapter, Market, MarketStats, OrderBook, Trade, VenueError, VenueId,
+};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
 use tauri::async_runtime::{self, JoinHandle};
@@ -108,6 +111,33 @@ pub async fn subscribe_order_book(
     on_event: Channel<StreamEvent<OrderBook>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_order_book(&market).await?;
+    Ok(venues.forward(rx, on_event))
+}
+
+/// Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_trades(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    on_event: Channel<StreamEvent<Vec<Trade>>>,
+) -> Result<u32, VenueError> {
+    let rx = venues.adapter(venue)?.subscribe_trades(&market).await?;
+    Ok(venues.forward(rx, on_event))
+}
+
+/// Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_market_stats(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    on_event: Channel<StreamEvent<MarketStats>>,
+) -> Result<u32, VenueError> {
+    let rx = venues
+        .adapter(venue)?
+        .subscribe_market_stats(&market)
+        .await?;
     Ok(venues.forward(rx, on_event))
 }
 

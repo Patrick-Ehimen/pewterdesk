@@ -106,7 +106,8 @@ explicitly configured RPC endpoints.
 ## Status
 
 Early scaffold. `crates/core` defines the contracts. `crates/exchange-hyperliquid`
-is read-only (markets, order books and account state over REST and WS) and is
+is read-only (markets, order books, the trade tape, market stats and account
+state over REST and WS) and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
 it can't place orders yet. The other three venue crates and `packages/ui` are
 still empty, and no frontend code calls the venue commands yet.
