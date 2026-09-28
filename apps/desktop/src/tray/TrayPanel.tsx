@@ -122,7 +122,7 @@ const Skel = ({ width, height = 9 }: { width: number; height?: number }) => (
 const SKELETON_ROWS = [74, 62, 80, 58, 70, 66];
 
 const priceText = (row: Row) =>
-  row.summary ? formatNumber(row.summary.markPrice, decimalsOf(row.summary.markPrice)) : "—";
+  row.summary ? formatNumber(row.summary.markPrice, decimalsOf(row.summary.markPrice)) : "-";
 
 /**
  * The menu-bar (tray) panel, after the exchange-style tray menus: search,
@@ -360,7 +360,7 @@ export function TrayPanel() {
                   {heroRow.summary ? (
                     <span className="pd-num" data-trend={trendOf(heroRow.change)}>
                       {heroRow.change === undefined
-                        ? "—"
+                        ? "-"
                         : `${formatSigned(heroRow.change * 100)}%`}
                     </span>
                   ) : (
@@ -472,7 +472,7 @@ export function TrayPanel() {
                     {!r.summary ? (
                       <Skel width={44} />
                     ) : r.change === undefined ? (
-                      "—"
+                      "-"
                     ) : (
                       `${formatSigned(r.change * 100)}%`
                     )}

@@ -4,7 +4,7 @@ import { Tooltip } from "../common/Tooltip";
 
 /**
  * The exchange that listed a builder-deployed (HIP-3) market, e.g. "xyz";
- * nothing for the venue's own markets. `hint` adds a tooltip explaining it —
+ * nothing for the venue's own markets. `hint` adds a tooltip explaining it -
  * leave it off inside another button, since the tooltip's trigger is one.
  */
 export function ListedBy({ market, hint = true }: { market?: Market; hint?: boolean }) {

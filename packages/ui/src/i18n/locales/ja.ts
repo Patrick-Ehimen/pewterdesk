@@ -58,8 +58,8 @@ export const messages: Messages = {
   "tip.avgFill": "平均約定価格",
   "tip.fromMid": "仲値との差",
   "tip.value": "金額",
-  "tip.tradeBuy": "買い — テイカーが売り気配を取得",
-  "tip.tradeSell": "売り — テイカーが買い気配に売却",
+  "tip.tradeBuy": "買い - テイカーが売り気配を取得",
+  "tip.tradeSell": "売り - テイカーが買い気配に売却",
 
   "book.spread": "スプレッド {spread} · {bps} bps",
   "book.ratio": "買い {bids}、売り {asks}",
@@ -210,7 +210,7 @@ export const messages: Messages = {
   "view.stackedDesc": "1 件を 2 行で表示、見やすい",
 
   "feed.loading": "読み込み中…",
-  "feed.closed": "フィードが終了しました — 最後の更新を表示しています。",
+  "feed.closed": "フィードが終了しました - 最後の更新を表示しています。",
   "feed.pickMarket": "銘柄を選択してください。",
   "feed.noAccount": "表示する口座がありません。",
 
@@ -239,7 +239,7 @@ export const messages: Messages = {
   "nav.settingsDesc": "設定・ウォレット・鍵",
 
   "portfolio.empty":
-    "ウォレットを接続するとポートフォリオを表示できます。閲覧のみ — 鍵は不要です。",
+    "ウォレットを接続するとポートフォリオを表示できます。閲覧のみ - 鍵は不要です。",
 
   "portfolio.equityNote": "{venue} の {quote}",
 
@@ -450,7 +450,7 @@ export const messages: Messages = {
     "Pewterdesk がシードフレーズを見ることはありません。接続はこの端末から各取引所へ直接行われます。",
 
   "error.noTauri":
-    "取引所のデータにはデスクトップアプリが必要です — `make dev-ui` ではなく `make dev` を実行してください。",
+    "取引所のデータにはデスクトップアプリが必要です - `make dev-ui` ではなく `make dev` を実行してください。",
   "error.failed": "取引所へのリクエストに失敗しました。",
   "error.unsupported": "未対応：{detail}",
   "error.invalidRequest": "無効なリクエスト：{detail}",

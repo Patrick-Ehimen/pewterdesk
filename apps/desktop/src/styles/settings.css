@@ -210,7 +210,7 @@
 .settings-button[data-primary]:hover {
   background: var(--pd-brass-hover);
 }
-/* Destructive: the warning token — red is reserved for market data */
+/* Destructive: the warning token - red is reserved for market data */
 .settings-button[data-danger] {
   border-color: var(--pd-warning);
   color: var(--pd-warning);

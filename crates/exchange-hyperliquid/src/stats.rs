@@ -1,6 +1,6 @@
 //! Market stats: the pieces `activeAssetCtx` doesn't carry. Hyperliquid has no
-//! 24h high/low, so they come from hourly candles — seeded over REST, then kept
-//! current from the `candle` channel — and funding is paid every hour, on the
+//! 24h high/low, so they come from hourly candles - seeded over REST, then kept
+//! current from the `candle` channel - and funding is paid every hour, on the
 //! hour.
 
 use std::collections::BTreeMap;

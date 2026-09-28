@@ -96,7 +96,7 @@
   flex: 1;
 }
 
-/* Live dot: brass when the feed is streaming — one of brass's few jobs */
+/* Live dot: brass when the feed is streaming - one of brass's few jobs */
 .pd-live-dot {
   width: 7px;
   height: 7px;
@@ -501,7 +501,7 @@
   border-bottom: 1px solid var(--pd-border);
 }
 
-/* Splash — shown while the interface language loads, then fades out over
+/* Splash - shown while the interface language loads, then fades out over
    the app (350ms: keep in sync with SPLASH_FADE_MS) */
 .splash {
   position: fixed;
@@ -575,7 +575,7 @@
   }
 }
 
-/* Theme swatches in the theme menu — each scoped to its own data-theme */
+/* Theme swatches in the theme menu - each scoped to its own data-theme */
 .theme-swatch {
   display: block;
   width: 46px;

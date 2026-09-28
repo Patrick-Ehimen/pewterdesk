@@ -58,8 +58,8 @@ export const messages: Messages = {
   "tip.avgFill": "Prix moyen d'exécution",
   "tip.fromMid": "Écart au prix médian",
   "tip.value": "Valeur",
-  "tip.tradeBuy": "Achat — le preneur a pris une offre de vente",
-  "tip.tradeSell": "Vente — le preneur a frappé une offre d'achat",
+  "tip.tradeBuy": "Achat - le preneur a pris une offre de vente",
+  "tip.tradeSell": "Vente - le preneur a frappé une offre d'achat",
 
   "book.spread": "spread {spread} · {bps} pb",
   "book.ratio": "Achats {bids}, ventes {asks}",
@@ -215,7 +215,7 @@ export const messages: Messages = {
   "view.stackedDesc": "Deux lignes par entrée, plus lisible",
 
   "feed.loading": "Chargement…",
-  "feed.closed": "Flux fermé — dernière mise à jour affichée.",
+  "feed.closed": "Flux fermé - dernière mise à jour affichée.",
   "feed.pickMarket": "Choisissez un marché.",
   "feed.noAccount": "Aucun compte à afficher.",
 
@@ -244,7 +244,7 @@ export const messages: Messages = {
   "nav.settingsDesc": "Préférences, wallets et clés",
 
   "portfolio.empty":
-    "Connectez un wallet pour voir un portefeuille. Lecture seule — aucune clé requise.",
+    "Connectez un wallet pour voir un portefeuille. Lecture seule - aucune clé requise.",
 
   "portfolio.equityNote": "{quote} sur {venue}",
 
@@ -459,7 +459,7 @@ export const messages: Messages = {
     "Pewterdesk ne voit jamais votre phrase de récupération. Les connexions vont directement de cet appareil à chaque plateforme.",
 
   "error.noTauri":
-    "Les données de marché nécessitent l'application de bureau — lancez `make dev`, pas `make dev-ui`.",
+    "Les données de marché nécessitent l'application de bureau - lancez `make dev`, pas `make dev-ui`.",
   "error.failed": "L'appel à la plateforme a échoué.",
   "error.unsupported": "Non pris en charge : {detail}",
   "error.invalidRequest": "Requête invalide : {detail}",

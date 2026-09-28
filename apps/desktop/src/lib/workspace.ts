@@ -35,7 +35,7 @@ function place(kind: PanelKind, x: number, y: number, w: number, h: number): Pla
 }
 
 /**
- * The market stats bar: fixed in the grid (static — not draggable, resizable
+ * The market stats bar: fixed in the grid (static - not draggable, resizable
  * or removable), one per layout, across the top left of Account.
  */
 export const STATS_BAR_ID = "stats:bar";
@@ -317,7 +317,7 @@ export function saveAs(state: WorkspaceState, name: string): WorkspaceState {
 
 /**
  * How a panel can be temporarily expanded: `wide` covers it and the order
- * book beside it; `full` covers the whole workspace. A view only — the layout
+ * book beside it; `full` covers the whole workspace. A view only - the layout
  * itself doesn't change.
  */
 export type ExpandMode = "wide" | "full";

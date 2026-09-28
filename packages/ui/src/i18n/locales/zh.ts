@@ -44,7 +44,7 @@ export const messages: Messages = {
   "hint.book.price": "该档位挂单的限价。卖盘（卖方）位于价差上方，买盘（买方）位于下方。",
   "hint.book.size": "恰好挂在此价格上的全部数量。",
   "hint.book.total":
-    "从价差到此档位的累计数量——市价单要吃到这里需要消耗的深度。阴影条表示同样的信息。",
+    "从价差到此档位的累计数量--市价单要吃到这里需要消耗的深度。阴影条表示同样的信息。",
   "hint.trades.price": "成交价格。买方吃掉卖单时为绿色，卖方砸向买单时为红色。",
   "hint.trades.size": "成交的数量。",
   "hint.trades.time": "成交时间，按你的本地时间显示。",
@@ -56,8 +56,8 @@ export const messages: Messages = {
   "tip.avgFill": "平均成交价",
   "tip.fromMid": "距中间价",
   "tip.value": "价值",
-  "tip.tradeBuy": "买入——吃单方买走卖单",
-  "tip.tradeSell": "卖出——吃单方卖给买单",
+  "tip.tradeBuy": "买入--吃单方买走卖单",
+  "tip.tradeSell": "卖出--吃单方卖给买单",
 
   "book.spread": "价差 {spread} · {bps} 基点",
   "book.ratio": "买盘 {bids}，卖盘 {asks}",
@@ -207,7 +207,7 @@ export const messages: Messages = {
   "view.stackedDesc": "每条两行，更易浏览",
 
   "feed.loading": "加载中…",
-  "feed.closed": "数据流已关闭——显示最后一次更新。",
+  "feed.closed": "数据流已关闭--显示最后一次更新。",
   "feed.pickMarket": "请选择一个市场。",
   "feed.noAccount": "没有可显示的账户。",
 
@@ -235,7 +235,7 @@ export const messages: Messages = {
 
   "nav.settingsDesc": "偏好设置、钱包与密钥",
 
-  "portfolio.empty": "连接钱包即可查看资产组合。只读——无需密钥。",
+  "portfolio.empty": "连接钱包即可查看资产组合。只读--无需密钥。",
 
   "portfolio.equityNote": "{venue} 上的 {quote}",
 
@@ -437,7 +437,7 @@ export const messages: Messages = {
   "wallet.apiDetail": "使用你已授权的代理密钥",
   "wallet.footer": "Pewterdesk 永远不会看到你的助记词。连接直接从本设备发往各交易所。",
 
-  "error.noTauri": "交易所数据需要桌面应用——请运行 `make dev`，而不是 `make dev-ui`。",
+  "error.noTauri": "交易所数据需要桌面应用--请运行 `make dev`，而不是 `make dev-ui`。",
   "error.failed": "交易所请求失败。",
   "error.unsupported": "不支持：{detail}",
   "error.invalidRequest": "无效请求：{detail}",

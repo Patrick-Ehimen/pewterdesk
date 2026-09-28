@@ -15,7 +15,7 @@ interface DepthViewProps {
 
 /**
  * The Depth tab when the panel is expanded, after the design: the detailed
- * depth chart, zoomed to fit the visible book, and two readouts underneath —
+ * depth chart, zoomed to fit the visible book, and two readouts underneath -
  * book imbalance across that span, and the largest walls.
  */
 export function DepthView({ book, venue, base }: DepthViewProps) {

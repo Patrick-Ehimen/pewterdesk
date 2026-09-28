@@ -2,7 +2,7 @@
 
 export type AccountSnapshot = { venue: VenueId, 
 /**
- * The main account address — not the trade-only key's address.
+ * The main account address - not the trade-only key's address.
  */
 address: string, 
 /**
@@ -139,8 +139,8 @@ rate: Decimal,
 time: number, };
 
 /**
- * Details are `&'static str` so a formatted string — which might embed key
- * material from a backend error — can't be passed through.
+ * Details are `&'static str` so a formatted string - which might embed key
+ * material from a backend error - can't be passed through.
  */
 export type KeyError = { "kind": "notFound" } | { "kind": "backend", "detail": string };
 
@@ -301,8 +301,8 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 limitPrice?: Decimal, };
 
 /**
- * Venue-agnostic order intent. Adapters translate it — into two steps where
- * a venue needs them — and reject what the venue can't express rather than
+ * Venue-agnostic order intent. Adapters translate it - into two steps where
+ * a venue needs them - and reject what the venue can't express rather than
  * approximating it.
  *
  * No `deny_unknown_fields`: serde can't combine it with `flatten`, and it
@@ -341,8 +341,8 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 limitPrice?: Decimal, });
 
 /**
- * `Pending` means accepted but not yet live — waiting on a keeper, an
- * auction or block inclusion — and may still end as `Rejected`.
+ * `Pending` means accepted but not yet live - waiting on a keeper, an
+ * auction or block inclusion - and may still end as `Rejected`.
  * `Open` means resting on the venue; `filled_size` may be non-zero.
  */
 export type OrderStatus = "pending" | "open" | "filled" | "cancelled" | "rejected";
@@ -408,7 +408,7 @@ address: string,
 key: string, };
 
 /**
- * Crosses IPC to the frontend, so details must never carry key material —
+ * Crosses IPC to the frontend, so details must never carry key material -
  * venue error messages are fine, anything from a key or signer is not.
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "key", "detail": KeyError };

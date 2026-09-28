@@ -128,7 +128,7 @@ export function QuickTrade({
     onMove(next);
   };
 
-  const price = (v: number | undefined) => (v === undefined ? "—" : formatNumber(v, decimals));
+  const price = (v: number | undefined) => (v === undefined ? "-" : formatNumber(v, decimals));
   const side = (which: "long" | "short") => {
     const act = which === "long" ? onLong : onShort;
     return {

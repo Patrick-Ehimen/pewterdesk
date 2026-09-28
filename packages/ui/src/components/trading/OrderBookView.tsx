@@ -36,7 +36,7 @@ export interface BookLadder {
   spread?: number;
   spreadBps?: number;
   /**
-   * Bid size over bid + ask size, 0–1, across every level the venue sent —
+   * Bid size over bid + ask size, 0–1, across every level the venue sent -
    * not just the ones shown, so resizing the panel doesn't move it.
    * Undefined for an empty book.
    */
@@ -213,7 +213,7 @@ function LevelTip({ row, side, mid, priceDecimals, base, quote }: LevelTipProps)
         [t("tip.totalToHere"), unit(formatNumber(row.total, decimalsOf(row.size)), base)],
         [t("tip.valueToHere"), unit(formatNumber(row.notional, 2), quote)],
         [t("tip.avgFill"), formatNumber(row.notional / row.total, priceDecimals)],
-        [t("tip.fromMid"), fromMid === undefined ? "—" : `${formatSigned(fromMid * 100, 3)}%`],
+        [t("tip.fromMid"), fromMid === undefined ? "-" : `${formatSigned(fromMid * 100, 3)}%`],
       ]}
     />
   );
@@ -336,7 +336,7 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
       </div>
       <div className="pd-book-spread">
         <span className="pd-book-mid" data-trend={trend}>
-          {midShown === undefined ? "—" : formatNumber(midShown, midDecimals)}
+          {midShown === undefined ? "-" : formatNumber(midShown, midDecimals)}
           {trend && (
             <span className="pd-book-trend" aria-hidden>
               {trend === "up" ? "▲" : "▼"}

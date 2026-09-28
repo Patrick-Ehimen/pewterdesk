@@ -1,8 +1,8 @@
-//! Tauri commands exposing the venue adapters — the only way the UI reaches a
+//! Tauri commands exposing the venue adapters - the only way the UI reaches a
 //! venue. Read-only so far: markets, order books, trades, candles, market
 //! stats, summaries and history, funding history, and account state.
 //!
-//! Security invariants — review any change here against
+//! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
 //! - These commands and `ExchangeAdapter` together are the whole signing
 //!   surface. When orders land, they add place and cancel, nothing else.

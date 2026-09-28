@@ -8,7 +8,7 @@
 //!
 //! Order placement lands next with its signer (EIP-712 over the msgpack action
 //! hash, with an API/agent wallet as the trade-only key) and the `KeySource`
-//! the adapter takes in its constructor. The signer is security-sensitive —
+//! the adapter takes in its constructor. The signer is security-sensitive -
 //! see docs/adr/0001-venues-in-rust.md.
 
 pub mod constants;
@@ -165,7 +165,7 @@ async fn post_info<T: DeserializeOwned>(
 }
 
 impl HyperliquidAdapter {
-    /// Talks only to `endpoints`, which are fixed in [`constants`] — never a
+    /// Talks only to `endpoints`, which are fixed in [`constants`] - never a
     /// URL supplied by a caller.
     pub fn new(endpoints: &'static Endpoints) -> Result<Self, VenueError> {
         let http = reqwest::Client::builder()

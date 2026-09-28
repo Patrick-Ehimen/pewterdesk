@@ -45,7 +45,7 @@ export const messages: Messages = {
     "Preço limite das ordens neste nível. Ofertas de venda (vendedores) ficam acima do spread e as de compra (compradores), abaixo.",
   "hint.book.size": "Tudo o que está exatamente neste preço.",
   "hint.book.total":
-    "Tamanho acumulado do spread até este nível — o que uma ordem a mercado teria de consumir para chegar aqui. A barra sombreada mostra a mesma coisa.",
+    "Tamanho acumulado do spread até este nível - o que uma ordem a mercado teria de consumir para chegar aqui. A barra sombreada mostra a mesma coisa.",
   "hint.trades.price":
     "Preço em que a negociação foi executada. Verde quando um comprador pegou uma oferta de venda, vermelho quando um vendedor bateu em uma de compra.",
   "hint.trades.size": "Quanto mudou de mãos.",
@@ -58,8 +58,8 @@ export const messages: Messages = {
   "tip.avgFill": "Preço médio de execução",
   "tip.fromMid": "Distância do preço médio",
   "tip.value": "Valor",
-  "tip.tradeBuy": "Compra — o tomador pegou uma oferta de venda",
-  "tip.tradeSell": "Venda — o tomador bateu em uma oferta de compra",
+  "tip.tradeBuy": "Compra - o tomador pegou uma oferta de venda",
+  "tip.tradeSell": "Venda - o tomador bateu em uma oferta de compra",
 
   "book.spread": "spread {spread} · {bps} bps",
   "book.ratio": "Compras {bids}, vendas {asks}",
@@ -210,7 +210,7 @@ export const messages: Messages = {
   "view.stackedDesc": "Duas linhas por item, mais fácil de ler",
 
   "feed.loading": "Carregando…",
-  "feed.closed": "Fluxo encerrado — mostrando a última atualização.",
+  "feed.closed": "Fluxo encerrado - mostrando a última atualização.",
   "feed.pickMarket": "Escolha um mercado.",
   "feed.noAccount": "Nenhuma conta para mostrar.",
 
@@ -239,7 +239,7 @@ export const messages: Messages = {
   "nav.settingsDesc": "Preferências, carteiras e chaves",
 
   "portfolio.empty":
-    "Conecte uma carteira para ver um portfólio. Somente leitura — nenhuma chave necessária.",
+    "Conecte uma carteira para ver um portfólio. Somente leitura - nenhuma chave necessária.",
 
   "portfolio.equityNote": "{quote} na {venue}",
 
@@ -453,7 +453,7 @@ export const messages: Messages = {
     "O Pewterdesk nunca vê sua frase-semente. As conexões vão direto deste dispositivo para cada corretora.",
 
   "error.noTauri":
-    "Os dados da corretora exigem o app de desktop — execute `make dev`, não `make dev-ui`.",
+    "Os dados da corretora exigem o app de desktop - execute `make dev`, não `make dev-ui`.",
   "error.failed": "A chamada à corretora falhou.",
   "error.unsupported": "Não suportado: {detail}",
   "error.invalidRequest": "Solicitação inválida: {detail}",

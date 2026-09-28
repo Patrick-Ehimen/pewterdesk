@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # version comes from root package.json's "packageManager" field —
+      # version comes from root package.json's "packageManager" field -
       # do not also pin a version here, pnpm/action-setup errors out if both
       # are set (that's what broke run #4)
       - uses: pnpm/action-setup@v4

@@ -1,8 +1,8 @@
 # pewterdesk
 
 Non-custodial, multi-venue crypto derivatives trading terminal (desktop-first,
-web later). No backend — talks directly to exchange APIs from the user's own
-machine. Launch venues: Hyperliquid and Aster — both on-chain.
+web later). No backend - talks directly to exchange APIs from the user's own
+machine. Launch venues: Hyperliquid and Aster - both on-chain.
 Venue adapters, signing and key handling are Rust; the UI is TypeScript/React
 (see `docs/adr/0001-venues-in-rust.md`).
 
@@ -13,8 +13,8 @@ nothing else may:
 
 - `ExchangeAdapter` plus the domain types (`Order`, `Position`, `Market`,
   `OrderBook`, ...). Every venue crate (`crates/exchange-<venue>`) implements
-  that trait and depends on `core` — never the other way around.
-- `KeySource` — how an adapter gets a key, independent of where it's stored.
+  that trait and depends on `core` - never the other way around.
+- `KeySource` - how an adapter gets a key, independent of where it's stored.
 
 `KeySource` runs the same direction: `core` owns the trait, the app owns the
 implementation (the desktop app backs it with the OS keychain). Venue crates
@@ -26,7 +26,7 @@ hand; change the Rust and regenerate. Their serde attributes are the IPC wire
 format, so renaming a field is a breaking change for the frontend.
 
 `packages/ui` and the two `apps/*` depend on `packages/core` for types and
-reach venues only through Tauri commands — never a venue crate or a venue's
+reach venues only through Tauri commands - never a venue crate or a venue's
 API directly. That's what makes adding a venue a new crate, not a rewrite of
 the UI. `packages/core` also holds `SecretStore`, used only to onboard a key
 into the keychain (`apps/desktop/src/secrets/tauriSecretStore.ts`); `apps/web`
@@ -34,12 +34,12 @@ has no implementation and is not meant to get one.
 
 ## Layout
 
-- `crates/core` — domain types, the `ExchangeAdapter` trait, `KeySource`
-- `crates/exchange-hyperliquid`, `-aster` — one adapter per venue (Hyperliquid is read-only so far; Aster is a stub)
-- `packages/core` — the generated TS domain types and the `SecretStore` contract
-- `packages/ui` — shared React components (order ticket, position table, chart wrapper, hotkeys)
-- `apps/desktop` — the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
-- `apps/web` — v2, deferred. Same frontend stack, but it can't run the Rust
+- `crates/core` - domain types, the `ExchangeAdapter` trait, `KeySource`
+- `crates/exchange-hyperliquid`, `-aster` - one adapter per venue (Hyperliquid is read-only so far; Aster is a stub)
+- `packages/core` - the generated TS domain types and the `SecretStore` contract
+- `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
+- `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
+- `apps/web` - v2, deferred. Same frontend stack, but it can't run the Rust
   adapters as-is (needs a WASM build or its own implementation, a
   browser-wallet signer, and a proxy for CORS)
 
@@ -51,42 +51,42 @@ build output goes to the root `target/`.
 Run `make` on its own for the full menu. The Makefile is a thin wrapper over
 pnpm and cargo, so it can't drift from the underlying scripts.
 
-- `make install` — resolve the workspace and enable the git hooks
-- `make check` — what CI runs, in CI's order: lint, typecheck, test, build
-- `make check-all` — `check` plus the Rust side, which CI does not cover yet;
+- `make install` - resolve the workspace and enable the git hooks
+- `make check` - what CI runs, in CI's order: lint, typecheck, test, build
+- `make check-all` - `check` plus the Rust side, which CI does not cover yet;
   also fails if the generated TS types are stale
-- `make rust-bindings` — regenerate `packages/core/src/generated/` after changing `crates/core`
-- `make dev` — run the desktop app in a native window (needs Rust)
-- `make dev-ui` — desktop frontend in a browser only, no Rust
-- `cargo test -p pewterdesk -- --ignored` — the keychain tests that touch the
+- `make rust-bindings` - regenerate `packages/core/src/generated/` after changing `crates/core`
+- `make dev` - run the desktop app in a native window (needs Rust)
+- `make dev-ui` - desktop frontend in a browser only, no Rust
+- `cargo test -p pewterdesk -- --ignored` - the keychain tests that touch the
   real OS store, skipped by default
-- `cargo test -p pewterdesk-exchange-hyperliquid -- --ignored` — read-only
+- `cargo test -p pewterdesk-exchange-hyperliquid -- --ignored` - read-only
   tests against Hyperliquid mainnet (needs the network, no key)
 
 Packages are consumed from source: every `package.json` points `main`/`types`
 at `./src/index.ts`, and the tsconfigs deliberately carry no `references`.
 Don't add them back. Project references redirect module resolution to
-`packages/*/dist`, which `tsc --noEmit` then requires to already exist — and
+`packages/*/dist`, which `tsc --noEmit` then requires to already exist - and
 both CI and `make check` typecheck before they build, so it fails on any clean
 checkout the moment one package actually imports another. `dist/` is build
 output; nothing imports it.
 
-## Security-sensitive code — extra care here
+## Security-sensitive code - extra care here
 
 Any change to the code below needs review against
 `.claude/commands/security-review.md`, and an explicit callout in the PR
-description under a "Security-relevant changes" heading — don't leave a reviewer to
+description under a "Security-relevant changes" heading - don't leave a reviewer to
 discover it on their own. The reasoning behind the rules is in
 `docs/adr/0001-venues-in-rust.md`.
 
-- `apps/desktop/src-tauri/src/keychain.rs` — the OS keychain bridge, and the
+- `apps/desktop/src-tauri/src/keychain.rs` - the OS keychain bridge, and the
   only place key material is stored. Keys never touch disk, env vars, or logs.
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
   than formatted into a string. `get_secret` still returns a key to JS; it is
   removed (with `withSecret`) in the PR that lands the first `KeySource`
   implementation, and nothing new may depend on it.
-- Signing code in each `crates/exchange-<venue>` (none written yet) — what
+- Signing code in each `crates/exchange-<venue>` (none written yet) - what
   turns a key into a signed venue action. The highest-stakes code in the repo.
   Hold keys only as `Zeroizing` and only for the signing call.
 - The `ExchangeAdapter` trait and the Tauri commands that expose it. Together
@@ -99,7 +99,7 @@ discover it on their own. The reasoning behind the rules is in
 
 The webview CSP in `apps/desktop/src-tauri/tauri.conf.json` is part of this
 surface, not cosmetic. `connect-src` allows only `'self'` and IPC, and it
-stays that way — the webview never needs the network, because venue crates
+stays that way - the webview never needs the network, because venue crates
 make every request. Each venue crate connects only to its own hosts and
 explicitly configured RPC endpoints.
 
@@ -141,7 +141,7 @@ hardcode text in components. English in `packages/ui/src/i18n/locales/en.ts` is
 the source of truth, and the other seven locales are typed against it, so a
 new key fails the typecheck until every language has it. The language is fixed
 per session (switching reloads the app behind the splash), so never call `t` at
-module scope — it would run before the locale loads. Numbers stay en-US in
+module scope - it would run before the locale loads. Numbers stay en-US in
 every language on purpose; dates follow the locale via `dateFormat`.
 
 ## Brand

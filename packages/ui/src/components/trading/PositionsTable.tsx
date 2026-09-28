@@ -51,7 +51,7 @@ export function PositionsTable({
               <td className="pd-num">{formatNumber(p.entryPrice)}</td>
               <td className="pd-num">{formatNumber(p.markPrice)}</td>
               <td className="pd-num pd-warn">
-                {p.liquidationPrice ? formatNumber(p.liquidationPrice) : "—"}
+                {p.liquidationPrice ? formatNumber(p.liquidationPrice) : "-"}
               </td>
               <td className={`pd-num ${trendClass(pnl)}`}>
                 {formatSigned(pnl)}
@@ -105,7 +105,7 @@ export function OpenOrdersTable({
             <td className="pd-num">{formatNumber(o.size)}</td>
             <td className="pd-num">{formatPercent(Number(o.filledSize) / Number(o.size), 0)}</td>
             <td className="pd-num">{o.price ? formatNumber(o.price) : t("orderType.market")}</td>
-            <td className="pd-num">{o.triggerPrice ? formatNumber(o.triggerPrice) : "—"}</td>
+            <td className="pd-num">{o.triggerPrice ? formatNumber(o.triggerPrice) : "-"}</td>
             <td>{t(o.reduceOnly ? "common.yes" : "common.no")}</td>
             <td>{t(`orderStatus.${o.status}`)}</td>
           </tr>
@@ -163,7 +163,7 @@ export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolF
                 {formatNumber(f.fee)} {f.feeAsset}
               </td>
               <td className={`pd-num ${pnl === 0 ? "pd-muted" : trendClass(pnl)}`}>
-                {pnl === 0 ? "—" : formatSigned(pnl)}
+                {pnl === 0 ? "-" : formatSigned(pnl)}
               </td>
             </tr>
           );

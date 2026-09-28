@@ -1,7 +1,7 @@
 // Interface strings. English is the source of truth (locales/en.ts); every
 // other locale is typed against it, so a missing or extra key fails the
-// typecheck. The language is fixed for a session — switching reloads the
-// app — so this is a module-level catalogue, not React context: components,
+// typecheck. The language is fixed for a session - switching reloads the
+// app - so this is a module-level catalogue, not React context: components,
 // hooks and plain functions can all call `t`.
 
 import { en, type MessageKey, type Messages } from "./locales/en";

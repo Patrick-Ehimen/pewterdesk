@@ -1,7 +1,7 @@
 /* Pewterdesk color tokens. Pewter (dark) is the default; set data-theme on
    <html> to dark | graphite | synthwave | monokai | palenight | parchment
    (or light, the brand light palette), and data-market="colorblind" for
-   colorblind-safe market colors. The brand themes vary only the neutrals —
+   colorblind-safe market colors. The brand themes vary only the neutrals -
    brass is the one accent. The editor-inspired themes (synthwave, monokai,
    palenight) swap in their own single accent through the --pd-brass tokens;
    green/red stay market-only everywhere. Selectors work on any element, so a

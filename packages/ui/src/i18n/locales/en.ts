@@ -47,7 +47,7 @@ export const en = {
     "Limit price of the orders resting at this level. Asks (sellers) sit above the spread, bids (buyers) below.",
   "hint.book.size": "Everything resting at exactly this price.",
   "hint.book.total":
-    "Cumulative size from the spread out to this level — what a market order would have to eat through to get here. The shaded bar shows the same thing.",
+    "Cumulative size from the spread out to this level - what a market order would have to eat through to get here. The shaded bar shows the same thing.",
   "hint.trades.price":
     "What the trade filled at. Green when a buyer took an ask, red when a seller hit a bid.",
   "hint.trades.size": "How much changed hands.",
@@ -61,8 +61,8 @@ export const en = {
   "tip.avgFill": "Avg. fill price",
   "tip.fromMid": "From mid",
   "tip.value": "Value",
-  "tip.tradeBuy": "Buy — taker lifted an ask",
-  "tip.tradeSell": "Sell — taker hit a bid",
+  "tip.tradeBuy": "Buy - taker lifted an ask",
+  "tip.tradeSell": "Sell - taker hit a bid",
 
   // Order book and trades
   "book.spread": "spread {spread} · {bps} bps",
@@ -217,7 +217,7 @@ export const en = {
 
   // Feed states
   "feed.loading": "Loading…",
-  "feed.closed": "Feed closed — showing the last update.",
+  "feed.closed": "Feed closed - showing the last update.",
   "feed.pickMarket": "Pick a market.",
   "feed.noAccount": "No account to show.",
 
@@ -235,7 +235,7 @@ export const en = {
   "nav.news": "News",
   "nav.newsDesc": "Venue, on-chain and macro headlines",
   "nav.settingsDesc": "Preferences, wallets and keys",
-  "portfolio.empty": "Connect a wallet to see a portfolio. It's read-only — no key needed.",
+  "portfolio.empty": "Connect a wallet to see a portfolio. It's read-only - no key needed.",
   "portfolio.equityNote": "{quote} on {venue}",
   "portfolio.positionsNote": "Open positions: {count}",
   "portfolio.marginNote": "{percent} of equity",
@@ -402,7 +402,7 @@ export const en = {
     "Pewterdesk never sees your seed phrase. Connections go straight from this device to each exchange.",
 
   // Errors
-  "error.noTauri": "Venue data needs the desktop app — run `make dev`, not `make dev-ui`.",
+  "error.noTauri": "Venue data needs the desktop app - run `make dev`, not `make dev-ui`.",
   "error.failed": "The venue call failed.",
   "error.unsupported": "Not supported: {detail}",
   "error.invalidRequest": "Invalid request: {detail}",

@@ -1,4 +1,4 @@
-# pewterdesk — task runner
+# pewterdesk - task runner
 #
 # A thin, discoverable wrapper over pnpm and cargo. Every target here shells out
 # to the underlying tool rather than reimplementing it, so `make` and the
@@ -23,7 +23,7 @@ DEV_PORT    := 1420
 
 .PHONY: help
 help: ## Show this help
-	@awk 'BEGIN {FS = ":.*##"; printf "\npewterdesk — make <target>\n"} \
+	@awk 'BEGIN {FS = ":.*##"; printf "\npewterdesk - make <target>\n"} \
 		/^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2 } \
 		/^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } \
 		END { printf "\n" }' $(MAKEFILE_LIST)
@@ -34,17 +34,17 @@ install: ## Install workspace dependencies (also enables the git hooks)
 
 .PHONY: doctor
 doctor: ## Check that the local toolchain can actually build and run the app
-	@echo "node    $$(node --version 2>/dev/null || echo 'MISSING — need >= 22.12')"
-	@echo "pnpm    $$(pnpm --version 2>/dev/null || echo 'MISSING — corepack enable')"
-	@echo "cargo   $$(cargo --version 2>/dev/null || echo 'MISSING — https://rustup.rs')"
+	@echo "node    $$(node --version 2>/dev/null || echo 'MISSING - need >= 22.12')"
+	@echo "pnpm    $$(pnpm --version 2>/dev/null || echo 'MISSING - corepack enable')"
+	@echo "cargo   $$(cargo --version 2>/dev/null || echo 'MISSING - https://rustup.rs')"
 	@echo "rustc   $$(rustc --version 2>/dev/null || echo MISSING)"
 	@printf 'tauri   '
 	@$(PNPM) --filter $(DESKTOP_PKG) exec tauri --version 2>/dev/null \
-		|| echo "BROKEN — native binding missing for $$(uname -m); re-run 'make install'"
+		|| echo "BROKEN - native binding missing for $$(uname -m); re-run 'make install'"
 	@printf 'hooks   '
 	@h=$$(git config core.hooksPath 2>/dev/null); \
 		if [ "$$h" = ".githooks" ]; then echo "enabled (.githooks)"; \
-		else echo "NOT enabled — run 'make hooks'"; fi
+		else echo "NOT enabled - run 'make hooks'"; fi
 
 ##@ Running
 
@@ -119,7 +119,7 @@ rust-fmt-check: ## Fail if the Rust side is unformatted
 rust-test: ## Run Rust tests and check the generated TS types are committed
 	$(CARGO) test --workspace
 	@git diff --exit-code --stat -- packages/core/src/generated \
-		|| (echo "generated TS types changed — commit packages/core/src/generated" && exit 1)
+		|| (echo "generated TS types changed - commit packages/core/src/generated" && exit 1)
 
 .PHONY: rust-bindings
 rust-bindings: ## Regenerate packages/core/src/generated from crates/core
@@ -128,7 +128,7 @@ rust-bindings: ## Regenerate packages/core/src/generated from crates/core
 ##@ Packaging
 
 .PHONY: bundle
-bundle: ## Build a distributable desktop app (.app/.dmg on macOS) — slow, release profile
+bundle: ## Build a distributable desktop app (.app/.dmg on macOS) - slow, release profile
 	$(PNPM) --filter $(DESKTOP_PKG) run tauri build
 
 .PHONY: icons

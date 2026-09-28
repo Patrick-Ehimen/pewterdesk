@@ -337,7 +337,7 @@ fn step(decimals: u32) -> Decimal {
 
 /// Hyperliquid has no fixed tick size: a price may have at most five
 /// significant figures and at most `6 - szDecimals` decimals. `tick_size` is
-/// the finer of the two bounds — the adapter validates the significant-figure
+/// the finer of the two bounds - the adapter validates the significant-figure
 /// rule itself when it places orders.
 pub fn market(asset: &AssetMeta, quote: &str) -> Market {
     // Builder-deployed markets are "<dex>:<coin>"; the id keeps the prefix.

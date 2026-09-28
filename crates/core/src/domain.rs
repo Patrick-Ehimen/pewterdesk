@@ -353,8 +353,8 @@ pub enum OrderKind {
     },
 }
 
-/// Venue-agnostic order intent. Adapters translate it — into two steps where
-/// a venue needs them — and reject what the venue can't express rather than
+/// Venue-agnostic order intent. Adapters translate it - into two steps where
+/// a venue needs them - and reject what the venue can't express rather than
 /// approximating it.
 ///
 /// No `deny_unknown_fields`: serde can't combine it with `flatten`, and it
@@ -403,8 +403,8 @@ impl OrderKind {
     }
 }
 
-/// `Pending` means accepted but not yet live — waiting on a keeper, an
-/// auction or block inclusion — and may still end as `Rejected`.
+/// `Pending` means accepted but not yet live - waiting on a keeper, an
+/// auction or block inclusion - and may still end as `Rejected`.
 /// `Open` means resting on the venue; `filled_size` may be non-zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -467,7 +467,7 @@ pub struct Position {
 #[ts(export, export_to = TS_FILE)]
 pub struct AccountSnapshot {
     pub venue: VenueId,
-    /// The main account address — not the trade-only key's address.
+    /// The main account address - not the trade-only key's address.
     pub address: String,
     /// Total account value in the quote asset, including unrealized PnL.
     pub equity: Decimal,

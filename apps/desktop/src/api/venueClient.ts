@@ -44,8 +44,8 @@ export function asVenueError(raw: unknown): VenueError | undefined {
 }
 
 /**
- * A one-line message for the UI. Venue details are safe to show — venues.rs
- * guarantees they carry no key material — but an unrecognised rejection is
+ * A one-line message for the UI. Venue details are safe to show - venues.rs
+ * guarantees they carry no key material - but an unrecognised rejection is
  * never echoed, since we don't know what's in it.
  */
 export function describeVenueError(error: VenueError | undefined): string {
@@ -78,7 +78,7 @@ async function call<T>(command: string, args: Record<string, unknown>): Promise<
 
 /**
  * Starts a subscription command and returns a function that ends it. Safe to
- * call the returned function before the command resolves — the subscription
+ * call the returned function before the command resolves - the subscription
  * is torn down as soon as its id arrives, and no handler fires after it.
  */
 function subscribe<T>(

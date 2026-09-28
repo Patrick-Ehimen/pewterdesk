@@ -58,8 +58,8 @@ export const messages: Messages = {
   "tip.avgFill": "평균 체결가",
   "tip.fromMid": "중간가 대비",
   "tip.value": "금액",
-  "tip.tradeBuy": "매수 — 테이커가 매도 호가를 체결",
-  "tip.tradeSell": "매도 — 테이커가 매수 호가를 체결",
+  "tip.tradeBuy": "매수 - 테이커가 매도 호가를 체결",
+  "tip.tradeSell": "매도 - 테이커가 매수 호가를 체결",
 
   "book.spread": "스프레드 {spread} · {bps} bp",
   "book.ratio": "매수 {bids}, 매도 {asks}",
@@ -209,7 +209,7 @@ export const messages: Messages = {
   "view.stackedDesc": "행마다 두 줄, 훑어보기 쉬움",
 
   "feed.loading": "불러오는 중…",
-  "feed.closed": "피드가 종료되었습니다 — 마지막 업데이트를 표시합니다.",
+  "feed.closed": "피드가 종료되었습니다 - 마지막 업데이트를 표시합니다.",
   "feed.pickMarket": "마켓을 선택하세요.",
   "feed.noAccount": "표시할 계정이 없습니다.",
 
@@ -237,7 +237,7 @@ export const messages: Messages = {
 
   "nav.settingsDesc": "환경설정, 지갑, 키",
 
-  "portfolio.empty": "지갑을 연결하면 포트폴리오를 볼 수 있습니다. 읽기 전용 — 키가 필요 없습니다.",
+  "portfolio.empty": "지갑을 연결하면 포트폴리오를 볼 수 있습니다. 읽기 전용 - 키가 필요 없습니다.",
 
   "portfolio.equityNote": "{venue}의 {quote}",
 
@@ -447,7 +447,7 @@ export const messages: Messages = {
     "Pewterdesk는 시드 구문을 절대 보지 않습니다. 연결은 이 기기에서 각 거래소로 바로 이어집니다.",
 
   "error.noTauri":
-    "거래소 데이터는 데스크톱 앱에서만 볼 수 있습니다 — `make dev-ui`가 아닌 `make dev`를 실행하세요.",
+    "거래소 데이터는 데스크톱 앱에서만 볼 수 있습니다 - `make dev-ui`가 아닌 `make dev`를 실행하세요.",
   "error.failed": "거래소 요청이 실패했습니다.",
   "error.unsupported": "지원되지 않음: {detail}",
   "error.invalidRequest": "잘못된 요청: {detail}",

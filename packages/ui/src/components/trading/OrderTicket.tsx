@@ -195,7 +195,7 @@ export function OrderTicket({
   };
 
   const money = (v: number | undefined) =>
-    v === undefined || !Number.isFinite(v) ? "—" : `${formatNumber(v, 2)} ${quote}`;
+    v === undefined || !Number.isFinite(v) ? "-" : `${formatNumber(v, 2)} ${quote}`;
   const pct = (v: number) => `${formatNumber(v * 100, 2)}`;
   const isPro = type !== "market" && type !== "limit";
   const unavailable = !onSubmit;
@@ -279,7 +279,7 @@ export function OrderTicket({
       <dl className="pd-ticket-info">
         <div className="pd-ticket-line">
           <dt>{t("ticket.available")}</dt>
-          <dd>{account ? money(available) : "—"}</dd>
+          <dd>{account ? money(available) : "-"}</dd>
         </div>
         <div className="pd-ticket-line">
           <dt>{t("ticket.position")}</dt>
@@ -407,7 +407,7 @@ export function OrderTicket({
       <dl className="pd-ticket-summary">
         <div className="pd-ticket-line">
           <dt>{t("ticket.liqPrice")}</dt>
-          <dd>—</dd>
+          <dd>-</dd>
         </div>
         <div className="pd-ticket-line">
           <dt>{t("ticket.orderValue")}</dt>
@@ -445,7 +445,7 @@ export function OrderTicket({
           <dd>
             {fees
               ? `${formatNumber(fees.taker * 100, 4)}% / ${formatNumber(fees.maker * 100, 4)}%`
-              : "—"}
+              : "-"}
           </dd>
         </div>
       </dl>

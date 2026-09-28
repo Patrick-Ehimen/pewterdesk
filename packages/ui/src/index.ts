@@ -1,5 +1,5 @@
 // Shared React components: presentational only, fed through props. Import
-// venue-agnostic types from @pewterdesk/core only — never from an exchange
+// venue-agnostic types from @pewterdesk/core only - never from an exchange
 // package, and never call Tauri from here; the app owns data fetching.
 // Styles: import "@pewterdesk/ui/src/styles/styles.css" once at the app root.
 

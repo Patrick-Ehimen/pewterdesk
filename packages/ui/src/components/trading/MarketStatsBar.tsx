@@ -179,7 +179,7 @@ export function MarketStatsBar({
           </Tooltip>
           <Tooltip content={`${t("stats.mid")}: ${t("stats.midHint")}`}>
             <span className="pd-stats-mid">
-              {stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "—"}
+              {stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "-"}
             </span>
           </Tooltip>
         </div>

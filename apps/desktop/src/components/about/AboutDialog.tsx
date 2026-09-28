@@ -48,7 +48,7 @@ export function AboutDialog({ open, onClose, logoSrc }: AboutDialogProps) {
         t(info.debug ? "about.devBuild" : "about.releaseBuild"),
         `${OS_NAME[info.os] ?? info.os} ${ARCH_NAME[info.arch] ?? info.arch}`,
       ].join(" · ")
-    : "—";
+    : "-";
 
   const link = (id: AboutLink, label: string) => (
     <button

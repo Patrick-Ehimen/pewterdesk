@@ -286,17 +286,17 @@ export function MarketPicker({
                       </span>
                       <span className="pd-num">
                         {r.price === undefined
-                          ? "—"
+                          ? "-"
                           : formatNumber(r.price, decimalsOf(r.rawPrice ?? "0"))}
                       </span>
                       <span
                         className="pd-num"
                         data-trend={change === undefined ? undefined : change >= 0 ? "up" : "down"}
                       >
-                        {change === undefined ? "—" : `${formatSigned(change * 100)}%`}
+                        {change === undefined ? "-" : `${formatSigned(change * 100)}%`}
                       </span>
                       <span className="pd-num">
-                        {r.volume === undefined ? "—" : `$${formatCompact(r.volume)}`}
+                        {r.volume === undefined ? "-" : `$${formatCompact(r.volume)}`}
                       </span>
                     </button>
                   </li>

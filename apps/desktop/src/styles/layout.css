@@ -174,7 +174,7 @@
   opacity: 0.25;
 }
 
-/* Editing bar — the one brass-framed element on screen while it's open */
+/* Editing bar - the one brass-framed element on screen while it's open */
 .ws-bar {
   display: flex;
   align-items: center;

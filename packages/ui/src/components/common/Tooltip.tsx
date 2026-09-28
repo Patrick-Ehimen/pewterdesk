@@ -130,7 +130,7 @@ function isKeyboardFocus(el: Element): boolean {
 
 /**
  * When a trigger's tooltip is open: while hovered, or focused from the
- * keyboard — not for the focus a click leaves behind, which would keep it up
+ * keyboard - not for the focus a click leaves behind, which would keep it up
  * after the click. Pressing hides it until the pointer leaves, and so does
  * activating it from the keyboard (a button that moves or changes when used,
  * like a panel's expand button, would otherwise carry its tip along).

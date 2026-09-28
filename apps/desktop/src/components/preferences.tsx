@@ -1,5 +1,5 @@
 // Choice lists shared by the header menus and the settings page. They're
-// functions, not constants, because they call `t` — which must run after the
+// functions, not constants, because they call `t` - which must run after the
 // interface language has loaded.
 
 import { type Locale, languageName, type MenuOption, type RowMode, t } from "@pewterdesk/ui";

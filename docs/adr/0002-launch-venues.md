@@ -1,4 +1,4 @@
-# 0002 — Launch with Hyperliquid and Aster only
+# 0002 - Launch with Hyperliquid and Aster only
 
 - Status: accepted
 - Date: 2026-09-28

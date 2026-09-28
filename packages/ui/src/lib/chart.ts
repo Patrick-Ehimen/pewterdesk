@@ -13,7 +13,7 @@ export interface DrawnCandle {
  * high and low stretched to include that. A venue opens each candle at its
  * first trade, so on a quiet market candles float apart and one-trade
  * candles are flat dashes; joined, the series reads as one continuous line
- * of prices. Display only — the true open is still in the data.
+ * of prices. Display only - the true open is still in the data.
  */
 export function joinedCandle(candle: Candle, prevClose?: number): DrawnCandle {
   const high = Number(candle.high);

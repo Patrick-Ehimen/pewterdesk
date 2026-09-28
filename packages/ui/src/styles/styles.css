@@ -81,7 +81,7 @@ input {
   border-color: var(--pd-warning);
 }
 
-/* Tabs — brass underline marks the active tab */
+/* Tabs - brass underline marks the active tab */
 .pd-tabs {
   display: flex;
   align-items: center;
@@ -200,7 +200,7 @@ input {
   max-width: 280px;
 }
 
-/* Order book — fills its container; each side takes half the leftover height
+/* Order book - fills its container; each side takes half the leftover height
    and shows as many rows as fit (see OrderBookView) */
 .pd-book {
   flex: 1;
@@ -430,7 +430,7 @@ input {
   background: var(--pd-pewter);
 }
 
-/* Tooltip — raised card with an arrow, fades in; positioned by Tooltip.tsx */
+/* Tooltip - raised card with an arrow, fades in; positioned by Tooltip.tsx */
 .pd-tip-trigger {
   /* A bare button: looks like the text it wraps */
   padding: 0;
@@ -576,7 +576,7 @@ input {
   }
 }
 
-/* Trades tape — same row grid as the book */
+/* Trades tape - same row grid as the book */
 .pd-trades {
   flex: 1;
   min-height: 0;
@@ -619,7 +619,7 @@ input {
   }
 }
 
-/* Loading skeletons — a soft shimmer sweeping across placeholder bars */
+/* Loading skeletons - a soft shimmer sweeping across placeholder bars */
 .pd-skel {
   display: inline-block;
   height: 9px;
@@ -676,7 +676,7 @@ input {
   }
 }
 
-/* Stacked rows — two lines per order or trade, no column header */
+/* Stacked rows - two lines per order or trade, no column header */
 [data-mode="stacked"] .pd-book-row {
   height: 40px;
   display: flex;
@@ -730,7 +730,7 @@ input {
     color 120ms ease,
     background 120ms ease;
 }
-/* Hover/focus turns the icon brass — --pd-brass-text is the theme-aware
+/* Hover/focus turns the icon brass - --pd-brass-text is the theme-aware
    brass for text and line art (deeper in light mode, so it keeps contrast) */
 .pd-icon-button:hover,
 .pd-icon-button:focus-visible,
@@ -829,8 +829,8 @@ input {
   }
 }
 
-/* Watchlist star — outline by default, filled brass when starred */
-/* A starred market shows only the filled star — no lifted background */
+/* Watchlist star - outline by default, filled brass when starred */
+/* A starred market shows only the filled star - no lifted background */
 .pd-star[aria-pressed="true"] {
   color: var(--pd-brass-text);
   background: none;
@@ -956,7 +956,7 @@ input {
   filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 60%, transparent));
 }
 
-/* Toggle switch — brass track when on */
+/* Toggle switch - brass track when on */
 .pd-switch {
   position: relative;
   flex: none;
@@ -998,7 +998,7 @@ input {
   }
 }
 
-/* Market stats bar — one row of headline numbers; scrolls sideways if the
+/* Market stats bar - one row of headline numbers; scrolls sideways if the
    window is too narrow rather than wrapping */
 .pd-stats {
   flex: 1;
@@ -1381,7 +1381,7 @@ input {
   color: var(--pd-brass-text);
 }
 
-/* Candle chart — lightweight-charts draws into this; it reads colors from
+/* Candle chart - lightweight-charts draws into this; it reads colors from
    the tokens itself */
 .pd-candle-chart {
   position: relative;
@@ -1616,7 +1616,7 @@ input {
   color: var(--pd-brass-text);
 }
 
-/* Depth chart — cumulative notional over per-level bars, after the
+/* Depth chart - cumulative notional over per-level bars, after the
    reference design; walls glow, a dashed band marks ±0.5% around the mid */
 .pd-depth {
   flex: 1;
@@ -1775,7 +1775,7 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-/* Screener — sortable headers; funding in the palette's funding color */
+/* Screener - sortable headers; funding in the palette's funding color */
 .pd-sort {
   display: inline-flex;
   align-items: center;

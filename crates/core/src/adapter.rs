@@ -12,7 +12,7 @@ use crate::domain::{
 };
 use crate::keys::KeyError;
 
-/// Crosses IPC to the frontend, so details must never carry key material —
+/// Crosses IPC to the frontend, so details must never carry key material -
 /// venue error messages are fine, anything from a key or signer is not.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, TS, thiserror::Error)]
 #[serde(tag = "kind", content = "detail", rename_all = "camelCase")]
@@ -37,8 +37,8 @@ pub enum VenueError {
 /// constructor and connect only to their own venue and RPC hosts.
 ///
 /// The trait has no withdraw, transfer or key-approval method, and no way to
-/// sign caller-supplied bytes: whatever can drive an adapter — including a
-/// script injected into the webview — can place and cancel orders with the
+/// sign caller-supplied bytes: whatever can drive an adapter - including a
+/// script injected into the webview - can place and cancel orders with the
 /// trade-only key, and nothing else. Adding such a method is a
 /// security-sensitive change; see docs/adr/0001-venues-in-rust.md.
 ///
@@ -66,7 +66,7 @@ pub trait ExchangeAdapter: Send + Sync {
     }
 
     /// The market's most recent trades, newest first, re-sent whole whenever
-    /// one prints — a snapshot like the other streams, so a consumer that
+    /// one prints - a snapshot like the other streams, so a consumer that
     /// misses an update misses nothing. Until the receiver is dropped.
     async fn subscribe_trades(
         &self,
