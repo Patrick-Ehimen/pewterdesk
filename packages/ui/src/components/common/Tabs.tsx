@@ -11,12 +11,23 @@ interface TabsProps<Id extends string> {
   onChange: (id: Id) => void;
   /** Rendered at the right end of the tab strip. */
   aside?: ReactNode;
+  /** `sub`: a smaller strip for choices within a tab, under the main one. */
+  variant?: "main" | "sub";
+  /** Names the strip for screen readers; needed when a panel has two. */
+  label?: string;
 }
 
-export function Tabs<Id extends string>({ tabs, active, onChange, aside }: TabsProps<Id>) {
+export function Tabs<Id extends string>({
+  tabs,
+  active,
+  onChange,
+  aside,
+  variant = "main",
+  label,
+}: TabsProps<Id>) {
   return (
-    <div className="pd-tabs">
-      <div className="pd-tabs-list" role="tablist">
+    <div className="pd-tabs" data-variant={variant}>
+      <div className="pd-tabs-list" role="tablist" aria-label={label}>
         {tabs.map((tab) => (
           <button
             key={tab.id}

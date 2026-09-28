@@ -1,10 +1,10 @@
-//! OS keychain bridge — the only place key material is stored.
+//! OS keychain bridge - the only place key material is stored.
 //!
 //! Secrets live in the platform credential store (macOS Keychain, Windows
 //! Credential Manager, Secret Service on Linux) under one service name.
 //! `get_secret` is the sole path by which a secret reaches JS.
 //!
-//! Security invariants — review any change here against
+//! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
 //! - Nothing in this module logs, prints or persists a secret.
 //! - Keyring errors are never formatted. Several variants carry credential

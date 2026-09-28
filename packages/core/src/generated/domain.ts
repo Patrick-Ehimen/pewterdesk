@@ -2,7 +2,7 @@
 
 export type AccountSnapshot = { venue: VenueId, 
 /**
- * The main account address — not the trade-only key's address.
+ * The main account address - not the trade-only key's address.
  */
 address: string, 
 /**
@@ -19,6 +19,24 @@ availableMargin: Decimal, positions: Array<Position>, openOrders: Array<Order>,
 time: number, };
 
 export type BookLevel = { price: Decimal, size: Decimal, };
+
+/**
+ * One price candle.
+ */
+export type Candle = { 
+/**
+ * When the candle opened; milliseconds since the Unix epoch.
+ */
+openTime: number, open: Decimal, high: Decimal, low: Decimal, close: Decimal, 
+/**
+ * Traded size over the candle, in base units.
+ */
+volume: Decimal, };
+
+/**
+ * Candle widths the terminal offers.
+ */
+export type CandleInterval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d" | "1w";
 
 /**
  * What a venue supports, so the UI can offer only what will work.
@@ -41,8 +59,88 @@ isolatedCollateral: boolean, };
 export type Decimal = string;
 
 /**
- * Details are `&'static str` so a formatted string — which might embed key
- * material from a backend error — can't be passed through.
+ * One of an account's own fills: part or all of an order that traded.
+ */
+export type Fill = { venue: VenueId, 
+/**
+ * The venue's id for this fill.
+ */
+id: string, 
+/**
+ * `Order::id` of the order it filled.
+ */
+orderId: string, market: string, side: Side, effect: FillEffect, price: Decimal, 
+/**
+ * In base units.
+ */
+size: Decimal, 
+/**
+ * PnL realised by the part that closed a position, in the quote asset.
+ */
+closedPnl: Decimal, 
+/**
+ * What the fill cost; negative for a rebate.
+ */
+fee: Decimal, 
+/**
+ * The asset `fee` is in, e.g. "USDC".
+ */
+feeAsset: string, 
+/**
+ * Took liquidity (crossed the spread) rather than resting on the book.
+ */
+taker: boolean, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, };
+
+/**
+ * What a fill did to the account's position in its market.
+ */
+export type FillEffect = "openLong" | "closeLong" | "openShort" | "closeShort" | "longToShort" | "shortToLong" | "other";
+
+/**
+ * One funding payment on an account's position.
+ */
+export type FundingPayment = { venue: VenueId, market: string, 
+/**
+ * In the quote asset: positive if the account received it, negative if it paid.
+ */
+amount: Decimal, 
+/**
+ * The position's size when paid, negative for a short.
+ */
+positionSize: Decimal, 
+/**
+ * The rate applied, as a fraction.
+ */
+rate: Decimal, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, };
+
+/**
+ * One funding payment on a market.
+ */
+export type FundingRate = { 
+/**
+ * `Market::id`.
+ */
+market: string, 
+/**
+ * The rate paid for the interval, as a fraction.
+ */
+rate: Decimal, 
+/**
+ * When it was paid; milliseconds since the Unix epoch.
+ */
+time: number, };
+
+/**
+ * Details are `&'static str` so a formatted string - which might embed key
+ * material from a backend error - can't be passed through.
  */
 export type KeyError = { "kind": "notFound" } | { "kind": "backend", "detail": string };
 
@@ -53,13 +151,32 @@ export type Market = { venue: VenueId,
  */
 id: string, 
 /**
- * Display symbol, e.g. "BTC-USD".
+ * Display symbol, e.g. "BTC-USDC".
  */
 symbol: string, base: string, quote: string, tickSize: Decimal, 
 /**
  * Smallest size increment, in base units.
  */
-sizeStep: Decimal, minSize: Decimal, maxLeverage: number, };
+sizeStep: Decimal, minSize: Decimal, maxLeverage: number, 
+/**
+ * Who listed the market, when that isn't the venue itself: on
+ * Hyperliquid, the builder-deployed perp exchange (HIP-3), e.g. "xyz".
+ * `None` for the venue's own markets.
+ */
+listedBy?: string | null, };
+
+/**
+ * A market's recent candles, for screening: trends, sparklines, RSI.
+ */
+export type MarketHistory = { 
+/**
+ * `Market::id`.
+ */
+market: string, interval: CandleInterval, 
+/**
+ * Oldest first; the last one may still be forming.
+ */
+candles: Array<Candle>, };
 
 /**
  * A market's headline numbers: prices, the day's range and volume, open
@@ -115,6 +232,35 @@ nextFundingTime: number,
  */
 time: number, };
 
+/**
+ * One market's line in a screener: enough to rank and compare markets.
+ */
+export type MarketSummary = { 
+/**
+ * `Market::id`.
+ */
+market: string, markPrice: Decimal, 
+/**
+ * The price 24 hours ago, for the day's change.
+ */
+prevDayPrice: Decimal, 
+/**
+ * Traded value over the last 24 hours, in the quote asset.
+ */
+dayVolume: Decimal, 
+/**
+ * In base units.
+ */
+openInterest: Decimal, 
+/**
+ * The rate for the current funding interval, as a fraction.
+ */
+fundingRate: Decimal, 
+/**
+ * Length of one funding interval, in seconds, for annualising the rate.
+ */
+fundingIntervalSecs: number, };
+
 export type Order = { venue: VenueId, 
 /**
  * The venue's order id.
@@ -155,8 +301,8 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 limitPrice?: Decimal, };
 
 /**
- * Venue-agnostic order intent. Adapters translate it — into two steps where
- * a venue needs them — and reject what the venue can't express rather than
+ * Venue-agnostic order intent. Adapters translate it - into two steps where
+ * a venue needs them - and reject what the venue can't express rather than
  * approximating it.
  *
  * No `deny_unknown_fields`: serde can't combine it with `flatten`, and it
@@ -195,8 +341,8 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 limitPrice?: Decimal, });
 
 /**
- * `Pending` means accepted but not yet live — waiting on a keeper, an
- * auction or block inclusion — and may still end as `Rejected`.
+ * `Pending` means accepted but not yet live - waiting on a keeper, an
+ * auction or block inclusion - and may still end as `Rejected`.
  * `Open` means resting on the venue; `filled_size` may be non-zero.
  */
 export type OrderStatus = "pending" | "open" | "filled" | "cancelled" | "rejected";
@@ -262,7 +408,7 @@ address: string,
 key: string, };
 
 /**
- * Crosses IPC to the frontend, so details must never carry key material —
+ * Crosses IPC to the frontend, so details must never carry key material -
  * venue error messages are fine, anything from a key or signer is not.
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "key", "detail": KeyError };

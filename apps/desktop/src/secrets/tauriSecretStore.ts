@@ -21,7 +21,7 @@ function toSecretStoreError(raw: unknown): SecretStoreError {
         return new SecretStoreError(err.kind, err.detail);
     }
   }
-  // Never interpolate the raw rejection into the message — an unexpected
+  // Never interpolate the raw rejection into the message - an unexpected
   // reject shape is exactly the case where we don't know what's in it.
   return new SecretStoreError("backend", "keychain call failed");
 }

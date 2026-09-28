@@ -3,6 +3,7 @@ import { panelKindOf } from "../src/lib/panels";
 import {
   addPanel,
   DEFAULT_PRESET,
+  expandedArea,
   fillGaps,
   GRID,
   initialWorkspace,
@@ -19,11 +20,12 @@ import {
 
 describe("presets", () => {
   it.each(PRESETS.map((p) => [p.name, p.layout] as const))(
-    "%s fits the grid without overlaps",
+    "%s fits the grid's width without overlaps",
     (_name, layout) => {
+      // A layout may run past the window's rows (the workspace scrolls), not its width.
       for (const p of layout) {
         expect(p.x + p.w).toBeLessThanOrEqual(GRID.cols);
-        expect(p.y + p.h).toBeLessThanOrEqual(GRID.rows);
+        expect(p.y).toBeGreaterThanOrEqual(0);
       }
       for (const a of layout) {
         for (const b of layout) {
@@ -34,6 +36,15 @@ describe("presets", () => {
       }
     },
   );
+
+  it("keeps Default's chart, book and ticket in the window, scrolling only the bottom row", () => {
+    const at = (kind: string) => DEFAULT_PRESET.layout.find((p) => panelKindOf(p.i) === kind);
+    for (const kind of ["markets", "orderBook", "trade"]) {
+      const p = at(kind);
+      expect(p && p.y + p.h, kind).toBeLessThanOrEqual(GRID.rows);
+    }
+    for (const kind of ["positions", "account"]) expect(at(kind)?.h, kind).toBe(12);
+  });
 
   it("survive sanitising unchanged", () => {
     for (const preset of PRESETS) expect(sanitizeLayout(preset.layout)).toEqual(preset.layout);
@@ -50,7 +61,8 @@ describe("addPanel / removePanel", () => {
 
   it("appends below everything when no spot is given", () => {
     const added = addPanel(DEFAULT_PRESET.layout, "markets").at(-1);
-    expect(added?.y).toBe(24);
+    const bottom = Math.max(...DEFAULT_PRESET.layout.map((p) => p.y + p.h));
+    expect(added?.y).toBe(bottom);
   });
 
   it("keeps a dropped panel inside the grid's width", () => {
@@ -74,23 +86,36 @@ describe("fillGaps", () => {
   });
 
   it("widens the neighbours, stats bar included, when a side panel is removed", () => {
-    // Default: stats bar over markets | orderBook, account on the right, positions below.
-    const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "account:account")));
+    // Default: stats bar over markets | orderBook, trade on the right, positions | account below.
+    const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "trade:trade")));
     expect(layout[STATS_BAR_ID]).toEqual({ x: 0, y: 0, w: 24, h: STATS_BAR_ROWS });
-    expect(layout["orderBook:orderBook"]).toEqual({ x: 14, y: 2, w: 10, h: 18 });
-    expect(layout["markets:markets"]).toEqual({ x: 0, y: 2, w: 14, h: 18 });
+    expect(layout["orderBook:orderBook"]).toEqual({ x: 14, y: 2, w: 10, h: 17 });
+    expect(layout["markets:markets"]).toEqual({ x: 0, y: 2, w: 14, h: 17 });
+    // The row below is untouched.
+    expect(layout["account:account"]).toEqual({ x: 19, y: 19, w: 5, h: 12 });
   });
 
   it("widens rightwards into a gap on the left", () => {
     const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "markets:markets")));
-    expect(layout["orderBook:orderBook"]).toEqual({ x: 0, y: 2, w: 19, h: 18 });
+    expect(layout["orderBook:orderBook"]).toEqual({ x: 0, y: 2, w: 19, h: 17 });
+  });
+
+  it("widens a neighbour across a row that's lost a panel", () => {
+    // Positions gone: the account beside it takes the whole bottom row.
+    const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "positions:positions")));
+    expect(layout["account:account"]).toEqual({ x: 0, y: 19, w: GRID.cols, h: 12 });
+    expect(layout["markets:markets"]).toEqual({ x: 0, y: 2, w: 14, h: 17 });
   });
 
   it("grows panels down to the bottom of the grid", () => {
-    const layout = byId(fillGaps(removePanel(DEFAULT_PRESET.layout, "positions:positions")));
-    for (const [id, p] of Object.entries(layout)) {
-      if (id !== STATS_BAR_ID) expect(p.y + p.h, id).toBe(GRID.rows);
-    }
+    // Nothing beside the gap can widen into it (the book is full height), so markets grows down.
+    const layout = byId(
+      fillGaps([
+        { i: "markets:a", x: 0, y: 0, w: 12, h: 10 },
+        { i: "orderBook:a", x: 12, y: 0, w: 12, h: GRID.rows },
+      ]),
+    );
+    expect(layout["markets:a"]).toEqual({ x: 0, y: 0, w: 12, h: GRID.rows });
   });
 
   it("stretches a lone panel over the whole grid", () => {
@@ -191,14 +216,16 @@ describe("stats bar", () => {
     layout.filter((p) => p.i === STATS_BAR_ID);
 
   it.each(PRESETS.map((p) => [p.name, p.layout] as const))(
-    "%s has one bar across the top, directly left of Account",
+    "%s has one bar across the top, directly left of the top-right panel",
     (_name, layout) => {
       const [b, ...extra] = bar(layout);
-      const account = layout.find((p) => panelKindOf(p.i) === "account");
+      // Account in the older presets, Trade in Default.
+      const topRight = layout.find(
+        (p) => p.y === 0 && (panelKindOf(p.i) === "account" || panelKindOf(p.i) === "trade"),
+      );
       expect(extra).toEqual([]);
       expect(b).toMatchObject({ x: 0, y: 0, h: STATS_BAR_ROWS });
-      expect(b && account && b.x + b.w).toBe(account?.x);
-      expect(account?.y).toBe(0);
+      expect(b && topRight && b.x + b.w).toBe(topRight?.x);
     },
   );
 
@@ -262,5 +289,37 @@ describe("upgradeDefault", () => {
       p.i === "positions:positions" ? { ...p, h: 7, y: 17 } : p,
     );
     expect(upgradeDefault(moved)).toBe(moved);
+  });
+});
+
+describe("expandedArea", () => {
+  it("covers the panel and the order book beside it, hiding the book", () => {
+    const area = expandedArea(DEFAULT_PRESET.layout, "markets:markets", "wide");
+    expect(area).toEqual({ x: 0, y: 2, w: 19, h: 17, hidden: ["orderBook:orderBook"] });
+  });
+
+  it("hides anything else the box takes in", () => {
+    // Scalping: book on the far left, markets top middle, positions under markets.
+    const scalping = PRESETS.find((p) => p.name === "Scalping")?.layout ?? [];
+    const area = expandedArea(scalping, "markets:markets", "wide");
+    expect(area?.hidden.sort()).toEqual(["orderBook:orderBook", "positions:positions"]);
+  });
+
+  it("fills the whole grid in full mode", () => {
+    const area = expandedArea(DEFAULT_PRESET.layout, "markets:markets", "full");
+    expect(area).toMatchObject({ x: 0, y: 0, w: GRID.cols, h: GRID.rows });
+    expect(area?.hidden).toHaveLength(DEFAULT_PRESET.layout.length - 1);
+  });
+
+  it("stays put without an order book, and is undefined for an unknown panel", () => {
+    const alone = [{ i: "markets:a", x: 0, y: 0, w: 10, h: 10 }];
+    expect(expandedArea(alone, "markets:a", "wide")).toEqual({
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      hidden: [],
+    });
+    expect(expandedArea(alone, "nope", "wide")).toBeUndefined();
   });
 });

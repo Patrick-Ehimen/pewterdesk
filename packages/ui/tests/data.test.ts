@@ -1,7 +1,7 @@
 import type { AccountSnapshot, OrderBook, Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import { accountTotals } from "../src/components/trading/AccountSummary";
-import { bookLadder } from "../src/components/trading/OrderBookView";
+import { bookLadder, changedLevels, levelSizes } from "../src/components/trading/OrderBookView";
 import { formatNumber, formatSigned } from "../src/lib/format";
 
 const book: OrderBook = {
@@ -128,5 +128,33 @@ describe("format", () => {
     expect(formatSigned(121.5)).toBe("+121.50");
     expect(formatSigned(-17.64)).toBe("-17.64");
     expect(formatSigned(0)).toBe("0.00");
+  });
+});
+
+describe("level flashes", () => {
+  it("flags new levels and changed sizes, not unchanged ones", () => {
+    const next: OrderBook = {
+      ...book,
+      bids: [
+        { price: "38.39", size: "10" }, // unchanged
+        { price: "38.38", size: "31" }, // size changed
+        { price: "38.36", size: "5" }, // new level (38.37 left)
+      ],
+      asks: [
+        { price: "38.41", size: "20" },
+        { price: "38.42", size: "40" },
+      ],
+    };
+    expect(changedLevels(levelSizes(book), levelSizes(next)).sort()).toEqual([
+      "bid:38.36",
+      "bid:38.38",
+    ]);
+  });
+
+  it("keeps bids and asks at the same price apart", () => {
+    const crossed: OrderBook = { ...book, asks: [{ price: "38.39", size: "10" }] };
+    expect(levelSizes(crossed).get("ask:38.39")).toBe("10");
+    expect(levelSizes(crossed).get("bid:38.39")).toBe("10");
+    expect(changedLevels(levelSizes(book), levelSizes(crossed))).toEqual(["ask:38.39"]);
   });
 });

@@ -14,6 +14,10 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    // Two pages: the app, and the launch splash window's own tiny page.
+    rollupOptions: {
+      input: { main: "index.html", splash: "splash.html" },
+    },
   },
   test: {
     // Vitest stubs CSS imports to "" by default; the theme test reads the

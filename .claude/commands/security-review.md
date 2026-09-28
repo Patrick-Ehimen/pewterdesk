@@ -6,7 +6,7 @@ The diff for this task touches signing, key handling, or exchange auth code
 (e.g. signing code in a `crates/exchange-<venue>`, the `ExchangeAdapter`
 trait or the Tauri commands exposing it, `KeySource` or the keychain bridge,
 the webview CSP, or anything that constructs or transmits an authenticated
-request). Review it against this checklist before considering the task done —
+request). Review it against this checklist before considering the task done -
 go through each point explicitly rather than skimming for "looks fine". The
 rules come from `docs/adr/0001-venues-in-rust.md`.
 
@@ -24,23 +24,23 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    signs caller-supplied bytes, hashes or typed data; withdrawals, transfers
    and key approvals are absent.
 4. **Hosts stay pinned, and the CSP isn't widened.** A venue crate connects
-   only to its own hosts and explicitly configured RPC endpoints — never a
+   only to its own hosts and explicitly configured RPC endpoints - never a
    wildcard or a URL taken from a command argument.
-5. **The signed payload matches the venue's documented spec exactly** —
+5. **The signed payload matches the venue's documented spec exactly** -
    domain, types, and action shape for EIP-712 (both launch venues sign
    EIP-712 typed data). A subtly
    wrong field can produce a signature that's valid-looking but authorizes
    something other than what the user intended.
-6. **Nonce / replay handling is correct** — no reused nonce, no way for a
+6. **Nonce / replay handling is correct** - no reused nonce, no way for a
    captured signed action to be replayed by an attacker.
 7. **Errors fail closed.** If signing or auth fails, the order/action does
-   NOT get sent in some partially-authenticated fallback path — it just
+   NOT get sent in some partially-authenticated fallback path - it just
    fails.
 8. **Tests exist for the signing logic in isolation** (not just via an
    end-to-end flow), checked against known vectors from the venue's official
    SDK, covering at least one wrong-input case, not only the happy path.
 9. **The PR description calls this out explicitly** under a
-   "Security-relevant changes" heading — don't leave a reviewer to discover
+   "Security-relevant changes" heading - don't leave a reviewer to discover
    this touches signing on their own.
 
 If any point can't be verified from the diff alone (e.g. because the

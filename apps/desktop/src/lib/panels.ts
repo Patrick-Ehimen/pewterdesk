@@ -1,7 +1,7 @@
 import { type MessageKey, t } from "@pewterdesk/ui";
 
 /** Every kind of panel the workspace can hold. A kind may appear more than once. */
-export type PanelKind = "markets" | "orderBook" | "account" | "positions";
+export type PanelKind = "markets" | "orderBook" | "trade" | "account" | "positions";
 
 export interface PanelSpec {
   titleKey: MessageKey;
@@ -15,7 +15,8 @@ export interface PanelSpec {
 export const PANELS: Record<PanelKind, PanelSpec> = {
   markets: { titleKey: "panel.markets", w: 12, h: 12, minW: 6, minH: 5 },
   orderBook: { titleKey: "panel.orderBook", w: 5, h: 16, minW: 4, minH: 8 },
-  account: { titleKey: "panel.account", w: 5, h: 10, minW: 4, minH: 6 },
+  trade: { titleKey: "panel.trade", w: 5, h: 16, minW: 4, minH: 10 },
+  account: { titleKey: "panel.account", w: 5, h: 10, minW: 4, minH: 4 },
   positions: { titleKey: "panel.positions", w: 16, h: 8, minW: 8, minH: 4 },
 };
 

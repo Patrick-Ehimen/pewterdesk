@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PewterDesk</title>
+    <!-- The launch splash: its own tiny window and page (no React), so it
+         shows at once while the main window loads behind it. boot.js puts
+         the saved theme on <html>, as for the main window. -->
+    <script src="/boot.js"></script>
+    <link rel="stylesheet" href="/src/styles/splash-window.css" />
+  </head>
+  <body>
+    <main class="launch" role="status" aria-busy="true" aria-label="pewterdesk">
+      <!-- The depth-ladder mark; geometry matches assets/logo/pewterdesk-mark-*.svg -->
+      <svg class="launch-mark" viewBox="0 0 56 56" width="88" height="88" aria-hidden="true">
+        <rect class="launch-bar" x="22" y="7" width="12" height="6" rx="3" style="animation-delay: 0ms" />
+        <rect class="launch-bar" x="14" y="16" width="28" height="6" rx="3" style="animation-delay: 110ms" />
+        <rect class="launch-bar" data-mid x="6" y="25" width="44" height="6" rx="3" style="animation-delay: 220ms" />
+        <rect class="launch-bar" x="14" y="34" width="28" height="6" rx="3" style="animation-delay: 330ms" />
+        <rect class="launch-bar" x="22" y="43" width="12" height="6" rx="3" style="animation-delay: 440ms" />
+      </svg>
+      <span class="launch-word" aria-hidden="true"><strong>pewter</strong>desk</span>
+      <span class="launch-track" aria-hidden="true"><span></span></span>
+    </main>
+  </body>
+</html>

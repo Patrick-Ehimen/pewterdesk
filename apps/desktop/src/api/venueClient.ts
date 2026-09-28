@@ -1,7 +1,15 @@
 import type {
   AccountSnapshot,
+  Candle,
+  CandleInterval,
+  Fill,
+  FundingPayment,
+  FundingRate,
   Market,
+  MarketHistory,
   MarketStats,
+  MarketSummary,
+  Order,
   OrderBook,
   Trade,
   VenueError,
@@ -36,8 +44,8 @@ export function asVenueError(raw: unknown): VenueError | undefined {
 }
 
 /**
- * A one-line message for the UI. Venue details are safe to show — venues.rs
- * guarantees they carry no key material — but an unrecognised rejection is
+ * A one-line message for the UI. Venue details are safe to show - venues.rs
+ * guarantees they carry no key material - but an unrecognised rejection is
  * never echoed, since we don't know what's in it.
  */
 export function describeVenueError(error: VenueError | undefined): string {
@@ -70,7 +78,7 @@ async function call<T>(command: string, args: Record<string, unknown>): Promise<
 
 /**
  * Starts a subscription command and returns a function that ends it. Safe to
- * call the returned function before the command resolves — the subscription
+ * call the returned function before the command resolves - the subscription
  * is torn down as soon as its id arrives, and no handler fires after it.
  */
 function subscribe<T>(
@@ -122,6 +130,46 @@ export const venueClient = {
 
   subscribeMarketStats: (venue: VenueId, market: string, handlers: StreamHandlers<MarketStats>) =>
     subscribe("subscribe_market_stats", { venue, market }, handlers),
+
+  /** Up to `count` candles that opened before `before` (ms), oldest first; empty when there are no more. */
+  candles: (
+    venue: VenueId,
+    market: string,
+    interval: CandleInterval,
+    before: number,
+    count: number,
+  ) => call<Candle[]>("candles", { venue, market, interval, before, count }),
+
+  subscribeCandles: (
+    venue: VenueId,
+    market: string,
+    interval: CandleInterval,
+    handlers: StreamHandlers<Candle[]>,
+  ) => subscribe("subscribe_candles", { venue, market, interval }, handlers),
+
+  subscribeMarketSummaries: (venue: VenueId, handlers: StreamHandlers<MarketSummary[]>) =>
+    subscribe("subscribe_market_summaries", { venue }, handlers),
+
+  subscribeMarketHistory: (venue: VenueId, handlers: StreamHandlers<MarketHistory>) =>
+    subscribe("subscribe_market_history", { venue }, handlers),
+
+  fundingHistory: (venue: VenueId, market: string, startTime: number) =>
+    call<FundingRate[]>("funding_history", { venue, market, startTime }),
+
+  /** The market's logo as SVG markup, or undefined. Render it only via `TokenIcon`. */
+  marketIcon: async (venue: VenueId, market: string) =>
+    (await call<string | null>("market_icon", { venue, market })) ?? undefined,
+
+  /** The account's recent fills, newest first. */
+  fills: (venue: VenueId, address: string) => call<Fill[]>("fills", { venue, address }),
+
+  /** Funding paid or received since `startTime` (ms), newest first. */
+  fundingPayments: (venue: VenueId, address: string, startTime: number) =>
+    call<FundingPayment[]>("funding_payments", { venue, address, startTime }),
+
+  /** Recent orders in any state, newest first. */
+  orderHistory: (venue: VenueId, address: string) =>
+    call<Order[]>("order_history", { venue, address }),
 
   subscribeAccount: (venue: VenueId, address: string, handlers: StreamHandlers<AccountSnapshot>) =>
     subscribe("subscribe_account", { venue, address }, handlers),

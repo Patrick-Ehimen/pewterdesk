@@ -3,7 +3,7 @@
  *
  * core owns the interface; implementations are platform-specific and live in
  * the apps (apps/desktop wires this to the Tauri keychain commands). Exchange
- * adapters receive a SecretStore, they never construct one — same dependency
+ * adapters receive a SecretStore, they never construct one - same dependency
  * direction as ExchangeAdapter.
  */
 export interface SecretStore {
@@ -31,7 +31,7 @@ export class SecretStoreError extends Error {
 
 /**
  * Mirrors the account validation the Rust side enforces, so the UI can reject
- * a bad label without a round trip. Rust remains the authority — this is a
+ * a bad label without a round trip. Rust remains the authority - this is a
  * convenience, never the only check.
  */
 const ACCOUNT_PATTERN = /^[A-Za-z0-9\-_.:]{1,128}$/;
@@ -45,7 +45,7 @@ export function isValidAccount(account: string): boolean {
  * material never lands in component state, a module-level cache, or a closure
  * that outlives the signing call.
  *
- * JS can't zero a string, so this doesn't clear anything — it exists to keep
+ * JS can't zero a string, so this doesn't clear anything - it exists to keep
  * the exposure window to one call and to give reviewers a single grep target
  * (`store.get(` outside this file is the smell). Anything needing a real
  * guarantee belongs in Rust.

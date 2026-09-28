@@ -1,11 +1,13 @@
-import type { Market, MarketStats } from "@pewterdesk/core";
+import type { Market, MarketStats, MarketSummary } from "@pewterdesk/core";
 import { type ReactNode, useEffect, useRef, useState, type WheelEvent } from "react";
 import { LuInfo } from "react-icons/lu";
 import { t } from "../../i18n";
 import { decimalsOf, formatNumber, formatSigned, trendClass } from "../../lib/format";
 import { Tooltip } from "../common/Tooltip";
+import { ListedBy } from "./ListedBy";
 import { MarketPicker } from "./MarketPicker";
 import { usePriceTrend } from "./OrderBookView";
+import { TokenIcon } from "./TokenIcon";
 
 /** Milliseconds since the epoch, re-read every `everyMs`. */
 function useNow(everyMs: number) {
@@ -83,6 +85,11 @@ interface MarketStatsBarProps {
   stats?: MarketStats;
   markets: Market[];
   onSelectMarket: (market: Market) => void;
+  /** For the market picker: prices, stars, and when it opens. */
+  summaries?: readonly MarketSummary[];
+  starred: ReadonlySet<string>;
+  onToggleStar: (market: Market) => void;
+  onPickerOpen?: (open: boolean) => void;
 }
 
 /**
@@ -96,6 +103,10 @@ export function MarketStatsBar({
   stats,
   markets,
   onSelectMarket,
+  summaries,
+  starred,
+  onToggleStar,
+  onPickerOpen,
 }: MarketStatsBarProps) {
   const now = useNow(1000);
   const scroller = useSideScroll<HTMLDivElement>();
@@ -121,14 +132,23 @@ export function MarketStatsBar({
     >
       {/* Pinned: the picker, market and price never scroll away. */}
       <div className="pd-stats-fixed">
-        <MarketPicker markets={markets} selected={market?.id} onSelect={onSelectMarket} />
+        <MarketPicker
+          markets={markets}
+          selected={market?.id}
+          onSelect={onSelectMarket}
+          summaries={summaries}
+          starred={starred}
+          onToggleStar={onToggleStar}
+          onOpenChange={onPickerOpen}
+        />
 
         <div className="pd-stats-market">
-          <span className="pd-coin" aria-hidden>
-            {market?.base.slice(0, 1) ?? ""}
-          </span>
+          <TokenIcon market={market} size={30} className="pd-coin" />
           <div className="pd-stats-name">
-            <strong>{market?.symbol ?? <Pending width={90} />}</strong>
+            <strong className="pd-stats-symbol">
+              {market?.symbol ?? <Pending width={90} />}
+              <ListedBy market={market} />
+            </strong>
             <span className="pd-muted">
               {venue}
               {market && (
@@ -159,7 +179,7 @@ export function MarketStatsBar({
           </Tooltip>
           <Tooltip content={`${t("stats.mid")}: ${t("stats.midHint")}`}>
             <span className="pd-stats-mid">
-              {stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "—"}
+              {stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "-"}
             </span>
           </Tooltip>
         </div>

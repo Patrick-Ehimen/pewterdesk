@@ -5,19 +5,36 @@ import "./styles/app.css";
 import "./styles/layout.css";
 import "./styles/pages.css";
 import "./styles/settings.css";
+import "./styles/tray.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";
 import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { applyStoredAppearance } from "./hooks/useAppearance";
+import { forgetWatchedAddress } from "./lib/account";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
+import { TrayPanel } from "./tray/TrayPanel";
 
 const el = document.getElementById("root");
 if (!el) throw new Error("#root element missing from index.html");
 const root = createRoot(el);
 
+/** The menu-bar panel: the same frontend, loaded in its own window at #tray. */
+async function startTrayPanel() {
+  applyStoredAppearance();
+  const locale = storedLanguage();
+  await loadLocale(locale);
+  document.documentElement.lang = locale;
+  root.render(
+    <StrictMode>
+      <TrayPanel />
+    </StrictMode>,
+  );
+}
+
 async function start() {
   // Theme first, so the splash itself is drawn in the right one.
   applyStoredAppearance();
+  forgetWatchedAddress();
   const locale = storedLanguage();
   const switching = takeLanguageSwitch();
 
@@ -47,4 +64,4 @@ async function start() {
   );
 }
 
-void start();
+void (location.hash === "#tray" ? startTrayPanel() : start());

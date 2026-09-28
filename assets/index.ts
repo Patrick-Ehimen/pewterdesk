@@ -21,13 +21,13 @@ import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
 
 export const logo = {
-  /** Symbol + name side by side — the default logo. Min width 96px. */
+  /** Symbol + name side by side - the default logo. Min width 96px. */
   horizontal: { darkBg: horizontalDarkBg, lightBg: horizontalLightBg },
   /** Symbol only, for tight spaces. Min size 16px. */
   mark: { darkBg: markDarkBg, lightBg: markLightBg },
 } as const;
 
-/** 1024px dark app icon — also the source for `make icons`. */
+/** 1024px dark app icon - also the source for `make icons`. */
 export const appIcon = appIconDark;
 
 export const favicon = {

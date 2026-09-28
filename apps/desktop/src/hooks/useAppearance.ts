@@ -36,7 +36,8 @@ function applyAppearance(theme: Theme, market: MarketColors) {
  * theme's color, and this keeps light-theme users from a dark flash.
  */
 function syncWindowBackground() {
-  if (!isTauri()) return;
+  // The tray panel's window stays see-through, for its rounded corners.
+  if (!isTauri() || location.hash === "#tray") return;
   const bg = getComputedStyle(document.documentElement).getPropertyValue("--pd-bg").trim();
   if (bg)
     getCurrentWindow()

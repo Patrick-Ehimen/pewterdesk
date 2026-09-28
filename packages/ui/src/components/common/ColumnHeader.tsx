@@ -31,7 +31,7 @@ export function Hint({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-/** " In USDC." — appended to a hint when the column's asset is known. */
+/** " In USDC." - appended to a hint when the column's asset is known. */
 export function unitHint(asset?: string): string {
   return asset ? ` ${t("hint.unit", { asset })}` : "";
 }

@@ -58,7 +58,7 @@ pub struct Market {
     /// The venue's own identifier, passed back to the adapter unchanged: "BTC"
     /// on Hyperliquid, "BTCUSDT" on Aster. Opaque outside the adapter.
     pub id: String,
-    /// Display symbol, e.g. "BTC-USD".
+    /// Display symbol, e.g. "BTC-USDC".
     pub symbol: String,
     pub base: String,
     pub quote: String,
@@ -67,6 +67,11 @@ pub struct Market {
     pub size_step: Decimal,
     pub min_size: Decimal,
     pub max_leverage: u32,
+    /// Who listed the market, when that isn't the venue itself: on
+    /// Hyperliquid, the builder-deployed perp exchange (HIP-3), e.g. "xyz".
+    /// `None` for the venue's own markets.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub listed_by: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -123,6 +128,167 @@ pub struct MarketStats {
     /// When the current interval's funding is paid; milliseconds since the Unix epoch.
     #[ts(type = "number")]
     pub next_funding_time: u64,
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// Candle widths the terminal offers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[ts(export, export_to = TS_FILE)]
+pub enum CandleInterval {
+    #[serde(rename = "1m")]
+    OneMinute,
+    #[serde(rename = "5m")]
+    FiveMinutes,
+    #[serde(rename = "15m")]
+    FifteenMinutes,
+    #[serde(rename = "1h")]
+    OneHour,
+    #[serde(rename = "4h")]
+    FourHours,
+    #[serde(rename = "1d")]
+    OneDay,
+    #[serde(rename = "1w")]
+    OneWeek,
+}
+
+impl CandleInterval {
+    /// The interval's length in milliseconds.
+    pub fn millis(self) -> u64 {
+        const MINUTE: u64 = 60_000;
+        match self {
+            Self::OneMinute => MINUTE,
+            Self::FiveMinutes => 5 * MINUTE,
+            Self::FifteenMinutes => 15 * MINUTE,
+            Self::OneHour => 60 * MINUTE,
+            Self::FourHours => 240 * MINUTE,
+            Self::OneDay => 1440 * MINUTE,
+            Self::OneWeek => 7 * 1440 * MINUTE,
+        }
+    }
+}
+
+/// One price candle.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct Candle {
+    /// When the candle opened; milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub open_time: u64,
+    pub open: Decimal,
+    pub high: Decimal,
+    pub low: Decimal,
+    pub close: Decimal,
+    /// Traded size over the candle, in base units.
+    pub volume: Decimal,
+}
+
+/// One market's line in a screener: enough to rank and compare markets.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct MarketSummary {
+    /// `Market::id`.
+    pub market: String,
+    pub mark_price: Decimal,
+    /// The price 24 hours ago, for the day's change.
+    pub prev_day_price: Decimal,
+    /// Traded value over the last 24 hours, in the quote asset.
+    pub day_volume: Decimal,
+    /// In base units.
+    pub open_interest: Decimal,
+    /// The rate for the current funding interval, as a fraction.
+    pub funding_rate: Decimal,
+    /// Length of one funding interval, in seconds, for annualising the rate.
+    pub funding_interval_secs: u32,
+}
+
+/// A market's recent candles, for screening: trends, sparklines, RSI.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct MarketHistory {
+    /// `Market::id`.
+    pub market: String,
+    pub interval: CandleInterval,
+    /// Oldest first; the last one may still be forming.
+    pub candles: Vec<Candle>,
+}
+
+/// One funding payment on a market.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct FundingRate {
+    /// `Market::id`.
+    pub market: String,
+    /// The rate paid for the interval, as a fraction.
+    pub rate: Decimal,
+    /// When it was paid; milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// What a fill did to the account's position in its market.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum FillEffect {
+    OpenLong,
+    CloseLong,
+    OpenShort,
+    CloseShort,
+    /// Closed a long and opened a short in one fill.
+    LongToShort,
+    ShortToLong,
+    /// Anything else the venue reports (a liquidation, a settlement, ...).
+    Other,
+}
+
+/// One of an account's own fills: part or all of an order that traded.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct Fill {
+    pub venue: VenueId,
+    /// The venue's id for this fill.
+    pub id: String,
+    /// `Order::id` of the order it filled.
+    pub order_id: String,
+    pub market: String,
+    pub side: Side,
+    pub effect: FillEffect,
+    pub price: Decimal,
+    /// In base units.
+    pub size: Decimal,
+    /// PnL realised by the part that closed a position, in the quote asset.
+    pub closed_pnl: Decimal,
+    /// What the fill cost; negative for a rebate.
+    pub fee: Decimal,
+    /// The asset `fee` is in, e.g. "USDC".
+    pub fee_asset: String,
+    /// Took liquidity (crossed the spread) rather than resting on the book.
+    pub taker: bool,
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// One funding payment on an account's position.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct FundingPayment {
+    pub venue: VenueId,
+    pub market: String,
+    /// In the quote asset: positive if the account received it, negative if it paid.
+    pub amount: Decimal,
+    /// The position's size when paid, negative for a short.
+    pub position_size: Decimal,
+    /// The rate applied, as a fraction.
+    pub rate: Decimal,
     /// Milliseconds since the Unix epoch.
     #[ts(type = "number")]
     pub time: u64,
@@ -187,8 +353,8 @@ pub enum OrderKind {
     },
 }
 
-/// Venue-agnostic order intent. Adapters translate it — into two steps where
-/// a venue needs them — and reject what the venue can't express rather than
+/// Venue-agnostic order intent. Adapters translate it - into two steps where
+/// a venue needs them - and reject what the venue can't express rather than
 /// approximating it.
 ///
 /// No `deny_unknown_fields`: serde can't combine it with `flatten`, and it
@@ -237,8 +403,8 @@ impl OrderKind {
     }
 }
 
-/// `Pending` means accepted but not yet live — waiting on a keeper, an
-/// auction or block inclusion — and may still end as `Rejected`.
+/// `Pending` means accepted but not yet live - waiting on a keeper, an
+/// auction or block inclusion - and may still end as `Rejected`.
 /// `Open` means resting on the venue; `filled_size` may be non-zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -301,7 +467,7 @@ pub struct Position {
 #[ts(export, export_to = TS_FILE)]
 pub struct AccountSnapshot {
     pub venue: VenueId,
-    /// The main account address — not the trade-only key's address.
+    /// The main account address - not the trade-only key's address.
     pub address: String,
     /// Total account value in the quote asset, including unrealized PnL.
     pub equity: Decimal,

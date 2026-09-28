@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # pnpm workspace root — Dependabot reads pnpm-lock.yaml and covers every
+  # pnpm workspace root - Dependabot reads pnpm-lock.yaml and covers every
   # package in the workspace (packages/*, apps/*) from this one entry.
   - package-ecosystem: "npm"
     directory: "/"

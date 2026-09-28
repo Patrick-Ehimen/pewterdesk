@@ -1,5 +1,5 @@
-//! A market's recent trades, kept so the `trades` channel — which pushes only
-//! new prints — can be re-emitted as a snapshot like every other stream.
+//! A market's recent trades, kept so the `trades` channel - which pushes only
+//! new prints - can be re-emitted as a snapshot like every other stream.
 
 use std::collections::VecDeque;
 
