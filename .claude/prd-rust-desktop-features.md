@@ -1,6 +1,9 @@
 # PRD: Rust-side desktop features (backlog)
 
-Status: not started - captured for later planning, nothing here is implemented yet.
+Status: in progress - 1 (keychain storage, `src-tauri/src/keychain.rs`) and 3
+(system tray, `src-tauri/src/tray.rs`, as a custom panel rather than a
+right-click menu) are built; the rest is not started. The context below
+predates both.
 
 Context: the Tauri shell (`apps/desktop/src-tauri`) currently only has the
 default boilerplate `main.rs` - no custom Rust commands, plugins, or business

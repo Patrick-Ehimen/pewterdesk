@@ -1,6 +1,6 @@
 //! Against Hyperliquid mainnet's public API. Read-only, no key needed, but
-//! they need the network, so they're skipped by default:
-//! `cargo test -p pewterdesk-exchange-hyperliquid -- --ignored`.
+//! they need the network, so they're skipped by default. Run them one at a
+//! time (`make rust-live`); in parallel they trip Hyperliquid's rate limits.
 
 use std::time::Duration;
 

@@ -1,6 +1,7 @@
 {
   "name": "@pewterdesk/assets",
   "version": "0.0.0",
+  "description": "Brand assets: logos, app icon, favicons and language flags",
   "private": true,
   "type": "module",
   "main": "./index.ts",
