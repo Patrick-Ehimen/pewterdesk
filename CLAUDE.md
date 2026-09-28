@@ -60,8 +60,8 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk -- --ignored` - the keychain tests that touch the
   real OS store, skipped by default
-- `cargo test -p pewterdesk-exchange-hyperliquid -- --ignored` - read-only
-  tests against Hyperliquid mainnet (needs the network, no key)
+- `make rust-live` - read-only tests against Hyperliquid mainnet (needs the
+  network, no key), one at a time so they stay inside its rate limits
 
 Packages are consumed from source: every `package.json` points `main`/`types`
 at `./src/index.ts`, and the tsconfigs deliberately carry no `references`.
@@ -124,8 +124,8 @@ commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `styles/`. `packages/ui` holds the shared presentational components, fed by
 props. The header's page menu switches between
 Trade (the workspace), Portfolio (the connected account's equity and exposure),
-Settings, and Journal and News, which are placeholders until fill history and
-news sources exist.
+Settings, and Journal and News, which are placeholders: Journal until it's
+built on the fill history (`fills`), News until news sources exist.
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up, plus

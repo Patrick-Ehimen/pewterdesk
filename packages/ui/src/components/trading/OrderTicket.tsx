@@ -67,7 +67,7 @@ function NumberField({
 interface OrderTicketProps {
   market?: Market;
   book?: OrderBook;
-  /** The watched account; unset until one is connected. */
+  /** The connected account; unset until a wallet is connected. */
   account?: AccountSnapshot;
   /** Taker and maker fees as fractions; unset where the ticket can't know them. */
   fees?: { taker: number; maker: number };

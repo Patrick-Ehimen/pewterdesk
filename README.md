@@ -8,11 +8,11 @@ TypeScript/React UI, Tauri in between.
 > **Status: early scaffold.** The workspace, build tooling, and package
 > boundaries are in place; the trading functionality is not. `crates/core`
 > defines the `ExchangeAdapter` contract and domain types, but the two venue
-> crates can't sign yet (Aster's is still empty). The `apps/desktop` Tauri shell builds
-> and runs, but it opens a
-> window containing one line of placeholder text - no chart, no order ticket,
-> no exchange connection. Don't point this at a funded account; there's
-> nothing there to point yet.
+> crates can't sign yet (Aster's is still empty). The `apps/desktop` Tauri shell
+> builds and runs a read-only trading screen on Hyperliquid market data -
+> charts, order book, trade tape, screener - but it can't connect a wallet or
+> place orders. Don't point this at a funded account; there's nothing there to
+> point yet.
 
 ## Why it's built this way
 

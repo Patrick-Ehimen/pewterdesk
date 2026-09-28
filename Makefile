@@ -121,6 +121,11 @@ rust-test: ## Run Rust tests and check the generated TS types are committed
 	@git diff --exit-code --stat -- packages/core/src/generated \
 		|| (echo "generated TS types changed - commit packages/core/src/generated" && exit 1)
 
+# Run one at a time: in parallel they trip Hyperliquid's rate limits.
+.PHONY: rust-live
+rust-live: ## Run the read-only Hyperliquid mainnet tests (needs the network)
+	$(CARGO) test -p pewterdesk-exchange-hyperliquid -- --ignored --test-threads=1
+
 .PHONY: rust-bindings
 rust-bindings: ## Regenerate packages/core/src/generated from crates/core
 	$(CARGO) test -p pewterdesk-core

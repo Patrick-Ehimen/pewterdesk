@@ -241,14 +241,14 @@ function usePolled<T>(key: string | undefined, load: () => Promise<T>): Feed<T> 
   return feed;
 }
 
-/** The watched account's fills, newest first, while `enabled`. */
+/** The connected account's fills, newest first, while `enabled`. */
 export function useAccountFills(venue: VenueId, address: string | undefined, enabled: boolean) {
   return usePolled<Fill[]>(enabled && address ? `${venue}:${address}` : undefined, () =>
     venueClient.fills(venue, address ?? ""),
   );
 }
 
-/** Funding paid or received by the watched account in the last 30 days, while `enabled`. */
+/** Funding paid or received by the connected account in the last 30 days, while `enabled`. */
 export function useAccountFunding(venue: VenueId, address: string | undefined, enabled: boolean) {
   return usePolled<FundingPayment[]>(enabled && address ? `${venue}:${address}` : undefined, () =>
     venueClient.fundingPayments(
@@ -259,7 +259,7 @@ export function useAccountFunding(venue: VenueId, address: string | undefined, e
   );
 }
 
-/** The watched account's recent orders in any state, while `enabled`. */
+/** The connected account's recent orders in any state, while `enabled`. */
 export function useOrderHistory(venue: VenueId, address: string | undefined, enabled: boolean) {
   return usePolled<Order[]>(enabled && address ? `${venue}:${address}` : undefined, () =>
     venueClient.orderHistory(venue, address ?? ""),
