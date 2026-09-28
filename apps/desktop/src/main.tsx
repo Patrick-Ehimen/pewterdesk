@@ -12,6 +12,7 @@ import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { applyStoredAppearance } from "./hooks/useAppearance";
 import { forgetWatchedAddress } from "./lib/account";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
+import { installReloadShortcut } from "./lib/reload";
 import { TrayPanel } from "./tray/TrayPanel";
 
 const el = document.getElementById("root");
@@ -32,6 +33,7 @@ async function startTrayPanel() {
 }
 
 async function start() {
+  installReloadShortcut();
   // Theme first, so the splash itself is drawn in the right one.
   applyStoredAppearance();
   forgetWatchedAddress();

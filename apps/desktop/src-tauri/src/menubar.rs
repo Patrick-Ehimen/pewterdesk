@@ -4,10 +4,11 @@
 
 #[cfg(target_os = "macos")]
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::{AppHandle, Emitter, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::about::{self, AboutLink};
 
+const VIEW_RELOAD: &str = "view:reload";
 const HELP_REPOSITORY: &str = "help:repository";
 const HELP_ISSUES: &str = "help:issues";
 
@@ -64,7 +65,11 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
         h,
         "View",
         true,
-        &[&PredefinedMenuItem::fullscreen(h, None)?],
+        &[
+            &MenuItem::with_id(h, VIEW_RELOAD, "Reload", true, Some("CmdOrCtrl+R"))?,
+            &sep()?,
+            &PredefinedMenuItem::fullscreen(h, None)?,
+        ],
     )?;
     let window = Submenu::with_items(
         h,
@@ -105,6 +110,13 @@ pub fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
         about::ABOUT_MENU_ID => {
             // The page opens its dialog; nothing to do if it isn't listening.
             let _ = app.emit(about::OPEN_ABOUT_EVENT, ());
+        }
+        // From Rust rather than the page, so it works even when the page's
+        // scripts don't. The splash stays closed (see `splash::reveal_main`).
+        VIEW_RELOAD => {
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.reload();
+            }
         }
         HELP_REPOSITORY => {
             let _ = about::open(AboutLink::Repository);
