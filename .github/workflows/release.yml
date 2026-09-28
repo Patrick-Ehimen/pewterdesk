@@ -82,6 +82,9 @@ jobs:
             Early pre-release: a read-only trading screen on Hyperliquid market data.
             It can't connect a wallet or place orders yet.
 
+            Requires macOS 13 (Ventura) or later, Windows 10 or later, or Linux with
+            WebKitGTK 4.1 (Ubuntu 22.04 or newer).
+
             The builds aren't code-signed, so the OS warns on first launch:
             - macOS: open it once, then go to System Settings > Privacy & Security
               and choose Open Anyway next to PewterDesk.
