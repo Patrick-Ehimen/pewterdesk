@@ -61,6 +61,12 @@ a venue should be a new crate, not a rewrite of the UI.
 To start a new venue, use the `add-exchange-adapter` scaffold in
 [.claude/commands/](.claude/commands/add-exchange-adapter.md).
 
+## Download
+
+Installers are on the [releases page](https://github.com/Patrick-Ehimen/pewterdesk/releases).
+They need macOS 13 (Ventura) or later, Windows 10 or later, or Linux with
+WebKitGTK 4.1 (Ubuntu 22.04 or newer).
+
 ## Getting started
 
 Requires Node ≥ 20 and pnpm 9 (the repo pins `pnpm@9.12.0` via `packageManager`).
