@@ -93,7 +93,7 @@ const HYPERLIQUID_FEES = { taker: 0.00045, maker: 0.00015 };
 const HYPERLIQUID_MAX_SLIPPAGE = 0.08;
 
 /** The launch splash stays up at least this long after the page starts, and at most this. */
-const MIN_SPLASH_MS = 1200;
+const MIN_SPLASH_MS = 2000;
 const MAX_SPLASH_MS = 8000;
 
 /** Market logos, fetched by the venue adapter; stable so TokenIcon's cache holds. */

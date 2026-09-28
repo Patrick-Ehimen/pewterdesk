@@ -12,7 +12,7 @@ import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { applyStoredAppearance } from "./hooks/useAppearance";
 import { forgetWatchedAddress } from "./lib/account";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
-import { installReloadShortcut } from "./lib/reload";
+import { installReloadShortcut, wasReloaded } from "./lib/reload";
 import { TrayPanel } from "./tray/TrayPanel";
 
 const el = document.getElementById("root");
@@ -38,12 +38,13 @@ async function start() {
   applyStoredAppearance();
   forgetWatchedAddress();
   const locale = storedLanguage();
-  const switching = takeLanguageSwitch();
+  // A reload holds the splash like a language switch, so it doesn't just flash.
+  const holdSplash = takeLanguageSwitch() || wasReloaded();
 
   root.render(<Splash />);
   await Promise.all([
     loadLocale(locale),
-    switching ? new Promise((resolve) => setTimeout(resolve, SWITCH_SPLASH_MS)) : null,
+    holdSplash ? new Promise((resolve) => setTimeout(resolve, SWITCH_SPLASH_MS)) : null,
   ]);
   document.documentElement.lang = locale;
 

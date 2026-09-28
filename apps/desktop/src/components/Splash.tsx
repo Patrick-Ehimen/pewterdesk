@@ -4,7 +4,7 @@
 // assets/logo/pewterdesk-mark-*.svg; colors come from the brand tokens, so it
 // follows the theme.
 
-/** A language or theme switch keeps the splash up at least this long, so the change registers. */
+/** A reload, or a language or theme switch, keeps the splash up at least this long, so it registers. */
 export const SWITCH_SPLASH_MS = 1800;
 /** Fade-out time. Keep in sync with `.splash[data-leaving]` in styles/app.css. */
 export const SPLASH_FADE_MS = 350;

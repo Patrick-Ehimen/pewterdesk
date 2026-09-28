@@ -11,6 +11,14 @@ export function isReloadKey(e: KeyPress, mac: boolean): boolean {
   return e.ctrlKey && e.key.toLowerCase() === "r";
 }
 
+/** Whether this page load is a reload (menu, keys, or a language switch). */
+export function wasReloaded(): boolean {
+  const nav = performance.getEntriesByType("navigation")[0] as
+    | PerformanceNavigationTiming
+    | undefined;
+  return nav?.type === "reload";
+}
+
 /**
  * Reloads the page on its reload keys. Installed before React renders, so it
  * still works when the app itself fails to.
