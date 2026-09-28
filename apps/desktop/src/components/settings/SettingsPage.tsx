@@ -61,8 +61,8 @@ export interface SettingsPageProps {
   onTheme: (theme: Theme) => void;
   marketColors: MarketColors;
   onMarketColors: (colors: MarketColors) => void;
+  /** The connected trading account, once wallet connection exists. */
   address: string | undefined;
-  onWatch: (address: string | undefined) => void;
   onOpenWallet: () => void;
   onResetLayout: () => void;
   onClearWatchlist: () => void;
@@ -139,53 +139,27 @@ function GeneralSection({ soundOn, onSound }: SettingsPageProps) {
   );
 }
 
-function WalletsSection({ address, onWatch, onOpenWallet }: SettingsPageProps) {
-  const [copied, setCopied] = useState(false);
+function WalletsSection({ address, onOpenWallet }: SettingsPageProps) {
   return (
     <>
       <SectionHead title={navLabel("wallets")} description={t("settings.wallets.desc")} />
       <div className="settings-cards-2">
-        <section className="settings-panel" aria-labelledby="settings-watched">
+        <section className="settings-panel" aria-labelledby="settings-connected">
           <GroupLabel>
-            <span id="settings-watched">{t("settings.watched")}</span>
+            <span id="settings-connected">{t("settings.connected")}</span>
           </GroupLabel>
           {address ? (
-            <>
-              <div className="settings-identity">
-                <span className="pd-live-dot" data-live aria-hidden />
-                <div>
-                  <strong className="pd-num" title={address}>
-                    {shortAddress(address)}
-                  </strong>
-                  <span>{t("settings.watchedHelp")}</span>
-                </div>
+            <div className="settings-identity">
+              <span className="pd-live-dot" data-live aria-hidden />
+              <div>
+                <strong className="pd-num" title={address}>
+                  {shortAddress(address)}
+                </strong>
               </div>
-              <div className="settings-actions">
-                <button
-                  type="button"
-                  className="settings-button"
-                  onClick={() =>
-                    navigator.clipboard.writeText(address).then(
-                      () => setCopied(true),
-                      () => {},
-                    )
-                  }
-                  onBlur={() => setCopied(false)}
-                >
-                  {copied ? t("settings.copied") : t("settings.copyAddress")}
-                </button>
-                <button
-                  type="button"
-                  className="settings-button"
-                  onClick={() => onWatch(undefined)}
-                >
-                  {t("wallet.stopWatching")}
-                </button>
-              </div>
-            </>
+            </div>
           ) : (
             <>
-              <p className="settings-help">{t("settings.noWatched")}</p>
+              <p className="settings-help">{t("settings.noConnected")}</p>
               <div className="settings-actions">
                 <button
                   type="button"

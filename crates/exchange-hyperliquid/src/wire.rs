@@ -5,7 +5,8 @@
 //! `Decimal` without passing through a float.
 
 use pewterdesk_core::{
-    AccountSnapshot, BookLevel, Decimal, Market, MarketStats, Order, OrderBook, OrderStatus,
+    AccountSnapshot, BookLevel, Candle as DomainCandle, CandleInterval, Decimal, Fill, FillEffect,
+    FundingPayment, FundingRate, Market, MarketStats, MarketSummary, Order, OrderBook, OrderStatus,
     OrderType, Position, PositionSide, Side, Trade, VenueError, VenueId,
 };
 use rust_decimal::Decimal as RawDecimal;
@@ -15,12 +16,63 @@ use serde::Deserialize;
 /// asset's `szDecimals`.
 const MAX_PERP_PRICE_DECIMALS: u32 = 6;
 
-/// Hyperliquid settles every perp in USDC.
-const QUOTE: &str = "USDC";
+/// The main perp exchange settles in USDC (spot token 0). Builder-deployed
+/// exchanges (HIP-3) each choose their own collateral token.
+pub const USDC_TOKEN: u32 = 0;
+const USDC: &str = "USDC";
 
+/// One perp exchange's markets: `meta`, or one entry of `allPerpMetas`.
 #[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Meta {
     pub universe: Vec<AssetMeta>,
+    /// The spot token positions settle in.
+    #[serde(default)]
+    pub collateral_token: u32,
+}
+
+impl Meta {
+    /// The builder-deployed exchange this is, or `None` for the main one.
+    /// Builder markets are named "<dex>:<coin>", so the first one says.
+    pub fn dex(&self) -> Option<&str> {
+        self.universe
+            .first()
+            .and_then(|a| a.name.split_once(':'))
+            .map(|(dex, _)| dex)
+    }
+
+    pub fn has_live_markets(&self) -> bool {
+        self.universe.iter().any(|a| !a.is_delisted)
+    }
+}
+
+/// `spotMeta`, for naming a builder exchange's collateral token.
+#[derive(Clone, Debug, Deserialize)]
+pub struct SpotMeta {
+    pub tokens: Vec<SpotToken>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SpotToken {
+    pub name: String,
+    pub index: u32,
+}
+
+/// The collateral token's name, e.g. "USDC".
+pub fn quote_name(token: u32, spot: Option<&SpotMeta>) -> String {
+    if token == USDC_TOKEN {
+        return USDC.into();
+    }
+    spot.and_then(|s| s.tokens.iter().find(|t| t.index == token))
+        .map_or_else(|| USDC.into(), |t| t.name.clone())
+}
+
+/// An `allDexsAssetCtxs` push: every perp exchange's contexts, each in its
+/// `Meta::universe` order. The main exchange is named "". Contexts stay raw
+/// so one exchange with an odd entry can't spoil the rest.
+#[derive(Clone, Debug, Deserialize)]
+pub struct WsAllDexsAssetCtxs {
+    pub ctxs: Vec<(String, Vec<serde_json::Value>)>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -101,6 +153,55 @@ pub struct OpenOrder {
     pub cloid: Option<String>,
 }
 
+/// One entry of a `historicalOrders` response.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoricalOrder {
+    pub order: OpenOrder,
+    /// "open", "filled", "canceled", "triggered", or one of the venue's many
+    /// specific "...Canceled" / "...Rejected" reasons.
+    pub status: String,
+}
+
+/// One entry of a `userFills` response.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserFill {
+    pub coin: String,
+    pub px: Decimal,
+    pub sz: Decimal,
+    /// "B" (bought) or "A" (sold).
+    pub side: String,
+    pub time: u64,
+    /// "Open Long", "Close Short", "Long > Short", ...
+    pub dir: String,
+    pub closed_pnl: Decimal,
+    pub oid: u64,
+    /// Took liquidity.
+    pub crossed: bool,
+    pub fee: Decimal,
+    pub tid: u64,
+    pub fee_token: String,
+}
+
+/// One entry of a `userFunding` response.
+#[derive(Clone, Debug, Deserialize)]
+pub struct UserFunding {
+    pub time: u64,
+    pub delta: FundingDelta,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FundingDelta {
+    pub coin: String,
+    /// Positive when the account received it.
+    pub usdc: Decimal,
+    /// Signed position size: negative for a short.
+    pub szi: Decimal,
+    pub funding_rate: Decimal,
+}
+
 /// A WS push: `{"channel": "...", "data": ...}`.
 #[derive(Clone, Debug, Deserialize)]
 pub struct WsMessage {
@@ -145,8 +246,77 @@ pub struct WsActiveAssetCtx {
 pub struct Candle {
     /// Open time, milliseconds since the Unix epoch.
     pub t: u64,
+    /// The coin and interval, so a push can be matched to its subscription.
+    #[serde(default)]
+    pub s: String,
+    #[serde(default)]
+    pub i: String,
+    pub o: Decimal,
     pub h: Decimal,
     pub l: Decimal,
+    pub c: Decimal,
+    /// Volume in base units.
+    pub v: Decimal,
+}
+
+/// Hyperliquid's name for a candle interval.
+pub fn interval_code(interval: CandleInterval) -> &'static str {
+    match interval {
+        CandleInterval::OneMinute => "1m",
+        CandleInterval::FiveMinutes => "5m",
+        CandleInterval::FifteenMinutes => "15m",
+        CandleInterval::OneHour => "1h",
+        CandleInterval::FourHours => "4h",
+        CandleInterval::OneDay => "1d",
+        CandleInterval::OneWeek => "1w",
+    }
+}
+
+pub fn candle(c: Candle) -> DomainCandle {
+    DomainCandle {
+        open_time: c.t,
+        open: c.o,
+        high: c.h,
+        low: c.l,
+        close: c.c,
+        volume: c.v,
+    }
+}
+
+/// A `metaAndAssetCtxs` response pairs the universe with one context per
+/// asset, in the same order. Delisted markets are dropped, as in `markets`.
+pub fn market_summaries(meta: Meta, ctxs: Vec<PerpAssetCtx>) -> Vec<MarketSummary> {
+    meta.universe
+        .into_iter()
+        .zip(ctxs)
+        .filter(|(asset, _)| !asset.is_delisted)
+        .map(|(asset, ctx)| MarketSummary {
+            market: asset.name,
+            mark_price: ctx.mark_px,
+            prev_day_price: ctx.prev_day_px,
+            day_volume: ctx.day_ntl_vlm,
+            open_interest: ctx.open_interest,
+            funding_rate: ctx.funding,
+            funding_interval_secs: crate::stats::FUNDING_INTERVAL_SECS,
+        })
+        .collect()
+}
+
+/// One entry of a `fundingHistory` response.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FundingEntry {
+    pub coin: String,
+    pub funding_rate: Decimal,
+    pub time: u64,
+}
+
+pub fn funding_rate(f: FundingEntry) -> FundingRate {
+    FundingRate {
+        market: f.coin,
+        rate: f.funding_rate,
+        time: f.time,
+    }
 }
 
 /// One entry of a `trades` push; the channel's data is an array of these.
@@ -169,28 +339,75 @@ fn step(decimals: u32) -> Decimal {
 /// significant figures and at most `6 - szDecimals` decimals. `tick_size` is
 /// the finer of the two bounds — the adapter validates the significant-figure
 /// rule itself when it places orders.
-pub fn market(asset: &AssetMeta) -> Market {
+pub fn market(asset: &AssetMeta, quote: &str) -> Market {
+    // Builder-deployed markets are "<dex>:<coin>"; the id keeps the prefix.
+    let (listed_by, base) = match asset.name.split_once(':') {
+        Some((dex, coin)) => (Some(dex.to_owned()), coin),
+        None => (None, asset.name.as_str()),
+    };
     Market {
         venue: VenueId::Hyperliquid,
         id: asset.name.clone(),
-        symbol: format!("{}-USD", asset.name),
-        base: asset.name.clone(),
-        quote: QUOTE.into(),
+        symbol: format!("{base}-{quote}"),
+        base: base.to_owned(),
+        quote: quote.to_owned(),
         tick_size: step(MAX_PERP_PRICE_DECIMALS.saturating_sub(asset.sz_decimals)),
         size_step: step(asset.sz_decimals),
         // The venue's minimum is a $10 notional, not a size; the smallest
         // representable size is the tightest bound that doesn't move with price.
         min_size: step(asset.sz_decimals),
         max_leverage: asset.max_leverage,
+        listed_by,
     }
 }
 
-pub fn markets(meta: Meta) -> Vec<Market> {
-    meta.universe
+/// Every exchange's live markets, the main exchange's first.
+pub fn markets(metas: Vec<Meta>, spot: Option<&SpotMeta>) -> Vec<Market> {
+    metas
         .iter()
-        .filter(|asset| !asset.is_delisted)
-        .map(market)
+        .flat_map(|meta| {
+            let quote = quote_name(meta.collateral_token, spot);
+            meta.universe
+                .iter()
+                .filter(|asset| !asset.is_delisted)
+                .map(move |asset| market(asset, &quote))
+                .collect::<Vec<_>>()
+        })
         .collect()
+}
+
+/// Summaries for the builder-deployed exchanges in an `allDexsAssetCtxs`
+/// push, matched to `metas` by exchange name. The main exchange ("") is
+/// skipped: it's polled separately, more often than this feed pushes.
+///
+/// Also returns whether `metas` looks out of date: an exchange it doesn't
+/// know, or a context count that doesn't match its universe (a new listing),
+/// in which case that exchange is left out rather than mismatched.
+pub fn builder_summaries(metas: &[Meta], pushed: WsAllDexsAssetCtxs) -> (Vec<MarketSummary>, bool) {
+    let mut stale = false;
+    let mut summaries = Vec::new();
+    for (dex, ctxs) in pushed.ctxs {
+        if dex.is_empty() {
+            continue;
+        }
+        let Some(meta) = metas.iter().find(|m| m.dex() == Some(dex.as_str())) else {
+            // An exchange with no markets yet has no name to match on.
+            stale |= !ctxs.is_empty();
+            continue;
+        };
+        if !meta.has_live_markets() {
+            continue;
+        }
+        if ctxs.len() != meta.universe.len() {
+            stale = true;
+            continue;
+        }
+        let Ok(ctxs) = serde_json::from_value::<Vec<PerpAssetCtx>>(ctxs.into()) else {
+            continue;
+        };
+        summaries.extend(market_summaries(meta.clone(), ctxs));
+    }
+    (summaries, stale)
 }
 
 fn levels(levels: Vec<L2Level>) -> Vec<BookLevel> {
@@ -308,6 +525,66 @@ pub fn order(o: OpenOrder) -> Result<Order, VenueError> {
     })
 }
 
+/// The venue's order state, folded into ours. Anything ending an order
+/// without a fill that isn't a rejection counts as cancelled.
+fn history_status(status: &str) -> OrderStatus {
+    match status {
+        "open" | "triggered" => OrderStatus::Open,
+        "filled" => OrderStatus::Filled,
+        s if s.to_ascii_lowercase().contains("rejected") => OrderStatus::Rejected,
+        _ => OrderStatus::Cancelled,
+    }
+}
+
+pub fn historical_order(h: HistoricalOrder) -> Result<Order, VenueError> {
+    let status = history_status(&h.status);
+    Ok(Order {
+        status,
+        ..order(h.order)?
+    })
+}
+
+fn fill_effect(dir: &str) -> FillEffect {
+    match dir {
+        "Open Long" => FillEffect::OpenLong,
+        "Close Long" => FillEffect::CloseLong,
+        "Open Short" => FillEffect::OpenShort,
+        "Close Short" => FillEffect::CloseShort,
+        "Long > Short" => FillEffect::LongToShort,
+        "Short > Long" => FillEffect::ShortToLong,
+        _ => FillEffect::Other,
+    }
+}
+
+pub fn fill(f: UserFill) -> Result<Fill, VenueError> {
+    Ok(Fill {
+        venue: VenueId::Hyperliquid,
+        id: f.tid.to_string(),
+        order_id: f.oid.to_string(),
+        side: side(&f.side)?,
+        effect: fill_effect(&f.dir),
+        market: f.coin,
+        price: f.px,
+        size: f.sz,
+        closed_pnl: f.closed_pnl,
+        fee: f.fee,
+        fee_asset: f.fee_token,
+        taker: f.crossed,
+        time: f.time,
+    })
+}
+
+pub fn funding_payment(f: UserFunding) -> FundingPayment {
+    FundingPayment {
+        venue: VenueId::Hyperliquid,
+        market: f.delta.coin,
+        amount: f.delta.usdc,
+        position_size: f.delta.szi,
+        rate: f.delta.funding_rate,
+        time: f.time,
+    }
+}
+
 pub fn account(
     address: &str,
     state: ClearinghouseState,
@@ -349,15 +626,79 @@ mod tests {
         }))
         .unwrap();
 
-        let markets = markets(meta);
+        let markets = markets(vec![meta], None);
         assert_eq!(markets.len(), 1);
         let btc = &markets[0];
         assert_eq!(btc.id, "BTC");
-        assert_eq!(btc.symbol, "BTC-USD");
+        assert_eq!(btc.symbol, "BTC-USDC");
         assert_eq!(btc.quote, "USDC");
         assert_eq!(btc.tick_size, dec("0.1"));
         assert_eq!(btc.size_step, dec("0.00001"));
         assert_eq!(btc.max_leverage, 40);
+        assert_eq!(btc.listed_by, None);
+    }
+
+    fn builder_meta() -> Meta {
+        serde_json::from_value(json!({
+            "universe": [
+                { "szDecimals": 3, "name": "xyz:TSLA", "maxLeverage": 20, "marginTableId": 20 },
+                { "szDecimals": 4, "name": "xyz:GOLD", "maxLeverage": 20, "isDelisted": true }
+            ],
+            "collateralToken": 360
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn maps_builder_markets() {
+        let spot: SpotMeta = serde_json::from_value(json!({
+            "tokens": [{ "name": "USDC", "index": 0 }, { "name": "USDH", "index": 360 }]
+        }))
+        .unwrap();
+        let markets = markets(vec![builder_meta()], Some(&spot));
+        assert_eq!(markets.len(), 1);
+        let tsla = &markets[0];
+        // The id keeps the prefix: it's what every other request takes.
+        assert_eq!(tsla.id, "xyz:TSLA");
+        assert_eq!(tsla.base, "TSLA");
+        assert_eq!(tsla.symbol, "TSLA-USDH");
+        assert_eq!(tsla.listed_by.as_deref(), Some("xyz"));
+        assert_eq!(tsla.quote, "USDH");
+        assert_eq!(builder_meta().dex(), Some("xyz"));
+    }
+
+    fn ctx(mark: &str) -> serde_json::Value {
+        json!({
+            "funding": "0.00000625", "openInterest": "10", "prevDayPx": "370",
+            "dayNtlVlm": "1000", "oraclePx": mark, "markPx": mark, "midPx": mark
+        })
+    }
+
+    #[test]
+    fn builder_summaries_skip_main_and_catch_new_listings() {
+        let metas = vec![builder_meta()];
+        let pushed: WsAllDexsAssetCtxs = serde_json::from_value(json!({
+            "ctxs": [
+                ["", [ctx("84000")]],
+                ["xyz", [ctx("371.5"), ctx("2400")]]
+            ]
+        }))
+        .unwrap();
+        let (summaries, stale) = builder_summaries(&metas, pushed);
+        assert!(!stale);
+        // The main exchange is skipped; the delisted GOLD is dropped.
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].market, "xyz:TSLA");
+        assert_eq!(summaries[0].mark_price, dec("371.5"));
+
+        // A third context: xyz listed something the metas don't have yet.
+        let pushed: WsAllDexsAssetCtxs = serde_json::from_value(json!({
+            "ctxs": [["xyz", [ctx("371.5"), ctx("2400"), ctx("1")]], ["new", [ctx("1")]]]
+        }))
+        .unwrap();
+        let (summaries, stale) = builder_summaries(&metas, pushed);
+        assert!(stale);
+        assert!(summaries.is_empty());
     }
 
     #[test]
@@ -398,6 +739,60 @@ mod tests {
             (candle.t, candle.h, candle.l),
             (1790438400000, dec("92.575"), dec("92.503"))
         );
+    }
+
+    #[test]
+    fn maps_candles_and_intervals() {
+        let c: Candle = serde_json::from_value(json!({
+            "t": 1790438400000u64, "T": 1790441999999u64, "s": "HYPE", "i": "1h",
+            "o": "92.521", "c": "92.528", "h": "92.575", "l": "92.503", "v": "1699.7", "n": 198
+        }))
+        .unwrap();
+        assert_eq!((c.s.as_str(), c.i.as_str()), ("HYPE", "1h"));
+        let c = candle(c);
+        assert_eq!(c.open_time, 1790438400000);
+        assert_eq!((c.open, c.close), (dec("92.521"), dec("92.528")));
+        assert_eq!(
+            (c.high, c.low, c.volume),
+            (dec("92.575"), dec("92.503"), dec("1699.7"))
+        );
+        assert_eq!(interval_code(CandleInterval::FourHours), "4h");
+        assert_eq!(interval_code(CandleInterval::OneWeek), "1w");
+    }
+
+    #[test]
+    fn maps_market_summaries_in_universe_order_without_delisted() {
+        let meta: Meta = serde_json::from_value(json!({ "universe": [
+            { "szDecimals": 5, "name": "BTC", "maxLeverage": 40 },
+            { "szDecimals": 1, "name": "OLD", "maxLeverage": 3, "isDelisted": true },
+            { "szDecimals": 2, "name": "HYPE", "maxLeverage": 10 }
+        ]}))
+        .unwrap();
+        let ctx = |mark: &str| -> PerpAssetCtx {
+            serde_json::from_value(json!({
+                "funding": "0.0000125", "openInterest": "10", "prevDayPx": "1",
+                "dayNtlVlm": "100", "oraclePx": mark, "markPx": mark, "midPx": null
+            }))
+            .unwrap()
+        };
+        let summaries = market_summaries(meta, vec![ctx("84000"), ctx("0.1"), ctx("92.5")]);
+        let ids: Vec<_> = summaries.iter().map(|s| s.market.as_str()).collect();
+        assert_eq!(ids, ["BTC", "HYPE"]);
+        assert_eq!(summaries[1].mark_price, dec("92.5"));
+        assert_eq!(summaries[0].funding_rate, dec("0.0000125"));
+        assert_eq!(summaries[0].funding_interval_secs, 3600);
+    }
+
+    #[test]
+    fn maps_funding_history() {
+        let entries: Vec<FundingEntry> = serde_json::from_value(json!([{
+            "coin": "HYPE", "fundingRate": "0.0000125", "premium": "-0.00018", "time": 1790442000074u64
+        }]))
+        .unwrap();
+        let f = funding_rate(entries.into_iter().next().unwrap());
+        assert_eq!(f.market, "HYPE");
+        assert_eq!(f.rate, dec("0.0000125"));
+        assert_eq!(f.time, 1790442000074);
     }
 
     #[test]
@@ -568,5 +963,67 @@ mod tests {
     #[test]
     fn rejects_unknown_order_side() {
         assert!(order(open_order(json!({ "side": "X" }))).is_err());
+    }
+
+    // Shapes as sampled from mainnet.
+    #[test]
+    fn maps_fills() {
+        let f: UserFill = serde_json::from_value(json!({
+            "coin": "AZTEC", "px": "0.017024", "sz": "685.0", "side": "A",
+            "time": 1790508444030u64, "startPosition": "912224.0", "dir": "Close Long",
+            "closedPnl": "-0.044525", "hash": "0x00", "oid": 557900683331u64,
+            "crossed": false, "fee": "0.0", "tid": 727578724900554u64,
+            "feeToken": "USDC", "twapId": null
+        }))
+        .unwrap();
+        let fill = fill(f).unwrap();
+        assert_eq!(fill.side, Side::Sell);
+        assert_eq!(fill.effect, FillEffect::CloseLong);
+        assert_eq!(fill.closed_pnl, dec("-0.044525"));
+        assert_eq!(fill.order_id, "557900683331");
+        assert!(!fill.taker);
+        assert_eq!(fill_effect("Liquidated Cross Long"), FillEffect::Other);
+    }
+
+    #[test]
+    fn maps_funding_payments() {
+        let f: UserFunding = serde_json::from_value(json!({
+            "time": 1789905600043u64, "hash": "0x00",
+            "delta": { "type": "funding", "coin": "BTC", "usdc": "0.541099",
+                       "szi": "-0.53783", "fundingRate": "0.0000125", "nSamples": null }
+        }))
+        .unwrap();
+        let p = funding_payment(f);
+        // A short received funding while the rate was positive.
+        assert_eq!(p.amount, dec("0.541099"));
+        assert_eq!(p.position_size, dec("-0.53783"));
+        assert_eq!(p.market, "BTC");
+    }
+
+    #[test]
+    fn maps_order_history_statuses() {
+        let h = |status: &str| -> HistoricalOrder {
+            serde_json::from_value(json!({
+                "order": { "coin": "NIL", "side": "A", "limitPx": "0.10784", "sz": "0.0",
+                           "oid": 557900731425u64, "timestamp": 1790508447133u64,
+                           "triggerCondition": "N/A", "isTrigger": false, "triggerPx": "0.0",
+                           "children": [], "isPositionTpsl": false, "reduceOnly": false,
+                           "orderType": "Limit", "origSz": "1667.0", "tif": "Alo", "cloid": null },
+                "status": status, "statusTimestamp": 1790508448212u64
+            }))
+            .unwrap()
+        };
+        let filled = historical_order(h("filled")).unwrap();
+        assert_eq!(filled.status, OrderStatus::Filled);
+        assert_eq!(filled.filled_size, dec("1667.0"));
+        for (raw, want) in [
+            ("open", OrderStatus::Open),
+            ("canceled", OrderStatus::Cancelled),
+            ("reduceOnlyCanceled", OrderStatus::Cancelled),
+            ("iocCancelRejected", OrderStatus::Rejected),
+            ("tickRejected", OrderStatus::Rejected),
+        ] {
+            assert_eq!(historical_order(h(raw)).unwrap().status, want, "{raw}");
+        }
     }
 }

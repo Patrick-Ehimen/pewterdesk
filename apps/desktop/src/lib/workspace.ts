@@ -1,6 +1,10 @@
 import { newPanelId, PANELS, type PanelKind, panelKindOf } from "./panels";
 
 /** The grid the workspace snaps to. Rows stretch to fill the window's height. */
+/**
+ * `rows` is how many rows fill the window; a layout may run deeper, and the
+ * workspace then scrolls (Default's bottom row does).
+ */
 export const GRID = { cols: 24, rows: 24, margin: 8 } as const;
 
 /** One placed panel, in grid units. `i` is the panel id (see panels.ts). */
@@ -45,12 +49,16 @@ const bar = (w: number): Placement => ({ i: STATS_BAR_ID, x: 0, y: 0, w, h: STAT
 export const PRESETS: readonly SavedLayout[] = [
   {
     name: "Default",
+    // The order ticket takes the right column; the account sits under it,
+    // beside positions. The chart and book fill the window; the bottom row
+    // runs past it, so the workspace scrolls to show all of it.
     layout: [
       bar(19),
-      place("markets", 0, 2, 14, 18),
-      place("orderBook", 14, 2, 5, 18),
-      place("account", 19, 0, 5, 20),
-      place("positions", 0, 20, 24, 4),
+      place("markets", 0, 2, 14, 17),
+      place("orderBook", 14, 2, 5, 17),
+      place("trade", 19, 0, 5, 19),
+      place("positions", 0, 19, 19, 12),
+      place("account", 19, 19, 5, 12),
     ],
   },
   {
@@ -84,6 +92,41 @@ export const DEFAULT_PRESET = PRESETS[0]!;
  * on load; anything the user changed is left alone.
  */
 const PREVIOUS_DEFAULTS: readonly Layout[] = [
+  // The first scrolling layout, with an 8-row bottom row.
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 17),
+    place("orderBook", 14, 2, 5, 17),
+    place("trade", 19, 0, 5, 19),
+    place("positions", 0, 19, 19, 8),
+    place("account", 19, 19, 5, 8),
+  ],
+  // The Trade layout with a short, unscrolled bottom row.
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 17),
+    place("orderBook", 14, 2, 5, 17),
+    place("trade", 19, 0, 5, 19),
+    place("positions", 0, 19, 19, 5),
+    place("account", 19, 19, 5, 5),
+  ],
+  // The first Trade layout, with a taller bottom row.
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 14),
+    place("orderBook", 14, 2, 5, 14),
+    place("trade", 19, 0, 5, 16),
+    place("positions", 0, 16, 19, 8),
+    place("account", 19, 16, 5, 8),
+  ],
+  // Before the Trade panel.
+  [
+    bar(19),
+    place("markets", 0, 2, 14, 18),
+    place("orderBook", 14, 2, 5, 18),
+    place("account", 19, 0, 5, 20),
+    place("positions", 0, 20, 24, 4),
+  ],
   [
     bar(19),
     place("markets", 0, 2, 14, 14),
@@ -270,4 +313,63 @@ export function saveAs(state: WorkspaceState, name: string): WorkspaceState {
   if (!trimmed || PRESETS.some((p) => p.name === trimmed)) return state;
   const saved = state.saved.filter((s) => s.name !== trimmed);
   return { ...state, active: trimmed, saved: [...saved, { name: trimmed, layout: state.layout }] };
+}
+
+/**
+ * How a panel can be temporarily expanded: `wide` covers it and the order
+ * book beside it; `full` covers the whole workspace. A view only — the layout
+ * itself doesn't change.
+ */
+export type ExpandMode = "wide" | "full";
+
+export interface ExpandedArea {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Panels the expanded one covers, hidden while it's expanded. */
+  hidden: string[];
+}
+
+const overlaps = (a: Placement, b: { x: number; y: number; w: number; h: number }) =>
+  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * The area an expanded panel takes, in grid units. `wide` is the bounding box
+ * of the panel and the nearest order book (or just the panel, without one);
+ * `full` is the whole grid. Whatever else falls inside is hidden.
+ */
+export function expandedArea(
+  layout: Layout,
+  id: string,
+  mode: ExpandMode,
+): ExpandedArea | undefined {
+  const panel = layout.find((p) => p.i === id);
+  if (!panel) return undefined;
+  let box = { x: panel.x, y: panel.y, w: panel.w, h: panel.h };
+  if (mode === "full") {
+    // The window's worth of rows, even when the layout scrolls past it.
+    box = { x: 0, y: 0, w: GRID.cols, h: GRID.rows };
+  } else {
+    const center = (p: Placement) => [p.x + p.w / 2, p.y + p.h / 2] as const;
+    const [cx, cy] = center(panel);
+    const book = layout
+      .filter((p) => panelKindOf(p.i) === "orderBook")
+      .sort((a, b) => {
+        const [ax, ay] = center(a);
+        const [bx, by] = center(b);
+        return Math.hypot(ax - cx, ay - cy) - Math.hypot(bx - cx, by - cy);
+      })[0];
+    if (book) {
+      const x = Math.min(panel.x, book.x);
+      const y = Math.min(panel.y, book.y);
+      box = {
+        x,
+        y,
+        w: Math.max(panel.x + panel.w, book.x + book.w) - x,
+        h: Math.max(panel.y + panel.h, book.y + book.h) - y,
+      };
+    }
+  }
+  return { ...box, hidden: layout.filter((p) => p.i !== id && overlaps(p, box)).map((p) => p.i) };
 }

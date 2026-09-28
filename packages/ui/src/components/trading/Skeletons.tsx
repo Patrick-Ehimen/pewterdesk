@@ -146,3 +146,64 @@ export function TradesSkeleton({ mode = "table" }: { mode?: RowMode }) {
     </div>
   );
 }
+
+/** Candles in the chart skeleton; they share the plot's width. */
+const SKELETON_CANDLES = 48;
+
+/**
+ * A made-up but stable price path for the chart skeleton: each candle's body
+ * centre, body height and wick height, as percentages of the plot.
+ */
+const skeletonCandles = Array.from({ length: SKELETON_CANDLES }, (_, i) => {
+  const centre = 44 + 14 * Math.sin(i / 6) + 5 * Math.sin(i / 1.7) - i * 0.15;
+  const body = 3 + ((i * 7) % 5) * 1.4;
+  return { centre, body, wick: body + 3 + ((i * 3) % 4) };
+});
+const skeletonVolume = Array.from({ length: SKELETON_CANDLES }, (_, i) => 25 + ((i * 37) % 70));
+
+/**
+ * The chart's loading state, shaped like the chart: the title and OHLC lines,
+ * candles along a price path, a volume strip and both axes.
+ */
+export function ChartSkeleton() {
+  return (
+    <div className="pd-chart-skel" role="status" aria-busy="true" aria-label={t("chart.loading")}>
+      <div className="pd-chart-skel-plot" aria-hidden>
+        <div className="pd-chart-skel-legend">
+          <span className="pd-chart-skel-title">
+            <span className="pd-skel pd-skel-dot" />
+            <Bar width={30} style={{ height: 11 }} />
+          </span>
+          <Bar width={55} />
+        </div>
+        {skeletonCandles.map((c, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder candles
+            key={i}
+            className="pd-chart-skel-candle"
+            style={{ left: `${((i + 0.5) / SKELETON_CANDLES) * 100}%`, top: `${c.centre}%` }}
+          >
+            <span className="pd-skel pd-chart-skel-wick" style={{ height: `${c.wick}%` }} />
+            <span className="pd-skel pd-chart-skel-body" style={{ height: `${c.body}%` }} />
+          </span>
+        ))}
+        <div className="pd-chart-skel-volume">
+          {skeletonVolume.map((h, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder bars
+            <span key={i} className="pd-skel" style={{ height: `${h}%` }} />
+          ))}
+        </div>
+      </div>
+      <div className="pd-chart-skel-price" aria-hidden>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <Bar key={i} width={70} />
+        ))}
+      </div>
+      <div className="pd-chart-skel-time" aria-hidden>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <span key={i} className="pd-skel" />
+        ))}
+      </div>
+    </div>
+  );
+}

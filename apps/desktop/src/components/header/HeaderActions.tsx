@@ -15,6 +15,7 @@ import {
   LuVolume2,
   LuVolumeX,
   LuWallet,
+  LuZap,
 } from "react-icons/lu";
 import type { Theme } from "../../hooks/useAppearance";
 import { switchLanguage } from "../../lib/language";
@@ -28,6 +29,8 @@ interface HeaderActionsProps {
   marketSymbol: string | undefined;
   starred: boolean;
   onToggleStar: () => void;
+  quickTradeOpen: boolean;
+  onToggleQuickTrade: () => void;
   editing: boolean;
   onToggleLayout: () => void;
   soundOn: boolean;
@@ -45,6 +48,8 @@ export function HeaderActions({
   marketSymbol,
   starred,
   onToggleStar,
+  quickTradeOpen,
+  onToggleQuickTrade,
   editing,
   onToggleLayout,
   soundOn,
@@ -68,6 +73,13 @@ export function HeaderActions({
           onToggle={onToggleStar}
         />
       )}
+      <IconButton
+        label={t("action.quickTrade")}
+        pressed={quickTradeOpen}
+        onClick={onToggleQuickTrade}
+      >
+        <LuZap size={ICON_SIZE} aria-hidden />
+      </IconButton>
       <IconButton
         label={t(editing ? "action.doneLayout" : "action.editLayout")}
         pressed={editing}
@@ -118,7 +130,7 @@ export function HeaderActions({
         <button
           type="button"
           className="app-wallet-chip"
-          title={t("wallet.watchingAddress", { address })}
+          title={t("wallet.connectedAddress", { address })}
           onClick={onOpenWallet}
         >
           <span className="pd-live-dot" data-live aria-hidden />

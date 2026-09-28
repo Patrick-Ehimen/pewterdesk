@@ -1,6 +1,6 @@
 //! Tauri commands exposing the venue adapters — the only way the UI reaches a
-//! venue. Read-only so far: markets, order books, trades, market stats and
-//! account state.
+//! venue. Read-only so far: markets, order books, trades, candles, market
+//! stats, summaries and history, funding history, and account state.
 //!
 //! Security invariants — review any change here against
 //! `.claude/commands/security-review.md`:
@@ -14,7 +14,9 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
-    AccountSnapshot, ExchangeAdapter, Market, MarketStats, OrderBook, Trade, VenueError, VenueId,
+    AccountSnapshot, Candle, CandleInterval, ExchangeAdapter, Fill, FundingPayment, FundingRate,
+    Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, Trade, VenueError,
+    VenueId,
 };
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
@@ -100,6 +102,37 @@ pub async fn account(
     venues.adapter(venue)?.account(&address).await
 }
 
+#[tauri::command]
+pub async fn fills(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+) -> Result<Vec<Fill>, VenueError> {
+    venues.adapter(venue)?.fills(&address).await
+}
+
+#[tauri::command]
+pub async fn funding_payments(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+    start_time: u64,
+) -> Result<Vec<FundingPayment>, VenueError> {
+    venues
+        .adapter(venue)?
+        .funding_payments(&address, start_time)
+        .await
+}
+
+#[tauri::command]
+pub async fn order_history(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+) -> Result<Vec<Order>, VenueError> {
+    venues.adapter(venue)?.order_history(&address).await
+}
+
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_order_book(
@@ -137,6 +170,84 @@ pub async fn subscribe_market_stats(
         .subscribe_market_stats(&market)
         .await?;
     Ok(venues.forward(rx, on_event))
+}
+
+/// Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_candles(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    interval: CandleInterval,
+    on_event: Channel<StreamEvent<Vec<Candle>>>,
+) -> Result<u32, VenueError> {
+    let rx = venues
+        .adapter(venue)?
+        .subscribe_candles(&market, interval)
+        .await?;
+    Ok(venues.forward(rx, on_event))
+}
+
+/// Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_market_summaries(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    on_event: Channel<StreamEvent<Vec<MarketSummary>>>,
+) -> Result<u32, VenueError> {
+    let rx = venues.adapter(venue)?.subscribe_market_summaries().await?;
+    Ok(venues.forward(rx, on_event))
+}
+
+/// Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_market_history(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    on_event: Channel<StreamEvent<MarketHistory>>,
+) -> Result<u32, VenueError> {
+    let rx = venues.adapter(venue)?.subscribe_market_history().await?;
+    Ok(venues.forward(rx, on_event))
+}
+
+/// Older candles for a chart scrolled back past what it has.
+#[tauri::command]
+pub async fn candles(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    interval: CandleInterval,
+    before: u64,
+    count: u32,
+) -> Result<Vec<Candle>, VenueError> {
+    venues
+        .adapter(venue)?
+        .candles(&market, interval, before, count)
+        .await
+}
+
+#[tauri::command]
+pub async fn funding_history(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    start_time: u64,
+) -> Result<Vec<FundingRate>, VenueError> {
+    venues
+        .adapter(venue)?
+        .funding_history(&market, start_time)
+        .await
+}
+
+/// A market's logo as SVG markup, or `None`. The frontend renders it only as
+/// an `<img>` with a `data:` URL.
+#[tauri::command]
+pub async fn market_icon(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+) -> Result<Option<String>, VenueError> {
+    venues.adapter(venue)?.market_icon(&market).await
 }
 
 /// Returns the id to pass to `unsubscribe`.

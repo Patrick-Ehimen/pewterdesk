@@ -43,6 +43,17 @@ export function formatPercent(ratio: number, decimals = 2): string {
   return `${formatNumber(ratio * 100, decimals)}%`;
 }
 
+const compact = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** "41.60K", "6.40M": large amounts at a glance. */
+export function formatCompact(value: number): string {
+  return Number.isFinite(value) ? compact.format(value) : "—";
+}
+
 /** "0x7a3f…c91e" */
 export function shortAddress(address: string): string {
   return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;

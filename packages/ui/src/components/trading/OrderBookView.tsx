@@ -1,5 +1,5 @@
 import type { BookLevel, OrderBook } from "@pewterdesk/core";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../i18n";
 import { decimalsOf, formatNumber, formatPercent, formatSigned } from "../../lib/format";
 import { type Column, ColumnHeader, Hint, unitHint } from "../common/ColumnHeader";
@@ -93,10 +93,64 @@ type BookSide = "bid" | "ask";
 
 const rowKey = (side: BookSide, price: string) => `${side}:${price}`;
 
-function Row({ row, side, mode }: { row: BookRow; side: BookSide; mode: RowMode }) {
+/** Every level's size, keyed like the rows ("bid:92.809"). */
+export function levelSizes(book: OrderBook): Map<string, string> {
+  const sizes = new Map<string, string>();
+  for (const level of book.bids) sizes.set(rowKey("bid", level.price), level.size);
+  for (const level of book.asks) sizes.set(rowKey("ask", level.price), level.size);
+  return sizes;
+}
+
+/** Levels that are new or whose size changed since `before`. */
+export function changedLevels(
+  before: ReadonlyMap<string, string>,
+  after: ReadonlyMap<string, string>,
+): string[] {
+  return [...after].filter(([key, size]) => before.get(key) !== size).map(([key]) => key);
+}
+
+/**
+ * How many times each level has changed while this book was on screen. A row
+ * re-keys its flash on a new count, so each change restarts the flash. The
+ * first book, and a switch to another market, flash nothing.
+ */
+function useLevelFlashes(book: OrderBook): ReadonlyMap<string, number> {
+  const sizes = useRef(new Map<string, string>());
+  const counts = useRef(new Map<string, number>());
+  const market = useRef<string>(undefined);
+  return useMemo(() => {
+    const next = levelSizes(book);
+    if (market.current === book.market && sizes.current.size > 0) {
+      for (const key of changedLevels(sizes.current, next)) {
+        counts.current.set(key, (counts.current.get(key) ?? 0) + 1);
+      }
+      // Levels that left the book start over if they come back.
+      for (const key of counts.current.keys()) if (!next.has(key)) counts.current.delete(key);
+    } else {
+      counts.current = new Map();
+    }
+    sizes.current = next;
+    market.current = book.market;
+    return new Map(counts.current);
+  }, [book]);
+}
+
+function Row({
+  row,
+  side,
+  mode,
+  flash,
+}: {
+  row: BookRow;
+  side: BookSide;
+  mode: RowMode;
+  /** Changes when the level does; unset if it hasn't changed yet. */
+  flash?: number;
+}) {
   return (
     <div className="pd-book-row" data-side={side} data-key={rowKey(side, row.price)}>
       <div className="pd-book-depth" style={{ width: `${row.depth * 100}%` }} />
+      {flash !== undefined && <div key={flash} className="pd-book-flash" aria-hidden />}
       {mode === "table" ? (
         <>
           <span className="pd-book-price">{formatNumber(row.price)}</span>
@@ -259,6 +313,7 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
   const { midDecimals } = ladder;
   const midShown = ladder.mid === undefined ? undefined : Number(ladder.mid.toFixed(midDecimals));
   const trend = usePriceTrend(midShown);
+  const flashes = useLevelFlashes(book);
   const hover = useHoveredRow<HTMLDivElement>();
   const hovered = [
     ...ladder.asks.map((row) => ({ row, side: "ask" as const })),
@@ -270,7 +325,13 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
       {mode === "table" && <ColumnHeader columns={bookColumns(base, quote)} />}
       <div ref={askSideRef} className="pd-book-side" data-side="ask">
         {ladder.asks.map((row) => (
-          <Row key={row.price} row={row} side="ask" mode={mode} />
+          <Row
+            key={row.price}
+            row={row}
+            side="ask"
+            mode={mode}
+            flash={flashes.get(rowKey("ask", row.price))}
+          />
         ))}
       </div>
       <div className="pd-book-spread">
@@ -293,7 +354,13 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
       </div>
       <div className="pd-book-side" data-side="bid">
         {ladder.bids.map((row) => (
-          <Row key={row.price} row={row} side="bid" mode={mode} />
+          <Row
+            key={row.price}
+            row={row}
+            side="bid"
+            mode={mode}
+            flash={flashes.get(rowKey("bid", row.price))}
+          />
         ))}
       </div>
       {ladder.bidShare !== undefined && <BookRatio bidShare={ladder.bidShare} />}

@@ -106,27 +106,33 @@ explicitly configured RPC endpoints.
 ## Status
 
 Early scaffold. `crates/core` defines the contracts. `crates/exchange-hyperliquid`
-is read-only (markets, order books, the trade tape, market stats and account
-state over REST and WS) and is
+is read-only (markets, order books, the trade tape, candles, market stats,
+every market's summary and hourly history, funding history and account state
+over REST and WS, plus market logos as SVG from its web app's host), including
+the builder-deployed perp exchanges (HIP-3, market ids like `xyz:TSLA`), and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
 it can't place orders yet. The Aster crate is still empty.
 
 The desktop frontend is a read-only trading screen (after the main-screen
-mockup in the local, gitignored `design/`): market list, live order book and trade tape, and a watched
-account's balances, positions and open orders. In `apps/desktop/src/`,
+mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
+ticket), which stay empty until wallet connection lands with order placement
+(`lib/account.ts`). The Markets panel is tabbed:
+chart (lightweight-charts), depth, screener and watchlist. In `apps/desktop/src/`,
 `App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
 `styles/`. `packages/ui` holds the shared presentational components, fed by
-props. No chart or order ticket yet. The header's page menu switches between
-Trade (the workspace), Portfolio (the watched account's equity and exposure),
+props. The header's page menu switches between
+Trade (the workspace), Portfolio (the connected account's equity and exposure),
 Settings, and Journal and News, which are placeholders until fill history and
 news sources exist.
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
-Tauri shell runs with the keychain and read-only venue commands wired up. `.claude/prd-rust-desktop-features.md` has
-the rest of the Rust-side backlog (notifications, tray, deep links, local
-persistence), none of it started.
+Tauri shell runs with the keychain and read-only venue commands wired up, plus
+the menu-bar (tray) item and macOS menu bar (`src-tauri/src/tray.rs`,
+`menubar.rs`); closing the window keeps the app running in the tray on macOS
+and Windows. `.claude/prd-rust-desktop-features.md` has the rest of the
+Rust-side backlog (notifications, deep links, local persistence), not started.
 
 ## Interface strings
 

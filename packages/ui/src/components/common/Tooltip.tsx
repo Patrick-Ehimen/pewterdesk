@@ -1,7 +1,8 @@
 import {
+  type FocusEvent,
+  type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
-  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -117,6 +118,64 @@ export function FloatingTip({
   );
 }
 
+/** Whether focus came from the keyboard, not from a click. */
+function isKeyboardFocus(el: Element): boolean {
+  try {
+    return el.matches(":focus-visible");
+  } catch {
+    // No :focus-visible support: treat focus as keyboard focus, as before.
+    return true;
+  }
+}
+
+/**
+ * When a trigger's tooltip is open: while hovered, or focused from the
+ * keyboard — not for the focus a click leaves behind, which would keep it up
+ * after the click. Pressing hides it until the pointer leaves, and so does
+ * activating it from the keyboard (a button that moves or changes when used,
+ * like a panel's expand button, would otherwise carry its tip along).
+ * Escape hides it too. Spread `handlers` on the trigger.
+ */
+export function useTipTrigger(delayMs = 0) {
+  const [open, setOpen] = useState(false);
+  const pressed = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const show = () => {
+    if (pressed.current) return;
+    clearTimeout(timer.current);
+    if (delayMs > 0) timer.current = setTimeout(() => setOpen(true), delayMs);
+    else setOpen(true);
+  };
+  const hide = () => {
+    clearTimeout(timer.current);
+    setOpen(false);
+  };
+  return {
+    open,
+    hide,
+    handlers: {
+      onPointerEnter: show,
+      onPointerLeave: () => {
+        pressed.current = false;
+        hide();
+      },
+      onPointerDown: () => {
+        pressed.current = true;
+        hide();
+      },
+      onFocus: (e: FocusEvent<HTMLElement>) => {
+        if (isKeyboardFocus(e.currentTarget)) show();
+      },
+      onBlur: hide,
+      onKeyDown: (e: KeyboardEvent<HTMLElement>) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") hide();
+      },
+    },
+  };
+}
+
 interface TooltipProps {
   /** What the tooltip says. */
   content: ReactNode;
@@ -125,22 +184,11 @@ interface TooltipProps {
   className?: string;
 }
 
-/** Hover or focus to show; Escape or leaving hides. */
+/** Hover or keyboard focus to show; a click, Escape or leaving hides. */
 export function Tooltip({ content, children, className }: TooltipProps) {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const [open, setOpen] = useState(false);
-
-  const show = useCallback(() => {
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setOpen(true), SHOW_DELAY_MS);
-  }, []);
-  const hide = useCallback(() => {
-    clearTimeout(timer.current);
-    setOpen(false);
-  }, []);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const { open, handlers } = useTipTrigger(SHOW_DELAY_MS);
 
   return (
     <>
@@ -149,11 +197,7 @@ export function Tooltip({ content, children, className }: TooltipProps) {
         type="button"
         className={`pd-tip-trigger ${className ?? ""}`}
         aria-describedby={open ? id : undefined}
-        onPointerEnter={show}
-        onPointerLeave={hide}
-        onFocus={show}
-        onBlur={hide}
-        onKeyDown={(e) => e.key === "Escape" && hide()}
+        {...handlers}
       >
         {children}
       </button>

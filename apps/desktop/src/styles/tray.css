@@ -1,0 +1,377 @@
+/* The menu-bar (tray) panel: its own small window, after DesktopTray.png */
+/* The window is transparent: the panel is a rounded card inside it */
+html:has(.tray-panel),
+html:has(.tray-panel) body {
+  height: auto;
+  overflow: hidden;
+  background: transparent;
+}
+/* A dark color-scheme makes the browser paint its own dark canvas under a
+   transparent page; the panel has no controls that need it. */
+html:has(.tray-panel) {
+  color-scheme: normal;
+}
+/* The window stops growing at PANEL_MAX_HEIGHT (tray.rs); past that the
+   panel scrolls instead of being cut off. Keep the two in step. */
+.tray-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 640px;
+  padding: 6px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--pd-text);
+  font-size: 13px;
+  user-select: none;
+}
+/* Sections keep their height and the panel scrolls, rather than squeezing */
+.tray-panel > * {
+  flex-shrink: 0;
+}
+.tray-section {
+  padding: 10px 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.tray-label {
+  margin: 0 0 8px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tray-muted,
+.tray-venue {
+  margin: 0;
+  color: var(--pd-pewter);
+}
+.tray-venue {
+  margin-top: 6px;
+  font-size: 11.5px;
+}
+.tray-panel [data-trend="up"] {
+  color: var(--pd-buy);
+}
+.tray-panel [data-trend="down"] {
+  color: var(--pd-sell);
+}
+.tray-positions {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Search */
+.tray-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 4px 4px 8px;
+  padding: 0 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-pewter);
+}
+/* No focus ring while typing: the caret is enough */
+.tray-search input:focus-visible {
+  box-shadow: none;
+}
+.tray-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--pd-text);
+  font-size: 13px;
+}
+/* Hero: the market on screen, its price and 24h sparkline */
+.tray-hero {
+  margin: 0 4px 6px;
+  padding: 12px 12px 8px;
+  background: var(--pd-surface-raised);
+  border-radius: 10px;
+}
+.tray-hero-main {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* Each market the hero moves on to fades in */
+.tray-hero-main {
+  animation: tray-hero-in 320ms ease-out;
+}
+@keyframes tray-hero-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tray-hero-main {
+    animation: none;
+  }
+}
+.tray-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Name over its 24h change, both small; the price below carries the weight */
+.tray-hero-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.tray-hero-name strong {
+  color: var(--pd-brass-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tray-hero-name span {
+  font-size: 11px;
+  text-align: left;
+}
+.tray-hero-price {
+  grid-column: 1;
+  grid-row: 2;
+  justify-self: start;
+  margin-top: 8px;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 600;
+}
+.tray-hero-spark {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.tray-dots {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+.tray-dots button {
+  width: 14px;
+  height: 3px;
+  padding: 0;
+  background: var(--pd-border-strong);
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.tray-dots button[aria-selected="true"] {
+  width: 22px;
+  background: var(--pd-text);
+}
+/* Favorites / Top Movers, Perps / HIP-3, then the table */
+.tray-markets {
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.tray-tabs {
+  display: flex;
+  gap: 18px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.tray-tabs button {
+  padding: 8px 0;
+  margin-bottom: -1px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--pd-pewter);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.tray-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--pd-brass);
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.tray-groups {
+  display: flex;
+  gap: 6px;
+  padding: 8px 6px 4px;
+}
+.tray-groups button {
+  padding: 4px 10px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.tray-groups button[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.tray-head,
+.tray-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 72px;
+  align-items: center;
+  gap: 8px;
+}
+.tray-head {
+  padding: 6px 8px 4px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.tray-sort {
+  justify-self: end;
+  display: inline-flex;
+  gap: 3px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.tray-sort[data-active] {
+  color: var(--pd-text);
+}
+.tray-list {
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.tray-list button {
+  width: 100%;
+  padding: 7px 8px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.tray-list button:hover,
+.tray-list button:focus-visible {
+  background: var(--pd-surface-raised);
+}
+.tray-coin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  text-align: left;
+}
+/* Pair names in the brand accent; prices take their 24h direction's colour */
+.tray-coin strong {
+  color: var(--pd-brass-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tray-coin .pd-lev {
+  margin-left: 0;
+}
+/* Skeletons while the panel's data loads (first launch, no saved copy) */
+.tray-hero-skel {
+  cursor: default;
+}
+.tray-hero-name .pd-skel + .pd-skel {
+  margin-top: 5px;
+}
+.pd-skel.tray-skel-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.tray-skel-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+  justify-items: end;
+}
+.tray-skel-row .tray-coin {
+  justify-self: start;
+}
+.tray-empty {
+  padding: 8px;
+}
+.tray-equity {
+  margin: 0 0 8px;
+  font-family: var(--pd-font-mono);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.tray-equity span {
+  font-size: 13px;
+}
+.tray-positions li {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+/* Show in menu bar: four compact choices */
+.tray-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+.tray-modes button {
+  padding: 6px 8px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.tray-modes button:hover {
+  color: var(--pd-text);
+}
+.tray-modes button[aria-checked="true"] {
+  border-color: var(--pd-brass);
+  color: var(--pd-text);
+}
+.tray-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0 2px;
+}
+.tray-actions button {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tray-actions button:hover,
+.tray-actions button:focus-visible {
+  background: var(--pd-surface-raised);
+}
+.tray-actions kbd {
+  color: var(--pd-pewter);
+  font-family: var(--pd-font-mono);
+  font-size: 12px;
+}

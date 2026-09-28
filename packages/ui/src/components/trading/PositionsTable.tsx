@@ -1,5 +1,5 @@
-import type { Order, Position } from "@pewterdesk/core";
-import { dateFormat, t } from "../../i18n";
+import type { Fill, FillEffect, FundingPayment, Order, Position } from "@pewterdesk/core";
+import { dateFormat, type MessageKey, t } from "../../i18n";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
 import { EmptyState } from "../common/Status";
 
@@ -66,8 +66,17 @@ export function PositionsTable({
   );
 }
 
-export function OpenOrdersTable({ orders, symbolFor }: { orders: Order[]; symbolFor: SymbolFor }) {
-  if (orders.length === 0) return <EmptyState>{t("orders.empty")}</EmptyState>;
+export function OpenOrdersTable({
+  orders,
+  symbolFor,
+  empty,
+}: {
+  orders: Order[];
+  symbolFor: SymbolFor;
+  /** What an empty list says; defaults to "no open orders". */
+  empty?: string;
+}) {
+  if (orders.length === 0) return <EmptyState>{empty ?? t("orders.empty")}</EmptyState>;
   return (
     <table className="pd-table">
       <thead>
@@ -101,6 +110,107 @@ export function OpenOrdersTable({ orders, symbolFor }: { orders: Order[]; symbol
             <td>{t(`orderStatus.${o.status}`)}</td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+const EFFECT_LABEL: Record<Exclude<FillEffect, "other">, MessageKey> = {
+  openLong: "effect.openLong",
+  closeLong: "effect.closeLong",
+  openShort: "effect.openShort",
+  closeShort: "effect.closeShort",
+  longToShort: "effect.longToShort",
+  shortToLong: "effect.shortToLong",
+};
+
+/** Green for what adds to a long or closes a short (buys), red for the rest. */
+const buying = (f: Fill) => f.side === "buy";
+
+/** The account's fills, newest first: what each did, at what price, and what it cost or made. */
+export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolFor: SymbolFor }) {
+  if (fills.length === 0) return <EmptyState>{t("history.fillsEmpty")}</EmptyState>;
+  return (
+    <table className="pd-table">
+      <thead>
+        <tr>
+          <th>{t("col.time")}</th>
+          <th>{t("col.market")}</th>
+          <th>{t("col.direction")}</th>
+          <th className="pd-num">{t("col.price")}</th>
+          <th className="pd-num">{t("col.size")}</th>
+          <th className="pd-num">{t("col.value")}</th>
+          <th className="pd-num">{t("col.fee")}</th>
+          <th className="pd-num">{t("col.closedPnl")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {fills.map((f) => {
+          const pnl = Number(f.closedPnl);
+          return (
+            <tr key={f.id}>
+              <td className="pd-muted">{dateFormat(TIME).format(f.time)}</td>
+              <td className="pd-strong">{symbolFor(f.market)}</td>
+              <td className={buying(f) ? "pd-up" : "pd-down"}>
+                {f.effect === "other"
+                  ? t(f.side === "buy" ? "side.buy" : "side.sell")
+                  : t(EFFECT_LABEL[f.effect])}
+              </td>
+              <td className="pd-num">{formatNumber(f.price)}</td>
+              <td className="pd-num">{formatNumber(f.size)}</td>
+              <td className="pd-num">{formatNumber(Number(f.price) * Number(f.size), 2)}</td>
+              <td className="pd-num pd-muted">
+                {formatNumber(f.fee)} {f.feeAsset}
+              </td>
+              <td className={`pd-num ${pnl === 0 ? "pd-muted" : trendClass(pnl)}`}>
+                {pnl === 0 ? "—" : formatSigned(pnl)}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** Funding paid or received on the account's positions, newest first. */
+export function FundingHistoryTable({
+  payments,
+  symbolFor,
+}: {
+  payments: FundingPayment[];
+  symbolFor: SymbolFor;
+}) {
+  if (payments.length === 0) return <EmptyState>{t("history.fundingEmpty")}</EmptyState>;
+  return (
+    <table className="pd-table">
+      <thead>
+        <tr>
+          <th>{t("col.time")}</th>
+          <th>{t("col.market")}</th>
+          <th>{t("col.side")}</th>
+          <th className="pd-num">{t("col.size")}</th>
+          <th className="pd-num">{t("col.rate")}</th>
+          <th className="pd-num">{t("col.payment")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {payments.map((p) => {
+          const size = Number(p.positionSize);
+          const amount = Number(p.amount);
+          return (
+            <tr key={`${p.market}:${p.time}`}>
+              <td className="pd-muted">{dateFormat(TIME).format(p.time)}</td>
+              <td className="pd-strong">{symbolFor(p.market)}</td>
+              <td className={size >= 0 ? "pd-up" : "pd-down"}>
+                {t(size >= 0 ? "side.long" : "side.short")}
+              </td>
+              <td className="pd-num">{formatNumber(Math.abs(size))}</td>
+              <td className="pd-num">{formatSigned(Number(p.rate) * 100, 4)}%</td>
+              <td className={`pd-num ${trendClass(amount)}`}>{formatSigned(amount, 4)}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

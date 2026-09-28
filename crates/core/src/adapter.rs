@@ -6,7 +6,8 @@ use tokio::sync::mpsc;
 use ts_rs::TS;
 
 use crate::domain::{
-    AccountSnapshot, Capabilities, Market, MarketStats, Order, OrderBook, OrderRequest, Trade,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, Fill, FundingPayment, FundingRate,
+    Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest, Trade,
     TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
@@ -83,7 +84,92 @@ pub trait ExchangeAdapter: Send + Sync {
         Err(VenueError::Unsupported("market stats"))
     }
 
+    /// The market's candles at `interval`: first the recent history, oldest
+    /// first, then each candle again, whole, whenever it changes. Consumers
+    /// merge by `open_time`; because every update carries the full candle, a
+    /// dropped one only loses an intermediate state. Until the receiver is
+    /// dropped.
+    async fn subscribe_candles(
+        &self,
+        _market: &str,
+        _interval: CandleInterval,
+    ) -> Result<mpsc::Receiver<Vec<Candle>>, VenueError> {
+        Err(VenueError::Unsupported("candles"))
+    }
+
+    /// Every listed market's summary, re-sent whole every few seconds, until
+    /// the receiver is dropped.
+    async fn subscribe_market_summaries(
+        &self,
+    ) -> Result<mpsc::Receiver<Vec<MarketSummary>>, VenueError> {
+        Err(VenueError::Unsupported("market summaries"))
+    }
+
+    /// Every listed market's last 7 days of hourly candles, one market per
+    /// message, busiest markets first, then cycling to keep them fresh. Paced
+    /// to stay inside the venue's rate limits, so a full pass takes minutes.
+    /// Until the receiver is dropped.
+    async fn subscribe_market_history(&self) -> Result<mpsc::Receiver<MarketHistory>, VenueError> {
+        Err(VenueError::Unsupported("market history"))
+    }
+
+    /// Up to `count` of `market`'s candles at `interval` that opened before
+    /// `before` (milliseconds since the Unix epoch), oldest first: older
+    /// history, a page at a time, for a chart scrolled back past what it has.
+    /// Empty once the venue has nothing older.
+    async fn candles(
+        &self,
+        _market: &str,
+        _interval: CandleInterval,
+        _before: u64,
+        _count: u32,
+    ) -> Result<Vec<Candle>, VenueError> {
+        Err(VenueError::Unsupported("candle history"))
+    }
+
+    /// Funding payments on `market` since `start_time` (milliseconds since the
+    /// Unix epoch), oldest first.
+    async fn funding_history(
+        &self,
+        _market: &str,
+        _start_time: u64,
+    ) -> Result<Vec<FundingRate>, VenueError> {
+        Err(VenueError::Unsupported("funding history"))
+    }
+
+    /// `market`'s logo as SVG markup, or `None` when the venue has none.
+    /// Cosmetic, so a venue without logos just keeps the default.
+    ///
+    /// The markup comes from the venue, not from us: the UI must only render
+    /// it as an image (an `<img>` with a `data:` URL, where SVG scripts and
+    /// external loads don't run), never insert it into the page.
+    async fn market_icon(&self, _market: &str) -> Result<Option<String>, VenueError> {
+        Ok(None)
+    }
+
     async fn account(&self, address: &str) -> Result<AccountSnapshot, VenueError>;
+
+    /// The account's most recent fills, newest first, as many as the venue
+    /// keeps. Read-only, like `account`: it needs an address, not a key.
+    async fn fills(&self, _address: &str) -> Result<Vec<Fill>, VenueError> {
+        Err(VenueError::Unsupported("fill history"))
+    }
+
+    /// Funding paid or received on the account's positions since
+    /// `start_time` (milliseconds since the Unix epoch), newest first.
+    async fn funding_payments(
+        &self,
+        _address: &str,
+        _start_time: u64,
+    ) -> Result<Vec<FundingPayment>, VenueError> {
+        Err(VenueError::Unsupported("funding payments"))
+    }
+
+    /// The account's recent orders in any state (filled, cancelled,
+    /// rejected, still open), newest first, as many as the venue keeps.
+    async fn order_history(&self, _address: &str) -> Result<Vec<Order>, VenueError> {
+        Err(VenueError::Unsupported("order history"))
+    }
 
     /// A fresh snapshot whenever positions, orders or balances change, until
     /// the receiver is dropped. Venues without an account stream are polled.

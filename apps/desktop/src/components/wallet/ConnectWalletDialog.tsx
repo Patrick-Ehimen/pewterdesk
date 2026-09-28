@@ -1,39 +1,65 @@
-import { type MessageKey, shortAddress, t } from "@pewterdesk/ui";
-import { useEffect, useRef, useState } from "react";
-import { LuLock, LuX } from "react-icons/lu";
-import { isAddress } from "../../lib/watchAddress";
+import { type MessageKey, t } from "@pewterdesk/ui";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { LuKeyRound, LuLock, LuQrCode, LuShieldCheck, LuUsb, LuX } from "react-icons/lu";
+
+type MethodId = "walletConnect" | "ledger" | "api";
 
 interface Method {
-  badge: string;
+  id: MethodId;
+  icon: ReactNode;
   title: MessageKey;
   detail: MessageKey;
-  /** Unset while the method isn't built; it's listed but can't be picked. */
-  available: boolean;
+  /** How it will work, then its steps, as the design's enable-trading flow. */
+  how: MessageKey;
+  steps: MessageKey[];
 }
 
-// The signing methods need the KeySource and venue signers, which aren't
-// built yet (see docs/adr/0001-venues-in-rust.md). They're shown so the
-// roadmap is visible, but disabled.
+// None of these works yet: they need the KeySource and venue signers
+// (docs/adr/0001-venues-in-rust.md). Each shows how it will work, so the
+// dialog explains the model (a trade-only key that can't withdraw) today.
 const METHODS: Method[] = [
-  { badge: "WC", title: "wallet.wc", detail: "wallet.wcDetail", available: false },
-  { badge: "L", title: "wallet.ledger", detail: "wallet.ledgerDetail", available: false },
-  { badge: "API", title: "wallet.api", detail: "wallet.apiDetail", available: false },
-  { badge: "RO", title: "wallet.watch", detail: "wallet.watchDetail", available: true },
+  {
+    id: "walletConnect",
+    icon: <LuQrCode size={18} aria-hidden />,
+    title: "wallet.wc",
+    detail: "wallet.wcDetail",
+    how: "wallet.wcHow",
+    steps: ["wallet.stepConnect", "wallet.stepKeySaved", "wallet.stepApprove"],
+  },
+  {
+    id: "ledger",
+    icon: <LuUsb size={18} aria-hidden />,
+    title: "wallet.ledger",
+    detail: "wallet.ledgerDetail",
+    how: "wallet.ledgerHow",
+    steps: ["wallet.stepConnect", "wallet.stepKeySaved", "wallet.stepApprove"],
+  },
+  {
+    id: "api",
+    icon: <LuKeyRound size={18} aria-hidden />,
+    title: "wallet.api",
+    detail: "wallet.apiDetail",
+    how: "wallet.apiHow",
+    steps: ["wallet.stepCreateApi", "wallet.stepPasteKey", "wallet.stepKeychain"],
+  },
 ];
+
+const TRUST = ["wallet.trust1", "wallet.trust2", "wallet.trust3"] as const;
 
 interface ConnectWalletDialogProps {
   open: boolean;
   onClose: () => void;
-  /** The address being watched, if any. */
-  address: string | undefined;
-  onWatch: (address: string | undefined) => void;
 }
 
-export function ConnectWalletDialog({ open, onClose, address, onWatch }: ConnectWalletDialogProps) {
+/**
+ * Connect a wallet, after the design: pick a method on the left, see on the
+ * right how it works: a trade-only key, approved once, that can't withdraw.
+ * The methods arrive with order placement; until then this explains them.
+ */
+export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [draft, setDraft] = useState("");
-  const trimmed = draft.trim();
-  const invalid = trimmed !== "" && !isAddress(trimmed);
+  const [selected, setSelected] = useState<MethodId>("walletConnect");
+  const method = METHODS.find((m) => m.id === selected) ?? METHODS[0];
 
   // Drive the native dialog from `open`: showModal gives focus trapping,
   // Escape and the backdrop for free.
@@ -41,7 +67,7 @@ export function ConnectWalletDialog({ open, onClose, address, onWatch }: Connect
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) {
-      setDraft("");
+      setSelected("walletConnect");
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -71,82 +97,67 @@ export function ConnectWalletDialog({ open, onClose, address, onWatch }: Connect
       </header>
 
       <div className="wallet-dialog-body">
-        <ul className="wallet-methods">
+        <div className="wallet-methods" role="radiogroup" aria-label={t("wallet.connect")}>
+          <p className="wallet-group">{t("wallet.tradingGroup")}</p>
           {METHODS.map((m) => (
-            <li key={m.badge}>
-              <div
-                className="wallet-method"
-                aria-disabled={!m.available || undefined}
-                aria-current={m.available || undefined}
-              >
-                <span className="wallet-badge">{m.badge}</span>
-                <span className="wallet-method-text">
-                  <strong>{t(m.title)}</strong>
-                  <span>{t(m.detail)}</span>
-                </span>
-                {!m.available && <span className="wallet-soon">{t("wallet.soon")}</span>}
-              </div>
-            </li>
-          ))}
-          <li className="wallet-note">{t("wallet.note")}</li>
-        </ul>
-
-        <section className="wallet-pane" aria-labelledby="wallet-watch-title">
-          <h3 id="wallet-watch-title">{t("wallet.watchTitle")}</h3>
-          <p className="pd-muted">{t("wallet.watchHelp")}</p>
-          {address ? (
-            <div className="wallet-watching">
-              <span className="pd-live-dot" data-live aria-hidden />
-              <span>{t("wallet.watchingAddress", { address: shortAddress(address) })}</span>
-              <button
-                type="button"
-                className="ws-button"
-                onClick={() => {
-                  onWatch(undefined);
-                  onClose();
-                }}
-              >
-                {t("wallet.stopWatching")}
-              </button>
-            </div>
-          ) : null}
-          <form
-            className="wallet-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!isAddress(trimmed)) return;
-              onWatch(trimmed);
-              onClose();
-            }}
-          >
-            <label htmlFor="wallet-address">
-              {t(address ? "wallet.watchAnother" : "wallet.address")}
-            </label>
-            <input
-              id="wallet-address"
-              className="pd-input pd-num"
-              placeholder="0x…"
-              spellCheck={false}
-              autoComplete="off"
-              aria-invalid={invalid}
-              aria-describedby={invalid ? "wallet-address-error" : undefined}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-            />
-            {invalid && (
-              <span id="wallet-address-error" className="wallet-error">
-                {t("wallet.invalid")}
-              </span>
-            )}
+            // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
             <button
-              type="submit"
-              className="ws-button ws-button-primary"
-              disabled={!isAddress(trimmed)}
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={m.id === selected}
+              className="wallet-method"
+              onClick={() => setSelected(m.id)}
             >
-              {t("wallet.watch")}
+              <span className="wallet-method-icon">{m.icon}</span>
+              <span className="wallet-method-text">
+                <strong>{t(m.title)}</strong>
+                <span>{t(m.detail)}</span>
+              </span>
             </button>
-          </form>
-        </section>
+          ))}
+        </div>
+
+        {method && (
+          <section className="wallet-pane" aria-labelledby="wallet-pane-title">
+            <div className="wallet-pane-head">
+              <h3 id="wallet-pane-title">{t(method.title)}</h3>
+              <span className="wallet-coming">{t("wallet.coming")}</span>
+            </div>
+            <p className="wallet-lead">{t(method.how)}</p>
+
+            <ol className="wallet-steps">
+              {method.steps.map((step, i) => (
+                <li key={step}>
+                  <span className="wallet-step-num" aria-hidden>
+                    {i + 1}
+                  </span>
+                  {t(step)}
+                </li>
+              ))}
+            </ol>
+
+            <dl className="wallet-scope">
+              <div>
+                <dt>{t("wallet.canTrade")}</dt>
+                <dd className="pd-up">{t("wallet.canTradeValue")}</dd>
+              </div>
+              <div>
+                <dt>{t("wallet.canWithdraw")}</dt>
+                <dd>{t("wallet.no")}</dd>
+              </div>
+            </dl>
+
+            <ul className="wallet-trust">
+              {TRUST.map((k) => (
+                <li key={k}>
+                  <LuShieldCheck size={14} aria-hidden />
+                  {t(k)}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
 
       <footer className="wallet-dialog-foot">

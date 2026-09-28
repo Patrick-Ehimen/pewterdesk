@@ -70,30 +70,27 @@
   border-radius: var(--pd-radius);
   font-weight: 600;
 }
-.app-chip-market {
-  font-family: var(--pd-font-mono);
+/* The market on screen, beside its watchlist star: logo, pair, quote badge */
+.app-market-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 6px 10px;
+  border-radius: 10px;
+  background: var(--pd-surface-raised);
 }
-.app-chip-market .pd-muted {
-  font-family: var(--pd-font-sans);
-  font-weight: 400;
+.app-market-pill strong {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.app-quote-badge {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pd-info) 18%, transparent);
+  color: var(--pd-info);
   font-size: 12px;
-}
-.app-stat {
-  display: flex;
-  flex-direction: column;
-  margin-left: 8px;
-}
-.app-stat-value {
-  font-family: var(--pd-font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 18px;
   font-weight: 600;
-}
-.app-stat-label {
-  color: var(--pd-pewter);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 .app-spacer {
   flex: 1;
@@ -108,6 +105,63 @@
 }
 .pd-live-dot[data-live] {
   background: var(--pd-brass);
+}
+
+/* Bottom bar: connection state on the left, project links on the right */
+.app-status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 30px;
+  margin: -2px -8px -8px;
+  padding: 0 14px;
+  border-top: 1px solid var(--pd-border);
+  background: var(--pd-surface);
+  font-size: 12.5px;
+}
+.app-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 9px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  color: var(--pd-text);
+}
+/* Green for Online: a deliberate exception to "green is for market data only" */
+.app-status-pill[data-state="online"] {
+  border-color: color-mix(in srgb, var(--pd-buy) 55%, transparent);
+  background: color-mix(in srgb, var(--pd-buy) 10%, transparent);
+  color: var(--pd-buy);
+}
+.app-status-pill[data-state="online"] .pd-live-dot {
+  background: var(--pd-buy);
+}
+.app-status-pill[data-state="connecting"] {
+  color: var(--pd-pewter);
+}
+.app-status-pill[data-state="offline"] {
+  border-color: color-mix(in srgb, var(--pd-warning) 60%, transparent);
+  color: var(--pd-warning);
+}
+.app-status-pill[data-state="offline"] .pd-live-dot {
+  background: var(--pd-warning);
+}
+.app-status-links {
+  display: flex;
+  gap: 18px;
+}
+.app-status-links button {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.app-status-links button:hover,
+.app-status-links button:focus-visible {
+  color: var(--pd-text);
 }
 
 /* Header actions: icon buttons, then the wallet */
@@ -176,6 +230,73 @@
     animation: none;
   }
 }
+/* About pewterdesk: a narrow card on the wallet dialog's shell */
+.about-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.about-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 24px 22px;
+  border-bottom: 1px solid var(--pd-border);
+  text-align: center;
+}
+.about-head p {
+  margin: 0;
+}
+.about-logo {
+  height: 30px;
+  margin-bottom: 6px;
+}
+.about-build {
+  font-size: 14px;
+}
+.about-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 20px 24px;
+}
+.about-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+.about-facts dt {
+  flex: none;
+  color: var(--pd-pewter);
+}
+.about-facts dd {
+  margin: 0;
+  text-align: right;
+}
+.about-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 0 24px 20px;
+}
+.about-link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--pd-info);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.about-link:hover {
+  color: var(--pd-text);
+}
+.about-error {
+  margin: 0;
+  padding: 0 24px 16px;
+  color: var(--pd-sell);
+}
 .wallet-dialog-head {
   display: flex;
   align-items: center;
@@ -189,112 +310,179 @@
 }
 .wallet-dialog-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 0;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  /* The same height for every method, so switching doesn't jump the dialog */
+  height: min(440px, calc(100vh - 180px));
   overflow: auto;
 }
+/* Method list: a read-only group, then the trading methods to come */
 .wallet-methods {
-  list-style: none;
-  margin: 0;
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  padding: 16px;
   border-right: 1px solid var(--pd-border);
+}
+.wallet-group {
+  margin: 8px 4px 2px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.wallet-group:first-child {
+  margin-top: 0;
 }
 .wallet-method {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  background: none;
   border: 1px solid transparent;
   border-radius: 8px;
+  color: var(--pd-text);
+  text-align: left;
+  cursor: pointer;
 }
-.wallet-method[aria-current="true"] {
-  border-color: var(--pd-brass);
+.wallet-method:hover {
+  background: var(--pd-surface-raised);
+}
+.wallet-method[aria-checked="true"] {
   background: var(--pd-bg);
+  border-color: var(--pd-brass);
 }
-.wallet-method[aria-disabled="true"] {
-  opacity: 0.55;
-}
-.wallet-badge {
+.wallet-method-icon {
   display: grid;
   place-items: center;
   flex: none;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--pd-border-strong);
+  width: 38px;
+  height: 38px;
   border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.wallet-method[aria-checked="true"] .wallet-method-icon {
+  color: var(--pd-brass-text);
+}
+/* Not built yet: quieter, but still readable and selectable for its preview */
+.wallet-method[data-soon] .wallet-method-icon {
+  color: var(--pd-pewter);
 }
 .wallet-method-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
+  min-width: 0;
+}
+.wallet-method-text strong {
+  font-weight: 600;
 }
 .wallet-method-text span {
   color: var(--pd-pewter);
+  font-size: 12.5px;
 }
-.wallet-soon {
-  flex: none;
-  padding: 2px 8px;
-  border: 1px solid var(--pd-border-strong);
-  border-radius: 999px;
-  color: var(--pd-pewter);
-  font-size: 11px;
-}
-.wallet-note {
-  margin-top: auto;
-  padding: 12px 14px;
-  border: 1px solid var(--pd-border);
-  border-radius: 8px;
-  color: var(--pd-pewter);
-}
+/* The right-hand pane */
 .wallet-pane {
-  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  padding: 24px;
 }
 .wallet-pane h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 16px;
 }
 .wallet-pane p {
   margin: 0;
 }
-.wallet-watching {
+.wallet-pane-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--pd-bg);
-  border: 1px solid var(--pd-border);
-  border-radius: 8px;
+  justify-content: space-between;
+  gap: 12px;
 }
-.wallet-watching .ws-button {
-  margin-left: auto;
+.wallet-lead {
+  color: var(--pd-pewter);
+  line-height: 1.5;
 }
-.wallet-form {
+.wallet-coming {
+  flex: none;
+  padding: 3px 9px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.wallet-trust {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-.wallet-form label {
+  margin: auto 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--pd-border);
+  list-style: none;
   color: var(--pd-pewter);
+  font-size: 12.5px;
 }
-.wallet-form .pd-input {
-  text-align: left;
+.wallet-trust li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.wallet-form .ws-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.wallet-trust svg {
+  flex: none;
+  color: var(--pd-buy);
 }
-.wallet-error {
-  color: var(--pd-warning);
+/* Previews of the trading methods: numbered steps and the key's scope */
+.wallet-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wallet-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.wallet-step-num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 50%;
+  color: var(--pd-pewter);
   font-size: 12px;
+}
+.wallet-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 0;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.wallet-scope > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+}
+.wallet-scope > div + div {
+  border-left: 1px solid var(--pd-border);
+}
+.wallet-scope dt {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.wallet-scope dd {
+  margin: 0;
 }
 .wallet-dialog-foot {
   display: flex;

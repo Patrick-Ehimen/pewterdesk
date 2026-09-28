@@ -10,15 +10,31 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "PewterDesk",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,
         "minHeight": 640,
         "dragDropEnabled": false,
-        "backgroundColor": "#111110"
+        "backgroundColor": "#111110",
+        "visible": false
+      },
+      {
+        "label": "splash",
+        "url": "splash.html",
+        "title": "PewterDesk",
+        "width": 760,
+        "height": 520,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       }
     ],
     "security": {
