@@ -39,7 +39,7 @@ function Card({
 }
 
 /**
- * The watched account across venues, after the design's portfolio screen.
+ * The connected account across venues, after the design's portfolio screen.
  * One venue so far, so "by venue" is Hyperliquid alone; funding history isn't
  * wired up yet, so the design's funding panel is left out rather than faked.
  */

@@ -106,7 +106,7 @@ type BookTab = "book" | "trades";
 const SOUND = ["on", "off"] as const;
 
 /**
- * The watched account's activity, tabbed: open positions and orders (live),
+ * The connected account's activity, tabbed: open positions and orders (live),
  * and its trade, funding and order history (fetched while their tab is open).
  */
 function ActivityPanel({
