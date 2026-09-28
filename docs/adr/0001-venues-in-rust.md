@@ -2,6 +2,8 @@
 
 - Status: accepted
 - Date: 2026-09-25
+- Amended by: [0002](0002-launch-venues.md) — the launch venues are now
+  Hyperliquid and Aster; the GMX, dYdX and Drift rows below are historical
 
 ## Context
 

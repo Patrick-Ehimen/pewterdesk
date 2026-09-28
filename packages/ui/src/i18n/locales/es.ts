@@ -177,7 +177,7 @@ export const messages: Messages = {
 
   "portfolio.byVenue": "Por exchange",
 
-  "portfolio.byVenueNote": "dYdX, Drift y GMX aparecerán aquí cuando lleguen sus adaptadores.",
+  "portfolio.byVenueNote": "Aster aparecerá aquí cuando llegue su adaptador.",
 
   "journal.subtitle": "Guardado solo en este dispositivo · nunca se sube",
 

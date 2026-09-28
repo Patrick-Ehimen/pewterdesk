@@ -172,7 +172,7 @@ export const messages: Messages = {
 
   "portfolio.byVenue": "按交易所",
 
-  "portfolio.byVenueNote": "dYdX、Drift 和 GMX 接入后会显示在这里。",
+  "portfolio.byVenueNote": "Aster 接入后会显示在这里。",
 
   "journal.subtitle": "仅保存在本设备 · 从不上传",
 

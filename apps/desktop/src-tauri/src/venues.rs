@@ -50,9 +50,7 @@ impl Venues {
     fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
-            VenueId::Gmx | VenueId::Dydx | VenueId::Drift => {
-                Err(VenueError::Unsupported("this venue isn't available yet"))
-            }
+            VenueId::Aster => Err(VenueError::Unsupported("this venue isn't available yet")),
         }
     }
 

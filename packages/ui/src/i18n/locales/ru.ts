@@ -175,7 +175,7 @@ export const messages: Messages = {
 
   "portfolio.byVenue": "По биржам",
 
-  "portfolio.byVenueNote": "dYdX, Drift и GMX появятся здесь, когда будут добавлены их адаптеры.",
+  "portfolio.byVenueNote": "Aster появится здесь, когда будет добавлен его адаптер.",
 
   "journal.subtitle": "Хранится только на этом устройстве · никуда не загружается",
 

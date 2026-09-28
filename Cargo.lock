@@ -2875,21 +2875,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pewterdesk-exchange-drift"
-version = "0.0.0"
-dependencies = [
- "pewterdesk-core",
-]
-
-[[package]]
-name = "pewterdesk-exchange-dydx"
-version = "0.0.0"
-dependencies = [
- "pewterdesk-core",
-]
-
-[[package]]
-name = "pewterdesk-exchange-gmx"
+name = "pewterdesk-exchange-aster"
 version = "0.0.0"
 dependencies = [
  "pewterdesk-core",

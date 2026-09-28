@@ -27,8 +27,8 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    only to its own hosts and explicitly configured RPC endpoints — never a
    wildcard or a URL taken from a command argument.
 5. **The signed payload matches the venue's documented spec exactly** —
-   domain, types, and action shape for EIP-712, the transaction for GMX,
-   the Cosmos SDK message for dYdX, the instruction for Drift. A subtly
+   domain, types, and action shape for EIP-712 (both launch venues sign
+   EIP-712 typed data). A subtly
    wrong field can produce a signature that's valid-looking but authorizes
    something other than what the user intended.
 6. **Nonce / replay handling is correct** — no reused nonce, no way for a

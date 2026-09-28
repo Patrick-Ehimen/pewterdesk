@@ -2,13 +2,13 @@
 
 Non-custodial, multi-venue crypto derivatives trading terminal for desktop and
 web. No backend, no custody — talks directly to exchange APIs from your own
-machine. Launch venues: Hyperliquid, GMX, dYdX v4 and Drift. Rust adapters, a
+machine. Launch venues: Hyperliquid and Aster. Rust adapters, a
 TypeScript/React UI, Tauri in between.
 
 > **Status: early scaffold.** The workspace, build tooling, and package
 > boundaries are in place; the trading functionality is not. `crates/core`
-> defines the `ExchangeAdapter` contract and domain types, but the four venue
-> crates are empty and nothing signs yet. The `apps/desktop` Tauri shell builds
+> defines the `ExchangeAdapter` contract and domain types, but the two venue
+> crates can't sign yet (Aster's is still empty). The `apps/desktop` Tauri shell builds
 > and runs, but it opens a
 > window containing one line of placeholder text — no chart, no order ticket,
 > no exchange connection. Don't point this at a funded account; there's
@@ -33,7 +33,7 @@ Two decisions drive the rest of the design:
 
 ```
 crates/core                     domain types, the ExchangeAdapter trait, KeySource
-crates/exchange-<venue>         one adapter per venue: hyperliquid, gmx, dydx, drift
+crates/exchange-<venue>         one adapter per venue: hyperliquid, aster
 packages/core                   TS domain types (generated from crates/core) + SecretStore
 packages/ui                     shared React components (order ticket, position table, chart, hotkeys)
 apps/desktop                    the shipped app: Tauri 2 shell (Rust) + its own Vite/React frontend
@@ -190,7 +190,7 @@ those paths.
    with generated TS types.
 5. Hyperliquid adapter: ~~read-only market and account data first, exposed
    through Tauri commands~~ (done), then signing and order placement.
-6. GMX, dYdX v4 and Drift adapters.
+6. Aster adapter ([ADR 0002](docs/adr/0002-launch-venues.md)).
 7. Build out `packages/ui` and wire it to the adapters.
 8. Revisit `apps/web` once the desktop app ships — it can't run the Rust
    adapters as-is, needs a browser-wallet signer, and needs a thin proxy for

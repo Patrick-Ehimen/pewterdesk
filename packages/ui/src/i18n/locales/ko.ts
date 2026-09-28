@@ -175,7 +175,7 @@ export const messages: Messages = {
 
   "portfolio.byVenue": "거래소별",
 
-  "portfolio.byVenueNote": "dYdX, Drift, GMX는 어댑터가 추가되면 여기에 표시됩니다.",
+  "portfolio.byVenueNote": "Aster는 어댑터가 추가되면 여기에 표시됩니다.",
 
   "journal.subtitle": "이 기기에만 저장 · 업로드하지 않음",
 

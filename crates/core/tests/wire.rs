@@ -28,15 +28,7 @@ fn decimal_rejects_json_numbers() {
 #[test]
 fn venue_ids_are_lowercase() {
     let ids: Vec<_> = VenueId::ALL.iter().map(|v| to_value(v).unwrap()).collect();
-    assert_eq!(
-        ids,
-        [
-            json!("hyperliquid"),
-            json!("gmx"),
-            json!("dydx"),
-            json!("drift")
-        ]
-    );
+    assert_eq!(ids, [json!("hyperliquid"), json!("aster")]);
 }
 
 #[test]

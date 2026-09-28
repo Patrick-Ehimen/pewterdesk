@@ -23,6 +23,6 @@ describe("parseWatchlist", () => {
 
 describe("watchKey", () => {
   it("keeps the same symbol on different venues apart", () => {
-    expect(watchKey("hyperliquid", "BTC")).not.toBe(watchKey("drift", "BTC"));
+    expect(watchKey("hyperliquid", "BTC")).not.toBe(watchKey("aster", "BTC"));
   });
 });

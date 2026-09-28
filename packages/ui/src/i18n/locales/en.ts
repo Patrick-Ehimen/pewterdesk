@@ -153,7 +153,7 @@ export const en = {
   "portfolio.col.netNotional": "Net notional",
   "portfolio.col.share": "Share of gross",
   "portfolio.byVenue": "By venue",
-  "portfolio.byVenueNote": "dYdX, Drift and GMX appear here once their adapters land.",
+  "portfolio.byVenueNote": "Aster appears here once its adapter lands.",
   "journal.subtitle": "Stored locally on this device · never uploaded",
   "journal.soon":
     "The journal will record each fill with your tags and notes, then show net PnL, win rate, and PnL by market and by hour. It needs fill history, which comes with order placement.",

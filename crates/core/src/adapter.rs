@@ -17,7 +17,7 @@ use crate::keys::KeyError;
 #[serde(tag = "kind", content = "detail", rename_all = "camelCase")]
 #[ts(export, export_to = "domain.ts")]
 pub enum VenueError {
-    /// The venue can't do this at all (e.g. an order book on GMX).
+    /// The venue can't do this at all (e.g. an order book on a pool-based venue).
     #[error("not supported by this venue: {0}")]
     Unsupported(&'static str),
     /// The request is malformed or can't be expressed on this venue.
@@ -93,8 +93,8 @@ pub trait ExchangeAdapter: Send + Sync {
     ) -> Result<mpsc::Receiver<AccountSnapshot>, VenueError>;
 
     /// Resolves once the venue has accepted the order, which is not the same
-    /// as it being live: on GMX and Drift it comes back `Pending` and moves on
-    /// via `subscribe_account`. Errors if the venue refuses it outright.
+    /// as it being live: on keeper- or auction-filled venues it comes back
+    /// `Pending` and moves on via `subscribe_account`. Errors if the venue refuses it outright.
     async fn place_order(
         &self,
         account: &TradingAccount,

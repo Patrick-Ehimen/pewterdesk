@@ -2,7 +2,7 @@
 
 Non-custodial, multi-venue crypto derivatives trading terminal (desktop-first,
 web later). No backend — talks directly to exchange APIs from the user's own
-machine. Launch venues: Hyperliquid, GMX, dYdX v4 and Drift — all on-chain.
+machine. Launch venues: Hyperliquid and Aster — both on-chain.
 Venue adapters, signing and key handling are Rust; the UI is TypeScript/React
 (see `docs/adr/0001-venues-in-rust.md`).
 
@@ -35,7 +35,7 @@ has no implementation and is not meant to get one.
 ## Layout
 
 - `crates/core` — domain types, the `ExchangeAdapter` trait, `KeySource`
-- `crates/exchange-hyperliquid`, `-gmx`, `-dydx`, `-drift` — one adapter per venue (Hyperliquid is read-only so far; the rest are stubs)
+- `crates/exchange-hyperliquid`, `-aster` — one adapter per venue (Hyperliquid is read-only so far; Aster is a stub)
 - `packages/core` — the generated TS domain types and the `SecretStore` contract
 - `packages/ui` — shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` — the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -94,7 +94,7 @@ discover it on their own. The reasoning behind the rules is in
   Never add withdraw, transfer, key approval, or anything that signs
   caller-supplied bytes or typed data.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
-  wallet, GMX subaccount, dYdX permissioned key, Drift delegate), not the
+  wallet, Aster API wallet with withdraw off), not the
   user's main wallet key.
 
 The webview CSP in `apps/desktop/src-tauri/tauri.conf.json` is part of this
@@ -109,7 +109,7 @@ Early scaffold. `crates/core` defines the contracts. `crates/exchange-hyperliqui
 is read-only (markets, order books, the trade tape, market stats and account
 state over REST and WS) and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
-it can't place orders yet. The other three venue crates are still empty.
+it can't place orders yet. The Aster crate is still empty.
 
 The desktop frontend is a read-only trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and a watched

@@ -176,7 +176,7 @@ export const messages: Messages = {
 
   "portfolio.byVenue": "取引所別",
 
-  "portfolio.byVenueNote": "dYdX・Drift・GMX はアダプターの追加後にここに表示されます。",
+  "portfolio.byVenueNote": "Aster はアダプターの追加後にここに表示されます。",
 
   "journal.subtitle": "この端末にのみ保存 · アップロードしません",
 

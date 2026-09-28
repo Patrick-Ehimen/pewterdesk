@@ -2,7 +2,7 @@ import type { VenueId } from "@pewterdesk/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "pd.watchlist";
-/** Entries are "<venue>:<market id>"; ids are symbols ("BTC") or addresses (GMX). */
+/** Entries are "<venue>:<market id>"; ids are the venue's own ("BTC", "BTCUSDT"). */
 const MAX_ENTRIES = 500;
 const MAX_ID_LENGTH = 80;
 

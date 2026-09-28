@@ -25,7 +25,7 @@ export type BookLevel = { price: Decimal, size: Decimal, };
  */
 export type Capabilities = { 
 /**
- * False on GMX, which fills against pools at oracle prices.
+ * False on venues that fill against pools at oracle prices.
  */
 orderBook: boolean, orderTypes: Array<OrderType>, 
 /**
@@ -49,8 +49,7 @@ export type KeyError = { "kind": "notFound" } | { "kind": "backend", "detail": s
 export type Market = { venue: VenueId, 
 /**
  * The venue's own identifier, passed back to the adapter unchanged: "BTC"
- * on Hyperliquid, "BTC-USD" on dYdX, a market token address on GMX,
- * "BTC-PERP" on Drift. Opaque outside the adapter.
+ * on Hyperliquid, "BTCUSDT" on Aster. Opaque outside the adapter.
  */
 id: string, 
 /**
@@ -118,7 +117,7 @@ time: number, };
 
 export type Order = { venue: VenueId, 
 /**
- * The venue's order id. For GMX this is the order key.
+ * The venue's order id.
  */
 id: string, clientId?: string, market: string, side: Side, type: OrderType, size: Decimal, filledSize: Decimal, price?: Decimal, triggerPrice?: Decimal, reduceOnly: boolean, status: OrderStatus, 
 /**
@@ -146,9 +145,8 @@ time: number, };
 export type OrderKind = { "type": "market", 
 /**
  * Worst acceptable fill, in basis points from the current price.
- * Every launch venue needs a bound for market orders (Hyperliquid's
- * IOC limit, GMX's acceptable price, Drift's auction end price), so
- * there's no unbounded market order.
+ * Adapters send market orders as IOC limits at this bound, so there's
+ * no unbounded market order.
  */
 maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: TimeInForce, } | { "type": "trigger", triggerPrice: Decimal, 
 /**
@@ -176,7 +174,7 @@ market: string, side: Side,
 size: Decimal, reduceOnly: boolean, 
 /**
  * Isolated collateral to post with the order, in the quote asset.
- * Required by venues that margin each position separately (GMX);
+ * Required by venues that margin each position separately;
  * adapters for cross-margined venues reject a request that sets it
  * rather than ignoring it.
  */
@@ -187,9 +185,8 @@ collateral?: Decimal,
 clientId?: string, } & ({ "type": "market", 
 /**
  * Worst acceptable fill, in basis points from the current price.
- * Every launch venue needs a bound for market orders (Hyperliquid's
- * IOC limit, GMX's acceptable price, Drift's auction end price), so
- * there's no unbounded market order.
+ * Adapters send market orders as IOC limits at this bound, so there's
+ * no unbounded market order.
  */
 maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: TimeInForce, } | { "type": "trigger", triggerPrice: Decimal, 
 /**
@@ -198,8 +195,8 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 limitPrice?: Decimal, });
 
 /**
- * `Pending` means accepted but not yet live — waiting on a GMX keeper, a
- * Drift auction, or block inclusion — and may still end as `Rejected`.
+ * `Pending` means accepted but not yet live — waiting on a keeper, an
+ * auction or block inclusion — and may still end as `Rejected`.
  * `Open` means resting on the venue; `filled_size` may be non-zero.
  */
 export type OrderStatus = "pending" | "open" | "filled" | "cancelled" | "rejected";
@@ -270,4 +267,4 @@ key: string, };
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "key", "detail": KeyError };
 
-export type VenueId = "hyperliquid" | "gmx" | "dydx" | "drift";
+export type VenueId = "hyperliquid" | "aster";

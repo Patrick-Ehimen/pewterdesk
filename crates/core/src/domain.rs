@@ -18,13 +18,11 @@ const TS_FILE: &str = "domain.ts";
 #[ts(export, export_to = TS_FILE)]
 pub enum VenueId {
     Hyperliquid,
-    Gmx,
-    Dydx,
-    Drift,
+    Aster,
 }
 
 impl VenueId {
-    pub const ALL: [VenueId; 4] = [Self::Hyperliquid, Self::Gmx, Self::Dydx, Self::Drift];
+    pub const ALL: [VenueId; 2] = [Self::Hyperliquid, Self::Aster];
 }
 
 /// A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes
@@ -58,8 +56,7 @@ pub enum PositionSide {
 pub struct Market {
     pub venue: VenueId,
     /// The venue's own identifier, passed back to the adapter unchanged: "BTC"
-    /// on Hyperliquid, "BTC-USD" on dYdX, a market token address on GMX,
-    /// "BTC-PERP" on Drift. Opaque outside the adapter.
+    /// on Hyperliquid, "BTCUSDT" on Aster. Opaque outside the adapter.
     pub id: String,
     /// Display symbol, e.g. "BTC-USD".
     pub symbol: String,
@@ -170,9 +167,8 @@ pub enum TimeInForce {
 pub enum OrderKind {
     Market {
         /// Worst acceptable fill, in basis points from the current price.
-        /// Every launch venue needs a bound for market orders (Hyperliquid's
-        /// IOC limit, GMX's acceptable price, Drift's auction end price), so
-        /// there's no unbounded market order.
+        /// Adapters send market orders as IOC limits at this bound, so there's
+        /// no unbounded market order.
         max_slippage_bps: u32,
     },
     Limit {
@@ -209,7 +205,7 @@ pub struct OrderRequest {
     pub size: Decimal,
     pub reduce_only: bool,
     /// Isolated collateral to post with the order, in the quote asset.
-    /// Required by venues that margin each position separately (GMX);
+    /// Required by venues that margin each position separately;
     /// adapters for cross-margined venues reject a request that sets it
     /// rather than ignoring it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -241,8 +237,8 @@ impl OrderKind {
     }
 }
 
-/// `Pending` means accepted but not yet live — waiting on a GMX keeper, a
-/// Drift auction, or block inclusion — and may still end as `Rejected`.
+/// `Pending` means accepted but not yet live — waiting on a keeper, an
+/// auction or block inclusion — and may still end as `Rejected`.
 /// `Open` means resting on the venue; `filled_size` may be non-zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -260,7 +256,7 @@ pub enum OrderStatus {
 #[ts(export, export_to = TS_FILE, optional_fields)]
 pub struct Order {
     pub venue: VenueId,
-    /// The venue's order id. For GMX this is the order key.
+    /// The venue's order id.
     pub id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
@@ -334,7 +330,7 @@ pub struct TradingAccount {
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = TS_FILE)]
 pub struct Capabilities {
-    /// False on GMX, which fills against pools at oracle prices.
+    /// False on venues that fill against pools at oracle prices.
     pub order_book: bool,
     pub order_types: Vec<OrderType>,
     /// Whether orders take a `collateral` amount (isolated per-position margin).

@@ -79,7 +79,7 @@ description must call them out under a **Security-relevant changes** heading:
   stays `'self'` plus IPC.
 
 Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
-wallet, GMX subaccount, dYdX permissioned key, Drift delegate), never a user's
+wallet, Aster API wallet with withdraw off), never a user's
 main wallet key.
 
 If you find a vulnerability, please report it privately to the maintainer
