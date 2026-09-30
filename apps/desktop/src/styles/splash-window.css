@@ -25,10 +25,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 26px;
+  gap: 20px;
   background: var(--pd-bg);
   border: 1px solid var(--pd-border-strong);
-  border-radius: 22px;
+  border-radius: 16px;
   animation: launch-in 220ms ease-out;
 }
 .launch-bar {
@@ -42,7 +42,7 @@ body {
 }
 .launch-word {
   color: var(--pd-pewter);
-  font-size: 34px;
+  font-size: 26px;
   letter-spacing: -0.01em;
 }
 .launch-word strong {
@@ -52,9 +52,9 @@ body {
 /* An indeterminate loading track under the wordmark */
 .launch-track {
   position: relative;
-  width: 200px;
+  width: 150px;
   height: 3px;
-  margin-top: 6px;
+  margin-top: 4px;
   overflow: hidden;
   border-radius: 2px;
   background: var(--pd-border);

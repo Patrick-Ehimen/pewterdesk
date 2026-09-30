@@ -70,14 +70,23 @@
   border-radius: var(--pd-radius);
   font-weight: 600;
 }
-/* The market on screen, beside its watchlist star: logo, pair, quote badge */
+/* The market on screen, beside its watchlist star: logo, pair, quote badge.
+   A button: it opens the market picker. */
 .app-market-pill {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   padding: 6px 8px 6px 10px;
+  border: 1px solid transparent;
   border-radius: 10px;
   background: var(--pd-surface-raised);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.app-market-pill:hover,
+.app-market-pill[aria-expanded="true"] {
+  border-color: var(--pd-border-strong);
 }
 .app-market-pill strong {
   font-weight: 700;
@@ -153,6 +162,9 @@
   gap: 18px;
 }
 .app-status-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 0;
   background: none;
   border: 0;

@@ -5,7 +5,7 @@ import { matchesSearch } from "./screener";
 export type PickerTab = "favorites" | "perps" | "hip3";
 export const PICKER_TABS: readonly PickerTab[] = ["favorites", "perps", "hip3"];
 
-export type PickerSortKey = "name" | "price" | "change" | "volume";
+export type PickerSortKey = "name" | "price" | "change" | "funding" | "volume" | "oi";
 export interface PickerSort {
   by: PickerSortKey;
   descending: boolean;
@@ -27,8 +27,16 @@ export interface PickerRow {
   rawPrice?: string;
   /** Fraction, e.g. 0.0107 for +1.07%. */
   change24h?: number;
+  /** The same move in price terms. */
+  changeAbs?: number;
+  /** The current interval's rate, as a fraction. */
+  funding?: number;
+  /** Length of that interval, in seconds (1h on Hyperliquid, 4h or 8h on Aster). */
+  fundingIntervalSecs?: number;
   /** 24h notional volume. */
   volume?: number;
+  /** Open interest in the quote asset (size times mark). */
+  openInterest?: number;
 }
 
 export function pickerRows(
@@ -46,9 +54,19 @@ export function pickerRows(
       price,
       rawPrice: s.markPrice,
       change24h: prev > 0 ? (price - prev) / prev : undefined,
+      changeAbs: prev > 0 ? price - prev : undefined,
+      funding: Number(s.fundingRate),
+      fundingIntervalSecs: s.fundingIntervalSecs,
       volume: Number(s.dayVolume),
+      openInterest: Number(s.openInterest) * price,
     };
   });
+}
+
+/** The tabs worth showing: HIP-3 only where the venue has builder markets. */
+export function pickerTabs(markets: readonly Market[]): PickerTab[] {
+  const builders = markets.some((m) => m.listedBy);
+  return PICKER_TABS.filter((tab) => tab !== "hip3" || builders);
 }
 
 export function inPickerTab(row: PickerRow, tab: PickerTab, starred: ReadonlySet<string>): boolean {
@@ -70,8 +88,12 @@ const sortValue = (row: PickerRow, by: PickerSortKey): number | string | undefin
       return row.price;
     case "change":
       return row.change24h;
+    case "funding":
+      return row.funding;
     case "volume":
       return row.volume;
+    case "oi":
+      return row.openInterest;
   }
 };
 

@@ -1,3 +1,4 @@
+import type { VenueId } from "@pewterdesk/core";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 
@@ -22,6 +23,12 @@ export interface TitlePart {
 export interface TrayUpdate {
   /** In coloured runs; empty for the icon alone. */
   title: TitlePart[];
+}
+
+/** A market picked in the tray panel; ids only mean something within a venue. */
+export interface TrayPick {
+  venue: VenueId;
+  marketId: string;
 }
 
 /** Events between the tray panel and the main window. */
@@ -69,13 +76,13 @@ export const appClient = {
   /** Tray panel: tells the main window which display mode was picked. */
   setTrayMode: (mode: string) => (isTauri() ? emit(TRAY_MODE_EVENT, mode) : Promise.resolve()),
 
-  /** Main window: calls `handler` with a market picked from the tray panel's watchlist. */
-  onTraySelectMarket: (handler: (marketId: string) => void) => onEvent(TRAY_SELECT_EVENT, handler),
+  /** Main window: calls `handler` with a market picked from the tray panel (any venue). */
+  onTraySelectMarket: (handler: (pick: TrayPick) => void) => onEvent(TRAY_SELECT_EVENT, handler),
 
   /** Tray panel: puts a market on screen in the main window, and opens it. */
-  selectMarketFromTray: async (marketId: string) => {
+  selectMarketFromTray: async (pick: TrayPick) => {
     if (!isTauri()) return;
-    await emit(TRAY_SELECT_EVENT, marketId);
+    await emit(TRAY_SELECT_EVENT, pick);
     await invoke("tray_open_main");
   },
 

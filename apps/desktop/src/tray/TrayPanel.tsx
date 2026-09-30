@@ -1,3 +1,4 @@
+import { venueLogos } from "@pewterdesk/assets";
 import type { Candle, Market, MarketSummary, VenueId } from "@pewterdesk/core";
 import {
   decimalsOf,
@@ -12,7 +13,7 @@ import {
   t,
 } from "@pewterdesk/ui";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { LuExternalLink, LuPower, LuSearch } from "react-icons/lu";
+import { LuChevronLeft, LuChevronRight, LuExternalLink, LuPower, LuSearch } from "react-icons/lu";
 import { appClient } from "../api/appClient";
 import { venueClient } from "../api/venueClient";
 import { useStoredChoice } from "../hooks/useStoredChoice";
@@ -20,6 +21,7 @@ import { TRAY_MODE_LABEL, TRAY_MODES, type TrayMode } from "../hooks/useTraySync
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
 import { connectedAddress } from "../lib/account";
+import { peekSavedIcon, withIconCache } from "../lib/iconCache";
 import { loadMarket } from "../lib/selectedMarket";
 import {
   loadMarkets,
@@ -29,13 +31,19 @@ import {
   saveSpark,
   saveSummaries,
 } from "../lib/trayCache";
+import { loadVenue, VENUES } from "../lib/venues";
 
-const VENUE: VenueId = "hyperliquid";
-const VENUE_LABEL = "Hyperliquid";
+/** The only venue whose account can be read without a signed request. */
+const ACCOUNT_VENUE: VenueId = "hyperliquid";
 /** Market logos, as in the main window; stable so TokenIcon's cache holds. */
-const loadIcon: IconLoader = (market) => venueClient.marketIcon(VENUE, market);
+// Saved between sessions (lib/iconCache), so they draw at once on the next launch.
+const loadIcon: IconLoader = withIconCache((market, venue) =>
+  venueClient.marketIcon(venue, market),
+);
 /** The hero moves on to the next market this often. */
 const HERO_ADVANCE_MS = 5000;
+/** Dots shown under the hero at most; they scroll with it through a longer list. */
+const HERO_DOTS = 5;
 /** Top Movers lists this many, biggest 24h move first. */
 const MOVERS = 25;
 /** The hero's sparkline: the last 24 hours in 15-minute candles. */
@@ -52,16 +60,22 @@ interface Row {
   change?: number;
 }
 
-/** The watchlist as saved by the main window (the two share storage). */
+/** A market's key across venues, as the watchlist writes it: "<venue>:<id>". */
+const keyOf = (m: Market) => watchKey(m.venue, m.id);
+
+/** The watchlist as saved by the main window (the two share storage), every venue's. */
 function readWatchlist(): string[] {
   try {
-    const prefix = watchKey(VENUE, "");
-    return parseWatchlist(localStorage.getItem("pd.watchlist"))
-      .filter((k) => k.startsWith(prefix))
-      .map((k) => k.slice(prefix.length));
+    return parseWatchlist(localStorage.getItem("pd.watchlist"));
   } catch {
     return [];
   }
+}
+
+/** The market on screen in the main window, on whichever venue it's showing. */
+function readOnScreen(): string {
+  const venue = loadVenue();
+  return watchKey(venue, loadMarket(venue) ?? VENUES[venue].defaultMarket);
 }
 
 /** Whether the panel is showing: it's only ever visible while focused. */
@@ -87,18 +101,22 @@ const SAVE_SUMMARIES_MS = 15_000;
  * The last 24 hours of `market` in 15-minute closes, for the hero's
  * sparkline: the cached line at once, fetched again only once it's stale.
  */
-function useSparkline(market: string | undefined, enabled: boolean): number[] {
+function useSparkline(market: Market | undefined, enabled: boolean): number[] {
   const [closes, setCloses] = useState<number[]>([]);
+  const venue = market?.venue;
+  const id = market?.id;
   useEffect(() => {
-    if (!market || !enabled) return;
-    const cached = loadSpark(market);
+    if (!venue || !id || !enabled) return;
+    const key = watchKey(venue, id);
+    const cached = loadSpark(key);
     setCloses(cached?.closes ?? []);
-    if (cached?.fresh) return;
+    // A saved line too short to draw is fetched again, fresh or not.
+    if (cached?.fresh && cached.closes.length > 1) return;
     let current = true;
-    venueClient.candles(VENUE, market, "15m", Date.now(), SPARK_CANDLES).then(
+    venueClient.candles(venue, id, "15m", Date.now(), SPARK_CANDLES).then(
       (candles: Candle[]) => {
         const fresh = candles.map((c) => Number(c.close));
-        saveSpark(market, fresh);
+        saveSpark(key, fresh);
         if (current) setCloses(fresh);
       },
       () => {},
@@ -106,8 +124,38 @@ function useSparkline(market: string | undefined, enabled: boolean): number[] {
     return () => {
       current = false;
     };
-  }, [market, enabled]);
+  }, [venue, id, enabled]);
   return closes;
+}
+
+/**
+ * One venue's markets and prices: live when there are some, until then
+ * what the panel last saw, so it draws at once and refreshes behind it.
+ */
+function useVenueData(venue: VenueId, open: boolean) {
+  const markets = useMarkets(venue);
+  const [cachedMarkets] = useState(() => loadMarkets(venue));
+  const liveMarkets = markets.status === "live" ? markets.data : undefined;
+  useEffect(() => {
+    if (liveMarkets) saveMarkets(venue, liveMarkets);
+  }, [venue, liveMarkets]);
+
+  const summaries = useMarketSummaries(venue, open);
+  const [cachedSummaries] = useState(() => loadSummaries(venue));
+  const liveSummaries =
+    summaries.status === "live" || summaries.status === "closed" ? summaries.data : undefined;
+  const savedAt = useRef(0);
+  useEffect(() => {
+    if (!liveSummaries || Date.now() - savedAt.current < SAVE_SUMMARIES_MS) return;
+    savedAt.current = Date.now();
+    saveSummaries(venue, liveSummaries);
+  }, [venue, liveSummaries]);
+
+  return {
+    status: markets.status,
+    markets: liveMarkets ?? cachedMarkets,
+    summaries: liveSummaries ?? cachedSummaries,
+  };
 }
 
 const trendOf = (v: number | undefined) =>
@@ -137,7 +185,7 @@ export function TrayPanel() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [starred, setStarred] = useState(readWatchlist);
-  const [onScreen, setOnScreen] = useState(loadMarket);
+  const [onScreen, setOnScreen] = useState(readOnScreen);
   const [tab, setTab] = useState<Tab>("favorites");
   const [group, setGroup] = useState<Group>("perps");
   const [sort, setSort] = useState<{ by: SortBy; descending: boolean }>();
@@ -152,35 +200,26 @@ export function TrayPanel() {
   useEffect(() => {
     if (!open) return;
     setStarred(readWatchlist());
-    setOnScreen(loadMarket());
+    setOnScreen(readOnScreen());
     setQuery("");
     setHeroIndex(0);
     searchRef.current?.focus();
   }, [open]);
 
-  // Live data when there is some; until then, what the panel last saw, so
-  // it draws at once and refreshes behind it.
-  const markets = useMarkets(VENUE);
-  const [cachedMarkets] = useState(loadMarkets);
-  const liveMarkets = markets.status === "live" ? markets.data : undefined;
-  useEffect(() => {
-    if (liveMarkets) saveMarkets(liveMarkets);
-  }, [liveMarkets]);
-  const marketList = liveMarkets ?? cachedMarkets;
-
-  const summaries = useMarketSummaries(VENUE, open);
-  const [cachedSummaries] = useState(loadSummaries);
-  const liveSummaries =
-    summaries.status === "live" || summaries.status === "closed" ? summaries.data : undefined;
-  const savedAt = useRef(0);
-  useEffect(() => {
-    if (!liveSummaries || Date.now() - savedAt.current < SAVE_SUMMARIES_MS) return;
-    savedAt.current = Date.now();
-    saveSummaries(liveSummaries);
-  }, [liveSummaries]);
-  const bySummary = new Map((liveSummaries ?? cachedSummaries).map((s) => [s.market, s]));
+  // Every venue's markets in one list; ids repeat across venues, so rows
+  // and prices are keyed "<venue>:<id>".
+  const hyperliquid = useVenueData("hyperliquid", open);
+  const aster = useVenueData("aster", open);
+  const venues = [
+    { venue: "hyperliquid" as const, ...hyperliquid },
+    { venue: "aster" as const, ...aster },
+  ];
+  const marketList = venues.flatMap((v) => v.markets);
+  const bySummary = new Map(
+    venues.flatMap((v) => v.summaries.map((s) => [watchKey(v.venue, s.market), s] as const)),
+  );
   const rowOf = (market: Market): Row => {
-    const summary = bySummary.get(market.id);
+    const summary = bySummary.get(keyOf(market));
     const price = Number(summary?.markPrice);
     const prev = Number(summary?.prevDayPrice);
     return {
@@ -190,11 +229,12 @@ export function TrayPanel() {
       change: prev > 0 ? (price - prev) / prev : undefined,
     };
   };
-  const find = (id: string | undefined) => marketList.find((m) => m.id === id);
+  const find = (key: string | undefined) => marketList.find((m) => keyOf(m) === key);
 
   // The hero: the market on screen, then the favourites, one at a time.
   const heroMarkets = [find(onScreen), ...starred.map(find)].filter(
-    (m, i, all): m is Market => m !== undefined && all.findIndex((x) => x?.id === m.id) === i,
+    (m, i, all): m is Market =>
+      m !== undefined && all.findIndex((x) => x && keyOf(x) === keyOf(m)) === i,
   );
   const hero = heroMarkets[heroIndex % Math.max(heroMarkets.length, 1)];
   // Moves on by itself while the panel is open and there's somewhere to go.
@@ -205,8 +245,20 @@ export function TrayPanel() {
     const id = setInterval(() => setHeroIndex((i) => (i + 1) % heroCount), HERO_ADVANCE_MS);
     return () => clearInterval(id);
   }, [open, heroHeld, heroCount, heroPicked]);
+  // A click on an arrow or a dot shows that market and restarts the countdown.
+  const showHero = (index: number) => {
+    setHeroIndex((index + heroCount) % heroCount);
+    setHeroPicked((n) => n + 1);
+  };
+  const heroAt = heroIndex % Math.max(heroCount, 1);
+  // The dots on show: a window of HERO_DOTS kept around the current market.
+  const dotsFrom = Math.min(
+    Math.max(heroAt - Math.floor(HERO_DOTS / 2), 0),
+    Math.max(heroCount - HERO_DOTS, 0),
+  );
+  const heroDots = heroMarkets.slice(dotsFrom, dotsFrom + HERO_DOTS);
   const heroRow = hero && rowOf(hero);
-  const spark = useSparkline(hero?.id, open);
+  const spark = useSparkline(hero, open);
 
   // With nothing starred there's no Favorites tab.
   const hasFavorites = starred.length > 0;
@@ -245,13 +297,13 @@ export function TrayPanel() {
 
   // Nothing to show yet: no market list (live or saved), or, for Top
   // Movers, no prices to rank by.
-  const waiting = marketList.length === 0 && markets.status !== "error";
+  const waiting = marketList.length === 0 && venues.some((v) => v.status !== "error");
   const listWaiting =
     !query.trim() &&
     (waiting || (activeTab === "movers" && bySummary.size === 0 && rows.length === 0));
 
   const address = connectedAddress();
-  const account = useAccount(VENUE, open ? address : undefined);
+  const account = useAccount(ACCOUNT_VENUE, open ? address : undefined);
   const snapshot =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
   const pnl = snapshot?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
@@ -303,7 +355,7 @@ export function TrayPanel() {
   };
 
   return (
-    <TokenIconProvider load={loadIcon}>
+    <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
       <main ref={rootRef} className="tray-panel" aria-label={t("tray.panel")}>
         <label className="tray-search">
           <LuSearch size={15} aria-hidden />
@@ -349,9 +401,11 @@ export function TrayPanel() {
             <button
               type="button"
               // Re-keyed per market, so each one fades in.
-              key={hero.id}
+              key={keyOf(hero)}
               className="tray-hero-main"
-              onClick={() => void appClient.selectMarketFromTray(hero.id)}
+              onClick={() =>
+                void appClient.selectMarketFromTray({ venue: hero.venue, marketId: hero.id })
+              }
             >
               <span className="tray-hero-top">
                 <TokenIcon market={hero} size={22} />
@@ -379,21 +433,36 @@ export function TrayPanel() {
                 )}
               </span>
             </button>
-            {heroMarkets.length > 1 && (
-              <div className="tray-dots" role="tablist" aria-label={t("tab.watchlist")}>
-                {heroMarkets.map((m, i) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={m.id === hero.id}
-                    aria-label={m.symbol}
-                    onClick={() => {
-                      setHeroIndex(i);
-                      setHeroPicked((n) => n + 1);
-                    }}
-                  />
-                ))}
+            {heroCount > 1 && (
+              <div className="tray-hero-nav">
+                <button
+                  type="button"
+                  className="tray-hero-step"
+                  aria-label={t("tray.previous")}
+                  onClick={() => showHero(heroAt - 1)}
+                >
+                  <LuChevronLeft size={14} aria-hidden />
+                </button>
+                <div className="tray-dots" role="tablist" aria-label={t("tab.watchlist")}>
+                  {heroDots.map((m, i) => (
+                    <button
+                      key={keyOf(m)}
+                      type="button"
+                      role="tab"
+                      aria-selected={keyOf(m) === keyOf(hero)}
+                      aria-label={m.symbol}
+                      onClick={() => showHero(dotsFrom + i)}
+                    />
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="tray-hero-step"
+                  aria-label={t("tray.next")}
+                  onClick={() => showHero(heroAt + 1)}
+                >
+                  <LuChevronRight size={14} aria-hidden />
+                </button>
               </div>
             )}
           </section>
@@ -455,12 +524,25 @@ export function TrayPanel() {
                 </li>
               ))}
             {rows.map((r) => (
-              <li key={r.market.id}>
+              <li key={keyOf(r.market)}>
                 <button
                   type="button"
-                  onClick={() => void appClient.selectMarketFromTray(r.market.id)}
+                  onClick={() =>
+                    void appClient.selectMarketFromTray({
+                      venue: r.market.venue,
+                      marketId: r.market.id,
+                    })
+                  }
                 >
                   <span className="tray-coin">
+                    <img
+                      className="tray-venue"
+                      src={venueLogos[r.market.venue]}
+                      width={12}
+                      height={12}
+                      alt={VENUES[r.market.venue].label}
+                      title={VENUES[r.market.venue].label}
+                    />
                     <strong>{r.market.symbol}</strong>
                     <span className="pd-lev">{r.market.maxLeverage}x</span>
                     <ListedBy market={r.market} hint={false} />
@@ -488,7 +570,7 @@ export function TrayPanel() {
 
         <section className="tray-section" aria-labelledby="tray-account">
           <h2 id="tray-account" className="tray-label">
-            {t("tray.account")} · {VENUE_LABEL}
+            {t("tray.account")} · {VENUES[ACCOUNT_VENUE].label}
           </h2>
           {snapshot ? (
             <>

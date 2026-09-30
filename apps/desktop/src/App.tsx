@@ -1,10 +1,12 @@
-import { logo } from "@pewterdesk/assets";
+import { logo, venueLogos } from "@pewterdesk/assets";
 import type { AccountSnapshot, Market, OrderBook, VenueId } from "@pewterdesk/core";
 import {
   AccountSummary,
+  AlertsPopover,
   decimalsOf,
   FundingHistoryTable,
   type IconLoader,
+  MarketPicker,
   MarketStatsBar,
   OpenOrdersTable,
   OptionsMenu,
@@ -23,7 +25,7 @@ import {
   TradesView,
   t,
 } from "@pewterdesk/ui";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
@@ -45,6 +47,7 @@ import {
 import { type Connection, StatusBar } from "./components/StatusBar";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
+import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, useAppearance } from "./hooks/useAppearance";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
@@ -64,6 +67,7 @@ import {
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { connectedAddress } from "./lib/account";
+import { peekSavedIcon, withIconCache } from "./lib/iconCache";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import {
@@ -73,6 +77,7 @@ import {
   saveQuickTrade,
 } from "./lib/quickTrade";
 import { loadMarket, saveMarket } from "./lib/selectedMarket";
+import { loadVenue, saveVenue, VENUE_IDS, VENUES } from "./lib/venues";
 import {
   addPanel,
   DEFAULT_PRESET,
@@ -82,24 +87,21 @@ import {
   saveAs,
 } from "./lib/workspace";
 
-// The only venue with an adapter so far.
-const VENUE: VenueId = "hyperliquid";
-/**
- * Hyperliquid's base-tier perp fees (taker / maker), for the order ticket.
- * Builder-deployed (HIP-3) markets scale these per deployer, so they show none.
- */
-const HYPERLIQUID_FEES = { taker: 0.00045, maker: 0.00015 };
-/** Hyperliquid's default cap on how far a market order may fill from the touch. */
-const HYPERLIQUID_MAX_SLIPPAGE = 0.08;
-
 /** The launch splash stays up at least this long after the page starts, and at most this. */
 const MIN_SPLASH_MS = 2000;
 const MAX_SPLASH_MS = 8000;
 
 /** Market logos, fetched by the venue adapter; stable so TokenIcon's cache holds. */
-const loadIcon: IconLoader = (market) => venueClient.marketIcon(VENUE, market);
-const VENUE_LABEL = "Hyperliquid";
-const DEFAULT_MARKET = "HYPE";
+// Saved between sessions (lib/iconCache), so they draw at once on the next launch.
+const loadIcon: IconLoader = withIconCache((market, venue) =>
+  venueClient.marketIcon(venue, market),
+);
+/** The venue chips in the market picker. */
+const VENUE_CHIPS = VENUE_IDS.map((id) => ({
+  id,
+  label: VENUES[id].label,
+  logo: venueLogos[id],
+}));
 
 type ActivityTab = "positions" | "orders" | "fills" | "funding" | "orderHistory";
 type BookTab = "book" | "trades";
@@ -110,19 +112,21 @@ const SOUND = ["on", "off"] as const;
  * and its trade, funding and order history (fetched while their tab is open).
  */
 function ActivityPanel({
+  venue,
   account,
   address,
   symbolFor,
 }: {
+  venue: VenueId;
   account: Feed<AccountSnapshot>;
   address: string | undefined;
   symbolFor: SymbolFor;
 }) {
   const [tab, setTab] = useState<ActivityTab>("positions");
   const snapshot = account.status === "live" || account.status === "closed" ? account.data : null;
-  const fills = useAccountFills(VENUE, address, tab === "fills");
-  const funding = useAccountFunding(VENUE, address, tab === "funding");
-  const orderHistory = useOrderHistory(VENUE, address, tab === "orderHistory");
+  const fills = useAccountFills(venue, address, tab === "fills");
+  const funding = useAccountFunding(venue, address, tab === "funding");
+  const orderHistory = useOrderHistory(venue, address, tab === "orderHistory");
   const loading = <p className="pd-empty">{t("history.loading")}</p>;
   return (
     <>
@@ -194,10 +198,12 @@ function ActivityPanel({
  * is showing; the book feed is shared with the quick-trade bar's prices.
  */
 function OrderBookPanel({
+  venue,
   book,
   market,
   marketsLoading,
 }: {
+  venue: VenueId;
   book: Feed<OrderBook>;
   market?: Market;
   /** No market can be picked until the list arrives; show the skeleton meanwhile. */
@@ -210,7 +216,7 @@ function OrderBookPanel({
     ROW_MODES,
     "table",
   );
-  const trades = useTrades(VENUE, tab === "trades" ? market?.id : undefined);
+  const trades = useTrades(venue, tab === "trades" ? market?.id : undefined);
   const skeleton =
     tab === "book" ? <OrderBookSkeleton mode={bookMode} /> : <TradesSkeleton mode={tradesMode} />;
   return (
@@ -270,16 +276,29 @@ function OrderBookPanel({
 }
 
 export function App() {
-  const markets = useMarkets(VENUE);
-  // The last market viewed, so a restart opens where you left off.
-  const [selectedId, setSelectedId] = useState(loadMarket);
+  // The venue and market on screen, so a restart opens where you left off.
+  // Each venue remembers its own last market.
+  const [venue, setVenue] = useState(loadVenue);
+  const venueInfo = VENUES[venue];
+  const markets = useMarkets(venue);
+  const [selectedId, setSelectedId] = useState(() => loadMarket(venue));
   useEffect(() => {
-    if (selectedId) saveMarket(selectedId);
-  }, [selectedId]);
-  const address = connectedAddress();
+    if (selectedId) saveMarket(selectedId, venue);
+  }, [selectedId, venue]);
+  /** Puts `marketId` on `next` on screen (or that venue's last market). */
+  const showMarket = (next: VenueId, marketId?: string) => {
+    if (next !== venue) {
+      setVenue(next);
+      saveVenue(next);
+    }
+    setSelectedId(marketId ?? loadMarket(next));
+  };
+  // Aster serves account data only to signed requests, which need a
+  // connected API wallet; until then it has no account to show.
+  const address = venue === "hyperliquid" ? connectedAddress() : undefined;
   const appearance = useAppearance();
   const themeTransition = useThemeTransition(appearance.setTheme);
-  const watchlist = useWatchlist(VENUE);
+  const watchlist = useWatchlist(venue);
   const [workspace, setWorkspace] = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [dragging, setDragging] = useState<PanelKind>();
@@ -292,10 +311,21 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
   const [page, setPage] = useState<Page>("trade");
+  // Market alerts, checked while the app runs; the popover is the header's bell.
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const alerts = useAlerts(alertsOpen);
   const [walletOpen, setWalletOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  // A market picked from the tray panel's watchlist goes on screen.
-  useEffect(() => appClient.onTraySelectMarket((id) => setSelectedId(id)), []);
+  // A market picked from the tray panel goes on screen, switching venue if need be.
+  const showFromTray = useRef(showMarket);
+  showFromTray.current = showMarket;
+  useEffect(
+    () =>
+      appClient.onTraySelectMarket(({ venue, marketId }) => {
+        if (VENUE_IDS.includes(venue)) showFromTray.current(venue, marketId);
+      }),
+    [],
+  );
   // Opened from the macOS menu bar's "About PewterDesk".
   useEffect(() => appClient.onOpenAbout(() => setAboutOpen(true)), []);
   // Nothing plays sounds yet; this is the preference fill alerts will read.
@@ -304,10 +334,10 @@ export function App() {
   const marketList = markets.status === "live" ? markets.data : [];
   const selected: Market | undefined =
     marketList.find((m) => m.id === selectedId) ??
-    marketList.find((m) => m.id === DEFAULT_MARKET) ??
+    marketList.find((m) => m.id === venueInfo.defaultMarket) ??
     marketList[0];
 
-  const book = useOrderBook(VENUE, selected?.id);
+  const book = useOrderBook(venue, selected?.id);
   // The launch splash gives way once there's something to show (the market
   // list, or its error), and after at most 8 seconds regardless; at least
   // MIN_SPLASH_MS after the page started, so it doesn't just flash.
@@ -327,9 +357,41 @@ export function App() {
       : book.status === "live"
         ? "online"
         : "connecting";
-  // Prices for the market picker, only while it's open (shared with the screener's feed).
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const pickerSummaries = useMarketSummaries(VENUE, pickerOpen);
+  // The market picker can browse another venue's markets (its chips); a
+  // pick there switches the screen to that venue. Prices only while it's
+  // open (shared with the screener's feed).
+  const [pickerOpen, setPickerOpenState] = useState(false);
+  const [pickerVenue, setPickerVenue] = useState(venue);
+  const setPickerOpen = (open: boolean) => {
+    setPickerOpenState(open);
+    if (open) setPickerVenue(venue);
+  };
+  const browsing = pickerOpen && pickerVenue !== venue;
+  const otherMarkets = useMarkets(browsing ? pickerVenue : undefined);
+  const otherWatchlist = useWatchlist(pickerVenue);
+  const pickerSummaries = useMarketSummaries(pickerOpen ? pickerVenue : venue, pickerOpen);
+  const pickerWatchlist = browsing ? otherWatchlist : watchlist;
+  const pickerProps = {
+    markets: browsing ? (otherMarkets.status === "live" ? otherMarkets.data : []) : marketList,
+    // Skeleton rows until the browsed venue's list arrives.
+    loading: browsing
+      ? otherMarkets.status === "loading" || otherMarkets.status === "idle"
+      : markets.status === "loading",
+    selected: selected?.id,
+    onSelect: (m: Market) => showMarket(m.venue, m.id),
+    // Undefined while prices load (cells shimmer); empty if they failed (cells read "-").
+    summaries:
+      pickerSummaries.status === "live" || pickerSummaries.status === "closed"
+        ? pickerSummaries.data
+        : pickerSummaries.status === "error"
+          ? []
+          : undefined,
+    starred: pickerWatchlist.starred,
+    onToggleStar: (m: Market) => pickerWatchlist.toggle(m.id),
+    venues: VENUE_CHIPS,
+    venue: pickerOpen ? pickerVenue : venue,
+    onVenueChange: setPickerVenue,
+  };
 
   // The floating quick-trade bar: open or not, and where, survive a restart.
   const [quickTrade, setQuickTrade] = useState(loadQuickTrade);
@@ -343,8 +405,8 @@ export function App() {
   const bookData = book.status === "live" || book.status === "closed" ? book.data : undefined;
   const bestBid = bookData?.bids[0]?.price;
   const bestAsk = bookData?.asks[0]?.price;
-  const stats = useMarketStats(VENUE, selected?.id);
-  const account = useAccount(VENUE, address);
+  const stats = useMarketStats(venue, selected?.id);
+  const account = useAccount(venue, address);
   const accountData =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
   // The menu-bar (tray) item: price and PnL, even with the window closed.
@@ -383,8 +445,8 @@ export function App() {
       case "markets":
         return (
           <MarketsPanel
-            venue={VENUE}
-            venueName={VENUE_LABEL}
+            venue={venue}
+            venueName={venueInfo.label}
             markets={markets}
             market={selected}
             onSelect={(m) => setSelectedId(m.id)}
@@ -398,6 +460,7 @@ export function App() {
       case "orderBook":
         return (
           <OrderBookPanel
+            venue={venue}
             book={book}
             market={selected}
             marketsLoading={markets.status === "loading"}
@@ -414,7 +477,9 @@ export function App() {
           </div>
         );
       case "positions":
-        return <ActivityPanel account={account} address={address} symbolFor={symbolFor} />;
+        return (
+          <ActivityPanel venue={venue} account={account} address={address} symbolFor={symbolFor} />
+        );
       case "trade":
         // Orders can't be placed yet, so no onSubmit: the button says why.
         return (
@@ -423,8 +488,8 @@ export function App() {
               market={selected}
               book={bookData}
               account={accountData}
-              fees={selected?.listedBy ? undefined : HYPERLIQUID_FEES}
-              maxSlippage={HYPERLIQUID_MAX_SLIPPAGE}
+              fees={selected?.listedBy ? undefined : venueInfo.fees}
+              maxSlippage={venueInfo.maxSlippage}
               onConnect={() => setWalletOpen(true)}
             />
           </div>
@@ -437,14 +502,14 @@ export function App() {
       case "orderBook":
         return selected?.symbol;
       case "account":
-        return VENUE_LABEL;
+        return venueInfo.label;
       default:
         return null;
     }
   };
 
   return (
-    <TokenIconProvider load={loadIcon}>
+    <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
       <div className="app" data-editing={editing || undefined}>
         <header className="app-header">
           {/* The logo goes home: back to the trading workspace, out of settings or layout editing. */}
@@ -474,19 +539,26 @@ export function App() {
           />
           <span className="app-chip">
             <span className="pd-live-dot" data-live={book.status === "live" || undefined} />
-            {VENUE_LABEL}
+            {venueInfo.label}
           </span>
           <div className="app-spacer" />
-          {/* The market on screen, beside its watchlist star. */}
+          {/* The market on screen, beside its watchlist star; opens the market picker. */}
           {selected && (
-            <span className="app-market-pill">
-              <TokenIcon market={selected} size={22} />
-              <strong>
-                {selected.base}
-                {selected.quote}
-              </strong>
-              <span className="app-quote-badge">{selected.quote}</span>
-            </span>
+            <MarketPicker
+              {...pickerProps}
+              onOpenChange={setPickerOpen}
+              triggerClassName="app-market-pill"
+              trigger={
+                <>
+                  <TokenIcon market={selected} size={22} />
+                  <strong>
+                    {selected.base}
+                    {selected.quote}
+                  </strong>
+                  <span className="app-quote-badge">{selected.quote}</span>
+                </>
+              }
+            />
           )}
           <HeaderActions
             marketSymbol={selected?.symbol}
@@ -506,6 +578,31 @@ export function App() {
             }}
             soundOn={sound === "on"}
             onSound={(on) => setSound(on ? "on" : "off")}
+            alerts={
+              <AlertsPopover
+                alerts={alerts.alerts}
+                fired={alerts.fired}
+                unseen={alerts.unseen}
+                paused={alerts.paused}
+                onPausedChange={alerts.setPaused}
+                market={selected}
+                venues={VENUE_CHIPS}
+                currentOf={alerts.currentOf}
+                onCreate={alerts.create}
+                onToggle={alerts.toggle}
+                onDelete={alerts.remove}
+                onClearFired={alerts.clearFired}
+                onShowMarket={(v, m) => {
+                  setPage("trade");
+                  showMarket(v, m);
+                }}
+                onOpenChange={(open) => {
+                  setAlertsOpen(open);
+                  // Opening or closing it counts as having seen what fired.
+                  alerts.markSeen();
+                }}
+              />
+            }
             settingsOpen={page === "settings"}
             onToggleSettings={() => goTo(page === "settings" ? "trade" : "settings")}
             theme={appearance.theme}
@@ -519,7 +616,7 @@ export function App() {
           <PortfolioPage
             account={account}
             markets={marketList}
-            venue={VENUE_LABEL}
+            venue={venueInfo.label}
             onConnect={() => setWalletOpen(true)}
           />
         ) : page === "journal" ? (
@@ -586,20 +683,20 @@ export function App() {
                 renderStatsBar={() => (
                   <MarketStatsBar
                     market={selected}
-                    venue={VENUE_LABEL}
+                    venue={venueInfo.label}
                     stats={
                       stats.status === "live" || stats.status === "closed" ? stats.data : undefined
                     }
-                    markets={marketList}
-                    onSelectMarket={(m) => setSelectedId(m.id)}
-                    summaries={
-                      pickerSummaries.status === "live" || pickerSummaries.status === "closed"
-                        ? pickerSummaries.data
-                        : undefined
-                    }
-                    starred={watchlist.starred}
-                    onToggleStar={(m) => watchlist.toggle(m.id)}
+                    markets={pickerProps.markets}
+                    onSelectMarket={pickerProps.onSelect}
+                    summaries={pickerProps.summaries}
+                    starred={pickerProps.starred}
+                    onToggleStar={pickerProps.onToggleStar}
                     onPickerOpen={setPickerOpen}
+                    venues={pickerProps.venues}
+                    pickerVenue={pickerProps.venue}
+                    onPickerVenueChange={pickerProps.onVenueChange}
+                    pickerLoading={pickerProps.loading}
                   />
                 )}
               />
@@ -619,7 +716,7 @@ export function App() {
 
         <ConnectWalletDialog open={walletOpen} onClose={() => setWalletOpen(false)} />
 
-        <StatusBar connection={connection} venue={VENUE_LABEL} />
+        <StatusBar connection={connection} venue={venueInfo.label} />
 
         {/* Orders can't be placed yet, so no onLong/onShort: the buttons show why. */}
         {quickTrade.open && page === "trade" && (

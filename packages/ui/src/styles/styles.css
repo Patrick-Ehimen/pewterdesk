@@ -1169,8 +1169,8 @@ input {
 .pd-picker {
   position: fixed;
   z-index: 1000;
-  width: min(560px, calc(100vw - 12px));
-  max-height: min(600px, 78vh);
+  width: min(860px, calc(100vw - 12px));
+  max-height: min(640px, 80vh);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1191,6 +1191,35 @@ input {
   flex: none;
   width: auto;
   margin: 0 2px;
+}
+/* Venue chips: which venue's markets the list shows */
+.pd-picker-venues {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 2px;
+}
+.pd-picker-venue {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 14px 5px 8px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-picker-venue:hover {
+  color: var(--pd-text);
+}
+.pd-picker-venue img {
+  display: block;
+  border-radius: 4px;
+}
+.pd-picker-venue[aria-checked="true"] {
+  color: var(--pd-text);
+  border-color: var(--pd-brass);
 }
 /* Category tabs: Favorites / Perps / HIP-3 */
 .pd-picker-tabs {
@@ -1237,16 +1266,20 @@ input {
   color: var(--pd-brass-text);
   font-weight: 600;
 }
-/* Header and rows share columns: star · name · price · 24h · volume */
+/* Header and rows share columns: star · name · price · 24h · funding · volume · OI */
 .pd-picker-head,
 .pd-picker-row button[data-market] {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
+  grid-template-columns:
+    minmax(0, 1.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr)
+    minmax(0, 0.85fr);
   align-items: center;
   column-gap: 10px;
 }
 .pd-picker-head {
-  grid-template-columns: 28px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
+  grid-template-columns:
+    28px minmax(0, 1.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr)
+    minmax(0, 0.85fr);
   padding: 2px 10px 4px 2px;
   color: var(--pd-pewter);
   font-size: 11.5px;
@@ -1315,6 +1348,52 @@ input {
   align-items: center;
   gap: 6px;
   font-size: 12px;
+}
+/* Loading: shimmer bars in place of values, whole rows for the list itself.
+   The popover is already surface-raised, the usual skeleton base, so bars
+   here sweep from a step lighter to stay visible. */
+.pd-picker-skel {
+  display: inline-block;
+  border-radius: 4px;
+  background-image: linear-gradient(
+    90deg,
+    var(--pd-border) 25%,
+    var(--pd-border-strong) 50%,
+    var(--pd-border) 75%
+  );
+}
+.pd-picker-names .pd-picker-skel + .pd-picker-skel {
+  margin-top: 5px;
+}
+.pd-picker-row-skel {
+  pointer-events: none;
+}
+.pd-picker-skel-cells {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1.9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.85fr)
+    minmax(0, 0.85fr);
+  align-items: center;
+  justify-items: end;
+  column-gap: 10px;
+  padding: 10px 10px 10px 0;
+}
+.pd-picker-skel-cells > .pd-picker-name {
+  justify-self: start;
+}
+.pd-picker-skel-cells .pd-picker-name > .pd-picker-skel:first-child {
+  border-radius: 50%;
+}
+/* 24h change: the move in price over the percentage */
+.pd-picker-change {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+.pd-picker-funding .pd-muted {
+  margin-left: 2px;
+  font-size: 11px;
 }
 .pd-picker-empty {
   margin: 12px 8px;
@@ -2875,5 +2954,412 @@ input {
 @container (max-width: 1260px) {
   .pd-screener-side {
     display: none;
+  }
+}
+
+/* Alerts: the header's bell and its popover, after the design's alerts screen */
+.pd-alerts-bell {
+  position: relative;
+  display: inline-grid;
+}
+.pd-alerts-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+.pd-alerts {
+  position: fixed;
+  z-index: 1000;
+  width: min(620px, calc(100vw - 16px));
+  overflow-y: auto;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow:
+    0 20px 48px -12px color-mix(in srgb, var(--pd-bg) 85%, transparent),
+    0 2px 8px color-mix(in srgb, var(--pd-bg) 50%, transparent);
+  opacity: 0;
+  transform: translateY(-4px) scale(0.99);
+  transform-origin: top right;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+.pd-alerts[data-visible] {
+  opacity: 1;
+  transform: none;
+}
+.pd-alerts:focus {
+  outline: none;
+}
+.pd-alerts h2,
+.pd-alerts h3 {
+  margin: 0;
+}
+.pd-alerts-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 12px 16px;
+  background: var(--pd-surface);
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-alerts-head h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.pd-alerts-pause {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--pd-pewter);
+}
+/* New alert: labels in a column on the left, controls on the right */
+.pd-alerts-form {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 14px 16px 16px;
+  background: var(--pd-surface-raised);
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-alerts-form h3 {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pd-alerts-label {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+fieldset.pd-alerts-chips {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.pd-alerts-chips,
+.pd-alerts-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pd-alerts-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pd-alerts-chip:hover:not(:disabled) {
+  color: var(--pd-text);
+}
+.pd-alerts-chip[aria-checked="true"] {
+  color: var(--pd-text);
+  border-color: var(--pd-brass);
+}
+.pd-alerts-chip[aria-checked="true"] svg {
+  color: var(--pd-brass-text);
+}
+.pd-alerts-chip:disabled {
+  color: var(--pd-pewter-dim);
+  border-color: var(--pd-border);
+  cursor: not-allowed;
+}
+/* The market on the open chart: read-only, not a picker */
+.pd-alerts-market {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px 0 8px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+}
+.pd-alerts-market strong {
+  font-family: var(--pd-font-mono);
+  font-weight: 600;
+}
+.pd-alerts-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  flex: 1;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+}
+.pd-alerts-source img,
+.pd-alerts-meta img {
+  border-radius: 3px;
+}
+.pd-alerts-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+}
+.pd-alerts-value:focus-within {
+  border-color: var(--pd-brass);
+}
+.pd-alerts-value input {
+  width: 96px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--pd-text);
+  font-size: 15px;
+  text-align: left;
+  outline: none;
+}
+.pd-alerts-value input[aria-invalid="true"] {
+  color: var(--pd-warning);
+}
+.pd-alerts-now {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-alerts-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.pd-alerts-actions .pd-input {
+  flex: 1;
+  min-width: 0;
+}
+.pd-alerts-cancel,
+.pd-alerts-create {
+  padding: 0 14px;
+  height: 34px;
+  border-radius: var(--pd-radius);
+  cursor: pointer;
+}
+.pd-alerts-cancel {
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  color: var(--pd-text);
+}
+.pd-alerts-create {
+  background: var(--pd-brass);
+  border: 1px solid var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.pd-alerts-create:hover:not(:disabled) {
+  background: var(--pd-brass-hover);
+}
+.pd-alerts-create:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Active and fired lists */
+.pd-alerts-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 14px 16px 6px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.pd-alerts-section-head h3 {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-alerts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-alerts-list[data-paused] {
+  opacity: 0.55;
+}
+.pd-alerts-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px 8px 16px;
+  border-top: 1px solid var(--pd-border);
+}
+.pd-alerts-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+}
+.pd-alerts-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.pd-alerts-text strong {
+  font-weight: 500;
+}
+.pd-alerts-fired .pd-alerts-text {
+  flex-direction: row;
+}
+.pd-alerts-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-alerts-status {
+  color: var(--pd-pewter);
+  white-space: nowrap;
+}
+.pd-alerts-status[data-now] {
+  color: var(--pd-brass-text);
+}
+.pd-alerts-row[data-off] .pd-alerts-text,
+.pd-alerts-row[data-off] .pd-alerts-status {
+  color: var(--pd-pewter-dim);
+}
+/* Delete shows on hover or focus, so the switches line up */
+.pd-alerts-delete {
+  opacity: 0;
+}
+.pd-alerts-row:hover .pd-alerts-delete,
+.pd-alerts-delete:focus-visible {
+  opacity: 1;
+}
+.pd-alerts-link {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--pd-brass-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.pd-alerts-empty {
+  margin: 0;
+  padding: 10px 16px 14px;
+  color: var(--pd-pewter-dim);
+}
+.pd-alerts-foot {
+  padding: 12px 16px;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-alerts {
+    transition: none;
+  }
+}
+
+/* Select: a custom single-choice dropdown (common/Select.tsx) */
+.pd-select {
+  position: relative;
+  display: inline-flex;
+}
+.pd-select-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 34px;
+  padding: 0 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  color: var(--pd-text);
+  cursor: pointer;
+}
+.pd-select-chevron {
+  color: var(--pd-pewter);
+  transition: transform 120ms ease;
+}
+.pd-select-trigger:hover,
+.pd-select-trigger[aria-expanded="true"] {
+  border-color: var(--pd-brass);
+}
+.pd-select-trigger[aria-expanded="true"] .pd-select-chevron {
+  transform: rotate(180deg);
+}
+.pd-select-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  min-width: 100%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px -8px color-mix(in srgb, var(--pd-bg) 85%, transparent);
+  outline: none;
+}
+.pd-select-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 6px;
+  border-radius: 5px;
+  color: var(--pd-text);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pd-select-option[data-active] {
+  background: var(--pd-border);
+}
+.pd-select-check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  color: var(--pd-brass-text);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-select-chevron {
+    transition: none;
   }
 }

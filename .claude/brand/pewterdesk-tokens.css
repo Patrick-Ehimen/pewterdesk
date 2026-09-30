@@ -1,4 +1,5 @@
-/* Pewterdesk color tokens. Pewter (dark) is the default; set data-theme on
+/* Pewterdesk color tokens. Pewter (dark) is the bare :root set; the app's
+   default theme is Monokai Pro. Set data-theme on
    <html> to dark | graphite | synthwave | monokai | palenight | parchment
    (or light, the brand light palette), and data-market="colorblind" for
    colorblind-safe market colors. The brand themes vary only the neutrals -

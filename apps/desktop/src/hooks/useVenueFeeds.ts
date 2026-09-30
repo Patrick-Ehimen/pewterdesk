@@ -29,9 +29,16 @@ export type Feed<T> =
   | { status: "live" | "closed"; data: T }
   | { status: "error"; message: string };
 
-export function useMarkets(venue: VenueId): Feed<Market[]> {
-  const [feed, setFeed] = useState<Feed<Market[]>>({ status: "loading" });
+/** The venue's markets; idle while `venue` is unset. */
+export function useMarkets(venue: VenueId | undefined): Feed<Market[]> {
+  const [feed, setFeed] = useState<Feed<Market[]>>(
+    venue ? { status: "loading" } : { status: "idle" },
+  );
   useEffect(() => {
+    if (!venue) {
+      setFeed({ status: "idle" });
+      return;
+    }
     let current = true;
     setFeed({ status: "loading" });
     venueClient.markets(venue).then(

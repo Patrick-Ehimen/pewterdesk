@@ -1,11 +1,14 @@
-import type { Market, MarketSummary } from "@pewterdesk/core";
+import type { Market, MarketSummary, VenueId } from "@pewterdesk/core";
 
 // What the tray panel last saw, kept on this machine so it opens instantly
 // (even right after launch) and refreshes behind it. All of it is public
 // market data; a lost or stale cache costs nothing but that moment.
 
-const MARKETS_KEY = "pd.cache.markets";
-const SUMMARIES_KEY = "pd.cache.summaries";
+// Per venue; Hyperliquid keeps the original keys, from before there were others.
+const marketsKey = (venue: VenueId) =>
+  venue === "hyperliquid" ? "pd.cache.markets" : `pd.cache.markets.${venue}`;
+const summariesKey = (venue: VenueId) =>
+  venue === "hyperliquid" ? "pd.cache.summaries" : `pd.cache.summaries.${venue}`;
 const SPARKS_KEY = "pd.cache.sparks";
 /** A sparkline this old is fetched again. */
 export const SPARK_MAX_AGE_MS = 5 * 60_000;
@@ -36,17 +39,24 @@ const isArrayOf =
   (v: unknown): v is T[] =>
     Array.isArray(v) && v.every((x) => typeof x === "object" && x !== null && field in x);
 
-export const loadMarkets = (store: Store = localStorage) =>
-  read(store, MARKETS_KEY, isArrayOf<Market>("id")) ?? [];
-export const saveMarkets = (markets: readonly Market[], store: Store = localStorage) =>
-  write(store, MARKETS_KEY, markets);
+export const loadMarkets = (venue: VenueId, store: Store = localStorage) =>
+  read(store, marketsKey(venue), isArrayOf<Market>("id")) ?? [];
+export const saveMarkets = (
+  venue: VenueId,
+  markets: readonly Market[],
+  store: Store = localStorage,
+) => write(store, marketsKey(venue), markets);
 
-export const loadSummaries = (store: Store = localStorage) =>
-  read(store, SUMMARIES_KEY, isArrayOf<MarketSummary>("market")) ?? [];
-export const saveSummaries = (summaries: readonly MarketSummary[], store: Store = localStorage) =>
-  write(store, SUMMARIES_KEY, summaries);
+export const loadSummaries = (venue: VenueId, store: Store = localStorage) =>
+  read(store, summariesKey(venue), isArrayOf<MarketSummary>("market")) ?? [];
+export const saveSummaries = (
+  venue: VenueId,
+  summaries: readonly MarketSummary[],
+  store: Store = localStorage,
+) => write(store, summariesKey(venue), summaries);
 
 interface Spark {
+  /** `watchKey(venue, id)`: ids repeat across venues. */
   market: string;
   time: number;
   closes: number[];
