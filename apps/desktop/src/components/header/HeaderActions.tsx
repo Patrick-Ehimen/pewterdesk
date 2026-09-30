@@ -7,6 +7,7 @@ import {
   shortAddress,
   t,
 } from "@pewterdesk/ui";
+import type { ReactNode } from "react";
 import {
   LuGlobe,
   LuLayoutGrid,
@@ -35,6 +36,8 @@ interface HeaderActionsProps {
   onToggleLayout: () => void;
   soundOn: boolean;
   onSound: (on: boolean) => void;
+  /** The alerts bell and its popover. */
+  alerts: ReactNode;
   settingsOpen: boolean;
   onToggleSettings: () => void;
   theme: Theme;
@@ -43,7 +46,7 @@ interface HeaderActionsProps {
   onOpenWallet: () => void;
 }
 
-/** The header's right end: watchlist star, layout, sound, settings, language, theme and the wallet. */
+/** The header's right end: watchlist star, layout, sound, alerts, settings, language, theme and the wallet. */
 export function HeaderActions({
   marketSymbol,
   starred,
@@ -54,6 +57,7 @@ export function HeaderActions({
   onToggleLayout,
   soundOn,
   onSound,
+  alerts,
   settingsOpen,
   onToggleSettings,
   theme,
@@ -97,6 +101,7 @@ export function HeaderActions({
           <LuVolumeX size={ICON_SIZE} aria-hidden />
         )}
       </IconButton>
+      {alerts}
       <IconButton
         label={t(settingsOpen ? "settings.back" : "action.settings")}
         pressed={settingsOpen}

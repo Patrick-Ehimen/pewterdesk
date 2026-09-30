@@ -1,4 +1,6 @@
 import { t } from "@pewterdesk/ui";
+import type { IconType } from "react-icons";
+import { LuBookOpen, LuLifeBuoy, LuScale } from "react-icons/lu";
 import { type AboutLink, appClient } from "../api/appClient";
 
 export type Connection = "online" | "connecting" | "offline";
@@ -9,10 +11,14 @@ const LABEL = {
   offline: "status.offline",
 } as const;
 
-const LINKS: { link: AboutLink; label: "footer.docs" | "footer.support" | "footer.license" }[] = [
-  { link: "repository", label: "footer.docs" },
-  { link: "issues", label: "footer.support" },
-  { link: "license", label: "footer.license" },
+const LINKS: {
+  link: AboutLink;
+  label: "footer.docs" | "footer.support" | "footer.license";
+  Icon: IconType;
+}[] = [
+  { link: "repository", label: "footer.docs", Icon: LuBookOpen },
+  { link: "issues", label: "footer.support", Icon: LuLifeBuoy },
+  { link: "license", label: "footer.license", Icon: LuScale },
 ];
 
 /**
@@ -38,8 +44,9 @@ export function StatusBar({ connection, venue }: { connection: Connection; venue
       </span>
       <span className="app-spacer" />
       <nav className="app-status-links" aria-label={t("status.links")}>
-        {LINKS.map(({ link, label }) => (
+        {LINKS.map(({ link, label, Icon }) => (
           <button key={link} type="button" onClick={() => appClient.openLink(link).catch(() => {})}>
+            <Icon size={13} aria-hidden />
             {t(label)}
           </button>
         ))}

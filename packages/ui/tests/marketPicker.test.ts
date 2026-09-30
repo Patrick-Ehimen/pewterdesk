@@ -1,6 +1,12 @@
 import type { Market, MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
-import { PICKER_PRESETS, pickerRows, pickerView, presetOf } from "../src/lib/marketPicker";
+import {
+  PICKER_PRESETS,
+  pickerRows,
+  pickerTabs,
+  pickerView,
+  presetOf,
+} from "../src/lib/marketPicker";
 
 const market = (id: string, listedBy?: string): Market => ({
   venue: "hyperliquid",
@@ -62,5 +68,35 @@ describe("market picker", () => {
     expect(rows[2]?.price).toBeUndefined();
     expect(presetOf({ by: "change", descending: false })).toBe("losers");
     expect(presetOf({ by: "price", descending: true })).toBeUndefined();
+  });
+
+  it("carries the change in price terms, funding and open interest in the quote asset", () => {
+    const [btc] = pickerRows(
+      [market("BTC")],
+      [{ ...summary("BTC", "101", "100", "900"), openInterest: "2", fundingRate: "0.0001" }],
+    );
+    expect(btc?.changeAbs).toBeCloseTo(1);
+    expect(btc?.funding).toBeCloseTo(0.0001);
+    expect(btc?.fundingIntervalSecs).toBe(3600);
+    expect(btc?.openInterest).toBeCloseTo(202);
+  });
+
+  it("sorts by funding and by open interest", () => {
+    const withData = pickerRows(markets, [
+      { ...summary("BTC", "100", "100", "1"), fundingRate: "0.0003", openInterest: "1" },
+      { ...summary("ETH", "100", "100", "1"), fundingRate: "-0.0001", openInterest: "5" },
+      { ...summary("HYPE", "100", "100", "1"), fundingRate: "0.0001", openInterest: "3" },
+    ]);
+    const by = (key: "funding" | "oi") =>
+      pickerView(withData, "perps", new Set(), "", { by: key, descending: true }).map(
+        (r) => r.market.id,
+      );
+    expect(by("funding")).toEqual(["BTC", "HYPE", "ETH"]);
+    expect(by("oi")).toEqual(["ETH", "HYPE", "BTC"]);
+  });
+
+  it("offers the HIP-3 tab only where there are builder markets", () => {
+    expect(pickerTabs(markets)).toEqual(["favorites", "perps", "hip3"]);
+    expect(pickerTabs([market("BTC")])).toEqual(["favorites", "perps"]);
   });
 });

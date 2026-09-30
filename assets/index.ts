@@ -19,6 +19,8 @@ import horizontalDarkBg from "./logo/pewterdesk-horizontal-dark-bg.svg";
 import horizontalLightBg from "./logo/pewterdesk-horizontal-light-bg.svg";
 import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
+import venueAster from "./venues/aster.svg";
+import venueHyperliquid from "./venues/hyperliquid.svg";
 
 export const logo = {
   /** Symbol + name side by side - the default logo. Min width 96px. */
@@ -47,4 +49,10 @@ export const flags = {
   kr: flagKr,
   ru: flagRu,
   us: flagUs,
+} as const;
+
+/** Each venue's own mark, keyed by `VenueId`. Sources: venues/README.md. */
+export const venueLogos = {
+  hyperliquid: venueHyperliquid,
+  aster: venueAster,
 } as const;

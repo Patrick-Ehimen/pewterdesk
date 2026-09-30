@@ -20,15 +20,15 @@
         "minWidth": 1024,
         "minHeight": 640,
         "dragDropEnabled": false,
-        "backgroundColor": "#111110",
+        "backgroundColor": "#1d2528",
         "visible": false
       },
       {
         "label": "splash",
         "url": "splash.html",
         "title": "PewterDesk",
-        "width": 760,
-        "height": 520,
+        "width": 570,
+        "height": 390,
         "center": true,
         "resizable": false,
         "decorations": false,

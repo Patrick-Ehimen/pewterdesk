@@ -3,16 +3,21 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 import { useStoredChoice } from "./useStoredChoice";
 
-/** Brand themes: see .claude/brand/BRAND.md. Keep in sync with public/boot.js. */
+/**
+ * Brand themes, in the theme menu's order: see .claude/brand/BRAND.md. Keep
+ * in sync with public/boot.js. "dark" is Pewter.
+ */
 export const THEMES = [
-  "dark",
+  "monokai",
   "graphite",
   "synthwave",
-  "monokai",
+  "dark",
   "palenight",
   "parchment",
 ] as const;
 export type Theme = (typeof THEMES)[number];
+/** Monokai Pro, until a theme is picked. Keep in sync with public/boot.js and tauri.conf.json. */
+export const DEFAULT_THEME: Theme = "monokai";
 
 /** Light-background themes, which take the light logo. */
 export const isLightTheme = (theme: Theme) => theme === "parchment";
@@ -23,6 +28,7 @@ const MARKET_COLORS = ["standard", "colorblind"] as const;
 
 function applyAppearance(theme: Theme, market: MarketColors) {
   const root = document.documentElement;
+  // Pewter's tokens are the bare :root ones.
   if (theme === "dark") delete root.dataset.theme;
   else root.dataset.theme = theme;
   if (market === "colorblind") root.dataset.market = "colorblind";
@@ -32,8 +38,8 @@ function applyAppearance(theme: Theme, market: MarketColors) {
 
 /**
  * Matches the native window's background to the theme's --pd-bg. It shows
- * between documents during a reload; tauri.conf.json starts it on the dark
- * theme's color, and this keeps light-theme users from a dark flash.
+ * between documents during a reload; tauri.conf.json starts it on the default
+ * theme's color, and this keeps other themes' users from a mismatched flash.
  */
 function syncWindowBackground() {
   // The tray panel's window stays see-through, for its rounded corners.
@@ -59,7 +65,7 @@ export function applyStoredAppearance() {
     }
   };
   applyAppearance(
-    read("pd.theme", THEMES, "dark"),
+    read("pd.theme", THEMES, DEFAULT_THEME),
     read("pd.marketColors", MARKET_COLORS, "standard"),
   );
 }
@@ -70,7 +76,7 @@ export function applyStoredAppearance() {
  * (.claude/brand/pewterdesk-tokens.css) look for them.
  */
 export function useAppearance() {
-  const [theme, setTheme] = useStoredChoice<Theme>("pd.theme", THEMES, "dark");
+  const [theme, setTheme] = useStoredChoice<Theme>("pd.theme", THEMES, DEFAULT_THEME);
   const [market, setMarket] = useStoredChoice<MarketColors>(
     "pd.marketColors",
     MARKET_COLORS,

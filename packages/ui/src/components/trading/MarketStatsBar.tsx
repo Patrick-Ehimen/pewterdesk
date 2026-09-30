@@ -1,4 +1,4 @@
-import type { Market, MarketStats, MarketSummary } from "@pewterdesk/core";
+import type { Market, MarketStats, MarketSummary, VenueId } from "@pewterdesk/core";
 import { type ReactNode, useEffect, useRef, useState, type WheelEvent } from "react";
 import { LuInfo } from "react-icons/lu";
 import { t } from "../../i18n";
@@ -90,6 +90,11 @@ interface MarketStatsBarProps {
   starred: ReadonlySet<string>;
   onToggleStar: (market: Market) => void;
   onPickerOpen?: (open: boolean) => void;
+  /** The picker's venue chips; see `MarketPicker`. */
+  venues?: readonly { id: VenueId; label: string; logo?: string }[];
+  pickerVenue?: VenueId;
+  onPickerVenueChange?: (venue: VenueId) => void;
+  pickerLoading?: boolean;
 }
 
 /**
@@ -107,6 +112,10 @@ export function MarketStatsBar({
   starred,
   onToggleStar,
   onPickerOpen,
+  venues,
+  pickerVenue,
+  onPickerVenueChange,
+  pickerLoading,
 }: MarketStatsBarProps) {
   const now = useNow(1000);
   const scroller = useSideScroll<HTMLDivElement>();
@@ -140,6 +149,10 @@ export function MarketStatsBar({
           starred={starred}
           onToggleStar={onToggleStar}
           onOpenChange={onPickerOpen}
+          venues={venues}
+          venue={pickerVenue}
+          onVenueChange={onPickerVenueChange}
+          loading={pickerLoading}
         />
 
         <div className="pd-stats-market">

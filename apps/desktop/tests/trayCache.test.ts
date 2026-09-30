@@ -23,12 +23,20 @@ function memoryStore() {
 describe("tray cache", () => {
   it("round-trips markets, and ignores anything unreadable", () => {
     const store = memoryStore();
-    saveMarkets([{ id: "BTC" } as never], store);
-    expect(loadMarkets(store).map((m) => m.id)).toEqual(["BTC"]);
+    saveMarkets("hyperliquid", [{ id: "BTC" } as never], store);
+    expect(loadMarkets("hyperliquid", store).map((m) => m.id)).toEqual(["BTC"]);
     store.items.set("pd.cache.summaries", "{not json");
-    expect(loadSummaries(store)).toEqual([]);
+    expect(loadSummaries("hyperliquid", store)).toEqual([]);
     store.items.set("pd.cache.markets", JSON.stringify([{ nope: 1 }]));
-    expect(loadMarkets(store)).toEqual([]);
+    expect(loadMarkets("hyperliquid", store)).toEqual([]);
+  });
+
+  it("keeps each venue's markets apart", () => {
+    const store = memoryStore();
+    saveMarkets("hyperliquid", [{ id: "BTC" } as never], store);
+    saveMarkets("aster", [{ id: "BTCUSDT" } as never], store);
+    expect(loadMarkets("hyperliquid", store).map((m) => m.id)).toEqual(["BTC"]);
+    expect(loadMarkets("aster", store).map((m) => m.id)).toEqual(["BTCUSDT"]);
   });
 
   it("serves a sparkline until it's stale", () => {

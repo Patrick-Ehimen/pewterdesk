@@ -10,6 +10,7 @@ export {
 } from "./components/common/ColumnHeader";
 export { IconButton } from "./components/common/IconButton";
 export { type MenuOption, OptionsMenu } from "./components/common/OptionsMenu";
+export { Select, type SelectOption } from "./components/common/Select";
 export { StarButton } from "./components/common/StarButton";
 export { EmptyState } from "./components/common/Status";
 export { Switch } from "./components/common/Switch";
@@ -20,6 +21,7 @@ export {
   type AccountTotals,
   accountTotals,
 } from "./components/trading/AccountSummary";
+export { type AlertDraft, AlertsPopover } from "./components/trading/AlertsPopover";
 export { CandleChart } from "./components/trading/CandleChart";
 export { BAND, DepthChart } from "./components/trading/DepthChart";
 export { DepthView } from "./components/trading/DepthView";
@@ -66,6 +68,7 @@ export { Sparkline } from "./components/trading/Sparkline";
 
 export {
   type IconLoader,
+  type IconPeek,
   TokenIcon,
   TokenIconProvider,
 } from "./components/trading/TokenIcon";
@@ -82,6 +85,19 @@ export {
   type MessageKey,
   t,
 } from "./i18n";
+export {
+  ALERT_COOLDOWN_MS,
+  type AlertChannel,
+  type AlertCondition,
+  type AlertKind,
+  type AlertRepeat,
+  canFire,
+  crossed,
+  type FiredAlert,
+  isToday,
+  type MarketAlert,
+  watchedValue,
+} from "./lib/alerts";
 export {
   avgFillTo,
   type DepthLevel,
@@ -103,7 +119,6 @@ export {
   shortAddress,
   trendClass,
 } from "./lib/format";
-
 export {
   FUNDING_RESOLUTIONS,
   type FundingPoint,

@@ -1,4 +1,4 @@
-import type { Market } from "@pewterdesk/core";
+import type { Market, VenueId } from "@pewterdesk/core";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 
 /**
@@ -6,11 +6,22 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
  * none. The app supplies it (through a venue command); this package never
  * fetches anything itself.
  */
-export type IconLoader = (market: string) => Promise<string | undefined>;
+export type IconLoader = (market: string, venue: VenueId) => Promise<string | undefined>;
+
+/**
+ * A logo the app already has at hand (e.g. saved from an earlier session),
+ * read synchronously so it shows on the first frame: SVG markup, `null` for
+ * a market known to have none, or `undefined` to fetch it.
+ */
+export type IconPeek = (market: string, venue: VenueId) => string | null | undefined;
 
 const LoaderContext = createContext<IconLoader | undefined>(undefined);
+const PeekContext = createContext<IconPeek | undefined>(undefined);
 
-/** Logos already loaded, per loader, so remounted icons don't flash their letter. */
+/**
+ * Logos already loaded, per loader and keyed `venue:id` (ids repeat across
+ * venues), so remounted icons don't flash their letter.
+ */
 const loaded = new WeakMap<IconLoader, Map<string, string | null>>();
 
 function cacheFor(load: IconLoader) {
@@ -22,9 +33,24 @@ function cacheFor(load: IconLoader) {
   return cache;
 }
 
-/** Lets every `TokenIcon` below fetch logos with `load`. Pass a stable function. */
-export function TokenIconProvider({ load, children }: { load: IconLoader; children: ReactNode }) {
-  return <LoaderContext.Provider value={load}>{children}</LoaderContext.Provider>;
+/**
+ * Lets every `TokenIcon` below fetch logos with `load`, looking in `peek`
+ * first when given. Pass stable functions.
+ */
+export function TokenIconProvider({
+  load,
+  peek,
+  children,
+}: {
+  load: IconLoader;
+  peek?: IconPeek;
+  children: ReactNode;
+}) {
+  return (
+    <LoaderContext.Provider value={load}>
+      <PeekContext.Provider value={peek}>{children}</PeekContext.Provider>
+    </LoaderContext.Provider>
+  );
 }
 
 /**
@@ -55,27 +81,36 @@ export function TokenIcon({
   className?: string;
 }) {
   const load = useContext(LoaderContext);
+  const peek = useContext(PeekContext);
   const id = market?.id;
+  const venue = market?.venue;
+  const key = id === undefined ? undefined : `${venue}:${id}`;
   const initial = (): IconState => {
     if (!load) return null;
     // No market yet (it's still loading too): shimmer until it arrives.
-    if (id === undefined) return "loading";
-    const cached = cacheFor(load).get(id);
-    return cached === undefined ? "loading" : cached;
+    if (key === undefined || id === undefined || venue === undefined) return "loading";
+    const cache = cacheFor(load);
+    const cached = cache.get(key);
+    if (cached !== undefined) return cached;
+    const saved = peek?.(id, venue);
+    if (saved === undefined) return "loading";
+    const url = saved === null ? null : svgUrl(saved);
+    cache.set(key, url);
+    return url;
   };
   const [src, setSrc] = useState<IconState>(initial);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `initial` reads only `load` and `id`
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `initial` reads only `load` and `key`
   useEffect(() => {
     const now = initial();
     setSrc(now);
-    if (now !== "loading" || !load || id === undefined) return;
+    if (now !== "loading" || !load || id === undefined || venue === undefined || !key) return;
     const cache = cacheFor(load);
     let current = true;
-    load(id).then(
+    load(id, venue).then(
       (svg) => {
         const url = svg ? svgUrl(svg) : null;
-        cache.set(id, url);
+        cache.set(key, url);
         if (current) setSrc(url);
       },
       // Show the letter for now; a failed download isn't cached, so the
@@ -87,7 +122,7 @@ export function TokenIcon({
     return () => {
       current = false;
     };
-  }, [load, id]);
+  }, [load, key]);
 
   const loading = src === "loading";
   const classes = ["pd-token", className, loading && "pd-skel"].filter(Boolean).join(" ");

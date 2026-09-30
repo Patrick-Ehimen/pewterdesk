@@ -1,5 +1,5 @@
 import type { VenueId } from "@pewterdesk/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "pd.watchlist";
 /** Entries are "<venue>:<market id>"; ids are the venue's own ("BTC", "BTCUSDT"). */
@@ -32,19 +32,36 @@ function load(): string[] {
   }
 }
 
+// One list for the whole window, so hooks for different venues (the screen's
+// and the market picker's) can't overwrite each other's changes.
+let shared: string[] | undefined;
+const listeners = new Set<() => void>();
+const snapshot = () => {
+  shared ??= load();
+  return shared;
+};
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+function setIds(update: (current: string[]) => string[]) {
+  shared = update(snapshot());
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(shared));
+  } catch {
+    // Storage unavailable; the watchlist just won't survive a restart.
+  }
+  for (const listener of listeners) listener();
+}
+
 /**
  * Starred markets, remembered between sessions. `starred` holds the
  * `Market::id`s starred on `venue`; `toggle` takes one of those ids.
  */
 export function useWatchlist(venue: VenueId) {
-  const [ids, setIds] = useState(load);
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-    } catch {
-      // Storage unavailable; the watchlist just won't survive a restart.
-    }
-  }, [ids]);
+  const ids = useSyncExternalStore(subscribe, snapshot);
 
   const toggle = useCallback(
     (marketId: string) => {

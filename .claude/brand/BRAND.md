@@ -50,16 +50,18 @@ Colorblind mode (`data-market="colorblind"`): buy #4C9BE8, sell #E8894A, warning
 
 ## Themes
 
-Six themes in the app's picker, set with `data-theme` on `<html>`. Every text
+Six themes in the app's picker, in this order, set with `data-theme` on
+`<html>`. Monokai Pro is the default until one is picked; Pewter's tokens are
+the bare `:root` set, so it needs no attribute. Every text
 token passes WCAG AA (4.5:1) on bg, surface and surface-raised, with the
 exceptions noted under Contrast.
 
 | `data-theme` | Name | Character | bg | Accent |
 | --- | --- | --- | --- | --- |
-| `dark` (default) | Pewter | Pewter and brass on near-black | #111110 | brass #C9A45C |
+| `monokai` (default) | Monokai Pro | Filter Machine: yellow on cool teal-grey | #1D2528 | yellow #FFED72 |
 | `graphite` | Graphite | Cooler, a step lighter; for long sessions | #17181A | brass #C9A45C |
 | `synthwave` | Synthwave '84 | Neon pink on retro purple | #241B2F | pink #FF7EDB |
-| `monokai` | Monokai Pro | Filter Machine: yellow on cool teal-grey | #1D2528 | yellow #FFED72 |
+| `dark` | Pewter | Pewter and brass on near-black | #111110 | brass #C9A45C |
 | `palenight` | Palenight | Soft purple on slate blue | #202331 | purple #C792EA |
 | `parchment` | Parchment | Warm, paper-toned light | #F2ECDF | brass #A9803A |
 

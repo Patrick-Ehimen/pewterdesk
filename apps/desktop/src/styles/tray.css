@@ -161,24 +161,50 @@ html:has(.tray-panel) {
   grid-column: 2;
   grid-row: 1 / span 2;
 }
+/* Previous, the dots, next */
+.tray-hero-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+.tray-hero-step {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tray-hero-step:hover {
+  color: var(--pd-text);
+  background: var(--pd-border);
+}
 .tray-dots {
   display: flex;
   justify-content: center;
   gap: 5px;
-  margin-top: 8px;
 }
+/* A 3px bar inside a taller hit area, so it's easy to click. */
 .tray-dots button {
   width: 14px;
   height: 3px;
   padding: 0;
   background: var(--pd-border-strong);
+  background-clip: content-box;
   border: 0;
   border-radius: 2px;
   cursor: pointer;
+  box-sizing: content-box;
+  padding-block: 7px;
 }
 .tray-dots button[aria-selected="true"] {
   width: 22px;
-  background: var(--pd-text);
+  background-color: var(--pd-text);
 }
 /* Favorites / Top Movers, Perps / HIP-3, then the table */
 .tray-markets {
@@ -286,6 +312,12 @@ html:has(.tray-panel) {
 }
 .tray-coin .pd-lev {
   margin-left: 0;
+}
+/* Which venue the row's market is on */
+.tray-venue {
+  flex: none;
+  display: block;
+  border-radius: 3px;
 }
 /* Skeletons while the panel's data loads (first launch, no saved copy) */
 .tray-hero-skel {
