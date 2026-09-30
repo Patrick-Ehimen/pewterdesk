@@ -26,6 +26,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
 keyring = "4"
 pewterdesk-core = { path = "../../../crates/core" }
+pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
 pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }

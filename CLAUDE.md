@@ -35,7 +35,7 @@ has no implementation and is not meant to get one.
 ## Layout
 
 - `crates/core` - domain types, the `ExchangeAdapter` trait, `KeySource`
-- `crates/exchange-hyperliquid`, `-aster` - one adapter per venue (Hyperliquid is read-only so far; Aster is a stub)
+- `crates/exchange-hyperliquid`, `-aster` - one adapter per venue (both read-only so far)
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -60,8 +60,8 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk -- --ignored` - the keychain tests that touch the
   real OS store, skipped by default
-- `make rust-live` - read-only tests against Hyperliquid mainnet (needs the
-  network, no key), one at a time so they stay inside its rate limits
+- `make rust-live` - read-only tests against Hyperliquid and Aster mainnet
+  (needs the network, no key), one at a time so they stay inside rate limits
 
 Packages are consumed from source: every `package.json` points `main`/`types`
 at `./src/index.ts`, and the tsconfigs deliberately carry no `references`.
@@ -111,7 +111,11 @@ every market's summary and hourly history, funding history and account state
 over REST and WS, plus market logos as SVG from its web app's host), including
 the builder-deployed perp exchanges (HIP-3, market ids like `xyz:TSLA`), and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
-it can't place orders yet. The Aster crate is still empty.
+it can't place orders yet. `crates/exchange-aster` serves Aster's public market
+data the same way (markets, order books, trades, candles, stats, summaries and
+history, funding history); its account methods are `Unsupported`, since Aster
+serves account data only to requests signed by an API wallet. The UI doesn't
+show Aster yet.
 
 The desktop frontend is a read-only trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
