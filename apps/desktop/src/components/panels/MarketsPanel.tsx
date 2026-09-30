@@ -1,7 +1,11 @@
 import type { CandleInterval, Market, OrderBook, VenueId } from "@pewterdesk/core";
 import {
+  ALL_INTERVALS,
   CandleChart,
+  type CandleChartHandle,
+  CHART_TYPES,
   ChartSkeleton,
+  ChartToolbar,
   DepthChart,
   DepthView,
   decimalsOf,
@@ -14,17 +18,23 @@ import {
   Tabs,
   t,
 } from "@pewterdesk/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LuFullscreen, LuMaximize2, LuMinimize2, LuSettings, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { type Feed, useCandles, useFundingHistory } from "../../hooks/useVenueFeeds";
+import {
+  type ChartPrefs,
+  exportChartImage,
+  inOrder,
+  loadChartPrefs,
+  saveChartPrefs,
+  toggled,
+} from "../../lib/chartPrefs";
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
 import { ScreenerPanel } from "./ScreenerPanel";
 
 type MarketsTab = "chart" | "depth" | "screener" | "watchlist";
-
-const INTERVALS: readonly CandleInterval[] = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"];
 
 /**
  * Which chart the Charts tab shows: candles, the funding history, or
@@ -71,7 +81,7 @@ export function MarketsPanel({
   const [tab, setTab] = useState<MarketsTab>("chart");
   const [interval, setInterval] = useStoredChoice<CandleInterval>(
     "pd.chart.interval",
-    INTERVALS,
+    ALL_INTERVALS,
     "1h",
   );
   const [chartKind, setChartKind] = useStoredChoice<ChartKind>(
@@ -79,6 +89,15 @@ export function MarketsPanel({
     CHART_KINDS,
     "standard",
   );
+  // Chart style, indicators and toolbar favorites, remembered between sessions.
+  const [prefs, setPrefs] = useState(loadChartPrefs);
+  const updatePrefs = (change: (p: ChartPrefs) => ChartPrefs) =>
+    setPrefs((p) => {
+      const next = change(p);
+      saveChartPrefs(next);
+      return next;
+    });
+  const chartRef = useRef<CandleChartHandle>(null);
   const standardChart = tab === "chart" && chartKind === "standard";
   const fundingChart = tab === "chart" && chartKind === "funding";
   // Each chart only loads while it's showing.
@@ -125,24 +144,6 @@ export function MarketsPanel({
     </div>
   );
 
-  const intervalPicker = (
-    <div className="pd-segmented pd-intervals" role="radiogroup" aria-label={t("chart.interval")}>
-      {INTERVALS.map((i) => (
-        // biome-ignore lint/a11y/useSemanticElements: compact segmented control; radios would need hidden inputs per option
-        <button
-          key={i}
-          type="button"
-          role="radio"
-          aria-checked={i === interval}
-          data-checked={i === interval || undefined}
-          onClick={() => setInterval(i)}
-        >
-          {i}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <>
       <Tabs
@@ -156,7 +157,6 @@ export function MarketsPanel({
         onChange={setTab}
         aside={
           <div className="pd-panel-tools">
-            {standardChart && intervalPicker}
             {fundingChart && resolutionPicker}
             {/* Placeholder: panel settings aren't built yet, so it says so and does nothing. */}
             <IconButton className="pd-kebab" label={t("panel.settings")} aria-disabled>
@@ -225,6 +225,36 @@ export function MarketsPanel({
             </div>
           ) : (
             <div className="app-fill">
+              <ChartToolbar
+                interval={interval}
+                onInterval={setInterval}
+                favoriteIntervals={prefs.favoriteIntervals}
+                onToggleFavoriteInterval={(i) =>
+                  updatePrefs((p) => ({
+                    ...p,
+                    favoriteIntervals: inOrder(toggled(p.favoriteIntervals, i), ALL_INTERVALS),
+                  }))
+                }
+                chartType={prefs.type}
+                onChartType={(type) => updatePrefs((p) => ({ ...p, type }))}
+                favoriteTypes={prefs.favoriteTypes}
+                onToggleFavoriteType={(type) =>
+                  updatePrefs((p) => ({
+                    ...p,
+                    favoriteTypes: inOrder(toggled(p.favoriteTypes, type), CHART_TYPES),
+                  }))
+                }
+                indicators={prefs.indicators}
+                onToggleIndicator={(id) =>
+                  updatePrefs((p) => ({ ...p, indicators: toggled(p.indicators, id) }))
+                }
+                onScreenshot={() =>
+                  exportChartImage(
+                    chartRef.current?.screenshot(),
+                    `pewterdesk-${market?.symbol ?? "chart"}-${interval}.png`,
+                  )
+                }
+              />
               <FeedView
                 feed={orLoading(candles)}
                 idle={t("feed.pickMarket")}
@@ -234,6 +264,12 @@ export function MarketsPanel({
                     <p className="pd-empty">{t("chart.empty")}</p>
                   ) : (
                     <CandleChart
+                      ref={chartRef}
+                      chartType={prefs.type}
+                      indicators={prefs.indicators}
+                      onRemoveIndicator={(id) =>
+                        updatePrefs((p) => ({ ...p, indicators: toggled(p.indicators, id) }))
+                      }
                       candles={data}
                       seriesKey={`${market?.id}:${interval}`}
                       priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}

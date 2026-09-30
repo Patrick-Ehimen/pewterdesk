@@ -34,9 +34,9 @@ openTime: number, open: Decimal, high: Decimal, low: Decimal, close: Decimal,
 volume: Decimal, };
 
 /**
- * Candle widths the terminal offers.
+ * Candle widths the terminal offers: the ones every launch venue serves.
  */
-export type CandleInterval = "1m" | "5m" | "15m" | "1h" | "4h" | "1d" | "1w";
+export type CandleInterval = "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "8h" | "12h" | "1d" | "3d" | "1w";
 
 /**
  * What a venue supports, so the UI can offer only what will work.

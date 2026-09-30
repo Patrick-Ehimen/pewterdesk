@@ -22,7 +22,8 @@ export {
   accountTotals,
 } from "./components/trading/AccountSummary";
 export { type AlertDraft, AlertsPopover } from "./components/trading/AlertsPopover";
-export { CandleChart } from "./components/trading/CandleChart";
+export { CandleChart, type CandleChartHandle } from "./components/trading/CandleChart";
+export { ChartToolbar } from "./components/trading/ChartToolbar";
 export { BAND, DepthChart } from "./components/trading/DepthChart";
 export { DepthView } from "./components/trading/DepthView";
 export { FundingChart } from "./components/trading/FundingChart";
@@ -125,6 +126,13 @@ export {
   type FundingResolution,
   fundingSeries,
 } from "./lib/funding";
+export {
+  ALL_INTERVALS,
+  CHART_TYPES,
+  type ChartType,
+  INDICATORS,
+  type IndicatorId,
+} from "./lib/indicators";
 
 export {
   changeOver,

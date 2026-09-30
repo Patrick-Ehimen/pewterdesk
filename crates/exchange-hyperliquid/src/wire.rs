@@ -263,11 +263,17 @@ pub struct Candle {
 pub fn interval_code(interval: CandleInterval) -> &'static str {
     match interval {
         CandleInterval::OneMinute => "1m",
+        CandleInterval::ThreeMinutes => "3m",
         CandleInterval::FiveMinutes => "5m",
         CandleInterval::FifteenMinutes => "15m",
+        CandleInterval::ThirtyMinutes => "30m",
         CandleInterval::OneHour => "1h",
+        CandleInterval::TwoHours => "2h",
         CandleInterval::FourHours => "4h",
+        CandleInterval::EightHours => "8h",
+        CandleInterval::TwelveHours => "12h",
         CandleInterval::OneDay => "1d",
+        CandleInterval::ThreeDays => "3d",
         CandleInterval::OneWeek => "1w",
     }
 }

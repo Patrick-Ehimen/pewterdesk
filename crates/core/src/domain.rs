@@ -133,22 +133,34 @@ pub struct MarketStats {
     pub time: u64,
 }
 
-/// Candle widths the terminal offers.
+/// Candle widths the terminal offers: the ones every launch venue serves.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[ts(export, export_to = TS_FILE)]
 pub enum CandleInterval {
     #[serde(rename = "1m")]
     OneMinute,
+    #[serde(rename = "3m")]
+    ThreeMinutes,
     #[serde(rename = "5m")]
     FiveMinutes,
     #[serde(rename = "15m")]
     FifteenMinutes,
+    #[serde(rename = "30m")]
+    ThirtyMinutes,
     #[serde(rename = "1h")]
     OneHour,
+    #[serde(rename = "2h")]
+    TwoHours,
     #[serde(rename = "4h")]
     FourHours,
+    #[serde(rename = "8h")]
+    EightHours,
+    #[serde(rename = "12h")]
+    TwelveHours,
     #[serde(rename = "1d")]
     OneDay,
+    #[serde(rename = "3d")]
+    ThreeDays,
     #[serde(rename = "1w")]
     OneWeek,
 }
@@ -159,11 +171,17 @@ impl CandleInterval {
         const MINUTE: u64 = 60_000;
         match self {
             Self::OneMinute => MINUTE,
+            Self::ThreeMinutes => 3 * MINUTE,
             Self::FiveMinutes => 5 * MINUTE,
             Self::FifteenMinutes => 15 * MINUTE,
+            Self::ThirtyMinutes => 30 * MINUTE,
             Self::OneHour => 60 * MINUTE,
+            Self::TwoHours => 120 * MINUTE,
             Self::FourHours => 240 * MINUTE,
+            Self::EightHours => 480 * MINUTE,
+            Self::TwelveHours => 720 * MINUTE,
             Self::OneDay => 1440 * MINUTE,
+            Self::ThreeDays => 3 * 1440 * MINUTE,
             Self::OneWeek => 7 * 1440 * MINUTE,
         }
     }

@@ -1581,6 +1581,261 @@ input {
 .pd-ohlc-volume {
   color: var(--pd-text);
 }
+/* Indicator values under the OHLC row, each with its own remove button */
+.pd-ohlc-indicators {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pd-ohlc-indicators li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  padding: 0 4px;
+  margin-left: -4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  /* Readable over the candles it sits on */
+  background: color-mix(in srgb, var(--pd-surface) 90%, transparent);
+}
+.pd-ohlc-indicator-name {
+  color: var(--pd-pewter);
+}
+/* Each indicator's value in its line's color */
+.pd-ohlc-indicators [data-indicator="sma"] .pd-ohlc-indicator-values,
+.pd-ohlc-indicators [data-indicator="rsi"] .pd-ohlc-indicator-values {
+  color: var(--pd-brass-text);
+}
+.pd-ohlc-indicators [data-indicator="ema"] .pd-ohlc-indicator-values,
+.pd-ohlc-indicators [data-indicator="macd"] .pd-ohlc-indicator-values {
+  color: var(--pd-info);
+}
+.pd-ohlc-indicators [data-indicator="vwap"] .pd-ohlc-indicator-values {
+  color: var(--pd-warning);
+}
+.pd-ohlc-indicators [data-indicator="bollinger"] .pd-ohlc-indicator-values {
+  color: var(--pd-text);
+}
+.pd-ohlc-remove {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+}
+.pd-ohlc-indicators li:hover .pd-ohlc-remove,
+.pd-ohlc-remove:focus-visible {
+  opacity: 1;
+}
+.pd-ohlc-remove:hover {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+}
+.pd-ohlc-indicators li {
+  pointer-events: auto;
+}
+
+/* Chart toolbar, after TradingView's: intervals, chart styles, indicators, snapshot */
+.pd-chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--pd-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pd-chart-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.pd-chart-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 7px;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pd-chart-tool:hover,
+.pd-chart-tool[aria-expanded="true"] {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+}
+.pd-chart-tool[aria-checked="true"] {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+  box-shadow: inset 0 -2px 0 var(--pd-brass);
+}
+.pd-chart-icon {
+  padding: 0 5px;
+}
+.pd-chart-more {
+  min-width: 20px;
+  padding: 0 3px;
+}
+.pd-chart-divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--pd-border-strong);
+}
+.pd-chart-spacer {
+  flex: 1;
+}
+.pd-chart-count {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--pd-border-strong);
+  color: var(--pd-text);
+  font-size: 11px;
+  line-height: 16px;
+}
+.pd-chart-tool[data-state="copied"],
+.pd-chart-tool[data-state="saved"] {
+  color: var(--pd-text);
+}
+
+/* The toolbar's menus: in a portal, under their button */
+.pd-chart-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 150px;
+  max-height: min(460px, 70vh);
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px -10px color-mix(in srgb, var(--pd-bg) 85%, transparent);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+.pd-chart-menu[data-visible] {
+  opacity: 1;
+}
+.pd-chart-menu-types {
+  min-width: 200px;
+}
+.pd-chart-menu-indicators {
+  width: 280px;
+}
+.pd-chart-menu-group + .pd-chart-menu-group {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--pd-border);
+}
+.pd-chart-menu-group h3 {
+  margin: 2px 8px 4px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-chart-menu-row {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.pd-chart-menu-row:hover {
+  background: var(--pd-surface);
+}
+.pd-chart-menu-pick {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pd-chart-menu-pick:hover {
+  color: var(--pd-text);
+}
+.pd-chart-menu-list .pd-chart-menu-pick:hover {
+  background: var(--pd-surface);
+}
+.pd-chart-menu-pick[aria-pressed="true"] {
+  color: var(--pd-text);
+}
+.pd-chart-menu-row[aria-current="true"] .pd-chart-menu-pick {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.pd-chart-menu-check {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  color: var(--pd-brass-text);
+}
+.pd-chart-menu-star {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--pd-pewter-dim);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+}
+.pd-chart-menu-row:hover .pd-chart-menu-star,
+.pd-chart-menu-star:focus-visible,
+.pd-chart-menu-star[data-on] {
+  opacity: 1;
+}
+.pd-chart-menu-star[data-on] {
+  color: var(--pd-brass-text);
+}
+.pd-chart-menu-star[data-on] svg {
+  fill: currentColor;
+}
+.pd-chart-menu-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.pd-chart-menu .pd-chart-menu-search {
+  flex: none;
+  width: auto;
+}
+.pd-chart-menu-empty {
+  margin: 10px 8px;
+  color: var(--pd-pewter);
+}
 /* Chart skeleton: plot, price axis on the right, time axis underneath */
 .pd-chart-skel {
   flex: 1;
