@@ -32,11 +32,18 @@ export {
   type HeatmapRow,
 } from "./components/trading/FundingHeatmap";
 export { ListedBy } from "./components/trading/ListedBy";
+export { MarketMovement, type MovementVenue } from "./components/trading/MarketMovement";
 export { MarketPicker } from "./components/trading/MarketPicker";
 export { MarketStatsBar } from "./components/trading/MarketStatsBar";
+export { MiniChart } from "./components/trading/MiniChart";
 export {
+  BOOK_SIDES,
+  BOOK_UNITS,
   type BookLadder,
   type BookRow,
+  type BookSides,
+  BookSidesPicker,
+  type BookUnit,
   bookLadder,
   changedLevels,
   levelSizes,
@@ -47,6 +54,7 @@ export {
   usePriceTrend,
 } from "./components/trading/OrderBookView";
 export { OrderTicket } from "./components/trading/OrderTicket";
+export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
 export {
   FundingHistoryTable,
   OpenOrdersTable,
@@ -66,7 +74,7 @@ export {
   TradesSkeleton,
 } from "./components/trading/Skeletons";
 export { Sparkline } from "./components/trading/Sparkline";
-
+export { TICKER_RANGES, TickerCard, type TickerRange } from "./components/trading/TickerCard";
 export {
   type IconLoader,
   type IconPeek,

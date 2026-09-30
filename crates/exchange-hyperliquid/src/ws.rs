@@ -12,7 +12,7 @@ use pewterdesk_core::VenueError;
 use serde_json::{json, Value};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{self, error::TrySendError};
-use tokio::time::{interval, sleep, MissedTickBehavior};
+use tokio::time::{interval, sleep, timeout, Instant, MissedTickBehavior};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
@@ -20,10 +20,17 @@ use crate::wire::WsMessage;
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
-/// The venue closes connections that are silent for 60s.
-const PING_EVERY: Duration = Duration::from_secs(30);
+/// The venue closes connections that are silent for 60s, and answers each
+/// ping with a pong, which is how a dead connection shows itself.
+const PING_EVERY: Duration = Duration::from_secs(15);
+/// Silence this long (no message, not even a pong) means the connection is
+/// dead: a dropped network doesn't close a socket, it just goes quiet.
+const IDLE_TIMEOUT: Duration = Duration::from_secs(40);
+/// A connection attempt, or a send, that hasn't finished by now won't.
+const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const BACKOFF_MIN: Duration = Duration::from_millis(500);
-const BACKOFF_MAX: Duration = Duration::from_secs(30);
+/// Kept short, so the feed is back within seconds of the network.
+const BACKOFF_MAX: Duration = Duration::from_secs(10);
 const BUFFER: usize = 16;
 
 /// What `on_message` tells the connection loop to do with a push.
@@ -85,14 +92,15 @@ where
 }
 
 async fn connect(url: &str, subscriptions: &[Value]) -> Result<Socket, VenueError> {
-    let (mut socket, _) = connect_async(url)
+    let (mut socket, _) = timeout(IO_TIMEOUT, connect_async(url))
         .await
+        .map_err(|_| VenueError::Network("connection timed out".into()))?
         .map_err(|e| VenueError::Network(e.to_string()))?;
     for subscription in subscriptions {
         let request = json!({ "method": "subscribe", "subscription": subscription });
-        socket
-            .send(Message::text(request.to_string()))
+        timeout(IO_TIMEOUT, socket.send(Message::text(request.to_string())))
             .await
+            .map_err(|_| VenueError::Network("subscribe timed out".into()))?
             .map_err(|e| VenueError::Network(e.to_string()))?;
     }
     Ok(socket)
@@ -105,17 +113,22 @@ where
     let mut ping = interval(PING_EVERY);
     ping.set_missed_tick_behavior(MissedTickBehavior::Delay);
     ping.tick().await;
+    let mut heard = Instant::now();
 
     loop {
         tokio::select! {
             _ = tx.closed() => return Ended::ReceiverDropped,
             _ = ping.tick() => {
+                if heard.elapsed() > IDLE_TIMEOUT {
+                    return Ended::Disconnected;
+                }
                 let ping = Message::text(json!({ "method": "ping" }).to_string());
-                if socket.send(ping).await.is_err() {
+                if !matches!(timeout(IO_TIMEOUT, socket.send(ping)).await, Ok(Ok(()))) {
                     return Ended::Disconnected;
                 }
             }
             frame = socket.next() => {
+                heard = Instant::now();
                 let text = match frame {
                     Some(Ok(Message::Text(text))) => text,
                     Some(Ok(Message::Close(_))) | Some(Err(_)) | None => return Ended::Disconnected,

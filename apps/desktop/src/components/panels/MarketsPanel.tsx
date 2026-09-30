@@ -32,6 +32,7 @@ import {
 } from "../../lib/chartPrefs";
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
+import { LoadingMark } from "../Splash";
 import { ScreenerPanel } from "./ScreenerPanel";
 
 type MarketsTab = "chart" | "depth" | "screener" | "watchlist";
@@ -258,7 +259,11 @@ export function MarketsPanel({
               <FeedView
                 feed={orLoading(candles)}
                 idle={t("feed.pickMarket")}
-                loading={<ChartSkeleton />}
+                loading={
+                  <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
+                    <LoadingMark size={48} />
+                  </div>
+                }
                 live={(data) =>
                   data.length === 0 ? (
                     <p className="pd-empty">{t("chart.empty")}</p>

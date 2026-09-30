@@ -6,6 +6,9 @@ export interface Column {
   label: string;
   /** Explains the column; shown on hover or focus. */
   hint: ReactNode;
+  /** Clicking the label does this (e.g. switch the unit it's shown in), as `switchLabel` says. */
+  onSwitch?: () => void;
+  switchLabel?: string;
 }
 
 /** A book-style three-column header where every column explains itself. */
@@ -14,7 +17,22 @@ export function ColumnHeader({ columns }: { columns: Column[] }) {
     <div className="pd-book-head">
       {columns.map((c) => (
         <span key={c.label}>
-          <Tooltip content={c.hint}>{c.label}</Tooltip>
+          <Tooltip
+            content={
+              c.switchLabel ? (
+                <>
+                  {c.hint}
+                  <span className="pd-tip-body pd-tip-action">{c.switchLabel}</span>
+                </>
+              ) : (
+                c.hint
+              )
+            }
+            className={c.onSwitch ? "pd-col-switchable" : undefined}
+            onClick={c.onSwitch}
+          >
+            {c.label}
+          </Tooltip>
         </span>
       ))}
     </div>

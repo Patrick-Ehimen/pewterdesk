@@ -19,6 +19,27 @@ const BARS = [
   { x: 22, y: 43, width: 12 },
 ];
 
+/** The mark with its bars breathing in turn. Decorative: callers label it. */
+export function LoadingMark({ size = 72 }: { size?: number }) {
+  return (
+    <svg className="splash-mark" viewBox="0 0 56 56" width={size} height={size} aria-hidden>
+      {BARS.map((bar, i) => (
+        <rect
+          key={bar.y}
+          className="splash-bar"
+          data-mid={bar.mid || undefined}
+          x={bar.x}
+          y={bar.y}
+          width={bar.width}
+          height={6}
+          rx={3}
+          style={{ animationDelay: `${i * 110}ms` }}
+        />
+      ))}
+    </svg>
+  );
+}
+
 /** `leaving`: fading out over the app that has just mounted underneath. */
 export function Splash({ leaving = false }: { leaving?: boolean }) {
   return (
@@ -30,21 +51,7 @@ export function Splash({ leaving = false }: { leaving?: boolean }) {
       aria-hidden={leaving || undefined}
       aria-label="pewterdesk"
     >
-      <svg className="splash-mark" viewBox="0 0 56 56" width="72" height="72" aria-hidden>
-        {BARS.map((bar, i) => (
-          <rect
-            key={bar.y}
-            className="splash-bar"
-            data-mid={bar.mid || undefined}
-            x={bar.x}
-            y={bar.y}
-            width={bar.width}
-            height={6}
-            rx={3}
-            style={{ animationDelay: `${i * 110}ms` }}
-          />
-        ))}
-      </svg>
+      <LoadingMark />
       <span className="splash-word" aria-hidden>
         <strong>pewter</strong>desk
       </span>

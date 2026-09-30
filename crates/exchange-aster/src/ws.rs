@@ -15,17 +15,31 @@ use serde::Deserialize;
 use serde_json::Value;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc::{self, error::TrySendError};
-use tokio::time::{interval, sleep, MissedTickBehavior};
+use tokio::time::{interval, sleep, timeout, Instant, MissedTickBehavior};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 
 type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 /// Aster pings every few minutes and the socket answers by itself; our own
-/// pings just notice a dead connection sooner.
-const PING_EVERY: Duration = Duration::from_secs(30);
+/// pings get a pong back, which is how a dead connection shows itself.
+const PING_EVERY: Duration = if cfg!(test) {
+    Duration::from_millis(200)
+} else {
+    Duration::from_secs(15)
+};
+/// Silence this long (no message, not even a pong) means the connection is
+/// dead: a dropped network doesn't close a socket, it just goes quiet.
+const IDLE_TIMEOUT: Duration = if cfg!(test) {
+    Duration::from_millis(600)
+} else {
+    Duration::from_secs(40)
+};
+/// A connection attempt, or a send, that hasn't finished by now won't.
+const IO_TIMEOUT: Duration = Duration::from_secs(10);
 const BACKOFF_MIN: Duration = Duration::from_millis(500);
-const BACKOFF_MAX: Duration = Duration::from_secs(30);
+/// Kept short, so the feed is back within seconds of the network.
+const BACKOFF_MAX: Duration = Duration::from_secs(10);
 const BUFFER: usize = 16;
 
 /// One push on a combined stream.
@@ -92,8 +106,9 @@ where
 }
 
 async fn connect(url: &str) -> Result<Socket, VenueError> {
-    let (socket, _) = connect_async(url)
+    let (socket, _) = timeout(IO_TIMEOUT, connect_async(url))
         .await
+        .map_err(|_| VenueError::Network("connection timed out".into()))?
         .map_err(|e| VenueError::Network(e.to_string()))?;
     Ok(socket)
 }
@@ -105,16 +120,22 @@ where
     let mut ping = interval(PING_EVERY);
     ping.set_missed_tick_behavior(MissedTickBehavior::Delay);
     ping.tick().await;
+    let mut heard = Instant::now();
 
     loop {
         tokio::select! {
             _ = tx.closed() => return Ended::ReceiverDropped,
             _ = ping.tick() => {
-                if socket.send(Message::Ping(Default::default())).await.is_err() {
+                if heard.elapsed() > IDLE_TIMEOUT {
+                    return Ended::Disconnected;
+                }
+                let ping = Message::Ping(Default::default());
+                if !matches!(timeout(IO_TIMEOUT, socket.send(ping)).await, Ok(Ok(()))) {
                     return Ended::Disconnected;
                 }
             }
             frame = socket.next() => {
+                heard = Instant::now();
                 let text = match frame {
                     Some(Ok(Message::Text(text))) => text,
                     Some(Ok(Message::Close(_))) | Some(Err(_)) | None => return Ended::Disconnected,
@@ -132,5 +153,47 @@ where
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use futures_util::SinkExt;
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::{accept_async, tungstenite::Message};
+
+    use super::*;
+
+    /// A server that sends one push on each connection, then goes silent: it
+    /// never reads again, so it never answers a ping, like a connection whose
+    /// network has gone. The client must notice and connect again.
+    #[tokio::test]
+    async fn reconnects_when_the_connection_goes_silent() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url: &'static str =
+            Box::leak(format!("ws://{}/stream", listener.local_addr().unwrap()).into_boxed_str());
+        tokio::spawn(async move {
+            let mut n = 0;
+            let mut held = Vec::new();
+            loop {
+                let (tcp, _) = listener.accept().await.unwrap();
+                n += 1;
+                let mut ws = accept_async(tcp).await.unwrap();
+                let push = format!(r#"{{"stream":"x","data":{n}}}"#);
+                ws.send(Message::text(push)).await.unwrap();
+                held.push(ws); // Kept open, never read.
+            }
+        });
+
+        let mut rx = subscribe(url, vec![], |push| Handled::Emit(push.data))
+            .await
+            .unwrap();
+        let first = tokio::time::timeout(Duration::from_secs(2), rx.recv()).await;
+        assert_eq!(first.unwrap(), Some(serde_json::json!(1)));
+        // Silent past IDLE_TIMEOUT: a second connection, and its push.
+        let second = tokio::time::timeout(Duration::from_secs(5), rx.recv()).await;
+        assert_eq!(second.unwrap(), Some(serde_json::json!(2)));
     }
 }

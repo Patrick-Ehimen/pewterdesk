@@ -32,6 +32,27 @@ describe("bookLadder", () => {
     ]);
   });
 
+  it("shows running totals as finely as the sizes, not rounded to whole units", () => {
+    // A HYPE book's sizes are whole units.
+    expect(bookLadder(book, 10).sizeDecimals).toBe(0);
+    // A BTC book's are thousandths: 0.012 + 0.071 must not show as 0.
+    const btc: OrderBook = {
+      market: "BTC",
+      bids: [
+        { price: "83250", size: "0.012" },
+        { price: "83249", size: "0.071" },
+      ],
+      asks: [{ price: "83251", size: "0.5" }],
+      time: 0,
+    };
+    const ladder = bookLadder(btc, 10);
+    expect(ladder.sizeDecimals).toBe(3);
+    expect(formatNumber(ladder.bids[1]?.total ?? 0, ladder.sizeDecimals)).toBe("0.083");
+    // A dust level can't widen the column past five places.
+    const dust = { ...btc, bids: [{ price: "83250", size: "0.00000001" }] };
+    expect(bookLadder(dust, 10).sizeDecimals).toBe(5);
+  });
+
   it("accumulates value for the average fill price", () => {
     const [first, second] = bookLadder(book, 10).bids;
     expect(first?.notional).toBeCloseTo(38.39 * 10);

@@ -9,6 +9,8 @@ export interface VenueInfo {
   fees: { taker: number; maker: number };
   /** The venue's default cap on how far a market order may fill from the touch. */
   maxSlippage: number;
+  /** The bottom bar's tickers: BTC, ETH, SOL, BNB and the two venues' own tokens, by market id here. */
+  majors: readonly string[];
 }
 
 export const VENUES: Record<VenueId, VenueInfo> = {
@@ -18,6 +20,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     defaultMarket: "HYPE",
     fees: { taker: 0.00045, maker: 0.00015 },
     maxSlippage: 0.08,
+    majors: ["BTC", "ETH", "SOL", "BNB", "HYPE", "ASTER"],
   },
   aster: {
     label: "Aster",
@@ -25,6 +28,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     fees: { taker: 0.00035, maker: 0.0001 },
     // Aster's `marketTakeBound` for its main markets.
     maxSlippage: 0.05,
+    majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
   },
 };
 

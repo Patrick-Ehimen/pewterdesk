@@ -3,8 +3,14 @@ import type { AccountSnapshot, Market, OrderBook, VenueId } from "@pewterdesk/co
 import {
   AccountSummary,
   AlertsPopover,
+  BOOK_SIDES,
+  BOOK_UNITS,
+  type BookSides,
+  BookSidesPicker,
+  type BookUnit,
   decimalsOf,
   FundingHistoryTable,
+  formatSigned,
   type IconLoader,
   MarketPicker,
   MarketStatsBar,
@@ -13,6 +19,7 @@ import {
   OrderBookSkeleton,
   OrderBookView,
   OrderTicket,
+  PnlCard,
   PositionsTable,
   QuickTrade,
   type RowMode,
@@ -26,9 +33,11 @@ import {
   t,
 } from "@pewterdesk/ui";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { LuWallet } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
+import { ago } from "./components/ConnectionPanel";
 import { FeedView } from "./components/FeedView";
 import { HeaderActions } from "./components/header/HeaderActions";
 import { LayoutBar } from "./components/layout/LayoutBar";
@@ -44,11 +53,16 @@ import {
   rowModeOptions,
   VIEW_KEYS,
 } from "./components/preferences";
-import { type Connection, StatusBar } from "./components/StatusBar";
+import { BEAT_MS, StatusBar } from "./components/StatusBar";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
+import { Movement } from "./components/statusbar/Movement";
+import { Tickers } from "./components/statusbar/Tickers";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, useAppearance } from "./hooks/useAppearance";
+import { useConnection } from "./hooks/useConnection";
+import { useFeedAge } from "./hooks/useFeedAge";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
 import { useTraySync } from "./hooks/useTraySync";
@@ -67,9 +81,11 @@ import {
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { connectedAddress } from "./lib/account";
+import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import { peekSavedIcon, withIconCache } from "./lib/iconCache";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
+import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
 import {
   defaultQuickTradePosition,
   loadQuickTrade,
@@ -210,13 +226,27 @@ function OrderBookPanel({
   marketsLoading: boolean;
 }) {
   const [tab, setTab] = useState<BookTab>("book");
-  const [bookMode, setBookMode] = useStoredChoice<RowMode>(VIEW_KEYS.book, ROW_MODES, "table");
+  // Table or stacked rows are set in Settings; the panel picks the sides.
+  const [bookMode] = useStoredChoice<RowMode>(VIEW_KEYS.book, ROW_MODES, "table");
+  // Sizes and totals in the coin, or valued in the quote asset.
+  const [bookUnit, setBookUnit] = useStoredChoice<BookUnit>("pd.book.unit", BOOK_UNITS, "base");
+  // Buys and sells, or one side given the whole panel.
+  const [bookSides, setBookSides] = useStoredChoice<BookSides>("pd.book.sides", BOOK_SIDES, "both");
   const [tradesMode, setTradesMode] = useStoredChoice<RowMode>(
     VIEW_KEYS.trades,
     ROW_MODES,
     "table",
   );
   const trades = useTrades(venue, tab === "trades" ? market?.id : undefined);
+  // Stale: the book has gone quiet past its timeout, the network is gone, or
+  // the stream ended. Its last prices stay up, dimmed, with a warning.
+  const { feed: bookFeed, now, network } = useFeedAge("book", venue, tab === "book");
+  const quietMs = bookFeed?.last === undefined ? undefined : now - bookFeed.last;
+  const stale =
+    book.status === "closed" ||
+    (book.status === "live" &&
+      quietMs !== undefined &&
+      (quietMs > FEED_TIMEOUT_MS.book || !network));
   const skeleton =
     tab === "book" ? <OrderBookSkeleton mode={bookMode} /> : <TradesSkeleton mode={tradesMode} />;
   return (
@@ -229,13 +259,17 @@ function OrderBookPanel({
         active={tab}
         onChange={setTab}
         aside={
-          <OptionsMenu
-            label={t(tab === "book" ? "menu.bookOptions" : "menu.tradesOptions")}
-            heading={t("menu.view")}
-            options={rowModeOptions()}
-            value={tab === "book" ? bookMode : tradesMode}
-            onChange={tab === "book" ? setBookMode : setTradesMode}
-          />
+          tab === "book" ? (
+            <BookSidesPicker value={bookSides} onChange={setBookSides} />
+          ) : (
+            <OptionsMenu
+              label={t("menu.tradesOptions")}
+              heading={t("menu.view")}
+              options={rowModeOptions()}
+              value={tradesMode}
+              onChange={setTradesMode}
+            />
+          )
         }
       />
       <div className="app-fill">
@@ -247,12 +281,24 @@ function OrderBookPanel({
             idle={t("feed.pickMarket")}
             loading={skeleton}
             live={(data) => (
-              <OrderBookView
-                book={data}
-                base={market?.base}
-                quote={market?.quote}
-                mode={bookMode}
-              />
+              <div className="book-stale-wrap" data-stale={stale || undefined}>
+                <OrderBookView
+                  book={data}
+                  base={market?.base}
+                  quote={market?.quote}
+                  mode={bookMode}
+                  sides={bookSides}
+                  unit={bookUnit}
+                  onUnitChange={setBookUnit}
+                />
+                {stale && (
+                  <div className="book-stale" role="alert">
+                    <strong className="book-stale-age">{ago(quietMs ?? 0)}</strong>
+                    <p className="book-stale-title">{t("book.stale")}</p>
+                    <p>{t("book.staleHint")}</p>
+                  </div>
+                )}
+              </div>
             )}
           />
         ) : (
@@ -349,14 +395,9 @@ export function App() {
       : setTimeout(ready, MAX_SPLASH_MS);
     return () => clearTimeout(timer);
   }, [marketsSettled]);
-  // The bottom bar's indicator: live once the book streams, offline if the
-  // market list or the stream fails, connecting until then.
-  const connection: Connection =
-    markets.status === "error" || book.status === "error" || book.status === "closed"
-      ? "offline"
-      : book.status === "live"
-        ? "online"
-        : "connecting";
+  // The status badge's heartbeat: one tick per BEAT_MS of order-book time
+  // while it streams, so it stops as soon as the feed does.
+  const beat = book.status === "live" ? Math.floor(book.data.time / BEAT_MS) : undefined;
   // The market picker can browse another venue's markets (its chips); a
   // pick there switches the screen to that venue. Prices only while it's
   // open (shared with the screener's feed).
@@ -406,9 +447,33 @@ export function App() {
   const bestBid = bookData?.bids[0]?.price;
   const bestAsk = bookData?.asks[0]?.price;
   const stats = useMarketStats(venue, selected?.id);
+  // The bottom bar's status, from what's actually arriving: offline when the
+  // network or a feed goes, connecting while the venue has gone quiet.
+  const connection = useConnection(
+    book.status === "live" ? book.data : undefined,
+    stats.status === "live" ? stats.data : undefined,
+    markets.status === "error" || book.status === "error" || book.status === "closed",
+  );
   const account = useAccount(venue, address);
   const accountData =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
+  // The bottom bar: the account's floating PnL, and BTC, ETH and SOL's
+  // prices from the venue's summaries (shared with the screener's feed).
+  const [pnlCard, setPnlCard] = useState(loadPnlCard);
+  const updatePnlCard = (next: PnlCardState) => {
+    setPnlCard(next);
+    savePnlCard(next);
+  };
+  const [pnlDefault] = useState(defaultPnlPosition);
+  const balance = accountData ? Number(accountData.equity) : undefined;
+  const unrealized = accountData?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  const pnlTrend =
+    unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
+  const barSummaries = useMarketSummaries(venue, true);
+  const barPrices =
+    barSummaries.status === "live" || barSummaries.status === "closed"
+      ? barSummaries.data
+      : undefined;
   // The menu-bar (tray) item: price and PnL, even with the window closed.
   useTraySync({
     market: selected,
@@ -537,10 +602,6 @@ export function App() {
             value={page}
             onChange={goTo}
           />
-          <span className="app-chip">
-            <span className="pd-live-dot" data-live={book.status === "live" || undefined} />
-            {venueInfo.label}
-          </span>
           <div className="app-spacer" />
           {/* The market on screen, beside its watchlist star; opens the market picker. */}
           {selected && (
@@ -716,7 +777,52 @@ export function App() {
 
         <ConnectWalletDialog open={walletOpen} onClose={() => setWalletOpen(false)} />
 
-        <StatusBar connection={connection} venue={venueInfo.label} />
+        <StatusBar
+          connection={connection}
+          venue={venueInfo.label}
+          venueId={venue}
+          market={selected?.id}
+          venueLogo={venueLogos[venue]}
+          beat={beat}
+          right={
+            <>
+              <Funding
+                stats={
+                  stats.status === "live" || stats.status === "closed" ? stats.data : undefined
+                }
+                market={selected?.symbol}
+              />
+              <Latency venue={venue} />
+              <Clock />
+            </>
+          }
+        >
+          <button
+            type="button"
+            className="app-bar-button app-bar-pnl"
+            aria-pressed={pnlCard.open}
+            title={t("pnl.toggle")}
+            onClick={() => updatePnlCard({ ...pnlCard, open: !pnlCard.open })}
+          >
+            <LuWallet size={13} aria-hidden />
+            {t("pnl.pnl")}
+            <span className="pd-num" data-trend={pnlTrend}>
+              {unrealized === undefined ? "-" : formatSigned(unrealized, 2)}
+            </span>
+          </button>
+          <Movement
+            venue={venue}
+            markets={marketList}
+            onOpenMarket={(v, id) => showMarket(v, id)}
+          />
+          <Tickers
+            venue={venue}
+            ids={venueInfo.majors}
+            markets={marketList}
+            summaries={barPrices}
+            onOpen={(m) => showMarket(m.venue, m.id)}
+          />
+        </StatusBar>
 
         {/* Orders can't be placed yet, so no onLong/onShort: the buttons show why. */}
         {quickTrade.open && page === "trade" && (
@@ -730,6 +836,21 @@ export function App() {
             position={quickTrade.position ?? quickDefault}
             onMove={(position) => updateQuickTrade({ ...quickTrade, position })}
             onClose={() => updateQuickTrade({ ...quickTrade, open: false })}
+          />
+        )}
+
+        {pnlCard.open && (
+          <PnlCard
+            venue={venueInfo.label}
+            venueLogo={venueLogos[venue]}
+            quote={selected?.quote ?? "USDC"}
+            balance={balance}
+            pnl={unrealized}
+            connected={accountData !== undefined}
+            onConnect={() => setWalletOpen(true)}
+            position={pnlCard.position ?? pnlDefault}
+            onMove={(position) => updatePnlCard({ ...pnlCard, position })}
+            onClose={() => updatePnlCard({ ...pnlCard, open: false })}
           />
         )}
 

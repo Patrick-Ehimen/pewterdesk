@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type StreamHandlers, venueClient } from "../api/venueClient";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
+import { RETRY_MS, useRetry } from "./useRetry";
 
 /** How often a live series is written back to the cache, at most. */
 const CACHE_SAVE_MS = 30_000;
@@ -29,11 +30,13 @@ export type Feed<T> =
   | { status: "live" | "closed"; data: T }
   | { status: "error"; message: string };
 
-/** The venue's markets; idle while `venue` is unset. */
+/** The venue's markets; idle while `venue` is unset. Retried if it fails. */
 export function useMarkets(venue: VenueId | undefined): Feed<Market[]> {
   const [feed, setFeed] = useState<Feed<Market[]>>(
     venue ? { status: "loading" } : { status: "idle" },
   );
+  const retry = useRetry(feed.status === "error");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` refetches after a failure
   useEffect(() => {
     if (!venue) {
       setFeed({ status: "idle" });
@@ -48,27 +51,38 @@ export function useMarkets(venue: VenueId | undefined): Feed<Market[]> {
     return () => {
       current = false;
     };
-  }, [venue]);
+  }, [venue, retry]);
   return feed;
 }
 
 /**
  * Keeps a subscription open while `key` is set and the component is mounted,
- * resubscribing whenever `key` changes.
+ * resubscribing whenever `key` changes, and after it fails or ends (see
+ * `useRetry`). A retry keeps the last data on screen until fresh arrives.
  */
 function useStream<T>(
   key: string | undefined,
   start: (handlers: StreamHandlers<T>) => () => void,
 ): Feed<T> {
   const [feed, setFeed] = useState<Feed<T>>({ status: "idle" });
-  // `start` is rebuilt every render; `key` is what identifies the stream.
+  const retry = useRetry(feed.status === "error" || feed.status === "closed");
+  const lastKey = useRef<string | undefined>(undefined);
+  // `start` is rebuilt every render; `key` is what identifies the stream, and
+  // `retry` resubscribes it.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
     if (key === undefined) {
+      lastKey.current = undefined;
       setFeed({ status: "idle" });
       return;
     }
-    setFeed({ status: "loading" });
+    const retrying = key === lastKey.current;
+    lastKey.current = key;
+    setFeed((prev) =>
+      retrying && (prev.status === "live" || prev.status === "closed")
+        ? { status: "closed", data: prev.data }
+        : { status: "loading" },
+    );
     return start({
       onUpdate: (data) => setFeed({ status: "live", data }),
       onClosed: () =>
@@ -77,9 +91,10 @@ function useStream<T>(
             ? { status: "closed", data: prev.data }
             : { status: "error", message: t("error.feedClosed") },
         ),
-      onError: (message) => setFeed({ status: "error", message }),
+      onError: (message) =>
+        setFeed((prev) => (prev.status === "closed" ? prev : { status: "error", message })),
     });
-  }, [key]);
+  }, [key, retry]);
   return feed;
 }
 
@@ -135,7 +150,9 @@ export function useCandles(
   const loading = useRef(false);
   const exhausted = useRef(false);
   const generation = useRef(0);
+  const retry = useRetry(feed.status === "error" || feed.status === "closed");
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` resubscribes after a failure
   useEffect(() => {
     generation.current += 1;
     series.current = undefined;
@@ -177,7 +194,7 @@ export function useCandles(
       unsubscribe();
       save(true);
     };
-  }, [venue, market, interval]);
+  }, [venue, market, interval, retry]);
 
   const loadOlder = useCallback(() => {
     const oldest = series.current?.[0];
@@ -320,12 +337,16 @@ interface SharedSummaries {
   listeners: Set<(feed: Feed<MarketSummary[]>) => void>;
   last: Feed<MarketSummary[]>;
   stop?: () => void;
+  /** When a failed stream was last started again, so listeners retry it once. */
+  restartedAt?: number;
 }
 const sharedSummaries = new Map<VenueId, SharedSummaries>();
 
 /** Every market's summary, for the screener and market picker; `enabled: false` lets go of it. */
 export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<MarketSummary[]> {
   const [feed, setFeed] = useState<Feed<MarketSummary[]>>({ status: "idle" });
+  const retry = useRetry(feed.status === "error" || feed.status === "closed");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` restarts a failed stream
   useEffect(() => {
     if (!enabled) {
       setFeed({ status: "idle" });
@@ -343,6 +364,13 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
     };
     stream.listeners.add(setFeed);
     setFeed(stream.last);
+    // Failed or ended: start it again, once however many listeners retry.
+    const failed = stream.last.status === "error" || stream.last.status === "closed";
+    if (failed && Date.now() - (stream.restartedAt ?? 0) > RETRY_MS / 2) {
+      stream.stop?.();
+      stream.stop = undefined;
+      stream.restartedAt = Date.now();
+    }
     stream.stop ??= venueClient.subscribeMarketSummaries(venue, {
       onUpdate: (data) => emit({ status: "live", data }),
       onClosed: () =>
@@ -360,7 +388,7 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
         sharedSummaries.delete(venue);
       }
     };
-  }, [venue, enabled]);
+  }, [venue, enabled, retry]);
   return feed;
 }
 

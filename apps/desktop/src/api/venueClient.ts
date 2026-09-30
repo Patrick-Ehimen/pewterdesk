@@ -17,6 +17,7 @@ import type {
 } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
+import { trackFeed } from "../lib/feedActivity";
 
 /**
  * StreamEvent as serde emits it from venues.rs: adjacently tagged, so
@@ -88,28 +89,44 @@ function subscribe<T>(
 ): () => void {
   let stopped = false;
   let id: number | undefined;
+  // For the connection panel and the order book's stale overlay.
+  const feed = trackFeed(command, args.venue as VenueId);
 
   if (!isTauri()) {
-    queueMicrotask(() => stopped || handlers.onError(t("error.noTauri")));
+    queueMicrotask(() => {
+      if (stopped) return;
+      feed.failed();
+      handlers.onError(t("error.noTauri"));
+    });
   } else {
     const channel = new Channel<StreamEvent<T>>();
     channel.onmessage = (message) => {
       if (stopped) return;
-      if (message.event === "update") handlers.onUpdate(message.data);
-      else handlers.onClosed();
+      if (message.event === "update") {
+        feed.update(message.data);
+        handlers.onUpdate(message.data);
+      } else {
+        feed.closed();
+        handlers.onClosed();
+      }
     };
     invoke<number>(command, { ...args, onEvent: channel }).then(
       (subscriptionId) => {
         id = subscriptionId;
         if (stopped) void invoke("unsubscribe", { id });
       },
-      (e) => stopped || handlers.onError(describeVenueError(asVenueError(e))),
+      (e) => {
+        if (stopped) return;
+        feed.failed();
+        handlers.onError(describeVenueError(asVenueError(e)));
+      },
     );
   }
 
   return () => {
     if (stopped) return;
     stopped = true;
+    feed.stop();
     if (id !== undefined) void invoke("unsubscribe", { id });
   };
 }

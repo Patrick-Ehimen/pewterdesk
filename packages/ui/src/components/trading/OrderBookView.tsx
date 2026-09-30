@@ -25,6 +25,11 @@ export interface BookRow {
 export interface BookLadder {
   /** Worst first, so the best ask sits just above the spread. */
   asks: BookRow[];
+  /**
+   * Places to show running totals with: the finest size shown, so a BTC
+   * book's 0.08 doesn't round to 0 (capped, so a dust level can't widen it).
+   */
+  sizeDecimals: number;
   /** Best first. */
   bids: BookRow[];
   mid?: number;
@@ -56,6 +61,9 @@ function accumulate(levels: BookLevel[], depth: number): Omit<BookRow, "depth">[
   });
 }
 
+/** The most places a running total shows with. */
+const MAX_SIZE_DECIMALS = 5;
+
 /** Top `depth` levels per side, with cumulative totals and spread stats. */
 export function bookLadder(book: OrderBook, depth: number): BookLadder {
   const asks = accumulate(book.asks, depth);
@@ -71,9 +79,14 @@ export function bookLadder(book: OrderBook, depth: number): BookLadder {
   const tickDecimals = Math.max(
     ...[bestBid, bestAsk].map((level) => (level ? decimalsOf(level.price) : 0)),
   );
+  const sizeDecimals = Math.min(
+    MAX_SIZE_DECIMALS,
+    Math.max(0, ...[...asks, ...bids].map((row) => decimalsOf(row.size))),
+  );
   const ladder: BookLadder = {
     asks: asks.map(withDepth).reverse(),
     bids: bids.map(withDepth),
+    sizeDecimals,
     midDecimals: tickDecimals,
   };
   const bidSize = sumSizes(book.bids);
@@ -135,18 +148,38 @@ function useLevelFlashes(book: OrderBook): ReadonlyMap<string, number> {
   }, [book]);
 }
 
+/** Sizes and totals in the coin (HYPE), or valued in the quote asset (USDC). */
+export type BookUnit = "base" | "quote";
+export const BOOK_UNITS: readonly BookUnit[] = ["base", "quote"];
+
 function Row({
   row,
   side,
   mode,
+  unit,
+  sizeDecimals,
+  quoteDecimals,
   flash,
 }: {
   row: BookRow;
   side: BookSide;
   mode: RowMode;
+  unit: BookUnit;
+  /** Places for the running total (see `BookLadder.sizeDecimals`). */
+  sizeDecimals: number;
+  /** Places for values in the quote asset, the same on every row. */
+  quoteDecimals: number;
   /** Changes when the level does; unset if it hasn't changed yet. */
   flash?: number;
 }) {
+  const size =
+    unit === "quote"
+      ? formatNumber(Number(row.size) * Number(row.price), quoteDecimals)
+      : formatNumber(row.size);
+  const total =
+    unit === "quote"
+      ? formatNumber(row.notional, quoteDecimals)
+      : formatNumber(row.total, sizeDecimals);
   return (
     <div className="pd-book-row" data-side={side} data-key={rowKey(side, row.price)}>
       <div className="pd-book-depth" style={{ width: `${row.depth * 100}%` }} />
@@ -154,14 +187,14 @@ function Row({
       {mode === "table" ? (
         <>
           <span className="pd-book-price">{formatNumber(row.price)}</span>
-          <span>{formatNumber(row.size)}</span>
-          <span>{formatNumber(row.total, 0)}</span>
+          <span>{size}</span>
+          <span>{total}</span>
         </>
       ) : (
         <>
           <span className="pd-book-price">{formatNumber(row.price)}</span>
           <span className="pd-row-sub">
-            {formatNumber(row.size)} <span aria-hidden>·</span> Σ {formatNumber(row.total, 0)}
+            {size} <span aria-hidden>·</span> Σ {total}
           </span>
         </>
       )}
@@ -219,20 +252,23 @@ function LevelTip({ row, side, mid, priceDecimals, base, quote }: LevelTipProps)
   );
 }
 
-/** How many whole rows fit in the element, tracked as it resizes. */
+/**
+ * How many whole rows fit in the element, tracked as it resizes. A callback
+ * ref, so it follows the element when a different one mounts (switching
+ * the book between both sides and one).
+ */
 function useRowsThatFit<T extends HTMLElement>(rowHeight: number) {
-  const ref = useRef<T>(null);
+  const [el, setEl] = useState<T | null>(null);
   const [rows, setRows] = useState(0);
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const observer = new ResizeObserver(([entry]) => {
       if (entry) setRows(Math.floor(entry.contentRect.height / rowHeight));
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [rowHeight]);
-  return [ref, rows] as const;
+  }, [el, rowHeight]);
+  return [setEl, rows] as const;
 }
 
 /** Bid vs ask size as a split bar, bids on the left. */
@@ -267,9 +303,96 @@ interface OrderBookViewProps {
   quote?: string;
   /** Defaults to "table". "stacked" drops the column header for two-line rows. */
   mode?: RowMode;
+  /** Both sides (default), or one of them given the whole height. */
+  sides?: BookSides;
+  /** Sizes and totals in the coin (default) or valued in the quote asset. */
+  unit?: BookUnit;
+  /** Offered as a switch beside the Size and Total headers. */
+  onUnitChange?: (unit: BookUnit) => void;
 }
 
-function bookColumns(base?: string, quote?: string): Column[] {
+/** Which of the book's sides show. */
+export type BookSides = "both" | "bids" | "asks";
+export const BOOK_SIDES: readonly BookSides[] = ["both", "bids", "asks"];
+
+const SIDES_LABEL = {
+  both: "book.both",
+  bids: "book.bids",
+  asks: "book.asks",
+} as const;
+
+/** The view buttons' glyphs: bids green, asks red, beside the rows' lines. */
+function SidesIcon({ sides }: { sides: BookSides }) {
+  const lines = (
+    <g fill="currentColor" opacity="0.55">
+      <rect x="10" y="3" width="7" height="1.6" rx="0.8" />
+      <rect x="10" y="7.2" width="7" height="1.6" rx="0.8" />
+      <rect x="10" y="11.4" width="7" height="1.6" rx="0.8" />
+      <rect x="10" y="15.6" width="7" height="1.6" rx="0.8" />
+    </g>
+  );
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" strokeWidth="1.6" aria-hidden>
+      {sides === "both" ? (
+        <>
+          <rect x="2.5" y="2.5" width="5" height="6" rx="1" className="pd-sides-bid" />
+          <rect x="2.5" y="11.5" width="5" height="6" rx="1" className="pd-sides-ask" />
+        </>
+      ) : (
+        <rect
+          x="2.5"
+          y="2.5"
+          width="5"
+          height="15"
+          rx="1"
+          className={sides === "bids" ? "pd-sides-bid" : "pd-sides-ask"}
+        />
+      )}
+      {lines}
+    </svg>
+  );
+}
+
+/** The book's view buttons: buys and sells, buys only, sells only. */
+export function BookSidesPicker({
+  value,
+  onChange,
+}: {
+  value: BookSides;
+  onChange: (sides: BookSides) => void;
+}) {
+  return (
+    <div className="pd-book-sides" role="radiogroup" aria-label={t("book.view")}>
+      {BOOK_SIDES.map((s) => (
+        // biome-ignore lint/a11y/useSemanticElements: icon-style radio, like the other segmented controls
+        <button
+          key={s}
+          type="button"
+          role="radio"
+          aria-checked={s === value}
+          aria-label={t(SIDES_LABEL[s])}
+          title={t(SIDES_LABEL[s])}
+          onClick={() => onChange(s)}
+        >
+          <SidesIcon sides={s} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function bookColumns(
+  base?: string,
+  quote?: string,
+  unit: BookUnit = "base",
+  onSwitch?: () => void,
+): Column[] {
+  // Size and total are in whichever asset the book is showing them in.
+  const sizeAsset = unit === "quote" ? quote : base;
+  const named = (label: string) => (sizeAsset ? `${label} (${sizeAsset})` : label);
+  const otherAsset = unit === "quote" ? base : quote;
+  const switchTo =
+    onSwitch && otherAsset ? { onSwitch, switchLabel: t("book.unit", { asset: otherAsset }) } : {};
   return [
     {
       label: t("col.price"),
@@ -281,20 +404,22 @@ function bookColumns(base?: string, quote?: string): Column[] {
       ),
     },
     {
-      label: t("col.size"),
+      label: named(t("col.size")),
+      ...switchTo,
       hint: (
         <Hint title={t("col.size")}>
           {t("hint.book.size")}
-          {unitHint(base)}
+          {unitHint(sizeAsset)}
         </Hint>
       ),
     },
     {
-      label: t("col.total"),
+      label: named(t("col.total")),
+      ...switchTo,
       hint: (
         <Hint title={t("col.total")}>
           {t("hint.book.total")}
-          {unitHint(base)}
+          {unitHint(sizeAsset)}
         </Hint>
       ),
     },
@@ -304,12 +429,26 @@ function bookColumns(base?: string, quote?: string): Column[] {
 /**
  * Fills its container's height, so give it one (e.g. a flex column child).
  * Both sides get an equal share of what's left after the header, spread and
- * ratio bar; the level count follows from that.
+ * ratio bar; the level count follows from that. With one side, it gets it
+ * all: bids under the spread, or asks over it.
  */
-export function OrderBookView({ book, depth, base, quote, mode = "table" }: OrderBookViewProps) {
-  // Both sides are the same flex size, so measuring the asks is enough.
-  const [askSideRef, rowsThatFit] = useRowsThatFit<HTMLDivElement>(ROW_HEIGHT[mode]);
+export function OrderBookView({
+  book,
+  depth,
+  base,
+  quote,
+  mode = "table",
+  sides = "both",
+  unit = "base",
+  onUnitChange,
+}: OrderBookViewProps) {
+  // Showing sides are the same flex size, so measuring one is enough.
+  const [sideRef, rowsThatFit] = useRowsThatFit<HTMLDivElement>(ROW_HEIGHT[mode]);
   const ladder = bookLadder(book, depth ?? Math.max(rowsThatFit, 1));
+  // Quote values: whole units when the book runs to hundreds, else cents,
+  // the same on every row so the column lines up.
+  const deepestValue = Math.max(0, ...[...ladder.asks, ...ladder.bids].map((r) => r.notional));
+  const quoteDecimals = deepestValue >= 100 ? 0 : 2;
   const { midDecimals } = ladder;
   const midShown = ladder.mid === undefined ? undefined : Number(ladder.mid.toFixed(midDecimals));
   const trend = usePriceTrend(midShown);
@@ -322,18 +461,32 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
 
   return (
     <div ref={hover.containerRef} className="pd-book" data-mode={mode} {...hover.handlers}>
-      {mode === "table" && <ColumnHeader columns={bookColumns(base, quote)} />}
-      <div ref={askSideRef} className="pd-book-side" data-side="ask">
-        {ladder.asks.map((row) => (
-          <Row
-            key={row.price}
-            row={row}
-            side="ask"
-            mode={mode}
-            flash={flashes.get(rowKey("ask", row.price))}
-          />
-        ))}
-      </div>
+      {mode === "table" && (
+        <ColumnHeader
+          columns={bookColumns(
+            base,
+            quote,
+            unit,
+            onUnitChange && (() => onUnitChange(unit === "quote" ? "base" : "quote")),
+          )}
+        />
+      )}
+      {sides !== "bids" && (
+        <div ref={sideRef} className="pd-book-side" data-side="ask">
+          {ladder.asks.map((row) => (
+            <Row
+              key={row.price}
+              row={row}
+              side="ask"
+              mode={mode}
+              unit={unit}
+              quoteDecimals={quoteDecimals}
+              sizeDecimals={ladder.sizeDecimals}
+              flash={flashes.get(rowKey("ask", row.price))}
+            />
+          ))}
+        </div>
+      )}
       <div className="pd-book-spread">
         <span className="pd-book-mid" data-trend={trend}>
           {midShown === undefined ? "-" : formatNumber(midShown, midDecimals)}
@@ -352,17 +505,22 @@ export function OrderBookView({ book, depth, base, quote, mode = "table" }: Orde
           </span>
         )}
       </div>
-      <div className="pd-book-side" data-side="bid">
-        {ladder.bids.map((row) => (
-          <Row
-            key={row.price}
-            row={row}
-            side="bid"
-            mode={mode}
-            flash={flashes.get(rowKey("bid", row.price))}
-          />
-        ))}
-      </div>
+      {sides !== "asks" && (
+        <div ref={sides === "bids" ? sideRef : undefined} className="pd-book-side" data-side="bid">
+          {ladder.bids.map((row) => (
+            <Row
+              key={row.price}
+              row={row}
+              side="bid"
+              mode={mode}
+              unit={unit}
+              quoteDecimals={quoteDecimals}
+              sizeDecimals={ladder.sizeDecimals}
+              flash={flashes.get(rowKey("bid", row.price))}
+            />
+          ))}
+        </div>
+      )}
       {ladder.bidShare !== undefined && <BookRatio bidShare={ladder.bidShare} />}
       {/* The level may leave the book while hovered; the tip goes with it. */}
       {hovered && (

@@ -212,6 +212,49 @@ input {
   font-variant-numeric: tabular-nums;
   font-size: 12.5px;
 }
+/* Clicking the Size or Total header switches the unit (coin or quote asset) */
+.pd-col-switchable {
+  cursor: pointer;
+}
+.pd-col-switchable:hover {
+  color: var(--pd-text);
+}
+.pd-tip-action {
+  display: block;
+  margin-top: 4px;
+  color: var(--pd-brass-text);
+}
+/* The book's view buttons: buys and sells, buys only, sells only */
+.pd-book-sides {
+  display: flex;
+  gap: 2px;
+}
+.pd-book-sides button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  padding: 0;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  opacity: 0.45;
+  cursor: pointer;
+}
+.pd-book-sides button:hover {
+  opacity: 0.8;
+}
+.pd-book-sides button[aria-checked="true"] {
+  opacity: 1;
+  background: var(--pd-surface-raised);
+}
+.pd-sides-bid {
+  stroke: var(--pd-buy);
+}
+.pd-sides-ask {
+  stroke: var(--pd-sell);
+}
 .pd-book-side {
   flex: 1 1 0;
   min-height: 0;
@@ -233,7 +276,8 @@ input {
   font-family: var(--pd-font-sans);
   color: var(--pd-pewter);
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   text-transform: uppercase;
   padding-top: 8px;
   padding-bottom: 6px;
@@ -3617,4 +3661,407 @@ fieldset.pd-alerts-chips {
   .pd-select-chevron {
     transition: none;
   }
+}
+
+/* Bottom bar: a market's card (after the design's ticker popover) */
+.pd-ticker-card {
+  width: 268px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+.pd-ticker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pd-ticker-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-text);
+  font-weight: 600;
+  font-size: 13px;
+}
+.pd-ticker-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pd-ticker-seg {
+  display: inline-flex;
+  gap: 1px;
+}
+.pd-ticker-seg button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.pd-ticker-seg button:hover {
+  color: var(--pd-text);
+}
+.pd-ticker-seg button[aria-checked="true"] {
+  color: var(--pd-brass-text);
+  background: var(--pd-surface);
+}
+.pd-ticker-chart {
+  height: 110px;
+  display: flex;
+}
+.pd-ticker-chart .pd-mini-chart,
+.pd-ticker-chart .pd-ticker-chart-skel {
+  flex: 1;
+  width: 100%;
+}
+.pd-skel.pd-ticker-chart-skel {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+}
+.pd-ticker-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pd-ticker-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.pd-ticker-label {
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.pd-ticker-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pd-ticker-change {
+  color: var(--pd-pewter);
+}
+.pd-ticker-price {
+  font-size: 18px;
+  font-weight: 500;
+}
+.pd-ticker-card [data-trend="up"] {
+  color: var(--pd-buy);
+}
+.pd-ticker-card [data-trend="down"] {
+  color: var(--pd-sell);
+}
+.pd-ticker-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 28px;
+  color: var(--pd-text);
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+.pd-ticker-open:hover {
+  background: var(--pd-surface);
+}
+
+/* Bottom bar: market movement (after the design's popover) */
+.pd-move {
+  width: 360px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pd-move-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pd-move-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-text);
+  font-size: 15px;
+}
+.pd-move-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pd-pewter-dim);
+}
+/* Green while live: the same exception as the Online badge */
+.pd-move-dot[data-live] {
+  background: var(--pd-buy);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pd-buy) 22%, transparent);
+}
+.pd-move-window {
+  color: var(--pd-brass-text);
+  font-size: 13px;
+}
+.pd-move-tabs {
+  display: flex;
+  gap: 4px;
+}
+.pd-move-tabs button {
+  padding: 6px 14px;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+.pd-move-tabs button[aria-selected="true"] {
+  color: var(--pd-text);
+  background: var(--pd-surface);
+}
+.pd-move-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  color: var(--pd-text);
+}
+.pd-move-rows,
+.pd-move-breadth,
+.pd-move-movers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pd-move-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 10px;
+}
+.pd-move-row img,
+.pd-move-venue img,
+.pd-move-movers img {
+  display: block;
+  border-radius: 4px;
+}
+.pd-move-row .pd-num {
+  text-align: right;
+}
+.pd-move-track {
+  height: 3px;
+  display: flex;
+}
+.pd-move-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pd-pewter);
+}
+.pd-move-bar[data-venue="hyperliquid"] {
+  background: var(--pd-info);
+}
+.pd-move-bar[data-venue="aster"] {
+  background: var(--pd-brass);
+}
+.pd-skel.pd-move-bar-skel {
+  width: 100%;
+  height: 6px;
+}
+.pd-move-sub {
+  margin: 6px 0 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-move-breadth li {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) 64px 60px;
+  align-items: center;
+  gap: 8px;
+}
+.pd-move-venue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-text);
+}
+.pd-move-split {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+}
+.pd-move-seg {
+  border-radius: 2px;
+}
+.pd-move-split [data-trend="up"] {
+  background: var(--pd-buy);
+}
+.pd-move-split [data-trend="down"] {
+  background: var(--pd-sell);
+}
+.pd-move-counts,
+.pd-move-breadth .pd-num {
+  text-align: right;
+}
+.pd-move [data-trend="up"] {
+  color: var(--pd-buy);
+}
+.pd-move [data-trend="down"] {
+  color: var(--pd-sell);
+}
+.pd-move-movers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pd-move-movers button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  color: var(--pd-text);
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pd-move-movers button:hover {
+  background: var(--pd-surface);
+}
+.pd-move-mover-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-move-note {
+  margin: 4px 0 0;
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+}
+
+/* The floating PnL card (after the design): dragged anywhere by its body */
+.pd-pnl-card {
+  position: fixed;
+  z-index: 900;
+  min-width: 300px;
+  padding: 16px 20px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--pd-brass) 14%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      120% 140% at 100% 100%,
+      color-mix(in srgb, var(--pd-info) 12%, transparent),
+      transparent 60%
+    ),
+    var(--pd-surface-raised);
+  box-shadow: 0 18px 48px -12px color-mix(in srgb, var(--pd-bg) 90%, transparent);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.pd-pnl-card:active {
+  cursor: grabbing;
+}
+.pd-pnl-card:focus-visible {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
+}
+.pd-pnl-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.pd-pnl-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.pd-pnl-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-text);
+  font-size: 30px;
+  font-weight: 500;
+}
+.pd-pnl-value img {
+  border-radius: 50%;
+}
+.pd-pnl-value[data-trend="up"] {
+  color: var(--pd-buy);
+}
+.pd-pnl-value[data-trend="down"] {
+  color: var(--pd-sell);
+}
+.pd-pnl-label {
+  color: var(--pd-pewter);
+  font-size: 14px;
+}
+.pd-pnl-venue {
+  margin: 10px 0 0;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.pd-pnl-connect {
+  display: block;
+  margin: 10px auto 0;
+  padding: 4px 10px;
+  color: var(--pd-brass-text);
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pd-pnl-connect:hover {
+  text-decoration: underline;
+}
+.pd-pnl-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--pd-pewter);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pd-pnl-close:hover {
+  color: var(--pd-text);
+  background: var(--pd-surface);
 }

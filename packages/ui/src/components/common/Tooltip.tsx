@@ -182,10 +182,12 @@ interface TooltipProps {
   /** The trigger's content; wrapped in a button so keyboard focus shows the tooltip too. */
   children: ReactNode;
   className?: string;
+  /** Makes the trigger do something too (the tooltip then says what). */
+  onClick?: () => void;
 }
 
 /** Hover or keyboard focus to show; a click, Escape or leaving hides. */
-export function Tooltip({ content, children, className }: TooltipProps) {
+export function Tooltip({ content, children, className, onClick }: TooltipProps) {
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const { open, handlers } = useTipTrigger(SHOW_DELAY_MS);
@@ -197,6 +199,7 @@ export function Tooltip({ content, children, className }: TooltipProps) {
         type="button"
         className={`pd-tip-trigger ${className ?? ""}`}
         aria-describedby={open ? id : undefined}
+        onClick={onClick}
         {...handlers}
       >
         {children}
