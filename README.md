@@ -8,7 +8,7 @@ TypeScript/React UI, Tauri in between.
 > **Status: early scaffold.** The workspace, build tooling, and package
 > boundaries are in place; the trading functionality is not. `crates/core`
 > defines the `ExchangeAdapter` contract and domain types, but the two venue
-> crates can't sign yet (Aster's is still empty). The `apps/desktop` Tauri shell
+> crates can't sign yet; both serve read-only market data. The `apps/desktop` Tauri shell
 > builds and runs a read-only trading screen on Hyperliquid market data -
 > charts, order book, trade tape, screener - but it can't connect a wallet or
 > place orders. Don't point this at a funded account; there's nothing there to
@@ -196,7 +196,8 @@ those paths.
    with generated TS types.
 5. Hyperliquid adapter: ~~read-only market and account data first, exposed
    through Tauri commands~~ (done), then signing and order placement.
-6. Aster adapter ([ADR 0002](docs/adr/0002-launch-venues.md)).
+6. Aster adapter ([ADR 0002](docs/adr/0002-launch-venues.md)): ~~read-only
+   market data~~ (done), then account data, signing and order placement.
 7. Build out `packages/ui` and wire it to the adapters.
 8. Revisit `apps/web` once the desktop app ships - it can't run the Rust
    adapters as-is, needs a browser-wallet signer, and needs a thin proxy for
