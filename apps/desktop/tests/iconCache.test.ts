@@ -6,6 +6,7 @@ import {
   peekIcon,
   rememberIcon,
   resetIconCache,
+  STORE_VERSION,
 } from "../src/lib/iconCache";
 
 function memoryStore() {
@@ -59,7 +60,7 @@ describe("icon cache", () => {
     resetIconCache();
     store.items.set(
       "pd.icons.aster",
-      JSON.stringify({ savedAt: 0, icons: { BTCUSDT: "<svg>btc</svg>" } }),
+      JSON.stringify({ version: STORE_VERSION, savedAt: 0, icons: { BTCUSDT: "<svg>btc</svg>" } }),
     );
     rememberIcon("aster", "ETHUSDT", "<svg>eth</svg>", 0, memoryStore());
     flushIcons(store);
@@ -73,7 +74,17 @@ describe("icon cache", () => {
     store.items.set("pd.icons.aster", "{not json");
     expect(peekIcon("aster", "BTCUSDT", 0, store)).toBeUndefined();
     resetIconCache();
-    store.items.set("pd.icons.aster", JSON.stringify({ savedAt: 0, icons: { A: 3 } }));
+    store.items.set(
+      "pd.icons.aster",
+      JSON.stringify({ version: STORE_VERSION, savedAt: 0, icons: { A: 3 } }),
+    );
     expect(peekIcon("aster", "A", 0, store)).toBeUndefined();
+  });
+
+  it("drops what an older version saved", () => {
+    // Version 1 saved "no logo" for every Bybit market; that mustn't stick.
+    const store = memoryStore();
+    store.items.set("pd.icons.bybit", JSON.stringify({ savedAt: 0, icons: { BTCUSDT: null } }));
+    expect(peekIcon("bybit", "BTCUSDT", 1, store)).toBeUndefined();
   });
 });

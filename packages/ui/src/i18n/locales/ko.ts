@@ -609,7 +609,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "아직 체결 내역이 없습니다.",
   "history.fundingEmpty": "최근 30일간 펀딩 지급이 없습니다.",
   "history.ordersEmpty": "아직 주문 내역이 없습니다.",
-  "history.loading": "내역 불러오는 중",
   "nav.about": "pewterdesk 정보",
   "about.openSource": "오픈 소스 · MIT 라이선스",
   "about.devBuild": "개발 빌드",

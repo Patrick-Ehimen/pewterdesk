@@ -612,7 +612,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "まだ約定はありません。",
   "history.fundingEmpty": "過去30日間の資金調達はありません。",
   "history.ordersEmpty": "まだ注文はありません。",
-  "history.loading": "履歴を読み込み中",
   "nav.about": "pewterdesk について",
   "about.openSource": "オープンソース · MIT ライセンス",
   "about.devBuild": "開発ビルド",

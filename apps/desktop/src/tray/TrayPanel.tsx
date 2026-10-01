@@ -22,6 +22,7 @@ import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFee
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
 import { connectedWallet, subscribeWallet } from "../lib/account";
 import { peekSavedIcon, withIconCache } from "../lib/iconCache";
+import { firstIcon, iconSources } from "../lib/marketIcons";
 import { loadMarket } from "../lib/selectedMarket";
 import {
   loadMarkets,
@@ -37,8 +38,9 @@ import { loadVenue, VENUES } from "../lib/venues";
 const ACCOUNT_VENUE: VenueId = "hyperliquid";
 /** Market logos, as in the main window; stable so TokenIcon's cache holds. */
 // Saved between sessions (lib/iconCache), so they draw at once on the next launch.
+// Bybit serves none, so its markets borrow the coin's logo (lib/marketIcons).
 const loadIcon: IconLoader = withIconCache((market, venue) =>
-  venueClient.marketIcon(venue, market),
+  firstIcon(iconSources(venue, market), venueClient.marketIcon),
 );
 /** The hero moves on to the next market this often. */
 const HERO_ADVANCE_MS = 5000;
@@ -208,9 +210,11 @@ export function TrayPanel() {
 
   // Every venue's markets in one list; ids repeat across venues, so rows
   // and prices are keyed "<venue>:<id>".
+  const bybit = useVenueData("bybit", open);
   const hyperliquid = useVenueData("hyperliquid", open);
   const aster = useVenueData("aster", open);
   const venues = [
+    { venue: "bybit" as const, ...bybit },
     { venue: "hyperliquid" as const, ...hyperliquid },
     { venue: "aster" as const, ...aster },
   ];

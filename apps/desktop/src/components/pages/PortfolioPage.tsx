@@ -4,6 +4,7 @@ import {
   formatNumber,
   formatPercent,
   formatSigned,
+  SummarySkeleton,
   t,
   trendClass,
 } from "@pewterdesk/ui";
@@ -59,7 +60,7 @@ export function PortfolioPage({ account, markets, venue, onConnect }: PortfolioP
           </div>
         );
       case "loading":
-        return <EmptyState>{t("feed.loading")}</EmptyState>;
+        return <SummarySkeleton rows={6} />;
       case "error":
         return <EmptyState error>{account.message}</EmptyState>;
       default: {

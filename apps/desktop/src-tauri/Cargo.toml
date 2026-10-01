@@ -29,6 +29,7 @@ getrandom = "0.2"
 keyring = "4"
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
+pewterdesk-exchange-bybit = { path = "../../../crates/exchange-bybit" }
 pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -36,8 +36,10 @@ export function useAlerts(popoverOpen: boolean) {
     popoverOpen || (!state.paused && state.alerts.some((a) => a.active && a.venue === venue));
   const hyperliquid = useMarketSummaries("hyperliquid", watching("hyperliquid"));
   const aster = useMarketSummaries("aster", watching("aster"));
+  const bybit = useMarketSummaries("bybit", watching("bybit"));
   const hyperliquidSummaries = summaryOf(hyperliquid);
   const asterSummaries = summaryOf(aster);
+  const bybitSummaries = summaryOf(bybit);
   // Each venue's summaries by market id.
   const byVenue = useMemo(() => {
     const index = (list: readonly MarketSummary[] | undefined) =>
@@ -45,8 +47,9 @@ export function useAlerts(popoverOpen: boolean) {
     return new Map<VenueId, Map<string, MarketSummary>>([
       ["hyperliquid", index(hyperliquidSummaries)],
       ["aster", index(asterSummaries)],
+      ["bybit", index(bybitSummaries)],
     ]);
-  }, [hyperliquidSummaries, asterSummaries]);
+  }, [hyperliquidSummaries, asterSummaries, bybitSummaries]);
 
   // The last value each alert saw, so a crossing needs two readings.
   const previous = useRef(new Map<string, number>());

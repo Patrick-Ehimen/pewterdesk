@@ -23,7 +23,9 @@ import {
   PositionsTable,
   QuickTrade,
   type RowMode,
+  SummarySkeleton,
   type SymbolFor,
+  TableSkeleton,
   Tabs,
   TokenIcon,
   TokenIconProvider,
@@ -85,6 +87,7 @@ import { useWorkspace } from "./hooks/useWorkspace";
 import { connectedWallet, subscribeWallet } from "./lib/account";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import { peekSavedIcon, withIconCache } from "./lib/iconCache";
+import { firstIcon, iconSources } from "./lib/marketIcons";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
@@ -111,8 +114,9 @@ const MAX_SPLASH_MS = 8000;
 
 /** Market logos, fetched by the venue adapter; stable so TokenIcon's cache holds. */
 // Saved between sessions (lib/iconCache), so they draw at once on the next launch.
+// Bybit serves none, so its markets borrow the coin's logo (lib/marketIcons).
 const loadIcon: IconLoader = withIconCache((market, venue) =>
-  venueClient.marketIcon(venue, market),
+  firstIcon(iconSources(venue, market), venueClient.marketIcon),
 );
 /** The venue chips in the market picker. */
 const VENUE_CHIPS = VENUE_IDS.map((id) => ({
@@ -145,7 +149,7 @@ function ActivityPanel({
   const fills = useAccountFills(venue, address, tab === "fills");
   const funding = useAccountFunding(venue, address, tab === "funding");
   const orderHistory = useOrderHistory(venue, address, tab === "orderHistory");
-  const loading = <p className="pd-empty">{t("history.loading")}</p>;
+  const loading = <TableSkeleton columns={6} />;
   return (
     <>
       <Tabs
@@ -197,6 +201,7 @@ function ActivityPanel({
           <FeedView
             feed={account}
             idle={t("feed.noAccount")}
+            loading={loading}
             live={(data) =>
               tab === "positions" ? (
                 <PositionsTable positions={data.positions} symbolFor={symbolFor} />
@@ -536,6 +541,7 @@ export function App() {
             ) : (
               <FeedView
                 feed={account}
+                loading={<SummarySkeleton rows={5} />}
                 live={(data) => <AccountSummary snapshot={data} maxLeverageFor={maxLeverageFor} />}
               />
             )}

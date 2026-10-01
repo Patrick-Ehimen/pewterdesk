@@ -71,6 +71,8 @@ export { SignalsFeed } from "./components/trading/SignalsFeed";
 export {
   ChartSkeleton,
   OrderBookSkeleton,
+  SummarySkeleton,
+  TableSkeleton,
   TradesSkeleton,
 } from "./components/trading/Skeletons";
 export { Sparkline } from "./components/trading/Sparkline";

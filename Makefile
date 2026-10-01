@@ -126,6 +126,7 @@ rust-test: ## Run Rust tests and check the generated TS types are committed
 rust-live: ## Run the read-only venue mainnet tests (needs the network)
 	$(CARGO) test -p pewterdesk-exchange-hyperliquid -- --ignored --test-threads=1
 	$(CARGO) test -p pewterdesk-exchange-aster -- --ignored --test-threads=1
+	$(CARGO) test -p pewterdesk-exchange-bybit -- --ignored --test-threads=1
 
 .PHONY: rust-bindings
 rust-bindings: ## Regenerate packages/core/src/generated from crates/core

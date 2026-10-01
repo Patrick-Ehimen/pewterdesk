@@ -9,11 +9,21 @@ export interface VenueInfo {
   fees: { taker: number; maker: number };
   /** The venue's default cap on how far a market order may fill from the touch. */
   maxSlippage: number;
-  /** The bottom bar's tickers: BTC, ETH, SOL, BNB and the two venues' own tokens, by market id here. */
+  /** The bottom bar's tickers: BTC, ETH, SOL, BNB, HYPE and ASTER, by market id here. */
   majors: readonly string[];
 }
 
 export const VENUES: Record<VenueId, VenueInfo> = {
+  // A centralized exchange: read-only market data until API-key trading lands.
+  bybit: {
+    label: "Bybit",
+    defaultMarket: "BTCUSDT",
+    // Bybit's non-VIP perpetual fees.
+    fees: { taker: 0.00055, maker: 0.0002 },
+    // pewterdesk's own cap; Bybit's price protection varies by market.
+    maxSlippage: 0.05,
+    majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
+  },
   // Builder-deployed (HIP-3) markets scale fees per deployer; the ticket shows none for them.
   hyperliquid: {
     label: "Hyperliquid",

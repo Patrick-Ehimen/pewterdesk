@@ -620,7 +620,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "Aún no hay operaciones.",
   "history.fundingEmpty": "No hay pagos de funding en los últimos 30 días.",
   "history.ordersEmpty": "Aún no hay órdenes.",
-  "history.loading": "Cargando historial",
   "nav.about": "Acerca de pewterdesk",
   "about.openSource": "Código abierto · Licencia MIT",
   "about.devBuild": "compilación de desarrollo",

@@ -19,10 +19,11 @@ const TS_FILE: &str = "domain.ts";
 pub enum VenueId {
     Hyperliquid,
     Aster,
+    Bybit,
 }
 
 impl VenueId {
-    pub const ALL: [VenueId; 2] = [Self::Hyperliquid, Self::Aster];
+    pub const ALL: [VenueId; 3] = [Self::Hyperliquid, Self::Aster, Self::Bybit];
 }
 
 /// A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes

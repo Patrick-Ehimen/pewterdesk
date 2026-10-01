@@ -562,7 +562,6 @@ export const en = {
   "history.fillsEmpty": "No trades yet.",
   "history.fundingEmpty": "No funding payments in the last 30 days.",
   "history.ordersEmpty": "No orders yet.",
-  "history.loading": "Loading history",
   "nav.about": "About pewterdesk",
   "about.openSource": "Open source · MIT license",
   "about.devBuild": "development build",

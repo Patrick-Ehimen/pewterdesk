@@ -592,7 +592,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "暂无成交。",
   "history.fundingEmpty": "过去 30 天没有资金费用。",
   "history.ordersEmpty": "暂无委托。",
-  "history.loading": "正在加载记录",
   "nav.about": "关于 pewterdesk",
   "about.openSource": "开源 · MIT 许可证",
   "about.devBuild": "开发版本",

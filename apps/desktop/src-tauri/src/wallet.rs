@@ -73,6 +73,7 @@ fn key_account(venue: VenueId, address: &str) -> String {
     match venue {
         VenueId::Hyperliquid => format!("hyperliquid:{address}"),
         VenueId::Aster => format!("aster:{address}"),
+        VenueId::Bybit => format!("bybit:{address}"),
     }
 }
 
@@ -81,6 +82,9 @@ fn only_hyperliquid(venue: VenueId) -> Result<(), VenueError> {
         VenueId::Hyperliquid => Ok(()),
         VenueId::Aster => Err(VenueError::Unsupported(
             "connecting an Aster account isn't available yet",
+        )),
+        VenueId::Bybit => Err(VenueError::Unsupported(
+            "connecting a Bybit account isn't available yet",
         )),
     }
 }

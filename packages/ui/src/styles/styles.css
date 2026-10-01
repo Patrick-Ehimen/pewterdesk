@@ -725,6 +725,22 @@ input {
   height: 16px;
   border-radius: 50%;
 }
+/* Table and summary skeletons: bars where the cells and rows will be */
+.pd-skel-table td,
+.pd-skel-table th {
+  height: 32px;
+}
+.pd-summary-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 16px;
+}
+.pd-summary-skel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 .pd-skel-list {
   overflow: hidden;
 }

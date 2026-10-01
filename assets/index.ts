@@ -20,6 +20,7 @@ import horizontalLightBg from "./logo/pewterdesk-horizontal-light-bg.svg";
 import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
 import venueAster from "./venues/aster.svg";
+import venueBybit from "./venues/bybit.svg";
 import venueHyperliquid from "./venues/hyperliquid.svg";
 import walletCoinbase from "./wallets/coinbase.svg";
 import walletLedger from "./wallets/ledger.svg";
@@ -65,6 +66,7 @@ export const flags = {
 export const venueLogos = {
   hyperliquid: venueHyperliquid,
   aster: venueAster,
+  bybit: venueBybit,
 } as const;
 
 /** Wallet marks on their brand tiles, for the Connect wallet dialog. Source and license: wallets/README.md. */

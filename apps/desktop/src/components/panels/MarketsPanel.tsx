@@ -295,6 +295,7 @@ export function MarketsPanel({
           <FeedView
             feed={orLoading(book)}
             idle={t("depth.empty")}
+            loading={<ChartSkeleton />}
             live={(data) =>
               // Expanded, there's room for the design's full depth view.
               expanded ? (

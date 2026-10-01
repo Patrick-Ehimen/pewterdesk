@@ -1,6 +1,7 @@
 //! Tauri commands exposing the venue adapters - the only way the UI reaches a
 //! venue. Read-only so far: markets, order books, trades, candles, market
-//! stats, summaries and history, funding history, and account state.
+//! stats, summaries and history, funding history, and account state, from
+//! Hyperliquid, Aster and Bybit.
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
@@ -19,6 +20,7 @@ use pewterdesk_core::{
     VenueId,
 };
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
+use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
 use tauri::async_runtime::{self, JoinHandle};
@@ -38,6 +40,7 @@ pub enum StreamEvent<T> {
 pub struct Venues {
     hyperliquid: HyperliquidAdapter,
     aster: AsterAdapter,
+    bybit: BybitAdapter,
     subscriptions: Arc<Mutex<HashMap<u32, JoinHandle<()>>>>,
     next_id: AtomicU32,
 }
@@ -47,6 +50,7 @@ impl Venues {
         Ok(Self {
             hyperliquid: HyperliquidAdapter::new(&MAINNET)?,
             aster: AsterAdapter::new(&ASTER_MAINNET)?,
+            bybit: BybitAdapter::new(&BYBIT_MAINNET)?,
             subscriptions: Arc::default(),
             next_id: AtomicU32::new(1),
         })
@@ -61,6 +65,7 @@ impl Venues {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
             VenueId::Aster => Ok(&self.aster),
+            VenueId::Bybit => Ok(&self.bybit),
         }
     }
 

@@ -614,7 +614,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "Сделок пока нет.",
   "history.fundingEmpty": "За последние 30 дней выплат фандинга не было.",
   "history.ordersEmpty": "Ордеров пока нет.",
-  "history.loading": "Загрузка истории",
   "nav.about": "О pewterdesk",
   "about.openSource": "Открытый код · Лицензия MIT",
   "about.devBuild": "сборка для разработки",

@@ -6,7 +6,7 @@ import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { VENUES } from "../../lib/venues";
 import { BarPopover } from "./BarPopover";
 
-/** Both venues' summaries and names, loaded only while the panel is open. */
+/** Every venue's summaries and names, loaded only while the panel is open. */
 function MovementPanel({
   venue,
   markets,
@@ -19,8 +19,10 @@ function MovementPanel({
   // One hook per venue, in a fixed order.
   const hl = useMarketSummaries("hyperliquid", true);
   const aster = useMarketSummaries("aster", true);
+  const bybit = useMarketSummaries("bybit", true);
   const hlMarkets = useMarkets(venue === "hyperliquid" ? undefined : "hyperliquid");
   const asterMarkets = useMarkets(venue === "aster" ? undefined : "aster");
+  const bybitMarkets = useMarkets(venue === "bybit" ? undefined : "bybit");
   const data = (f: typeof hl) =>
     f.status === "live" || f.status === "closed" ? f.data : undefined;
   const list = (id: VenueId, f: typeof hlMarkets) =>
@@ -28,6 +30,13 @@ function MovementPanel({
   return (
     <MarketMovement
       venues={[
+        {
+          id: "bybit",
+          label: VENUES.bybit.label,
+          logo: venueLogos.bybit,
+          summaries: data(bybit),
+          markets: list("bybit", bybitMarkets),
+        },
         {
           id: "hyperliquid",
           label: VENUES.hyperliquid.label,

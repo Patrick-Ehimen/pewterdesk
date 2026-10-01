@@ -413,4 +413,4 @@ key: string, };
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "key", "detail": KeyError };
 
-export type VenueId = "hyperliquid" | "aster";
+export type VenueId = "hyperliquid" | "aster" | "bybit";

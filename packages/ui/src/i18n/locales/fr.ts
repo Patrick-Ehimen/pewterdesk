@@ -622,7 +622,6 @@ export const messages: Messages = {
   "history.fillsEmpty": "Aucun trade pour l'instant.",
   "history.fundingEmpty": "Aucun paiement de funding sur les 30 derniers jours.",
   "history.ordersEmpty": "Aucun ordre pour l'instant.",
-  "history.loading": "Chargement de l'historique",
   "nav.about": "À propos de pewterdesk",
   "about.openSource": "Open source · Licence MIT",
   "about.devBuild": "version de développement",

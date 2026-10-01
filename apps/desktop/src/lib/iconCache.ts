@@ -6,6 +6,12 @@ import type { IconLoader, IconPeek } from "@pewterdesk/ui";
 // panel (same origin). Logos are public, so browser storage is fine.
 
 const PREFIX = "pd.icons.";
+/**
+ * Bumped when where logos come from changes, so saved answers from before
+ * are dropped rather than kept for a week. 2: Bybit markets borrow their
+ * coin's logo from Hyperliquid and Aster; version 1 saved "none" for all.
+ */
+export const STORE_VERSION = 2;
 /** The whole store starts over after this, so changed logos come through. */
 export const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A bigger logo isn't kept; Aster's are about 1.5 KB wrapped, most of Hyperliquid's less. */
@@ -16,6 +22,7 @@ export const MAX_STORE_CHARS = 1_500_000;
 const WRITE_DELAY_MS = 1000;
 
 interface Store {
+  version: number;
   savedAt: number;
   /** SVG markup, or `null` for a market with no logo. */
   icons: Record<string, string | null>;
@@ -39,6 +46,7 @@ function isStore(v: unknown): v is Store {
   if (typeof v !== "object" || v === null) return false;
   const s = v as Store;
   return (
+    s.version === STORE_VERSION &&
     typeof s.savedAt === "number" &&
     typeof s.icons === "object" &&
     s.icons !== null &&
@@ -55,11 +63,11 @@ function storeFor(venue: VenueId, now: number, from: Storage | undefined): Store
     } catch {
       // Unreadable; start over.
     }
-    stores.set(venue, store ?? { savedAt: now, icons: {} });
+    stores.set(venue, store ?? { version: STORE_VERSION, savedAt: now, icons: {} });
     store = stores.get(venue) as Store;
   }
   if (now - store.savedAt > ICON_MAX_AGE_MS) {
-    store = { savedAt: now, icons: {} };
+    store = { version: STORE_VERSION, savedAt: now, icons: {} };
     stores.set(venue, store);
   }
   return store;

@@ -1,4 +1,5 @@
 import { venueLogos, walletLogos } from "@pewterdesk/assets";
+import type { VenueId } from "@pewterdesk/core";
 import { dateFormat, type MessageKey, shortAddress, t } from "@pewterdesk/ui";
 import {
   type FormEvent,
@@ -162,7 +163,7 @@ function ApiWalletForm() {
 }
 
 /** The connected account: its addresses, the agent's approval, and disconnect. */
-function ConnectedPane({ venue, address }: { venue: "hyperliquid" | "aster"; address: string }) {
+function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) {
   const [info, setInfo] = useState<WalletInfo | null>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);

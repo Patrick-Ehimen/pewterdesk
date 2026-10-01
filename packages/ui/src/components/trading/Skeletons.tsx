@@ -207,3 +207,83 @@ export function ChartSkeleton() {
     </div>
   );
 }
+
+/** Rows a table skeleton shows; a panel taller than this rarely loads a longer list. */
+const TABLE_ROWS = 8;
+
+/**
+ * A table's loading state: a header and rows of bars, `columns` wide, the
+ * first column left-aligned like a market name and the rest like numbers.
+ */
+export function TableSkeleton({
+  columns = 6,
+  rows: count = TABLE_ROWS,
+}: {
+  columns?: number;
+  rows?: number;
+}) {
+  const cols = Array.from({ length: columns }, (_, c) => c);
+  return (
+    <table className="pd-table pd-skel-table" aria-busy="true" aria-label={t("feed.loading")}>
+      <thead aria-hidden>
+        <tr>
+          {cols.map((c) => (
+            <th key={c} className={c === 0 ? undefined : "pd-num"}>
+              <Bar width={c === 0 ? 40 : 55} style={{ height: 7 }} />
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody aria-hidden>
+        {Array.from({ length: count }, (_, r) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder rows
+          <tr key={r} className="pd-skel-row">
+            {cols.map((c) =>
+              c === 0 ? (
+                <td key={c}>
+                  <span className="pd-skel-name">
+                    <span className="pd-skel pd-skel-dot" />
+                    <Bar width={pick(PRICE_W, r)} />
+                  </span>
+                </td>
+              ) : (
+                <td key={c} className="pd-num">
+                  <Bar width={pick(SIZE_W, r * 3 + c)} />
+                </td>
+              ),
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Label widths and value widths for a summary's rows. */
+const LABEL_W = [46, 38, 52, 42, 48, 36];
+const VALUE_W = [24, 30, 20, 28, 22, 26];
+
+/**
+ * A list of label / value rows loading (the account summary, a stats card):
+ * an optional title bar, then `rows` pairs of bars.
+ */
+export function SummarySkeleton({
+  rows: count = 5,
+  title = true,
+}: {
+  rows?: number;
+  title?: boolean;
+}) {
+  return (
+    <div className="pd-summary-skel" role="status" aria-busy="true" aria-label={t("feed.loading")}>
+      {title && <Bar width={45} style={{ height: 12 }} />}
+      {Array.from({ length: count }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder rows
+        <div key={i} className="pd-summary-skel-row" aria-hidden>
+          <Bar width={pick(LABEL_W, i)} />
+          <Bar width={pick(VALUE_W, i)} />
+        </div>
+      ))}
+    </div>
+  );
+}
