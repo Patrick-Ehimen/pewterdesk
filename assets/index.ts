@@ -21,6 +21,16 @@ import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
 import venueAster from "./venues/aster.svg";
 import venueHyperliquid from "./venues/hyperliquid.svg";
+import walletCoinbase from "./wallets/coinbase.svg";
+import walletLedger from "./wallets/ledger.svg";
+import walletMetamask from "./wallets/metamask.svg";
+import walletOkx from "./wallets/okx.svg";
+import walletPhantom from "./wallets/phantom.svg";
+import walletRabby from "./wallets/rabby.svg";
+import walletRainbow from "./wallets/rainbow.svg";
+import walletTrust from "./wallets/trust.svg";
+import walletWalletConnect from "./wallets/wallet-connect.svg";
+import walletZerion from "./wallets/zerion.svg";
 
 export const logo = {
   /** Symbol + name side by side - the default logo. Min width 96px. */
@@ -55,4 +65,18 @@ export const flags = {
 export const venueLogos = {
   hyperliquid: venueHyperliquid,
   aster: venueAster,
+} as const;
+
+/** Wallet marks on their brand tiles, for the Connect wallet dialog. Source and license: wallets/README.md. */
+export const walletLogos = {
+  coinbase: walletCoinbase,
+  ledger: walletLedger,
+  metamask: walletMetamask,
+  okx: walletOkx,
+  phantom: walletPhantom,
+  rabby: walletRabby,
+  rainbow: walletRainbow,
+  trust: walletTrust,
+  walletConnect: walletWalletConnect,
+  zerion: walletZerion,
 } as const;

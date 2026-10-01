@@ -200,24 +200,40 @@ pub struct Onboarding(Mutex<Option<Pending>>);
 /// How long the wallet has to sign before the approval is dropped.
 const PENDING_FOR: Duration = Duration::from_secs(5 * 60);
 
+/// Whether `address` can approve an agent: Hyperliquid refuses accounts
+/// that have never deposited, and agents can't approve agents. Checked
+/// before asking the wallet to sign, so the user isn't asked for nothing.
+fn check_role(role: &str) -> Result<(), VenueError> {
+    match role {
+        "missing" => Err(VenueError::InvalidRequest(
+            "this account hasn't deposited on Hyperliquid yet; deposit at least 5 USDC from Arbitrum, then try again".into(),
+        )),
+        "agent" => Err(VenueError::InvalidRequest(
+            "that address is an API wallet; connect your main wallet instead".into(),
+        )),
+        _ => Ok(()),
+    }
+}
+
 /// Starts approving a new agent for `address`: generates its key and
 /// returns the typed data for the wallet to sign (`eth_signTypedData_v4`) on
-/// `chain_id`, the chain the wallet is connected to.
-#[tauri::command]
-pub async fn begin_agent_approval(
-    onboarding: State<'_, Onboarding>,
-    venues: State<'_, Venues>,
+/// `chain_id`, the chain the wallet is connected to. Shared by WalletConnect
+/// (through the command) and the browser page (`browser_connect.rs`).
+pub async fn begin(
+    onboarding: &Onboarding,
+    venues: &Venues,
     venue: VenueId,
-    address: String,
+    address: &str,
     chain_id: u64,
 ) -> Result<Value, VenueError> {
     only_hyperliquid(venue)?;
-    let address = normalize_address(&address)?;
+    let address = normalize_address(address)?;
     if chain_id == 0 {
         return Err(VenueError::InvalidRequest(
             "the wallet's chain is unknown".into(),
         ));
     }
+    check_role(&venues.hyperliquid().user_role(&address).await?)?;
     let (key, agent) = generate_agent();
     let approval = ApproveAgent {
         chain: venues.hyperliquid().chain(),
@@ -239,11 +255,10 @@ pub async fn begin_agent_approval(
 
 /// Finishes the approval with the wallet's signature: checks it's the
 /// connected main wallet's, sends it to the venue, and stores the key.
-#[tauri::command]
-pub async fn finish_agent_approval(
-    onboarding: State<'_, Onboarding>,
-    venues: State<'_, Venues>,
-    signature: String,
+pub async fn finish(
+    onboarding: &Onboarding,
+    venues: &Venues,
+    signature: &str,
 ) -> Result<WalletInfo, VenueError> {
     let pending =
         onboarding.0.lock().unwrap().take().ok_or_else(|| {
@@ -254,7 +269,7 @@ pub async fn finish_agent_approval(
             "the approval took too long; start again".into(),
         ));
     }
-    let signature = WalletSignature::parse(&signature)?;
+    let signature = WalletSignature::parse(signature)?;
     let signer = signature.signer(&pending.approval.signing_hash()?)?;
     if signer != pending.address {
         return Err(VenueError::InvalidRequest(
@@ -284,11 +299,36 @@ pub async fn finish_agent_approval(
     })
 }
 
+/// Drops the approval in flight, if any; its key is zeroed with it.
+pub fn cancel(onboarding: &Onboarding) {
+    onboarding.0.lock().unwrap().take();
+}
+
+#[tauri::command]
+pub async fn begin_agent_approval(
+    onboarding: State<'_, Onboarding>,
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+    chain_id: u64,
+) -> Result<Value, VenueError> {
+    begin(&onboarding, &venues, venue, &address, chain_id).await
+}
+
+#[tauri::command]
+pub async fn finish_agent_approval(
+    onboarding: State<'_, Onboarding>,
+    venues: State<'_, Venues>,
+    signature: String,
+) -> Result<WalletInfo, VenueError> {
+    finish(&onboarding, &venues, &signature).await
+}
+
 /// Drops an approval in flight (the user closed the dialog or the wallet
 /// refused); its key is zeroed with it.
 #[tauri::command]
 pub fn cancel_agent_approval(onboarding: State<'_, Onboarding>) {
-    onboarding.0.lock().unwrap().take();
+    cancel(&onboarding);
 }
 
 #[cfg(test)]
@@ -339,6 +379,18 @@ mod tests {
         assert!(check_approval(AGENT, vec![agent(other, 2_000)], 1_000).is_err());
         let expired = check_approval(AGENT, vec![agent(AGENT, 1_000)], 1_000);
         assert!(matches!(expired, Err(VenueError::InvalidRequest(m)) if m.contains("expired")));
+    }
+
+    #[test]
+    fn unfunded_accounts_and_agents_cant_approve() {
+        assert!(check_role("user").is_ok());
+        assert!(check_role("subAccount").is_ok());
+        assert!(
+            matches!(check_role("missing"), Err(VenueError::InvalidRequest(m)) if m.contains("deposit"))
+        );
+        assert!(
+            matches!(check_role("agent"), Err(VenueError::InvalidRequest(m)) if m.contains("main wallet"))
+        );
     }
 
     #[test]

@@ -17,6 +17,7 @@ import type {
 } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { trackFeed } from "../lib/feedActivity";
 
 /**
@@ -231,4 +232,30 @@ export const walletClient = {
   finishApproval: (signature: string) => call<WalletInfo>("finish_agent_approval", { signature }),
 
   cancelApproval: () => call<void>("cancel_agent_approval", {}),
+
+  /**
+   * Connecting a browser-extension wallet: Rust serves a one-time page on
+   * 127.0.0.1 and opens it in the system browser, where the extension signs.
+   * `strings` is that page's text, in the user's language.
+   */
+  startBrowser: (strings: Record<string, string>) =>
+    call<void>("start_browser_connect", { strings }),
+
+  reopenBrowser: () => call<void>("reopen_browser_connect", {}),
+
+  cancelBrowser: () => call<void>("cancel_browser_connect", {}),
+
+  /** What the browser page reports: connected (with the account), or closed. */
+  onBrowser: (
+    handler: (event: { status: "connected"; wallet: WalletInfo } | { status: "ended" }) => void,
+  ): (() => void) => {
+    if (!isTauri()) return () => {};
+    const unlisten = listen<{ status: "connected"; wallet: WalletInfo } | { status: "ended" }>(
+      "browser-connect",
+      (e) => handler(e.payload),
+    );
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  },
 };

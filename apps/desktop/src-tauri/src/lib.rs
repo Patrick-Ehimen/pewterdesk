@@ -1,6 +1,7 @@
 use tauri::Manager;
 
 mod about;
+mod browser_connect;
 mod keychain;
 mod menubar;
 mod splash;
@@ -15,6 +16,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(venues)
         .manage(wallet::Onboarding::default())
+        .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             menubar::install(app)?;
@@ -78,6 +80,9 @@ pub fn run() {
             wallet::begin_agent_approval,
             wallet::finish_agent_approval,
             wallet::cancel_agent_approval,
+            browser_connect::start_browser_connect,
+            browser_connect::reopen_browser_connect,
+            browser_connect::cancel_browser_connect,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

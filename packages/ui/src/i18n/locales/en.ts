@@ -588,9 +588,6 @@ export const en = {
   "tray.equity": "{venue} equity {equity} · PnL {pnl}",
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Ways to connect",
-  "wallet.trust1": "Keys stay in your OS keychain on this device",
-  "wallet.trust2": "No pewterdesk server, no account, no custody",
-  "wallet.trust3": "Each venue gets a trading key that can't withdraw",
   "wallet.wcHow":
     "Scan with Rabby, MetaMask, Rainbow or any WalletConnect wallet, then approve one signature. It authorizes a new trade-only API wallet on Hyperliquid; pewterdesk never sees your seed phrase. Your Hyperliquid account needs a deposit first.",
   "wallet.ledgerHow":
@@ -600,10 +597,6 @@ export const en = {
   "wallet.stepConnect": "Connect your wallet",
   "wallet.stepKeySaved": "A trade-only key is saved to your OS keychain",
   "wallet.stepApprove": "Approve it once in your wallet",
-  "wallet.canTrade": "Can trade",
-  "wallet.canTradeValue": "Yes · orders, cancels",
-  "wallet.canWithdraw": "Can withdraw",
-  "wallet.no": "No",
   "wallet.coming": "Coming with order placement",
   "wallet.connectedAddress": "Connected: {address}",
   "wallet.hlStep1": "On Hyperliquid, open More → API",
@@ -638,6 +631,36 @@ export const en = {
     "Connected to {address}. Approve the signature in your wallet to authorize pewterdesk's API wallet.",
   "wallet.wcSending": "Authorizing with Hyperliquid…",
   "wallet.wcRetry": "Try again",
+  "wallet.browser": "Browser extension",
+  "wallet.browserDetail": "MetaMask, Rabby, Coinbase and more",
+  "wallet.browserHow":
+    "Connect the wallet extension in your browser. pewterdesk opens a page there; pick your wallet and approve one signature to authorize a trade-only API wallet on Hyperliquid.",
+  "wallet.browserStep1": "Open the page pewterdesk shows in your browser",
+  "wallet.browserStep2": "Pick your wallet and approve one signature",
+  "wallet.soon": "Soon",
+  "wallet.factTrade": "Places and cancels orders",
+  "wallet.factWithdraw": "Can't withdraw or transfer",
+  "wallet.factKeychain": "Key stays in your OS keychain",
+  "browser.pageTitle": "Connect wallet · pewterdesk",
+  "browser.title": "Connect your wallet",
+  "browser.lead":
+    "Pick your wallet, then approve one signature. It authorizes a trade-only API wallet for pewterdesk on Hyperliquid.",
+  "browser.note":
+    "This page is served by the pewterdesk app on your own computer, and stops once you're connected.",
+  "browser.connecting": "Connecting to your wallet…",
+  "browser.noAccount": "Your wallet shared no account.",
+  "browser.sign": "Approve the signature in your wallet.",
+  "browser.sending": "Authorizing with Hyperliquid…",
+  "browser.done": "Connected. You can close this tab and go back to pewterdesk.",
+  "browser.noWallet":
+    "No browser wallet found. Install MetaMask, Rabby or another extension in this browser, then reload.",
+  "browser.injected": "Browser wallet",
+  "browser.closed": "The browser page closed. Start again to connect.",
+  "browser.waiting": "Waiting for your browser…",
+  "browser.waitingHint":
+    "Finish in the page that opened: pick your wallet and approve the signature.",
+  "browser.reopen": "Open the page again",
+  "browser.open": "Open in browser",
   "settings.connected": "Connected wallet",
   "settings.noConnected": "No wallet connected yet.",
   "settings.wallets.desc":
