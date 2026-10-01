@@ -16,7 +16,7 @@
     "@pewterdesk/assets": "workspace:*",
     "@pewterdesk/core": "workspace:*",
     "@pewterdesk/ui": "workspace:*",
-    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/api": "^2.12.0",
     "@walletconnect/sign-client": "2.25.0",
     "qrcode": "1.5.4",
     "react": "^19.3.0",
