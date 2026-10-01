@@ -647,7 +647,7 @@ export const messages: Messages = {
   "tray.quit": "Quitter",
   "tray.equity": "Capital {venue} {equity} · PnL {pnl}",
   "tray.position": "{market} {side} {size} · {pnl}",
-  "wallet.tradingGroup": "Trading · arrive avec le passage d'ordres",
+  "wallet.tradingGroup": "Moyens de connexion",
   "wallet.trust1": "Les clés restent dans le trousseau du système de cet appareil",
   "wallet.trust2": "Aucun serveur pewterdesk, aucun compte, aucune garde",
   "wallet.trust3": "Chaque plateforme reçoit une clé de trading qui ne peut pas retirer",
@@ -656,19 +656,39 @@ export const messages: Messages = {
   "wallet.ledgerHow":
     "Branchez votre Ledger et ouvrez son app Ethereum. Il approuve une fois une clé de trading uniquement, sur l'écran de l'appareil.",
   "wallet.apiHow":
-    "Créez un API wallet sur Hyperliquid ou Aster, approuvez-le avec votre wallet principal, puis collez sa clé ici. Sur Aster, désactivez les retraits : une clé qui peut retirer est refusée.",
+    "Sur Hyperliquid, créez un API wallet et approuvez-le depuis votre wallet principal, puis collez sa clé ici. Il peut passer et annuler des ordres sur votre compte, mais pas retirer. Aster suivra avec la signature des ordres.",
   "wallet.stepConnect": "Connectez votre wallet",
   "wallet.stepKeySaved": "Une clé de trading uniquement est enregistrée dans le trousseau",
   "wallet.stepApprove": "Approuvez-la une fois dans votre wallet",
-  "wallet.stepCreateApi": "Créez un API wallet sur Hyperliquid ou Aster",
-  "wallet.stepPasteKey": "Collez ici sa clé privée",
-  "wallet.stepKeychain": "Enregistrée dans le trousseau, jamais réaffichée",
   "wallet.canTrade": "Peut trader",
   "wallet.canTradeValue": "Oui · ordres, annulations",
   "wallet.canWithdraw": "Peut retirer",
   "wallet.no": "Non",
   "wallet.coming": "Arrive avec le passage d'ordres",
   "wallet.connectedAddress": "Connecté : {address}",
+  "wallet.hlStep1": "Sur Hyperliquid, ouvrez More → API",
+  "wallet.hlStep2":
+    "Nommez un API wallet, générez-le et autorisez-le depuis votre wallet principal",
+  "wallet.hlStep3": "Copiez sa clé privée et collez-la ci-dessous avec votre adresse principale",
+  "wallet.addressLabel": "Adresse du wallet principal",
+  "wallet.addressHint": "Publique : vos positions et soldes sont lus à partir d'elle.",
+  "wallet.keyLabel": "Clé privée de l'API wallet",
+  "wallet.keyHint":
+    "Vérifiée auprès d'Hyperliquid, puis conservée dans le trousseau du système. Elle n'est plus jamais affichée.",
+  "wallet.submit": "Vérifier et connecter",
+  "wallet.checking": "Vérification auprès d'Hyperliquid…",
+  "wallet.account": "Compte",
+  "wallet.connected": "Connecté",
+  "wallet.mainAddress": "Adresse principale",
+  "wallet.apiWallet": "API wallet",
+  "wallet.approvedUntil": "Approuvé jusqu'au",
+  "wallet.keyMissing":
+    "La clé de ce compte n'est plus dans le trousseau. Déconnectez-vous puis reconnectez-vous.",
+  "wallet.viewOnly":
+    "Vos soldes, positions et ordres s'affichent. Passer des ordres depuis pewterdesk arrive ensuite.",
+  "wallet.disconnect": "Déconnecter",
+  "wallet.disconnectHint":
+    "Supprime la clé de cet appareil. Pour mettre fin à son autorisation, supprimez aussi l'API wallet sur Hyperliquid.",
   "settings.connected": "Wallet connecté",
   "settings.noConnected": "Aucun wallet connecté pour l'instant.",
   "settings.wallets.desc":

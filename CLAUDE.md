@@ -28,9 +28,12 @@ format, so renaming a field is a breaking change for the frontend.
 `packages/ui` and the two `apps/*` depend on `packages/core` for types and
 reach venues only through Tauri commands - never a venue crate or a venue's
 API directly. That's what makes adding a venue a new crate, not a rewrite of
-the UI. `packages/core` also holds `SecretStore`, used only to onboard a key
-into the keychain (`apps/desktop/src/secrets/tauriSecretStore.ts`); `apps/web`
-has no implementation and is not meant to get one.
+the UI. `packages/core` also holds `SecretStore` (write, check, delete - no
+read), implemented over the keychain in
+`apps/desktop/src/secrets/tauriSecretStore.ts`; `apps/web` has no
+implementation and is not meant to get one. Onboarding doesn't use it: it goes
+through `connect_wallet` (`apps/desktop/src-tauri/src/wallet.rs`), which checks
+a key before storing it.
 
 ## Layout
 
@@ -83,9 +86,13 @@ discover it on their own. The reasoning behind the rules is in
   only place key material is stored. Keys never touch disk, env vars, or logs.
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
-  than formatted into a string. `get_secret` still returns a key to JS; it is
-  removed (with `withSecret`) in the PR that lands the first `KeySource`
-  implementation, and nothing new may depend on it.
+  than formatted into a string. Nothing reads a key back to JS: Rust reads it
+  through `KeychainKeySource`, the app's `KeySource`.
+- `apps/desktop/src-tauri/src/wallet.rs` and `crates/exchange-hyperliquid/src/agent.rs`
+  - onboarding. The pasted key crosses IPC once, into `connect_wallet`, which
+  wraps it in `Zeroizing`, refuses the main wallet's own key, and stores it
+  only if the venue lists it as an approved agent of that account. The
+  commands return public addresses only.
 - Signing code in each `crates/exchange-<venue>` (none written yet) - what
   turns a key into a signed venue action. The highest-stakes code in the repo.
   Hold keys only as `Zeroizing` and only for the signing call.
@@ -119,8 +126,9 @@ show Aster yet.
 
 The desktop frontend is a read-only trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
-ticket), which stay empty until wallet connection lands with order placement
-(`lib/account.ts`). The Markets panel is tabbed:
+ticket). They fill once a Hyperliquid API wallet is connected (the Connect
+wallet dialog; the connected main address is kept in `lib/account.ts`), while
+the ticket still can't place orders. The Markets panel is tabbed:
 chart (lightweight-charts), depth, screener and watchlist. In `apps/desktop/src/`,
 `App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is

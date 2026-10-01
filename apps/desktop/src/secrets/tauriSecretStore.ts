@@ -40,14 +40,6 @@ export const tauriSecretStore: SecretStore = {
     }
   },
 
-  async get(account) {
-    try {
-      return await invoke<string>("get_secret", { account });
-    } catch (e) {
-      throw toSecretStoreError(e);
-    }
-  },
-
   async has(account) {
     try {
       return await invoke<boolean>("has_secret", { account });

@@ -191,3 +191,32 @@ export const venueClient = {
   subscribeAccount: (venue: VenueId, address: string, handlers: StreamHandlers<AccountSnapshot>) =>
     subscribe("subscribe_account", { venue, address }, handlers),
 };
+
+/**
+ * A connected account as `wallet.rs` reports it: public addresses only, never
+ * the key. Keep in sync with `WalletInfo` there.
+ */
+export interface WalletInfo {
+  venue: VenueId;
+  address: string;
+  /** The stored trade-only key's address. */
+  agent: string;
+  agentName: string | null;
+  /** Ms since the epoch. */
+  validUntil: number | null;
+}
+
+/**
+ * Onboarding. `connect` hands the pasted key to Rust once, which checks it
+ * against the venue and stores it in the keychain; nothing returns it.
+ */
+export const walletClient = {
+  connect: (venue: VenueId, address: string, key: string) =>
+    call<WalletInfo>("connect_wallet", { venue, address, key }),
+
+  status: (venue: VenueId, address: string) =>
+    call<WalletInfo | null>("wallet_status", { venue, address }),
+
+  disconnect: (venue: VenueId, address: string) =>
+    call<void>("disconnect_wallet", { venue, address }),
+};

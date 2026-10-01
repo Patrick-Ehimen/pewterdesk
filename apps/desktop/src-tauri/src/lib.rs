@@ -6,6 +6,7 @@ mod menubar;
 mod splash;
 mod tray;
 mod venues;
+mod wallet;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -51,7 +52,6 @@ pub fn run() {
             tray::tray_quit,
             tray::resize_tray_panel,
             keychain::store_secret,
-            keychain::get_secret,
             keychain::has_secret,
             keychain::delete_secret,
             venues::markets,
@@ -71,6 +71,9 @@ pub fn run() {
             venues::market_icon,
             venues::subscribe_account,
             venues::unsubscribe,
+            wallet::connect_wallet,
+            wallet::wallet_status,
+            wallet::disconnect_wallet,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

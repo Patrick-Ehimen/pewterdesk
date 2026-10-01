@@ -20,12 +20,6 @@ describe("tauriSecretStore commands", () => {
     });
   });
 
-  it("get resolves the secret from get_secret", async () => {
-    mockInvoke.mockResolvedValue("s3cret");
-    await expect(tauriSecretStore.get("wallet")).resolves.toBe("s3cret");
-    expect(mockInvoke).toHaveBeenCalledExactlyOnceWith("get_secret", { account: "wallet" });
-  });
-
   it("has resolves the boolean from has_secret", async () => {
     mockInvoke.mockResolvedValue(false);
     await expect(tauriSecretStore.has("wallet")).resolves.toBe(false);
@@ -42,7 +36,7 @@ describe("tauriSecretStore commands", () => {
 describe("tauriSecretStore error mapping", () => {
   async function rejectionFrom(raw: unknown): Promise<SecretStoreError> {
     mockInvoke.mockRejectedValue(raw);
-    const err = await tauriSecretStore.get("wallet").catch((e: unknown) => e);
+    const err = await tauriSecretStore.has("wallet").catch((e: unknown) => e);
     expect(err).toBeInstanceOf(SecretStoreError);
     return err as SecretStoreError;
   }
@@ -59,7 +53,7 @@ describe("tauriSecretStore error mapping", () => {
   });
 
   it.each([
-    ["a string", "command get_secret not found"],
+    ["a string", "command has_secret not found"],
     ["an unknown kind", { kind: "surprise", detail: "0xdeadbeef" }],
     ["null", null],
   ])("maps %s to a generic backend error without echoing it", async (_, raw) => {

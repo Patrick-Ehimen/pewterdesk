@@ -11,6 +11,7 @@
 //! the adapter takes in its constructor. The signer is security-sensitive -
 //! see docs/adr/0001-venues-in-rust.md.
 
+pub mod agent;
 pub mod constants;
 mod icons;
 mod stats;
@@ -225,6 +226,17 @@ impl HyperliquidAdapter {
 
     async fn info<T: DeserializeOwned>(&self, request: Value) -> Result<T, VenueError> {
         post_info(&self.http, self.endpoints, request).await
+    }
+
+    /// The API (agent) wallets `user` has approved. Read-only and keyless:
+    /// onboarding checks a pasted key's address against this before storing it.
+    pub async fn approved_agents(
+        &self,
+        user: &str,
+    ) -> Result<Vec<agent::ApprovedAgent>, VenueError> {
+        validate_address(user)?;
+        self.info(json!({ "type": "extraAgents", "user": user }))
+            .await
     }
 
     async fn open_orders(&self, address: &str) -> Result<Vec<OpenOrder>, VenueError> {

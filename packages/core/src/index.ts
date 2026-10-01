@@ -6,5 +6,4 @@ export {
   type SecretStore,
   SecretStoreError,
   type SecretStoreErrorKind,
-  withSecret,
 } from "./secrets";

@@ -32,7 +32,14 @@ import {
   TradesView,
   t,
 } from "@pewterdesk/ui";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { LuWallet } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
@@ -75,7 +82,7 @@ import {
 } from "./hooks/useVenueFeeds";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useWorkspace } from "./hooks/useWorkspace";
-import { connectedAddress } from "./lib/account";
+import { connectedWallet, subscribeWallet } from "./lib/account";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import { peekSavedIcon, withIconCache } from "./lib/iconCache";
 import type { Page } from "./lib/pages";
@@ -323,7 +330,9 @@ export function App() {
   };
   // Aster serves account data only to signed requests, which need a
   // connected API wallet; until then it has no account to show.
-  const address = venue === "hyperliquid" ? connectedAddress() : undefined;
+  // The connected account, on the venue it belongs to.
+  const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
+  const address = wallet?.venue === venue ? wallet.address : undefined;
   const appearance = useAppearance();
   const themeTransition = useThemeTransition(appearance.setTheme);
   const watchlist = useWatchlist(venue);

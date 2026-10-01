@@ -785,7 +785,7 @@ button.app-status-venue[aria-expanded="true"] {
   display: grid;
   grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
   /* The same height for every method, so switching doesn't jump the dialog */
-  height: min(440px, calc(100vh - 180px));
+  height: min(540px, calc(100vh - 180px));
   overflow: auto;
 }
 /* Method list: a read-only group, then the trading methods to come */
@@ -956,6 +956,88 @@ button.app-status-venue[aria-expanded="true"] {
 }
 .wallet-scope dd {
   margin: 0;
+}
+/* API wallet onboarding: two fields and a submit, under the steps */
+.wallet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wallet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.wallet-field > span {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.wallet-field input {
+  height: 36px;
+  padding: 0 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-text);
+  font-family: var(--pd-font-mono);
+  font-size: 13px;
+}
+.wallet-field input:focus-visible {
+  outline: none;
+  border-color: var(--pd-brass);
+}
+.wallet-field small {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.wallet-error {
+  color: var(--pd-warning);
+  font-size: 12.5px;
+}
+.wallet-submit,
+.wallet-disconnect {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wallet-submit {
+  background: var(--pd-brass);
+  border: 1px solid var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+.wallet-submit:hover:not(:disabled) {
+  background: var(--pd-brass-hover);
+}
+.wallet-submit:disabled,
+.wallet-disconnect:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+/* Disconnecting is destructive: the warning token, as in Settings */
+.wallet-disconnect {
+  background: none;
+  border: 1px solid var(--pd-warning);
+  color: var(--pd-warning);
+}
+.wallet-note {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.wallet-venue {
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.wallet-connected {
+  grid-column: 1 / -1;
+}
+.wallet-connected .wallet-scope {
+  grid-template-columns: repeat(3, 1fr);
+}
+.wallet-connected .wallet-scope dd {
+  text-align: left;
 }
 .wallet-dialog-foot {
   display: flex;
