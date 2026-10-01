@@ -1,5 +1,7 @@
 /**
- * Exchange-agnostic contract for where private key material lives.
+ * Exchange-agnostic contract for where private key material lives: write,
+ * check and delete. There is no read - a stored key never comes back to JS;
+ * Rust reads it through the app's `KeySource` for the signing call.
  *
  * core owns the interface; implementations are platform-specific and live in
  * the apps (apps/desktop wires this to the Tauri keychain commands). Exchange
@@ -9,8 +11,6 @@
 export interface SecretStore {
   /** Store or overwrite the secret held under `account`. */
   store(account: string, secret: string): Promise<void>;
-  /** Read the secret back. Rejects with SecretStoreError("notFound") if absent. */
-  get(account: string): Promise<string>;
   /** Whether a secret exists, without materializing it. */
   has(account: string): Promise<boolean>;
   /** Idempotent: deleting an absent secret resolves. */
@@ -38,22 +38,4 @@ const ACCOUNT_PATTERN = /^[A-Za-z0-9\-_.:]{1,128}$/;
 
 export function isValidAccount(account: string): boolean {
   return ACCOUNT_PATTERN.test(account);
-}
-
-/**
- * The intended way to use a secret: scoped to a single callback, so key
- * material never lands in component state, a module-level cache, or a closure
- * that outlives the signing call.
- *
- * JS can't zero a string, so this doesn't clear anything - it exists to keep
- * the exposure window to one call and to give reviewers a single grep target
- * (`store.get(` outside this file is the smell). Anything needing a real
- * guarantee belongs in Rust.
- */
-export async function withSecret<T>(
-  store: SecretStore,
-  account: string,
-  use: (secret: string) => Promise<T>,
-): Promise<T> {
-  return use(await store.get(account));
 }

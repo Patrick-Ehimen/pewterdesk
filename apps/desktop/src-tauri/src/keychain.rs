@@ -2,7 +2,8 @@
 //!
 //! Secrets live in the platform credential store (macOS Keychain, Windows
 //! Credential Manager, Secret Service on Linux) under one service name.
-//! `get_secret` is the sole path by which a secret reaches JS.
+//! Nothing reads a secret back to JS: Rust gets at a stored key only through
+//! [`KeychainKeySource`], the app's `KeySource`.
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
@@ -12,8 +13,11 @@
 //!   impls dump it, so every variant maps to a fixed message by hand. Error
 //!   details are `&'static str` so a formatted string can't be passed through.
 
+use async_trait::async_trait;
 use keyring::{Entry, Error as KeyringError};
+use pewterdesk_core::{KeyError, KeySource};
 use serde::Serialize;
+use zeroize::Zeroizing;
 
 const SERVICE: &str = "app.pewterdesk.desktop";
 const ACCOUNT_MAX_LEN: usize = 128;
@@ -110,14 +114,45 @@ where
         .unwrap_or(Err(KeychainError::Backend("keychain task failed")))
 }
 
-#[tauri::command]
-pub async fn store_secret(account: String, secret: String) -> Result<(), KeychainError> {
-    blocking(move || store(SERVICE, &account, &secret)).await
+/// Stores a key that Rust has already checked (onboarding, in `wallet.rs`).
+pub async fn store_key(account: String, key: Zeroizing<String>) -> Result<(), KeychainError> {
+    blocking(move || store(SERVICE, &account, &key)).await
+}
+
+/// Deletes a stored key; idempotent.
+pub async fn delete_key(account: String) -> Result<(), KeychainError> {
+    blocking(move || delete(SERVICE, &account)).await
+}
+
+impl From<KeychainError> for KeyError {
+    fn from(err: KeychainError) -> Self {
+        match err {
+            KeychainError::NotFound => KeyError::NotFound,
+            KeychainError::InvalidAccount(detail) | KeychainError::Backend(detail) => {
+                KeyError::Backend(detail)
+            }
+        }
+    }
+}
+
+/// The app's `KeySource`: keys come from the OS keychain, straight into
+/// `Zeroizing` memory, and never cross to JS. Venue crates receive this;
+/// they never construct one.
+pub struct KeychainKeySource;
+
+#[async_trait]
+impl KeySource for KeychainKeySource {
+    async fn key(&self, account: &str) -> Result<Zeroizing<String>, KeyError> {
+        let account = account.to_owned();
+        Ok(Zeroizing::new(
+            blocking(move || get(SERVICE, &account)).await?,
+        ))
+    }
 }
 
 #[tauri::command]
-pub async fn get_secret(account: String) -> Result<String, KeychainError> {
-    blocking(move || get(SERVICE, &account)).await
+pub async fn store_secret(account: String, secret: String) -> Result<(), KeychainError> {
+    blocking(move || store(SERVICE, &account, &secret)).await
 }
 
 #[tauri::command]

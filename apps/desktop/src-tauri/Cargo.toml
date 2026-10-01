@@ -24,12 +24,14 @@ tauri-build = { version = "2", features = [] }
 # macos-private-api: transparent windows on macOS, for the tray panel's
 # rounded corners. Apple doesn't accept private-API apps in the Mac App Store.
 tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
+async-trait = "0.1"
 keyring = "4"
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
 pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["sync"] }
+zeroize = "1"
 
 # The tray's coloured title (green/red) is an AppKit attributed string; these
 # are the same bindings the tray itself uses, so nothing new is downloaded.

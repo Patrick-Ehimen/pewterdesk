@@ -12,7 +12,7 @@ import {
   TokenIconProvider,
   t,
 } from "@pewterdesk/ui";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LuChevronLeft, LuChevronRight, LuExternalLink, LuPower, LuSearch } from "react-icons/lu";
 import { appClient } from "../api/appClient";
 import { venueClient } from "../api/venueClient";
@@ -20,7 +20,7 @@ import { useStoredChoice } from "../hooks/useStoredChoice";
 import { TRAY_MODE_LABEL, TRAY_MODES, type TrayMode } from "../hooks/useTraySync";
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
-import { connectedAddress } from "../lib/account";
+import { connectedWallet, subscribeWallet } from "../lib/account";
 import { peekSavedIcon, withIconCache } from "../lib/iconCache";
 import { loadMarket } from "../lib/selectedMarket";
 import {
@@ -302,7 +302,8 @@ export function TrayPanel() {
     !query.trim() &&
     (waiting || (activeTab === "movers" && bySummary.size === 0 && rows.length === 0));
 
-  const address = connectedAddress();
+  const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
+  const address = wallet?.venue === ACCOUNT_VENUE ? wallet.address : undefined;
   const account = useAccount(ACCOUNT_VENUE, open ? address : undefined);
   const snapshot =
     account.status === "live" || account.status === "closed" ? account.data : undefined;

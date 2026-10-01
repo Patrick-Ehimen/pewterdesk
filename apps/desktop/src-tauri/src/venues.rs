@@ -52,6 +52,11 @@ impl Venues {
         })
     }
 
+    /// Hyperliquid's own methods beyond `ExchangeAdapter`, for onboarding.
+    pub fn hyperliquid(&self) -> &HyperliquidAdapter {
+        &self.hyperliquid
+    }
+
     fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),

@@ -1,14 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { isValidAccount, type SecretStore, SecretStoreError, withSecret } from "../src";
-
-function stubStore(get: SecretStore["get"]): SecretStore {
-  return {
-    store: vi.fn(),
-    get: vi.fn(get),
-    has: vi.fn(),
-    delete: vi.fn(),
-  };
-}
+import { describe, expect, it } from "vitest";
+import { isValidAccount, SecretStoreError } from "../src";
 
 describe("isValidAccount", () => {
   it.each(["a", "hyperliquid:main", "wallet_0.api-key", "ABC123", "x".repeat(128)])(
@@ -40,40 +31,5 @@ describe("SecretStoreError", () => {
     expect(err.name).toBe("SecretStoreError");
     expect(err.kind).toBe("notFound");
     expect(err.message).toBe("no secret for wallet");
-  });
-});
-
-describe("withSecret", () => {
-  it("reads the account once and returns the callback's result", async () => {
-    const store = stubStore(async () => "s3cret");
-    const use = vi.fn(async (secret: string) => secret.length);
-
-    await expect(withSecret(store, "wallet", use)).resolves.toBe(6);
-    expect(store.get).toHaveBeenCalledExactlyOnceWith("wallet");
-    expect(use).toHaveBeenCalledExactlyOnceWith("s3cret");
-  });
-
-  it("propagates a store rejection without calling the callback", async () => {
-    const store = stubStore(async () => {
-      throw new SecretStoreError("notFound", "no secret for wallet");
-    });
-    const use = vi.fn(async () => "unreachable");
-
-    await expect(withSecret(store, "wallet", use)).rejects.toMatchObject({
-      name: "SecretStoreError",
-      kind: "notFound",
-    });
-    expect(use).not.toHaveBeenCalled();
-  });
-
-  it("propagates a rejection from the callback", async () => {
-    const store = stubStore(async () => "s3cret");
-    const failure = new Error("signing failed");
-
-    await expect(
-      withSecret(store, "wallet", async () => {
-        throw failure;
-      }),
-    ).rejects.toBe(failure);
   });
 });
