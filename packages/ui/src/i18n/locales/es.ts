@@ -72,8 +72,16 @@ export const messages: Messages = {
   "account.equity": "Patrimonio",
   "account.upnl": "PnL no realizado",
   "account.marginUsed": "Margen usado",
-  "account.available": "Disponible",
   "account.marginRatio": "Ratio de margen",
+  "account.summary": "Resumen de la cuenta",
+  "account.portfolioValue": "Valor de la cartera",
+  "account.maintenance": "Margen de mantenimiento",
+  "account.leverage": "Apalancamiento de la cuenta",
+  "account.marginRatioHint":
+    "Margen de mantenimiento sobre el valor de la cartera. Al 100% las posiciones empiezan a liquidarse.",
+  "account.maintenanceHint":
+    "Lo mínimo que debe tener la cuenta para mantener sus posiciones abiertas, estimado con el apalancamiento máximo de cada mercado.",
+  "account.leverageHint": "Valor total de las posiciones sobre el valor de la cartera.",
   "positions.empty": "No hay posiciones abiertas.",
   "orders.empty": "No hay órdenes abiertas.",
 
@@ -243,7 +251,6 @@ export const messages: Messages = {
   "depth.dragBand": "Banda de profundidad: arrástrala o usa las flechas para ampliarla o reducirla",
   "menu.view": "Vista",
   "menu.bookOptions": "Opciones del libro de órdenes",
-  "menu.tradesOptions": "Opciones de operaciones",
   "view.table": "Tabla",
   "view.tableDesc": "Una línea por fila, en columnas",
   "view.stacked": "Apilada",
@@ -251,6 +258,25 @@ export const messages: Messages = {
 
   "feed.loading": "Cargando…",
   "feed.closed": "Flujo cerrado: se muestra la última actualización.",
+  "feed.reconnecting": "Reconectando…",
+  "banner.offlineTitle": "Sin conexión",
+  "banner.offlineBody":
+    "Revisa tu conexión a internet. Los precios y el libro de órdenes se reanudan solos cuando vuelvas.",
+  "banner.unreachableTitle": "No se puede conectar con {venue}",
+  "banner.unreachableBody":
+    "Falló la conexión con el exchange. Los datos de mercado se reintentan en segundo plano.",
+  "banner.timeoutTitle": "{venue} responde con lentitud",
+  "banner.timeoutBody":
+    "Las solicitudes agotan el tiempo. Los datos se reanudan solos cuando lleguen.",
+  "banner.rateLimitedTitle": "{venue} está limitando las solicitudes",
+  "banner.rateLimitedBody":
+    "Demasiadas solicitudes por ahora. La app espera y vuelve a intentarlo en breve.",
+  "banner.venueTitle": "{venue} devolvió un error",
+  "banner.venueBody":
+    "Algunos datos de mercado no se pudieron cargar. Se reintentan en segundo plano.",
+  "banner.retry": "Reintentar",
+  "banner.retrying": "Reintentando…",
+  "banner.dismiss": "Cerrar",
   "feed.pickMarket": "Elige un mercado.",
   "feed.noAccount": "No hay ninguna cuenta que mostrar.",
 
@@ -640,7 +666,6 @@ export const messages: Messages = {
   "wallet.canWithdraw": "Puede retirar",
   "wallet.no": "No",
   "wallet.coming": "Llega con la colocación de órdenes",
-  "feed.connectWallet": "Conecta una wallet (arriba a la derecha) para ver tu cuenta.",
   "wallet.connectedAddress": "Conectada: {address}",
   "settings.connected": "Wallet conectada",
   "settings.noConnected": "Aún no hay ninguna wallet conectada.",
@@ -662,17 +687,18 @@ export const messages: Messages = {
   "bar.fundingHint": "Financiación de {market}, cada {hours}h: tasa y tiempo hasta el próximo pago",
   "bar.latency": "Latencia",
   "bar.latencyHint": "Cuánto tarda en llegar el libro de órdenes respecto al exchange",
+  "session.crypto": "Cripto",
+  "session.always": "Abierto · 24/7",
   "session.tokyo": "Tokio",
   "session.london": "Londres",
   "session.newYork": "Nueva York",
   "session.open": "Abierto · cierra en {time}",
   "session.closed": "Cerrado · abre en {time}",
-  "session.none": "Mercados cerrados",
-  "session.weekend": "Fin de semana",
   "clock.title": "Sesiones de mercado",
   "clock.utc": "UTC",
   "clock.local": "Local",
-  "clock.note": "Horario normal, en la hora local de cada bolsa. No se muestran los festivos.",
+  "clock.note":
+    "Las cripto cotizan a toda hora. Las sesiones bursátiles son en horario regular, local de cada bolsa; no se muestran festivos.",
   "ticker.show": "Ver {market}",
   "ticker.style": "Estilo del gráfico",
   "ticker.line": "Línea",

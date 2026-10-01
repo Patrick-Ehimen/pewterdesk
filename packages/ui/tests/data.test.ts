@@ -1,6 +1,6 @@
 import type { AccountSnapshot, OrderBook, Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
-import { accountTotals } from "../src/components/trading/AccountSummary";
+import { accountTotals, ratioLevel } from "../src/components/trading/AccountSummary";
 import { bookLadder, changedLevels, levelSizes } from "../src/components/trading/OrderBookView";
 import { formatNumber, formatSigned } from "../src/lib/format";
 
@@ -131,7 +131,30 @@ describe("accountTotals", () => {
       unrealizedPnl: 30,
       marginUsed: 300,
       marginRatio: 0.3,
+      notional: 2,
+      // Half of each position's margin, with no leverage limits to go on.
+      maintenanceMargin: 150,
+      maintenanceRatio: 0.15,
+      leverage: 0.002,
     });
+  });
+
+  it("takes maintenance margin from each market's maximum leverage", () => {
+    const big: AccountSnapshot = {
+      ...snapshot,
+      positions: [{ ...position("0", "500"), size: "10", markPrice: "400" }],
+    };
+    // 4,000 of notional at 20x max: 1/40 of it, 100, is 10% of 1,000 equity.
+    const totals = accountTotals(big, () => 20);
+    expect(totals.maintenanceMargin).toBe(100);
+    expect(totals.maintenanceRatio).toBeCloseTo(0.1);
+    expect(totals.leverage).toBe(4);
+  });
+
+  it("grades the margin ratio for the gauge", () => {
+    expect(ratioLevel(0)).toBe("safe");
+    expect(ratioLevel(0.5)).toBe("warn");
+    expect(ratioLevel(0.8)).toBe("danger");
   });
 
   it("reports a zero margin ratio for an empty account", () => {

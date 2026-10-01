@@ -2,6 +2,7 @@ import type { Market, VenueId } from "@pewterdesk/core";
 import { dateFormat, EmptyState, FundingHeatmap, Screener, SignalsFeed, t } from "@pewterdesk/ui";
 import { useFundingHeatmap } from "../../hooks/useFundingHeatmap";
 import { useScreenerData } from "../../hooks/useScreenerData";
+import { useReportError } from "../FeedView";
 
 const UTC_TIME: Intl.DateTimeFormatOptions = {
   hour: "2-digit",
@@ -40,7 +41,9 @@ export function ScreenerPanel({
   const data = useScreenerData(venue, markets, true);
   const heatmap = useFundingHeatmap(venue, data.rows, expanded);
 
-  if (data.error) return <EmptyState error>{data.error}</EmptyState>;
+  // A failure is the connection banner's to explain; the panel just waits.
+  useReportError(data.error);
+  if (data.error) return <EmptyState>{t("feed.reconnecting")}</EmptyState>;
   const loading = data.loading && data.rows.length === 0;
 
   const table = (

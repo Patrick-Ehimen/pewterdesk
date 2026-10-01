@@ -438,18 +438,30 @@ input {
   }
 }
 
-/* Account summary */
+/* Account summary: a title, then label / value rows */
 .pd-account {
-  margin: 0;
   padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pd-account-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--pd-text);
+}
+.pd-account-rows {
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.pd-account > div {
+.pd-account-rows > div {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
+  gap: 12px;
 }
 .pd-account dt {
   color: var(--pd-pewter);
@@ -459,19 +471,35 @@ input {
   font-family: var(--pd-font-mono);
   font-variant-numeric: tabular-nums;
 }
-.pd-account-equity dd {
-  font-size: 18px;
-  font-weight: 600;
+.pd-account-hint.pd-tip-trigger {
+  color: var(--pd-pewter);
+  text-decoration: underline dashed;
+  text-underline-offset: 4px;
 }
-.pd-meter {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--pd-border);
-  overflow: hidden;
+/* Margin ratio: the gauge and figure share a colour, brass while it's safe */
+.pd-account-ratio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  --pd-level: var(--pd-brass-text);
+  color: var(--pd-level);
 }
-.pd-meter > div {
-  height: 100%;
-  background: var(--pd-pewter);
+.pd-account-ratio[data-level="warn"] {
+  --pd-level: var(--pd-warning);
+}
+.pd-account-ratio[data-level="danger"] {
+  --pd-level: var(--pd-sell);
+}
+.pd-gauge path {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+.pd-gauge-track {
+  stroke: var(--pd-border-strong);
+}
+.pd-gauge-fill {
+  stroke: var(--pd-level);
 }
 
 /* Tooltip - raised card with an arrow, fades in; positioned by Tooltip.tsx */

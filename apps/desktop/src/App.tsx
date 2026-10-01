@@ -37,6 +37,7 @@ import { LuWallet } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
+import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
 import { FeedView } from "./components/FeedView";
 import { HeaderActions } from "./components/header/HeaderActions";
@@ -46,13 +47,7 @@ import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
-import {
-  pageLabel,
-  pageOptions,
-  ROW_MODES,
-  rowModeOptions,
-  VIEW_KEYS,
-} from "./components/preferences";
+import { pageLabel, pageOptions, ROW_MODES, VIEW_KEYS } from "./components/preferences";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
@@ -226,17 +221,14 @@ function OrderBookPanel({
   marketsLoading: boolean;
 }) {
   const [tab, setTab] = useState<BookTab>("book");
-  // Table or stacked rows are set in Settings; the panel picks the sides.
+  // Table or stacked rows, for the book and the tape, are set in Settings;
+  // the panel picks the book's sides.
   const [bookMode] = useStoredChoice<RowMode>(VIEW_KEYS.book, ROW_MODES, "table");
   // Sizes and totals in the coin, or valued in the quote asset.
   const [bookUnit, setBookUnit] = useStoredChoice<BookUnit>("pd.book.unit", BOOK_UNITS, "base");
   // Buys and sells, or one side given the whole panel.
   const [bookSides, setBookSides] = useStoredChoice<BookSides>("pd.book.sides", BOOK_SIDES, "both");
-  const [tradesMode, setTradesMode] = useStoredChoice<RowMode>(
-    VIEW_KEYS.trades,
-    ROW_MODES,
-    "table",
-  );
+  const [tradesMode] = useStoredChoice<RowMode>(VIEW_KEYS.trades, ROW_MODES, "table");
   const trades = useTrades(venue, tab === "trades" ? market?.id : undefined);
   // Stale: the book has gone quiet past its timeout, the network is gone, or
   // the stream ended. Its last prices stay up, dimmed, with a warning.
@@ -259,17 +251,7 @@ function OrderBookPanel({
         active={tab}
         onChange={setTab}
         aside={
-          tab === "book" ? (
-            <BookSidesPicker value={bookSides} onChange={setBookSides} />
-          ) : (
-            <OptionsMenu
-              label={t("menu.tradesOptions")}
-              heading={t("menu.view")}
-              options={rowModeOptions()}
-              value={tradesMode}
-              onChange={setTradesMode}
-            />
-          )
+          tab === "book" ? <BookSidesPicker value={bookSides} onChange={setBookSides} /> : undefined
         }
       />
       <div className="app-fill">
@@ -481,6 +463,11 @@ export function App() {
     account: accountData,
   });
 
+  const maxLeverageFor = useCallback(
+    (id: string) => marketList.find((m) => m.id === id)?.maxLeverage,
+    [marketList],
+  );
+
   const symbolFor = useCallback(
     (id: string) => marketList.find((m) => m.id === id)?.symbol ?? id,
     [marketList],
@@ -534,11 +521,15 @@ export function App() {
       case "account":
         return (
           <div className="app-scroll">
-            <FeedView
-              feed={account}
-              idle={t("feed.connectWallet")}
-              live={(data) => <AccountSummary snapshot={data} quote={selected?.quote ?? "USDC"} />}
-            />
+            {/* Before a wallet is connected the summary reads zero, not a prompt. */}
+            {account.status === "idle" ? (
+              <AccountSummary />
+            ) : (
+              <FeedView
+                feed={account}
+                live={(data) => <AccountSummary snapshot={data} maxLeverageFor={maxLeverageFor} />}
+              />
+            )}
           </div>
         );
       case "positions":
@@ -725,6 +716,7 @@ export function App() {
               />
             )}
 
+            <ConnectionBanner venue={venueInfo.label} connection={connection} />
             <div className="app-body">
               <WorkspaceGrid
                 layout={workspace.layout}

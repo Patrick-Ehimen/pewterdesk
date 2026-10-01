@@ -78,19 +78,17 @@ const time = (ms: number, timeZone?: string) =>
   }).format(ms);
 
 /**
- * UTC time and which stock-market sessions are open, e.g. "London · New
- * York". Clicking lists each session with when it next opens or closes,
- * and the local time.
+ * UTC time and which markets are open: crypto always, then whichever
+ * stock-market sessions are, e.g. "Crypto · London · New York". Clicking
+ * lists each with when it next opens or closes, and the local time.
  */
 export function Clock() {
   const now = useNow();
   const states = sessionStates(now);
-  const open = states.filter((s) => s.open);
-  const weekend = [0, 6].includes(new Date(now).getUTCDay()) && open.length === 0;
-  const label =
-    open.length > 0
-      ? open.map((s) => t(SESSION_LABEL[s.id])).join(" · ")
-      : t(weekend ? "session.weekend" : "session.none");
+  const label = [
+    t("session.crypto"),
+    ...states.filter((s) => s.open).map((s) => t(SESSION_LABEL[s.id])),
+  ].join(" · ");
   return (
     <BarPopover
       align="right"
@@ -98,7 +96,7 @@ export function Clock() {
       button={
         <>
           <span className="pd-num">{time(now, "UTC")} UTC</span>
-          <span className="app-bar-session" data-open={open.length > 0 || undefined}>
+          <span className="app-bar-session" data-open>
             {label}
           </span>
         </>
@@ -108,6 +106,11 @@ export function Clock() {
         <div className="clock-panel">
           <p className="conn-title">{t("clock.title")}</p>
           <ul className="clock-rows">
+            <li data-open>
+              <span className="conn-dot" aria-hidden />
+              <span className="clock-name">{t("session.crypto")}</span>
+              <span className="clock-state">{t("session.always")}</span>
+            </li>
             {states.map((s) => (
               <li key={s.id} data-open={s.open || undefined}>
                 <span className="conn-dot" aria-hidden />

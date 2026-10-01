@@ -72,8 +72,16 @@ export const messages: Messages = {
   "account.equity": "Patrimônio",
   "account.upnl": "PnL não realizado",
   "account.marginUsed": "Margem usada",
-  "account.available": "Disponível",
   "account.marginRatio": "Índice de margem",
+  "account.summary": "Resumo da conta",
+  "account.portfolioValue": "Valor do portfólio",
+  "account.maintenance": "Margem de manutenção",
+  "account.leverage": "Alavancagem da conta",
+  "account.marginRatioHint":
+    "Margem de manutenção sobre o valor do portfólio. Em 100% as posições começam a ser liquidadas.",
+  "account.maintenanceHint":
+    "O mínimo que a conta precisa manter para deixar as posições abertas, estimado pela alavancagem máxima de cada mercado.",
+  "account.leverageHint": "Valor total das posições sobre o valor do portfólio.",
   "positions.empty": "Nenhuma posição aberta.",
   "orders.empty": "Nenhuma ordem aberta.",
 
@@ -240,7 +248,6 @@ export const messages: Messages = {
   "depth.dragBand": "Faixa de profundidade: arraste ou use as setas para ampliá-la ou reduzi-la",
   "menu.view": "Visualização",
   "menu.bookOptions": "Opções do livro de ofertas",
-  "menu.tradesOptions": "Opções de negociações",
   "view.table": "Tabela",
   "view.tableDesc": "Uma linha por item, em colunas",
   "view.stacked": "Empilhada",
@@ -248,6 +255,25 @@ export const messages: Messages = {
 
   "feed.loading": "Carregando…",
   "feed.closed": "Fluxo encerrado - mostrando a última atualização.",
+  "feed.reconnecting": "Reconectando…",
+  "banner.offlineTitle": "Você está offline",
+  "banner.offlineBody":
+    "Verifique sua conexão com a internet. Preços e livro de ofertas voltam sozinhos quando a conexão retornar.",
+  "banner.unreachableTitle": "Não foi possível conectar à {venue}",
+  "banner.unreachableBody":
+    "A conexão com a corretora falhou. Os dados de mercado são tentados de novo em segundo plano.",
+  "banner.timeoutTitle": "{venue} está respondendo devagar",
+  "banner.timeoutBody":
+    "As solicitações estão expirando. Os dados voltam sozinhos quando passarem.",
+  "banner.rateLimitedTitle": "{venue} está limitando solicitações",
+  "banner.rateLimitedBody":
+    "Solicitações demais por agora. O app aguarda e tenta de novo em breve.",
+  "banner.venueTitle": "{venue} retornou um erro",
+  "banner.venueBody":
+    "Alguns dados de mercado não carregaram. São tentados de novo em segundo plano.",
+  "banner.retry": "Tentar agora",
+  "banner.retrying": "Tentando…",
+  "banner.dismiss": "Fechar",
   "feed.pickMarket": "Escolha um mercado.",
   "feed.noAccount": "Nenhuma conta para mostrar.",
 
@@ -637,7 +663,6 @@ export const messages: Messages = {
   "wallet.canWithdraw": "Pode sacar",
   "wallet.no": "Não",
   "wallet.coming": "Chega com o envio de ordens",
-  "feed.connectWallet": "Conecte uma carteira (canto superior direito) para ver sua conta.",
   "wallet.connectedAddress": "Conectada: {address}",
   "settings.connected": "Carteira conectada",
   "settings.noConnected": "Nenhuma carteira conectada ainda.",
@@ -660,17 +685,18 @@ export const messages: Messages = {
     "Financiamento de {market}, a cada {hours}h: taxa e tempo até o próximo pagamento",
   "bar.latency": "Latência",
   "bar.latencyHint": "O atraso com que o livro de ofertas chega da exchange",
+  "session.crypto": "Cripto",
+  "session.always": "Aberto · 24/7",
   "session.tokyo": "Tóquio",
   "session.london": "Londres",
   "session.newYork": "Nova York",
   "session.open": "Aberto · fecha em {time}",
   "session.closed": "Fechado · abre em {time}",
-  "session.none": "Mercados fechados",
-  "session.weekend": "Fim de semana",
   "clock.title": "Sessões de mercado",
   "clock.utc": "UTC",
   "clock.local": "Local",
-  "clock.note": "Horário regular, no fuso de cada bolsa. Feriados não são considerados.",
+  "clock.note":
+    "Cripto negocia o tempo todo. As sessões de ações seguem o horário regular, local de cada bolsa; feriados não são mostrados.",
   "ticker.show": "Ver {market}",
   "ticker.style": "Estilo do gráfico",
   "ticker.line": "Linha",

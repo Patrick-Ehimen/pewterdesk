@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { RETRY_EVENT } from "../lib/feedErrors";
 
 /** A failed feed is tried again after this long, and again after that. */
 export const RETRY_MS = 10_000;
 
 /**
  * A counter that goes up while `failed`: every `RETRY_MS`, and at once when
- * the system says the network is back. Put it in a feed's effect
+ * the system says the network is back or the connection banner's retry is
+ * pressed. Put it in a feed's effect
  * dependencies and a failed feed resubscribes by itself.
  */
 export function useRetry(failed: boolean): number {
@@ -17,9 +19,11 @@ export function useRetry(failed: boolean): number {
     const retry = () => setAttempt((n) => n + 1);
     const id = setTimeout(retry, RETRY_MS);
     window.addEventListener("online", retry);
+    window.addEventListener(RETRY_EVENT, retry);
     return () => {
       clearTimeout(id);
       window.removeEventListener("online", retry);
+      window.removeEventListener(RETRY_EVENT, retry);
     };
   }, [failed, attempt]);
   return attempt;
