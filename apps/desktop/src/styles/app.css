@@ -1039,8 +1039,8 @@ button.app-status-venue[aria-expanded="true"] {
 .wallet-connected .wallet-scope dd {
   text-align: left;
 }
-/* WalletConnect: the QR code (dark modules on brass, which scans in both
-   themes), then copy-link and cancel */
+/* WalletConnect: the QR code (black on white, whatever the theme), then
+   copy-link and cancel */
 .wallet-wc {
   display: flex;
   flex-direction: column;
@@ -1051,9 +1051,9 @@ button.app-status-venue[aria-expanded="true"] {
   width: 176px;
   height: 176px;
   padding: 6px;
-  background: var(--pd-brass);
+  background: var(--pd-qr-light);
   border-radius: 10px;
-  color: var(--pd-on-brass);
+  color: var(--pd-qr-dark);
 }
 .wallet-wc-actions {
   display: flex;

@@ -186,3 +186,10 @@
   --pd-sell-tint: rgb(232 137 74 / 0.12);
   --pd-warning: #d96bc7;
 }
+
+/* QR codes: black on white in every theme. Wallet cameras read that most
+   reliably, so it doesn't follow the palette. */
+:root {
+  --pd-qr-light: #ffffff;
+  --pd-qr-dark: #000000;
+}
