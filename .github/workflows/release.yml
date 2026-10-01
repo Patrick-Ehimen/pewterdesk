@@ -68,7 +68,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Only a tag push creates the release; a manual run just builds.
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
