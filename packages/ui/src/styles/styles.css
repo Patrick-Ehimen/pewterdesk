@@ -3949,7 +3949,8 @@ fieldset.pd-alerts-chips {
 
 /* Bottom bar: market movement (after the design's popover) */
 .pd-move {
-  width: 360px;
+  /* Three venues' counts and two columns of movers need the room */
+  width: min(440px, calc(100vw - 32px));
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
@@ -4056,7 +4057,7 @@ fieldset.pd-alerts-chips {
 }
 .pd-move-breadth li {
   display: grid;
-  grid-template-columns: 100px minmax(0, 1fr) 64px 60px;
+  grid-template-columns: 104px minmax(48px, 1fr) auto 64px;
   align-items: center;
   gap: 8px;
 }
@@ -4083,6 +4084,7 @@ fieldset.pd-alerts-chips {
 .pd-move-counts,
 .pd-move-breadth .pd-num {
   text-align: right;
+  white-space: nowrap;
 }
 .pd-move [data-trend="up"] {
   color: var(--pd-buy);
@@ -4092,7 +4094,9 @@ fieldset.pd-alerts-chips {
 }
 .pd-move-movers {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …) lets a long name shrink (and ellipsize) instead of
+     pushing its column past the panel's edge */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
 }
 .pd-move-movers button {
@@ -4117,6 +4121,10 @@ fieldset.pd-alerts-chips {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-move-movers .pd-num {
+  flex: none;
   white-space: nowrap;
 }
 .pd-move-note {
