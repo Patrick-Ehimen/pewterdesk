@@ -639,7 +639,7 @@ export const messages: Messages = {
   "wallet.trust2": "pewterdesk 서버·계정·수탁 없음",
   "wallet.trust3": "거래소마다 출금할 수 없는 거래 키를 씁니다",
   "wallet.wcHow":
-    "Rabby, MetaMask, Rainbow 등 WalletConnect 지갑으로 QR 코드를 스캔하세요. 거래 전용 키를 한 번만 승인하며, pewterdesk는 시드 문구를 절대 보지 않습니다.",
+    "Rabby, MetaMask, Rainbow 등 WalletConnect 지갑으로 스캔한 뒤 서명을 한 번 승인하세요. Hyperliquid에서 거래 전용 새 API 지갑을 승인합니다. pewterdesk는 시드 문구를 보지 않습니다. 먼저 Hyperliquid 계정에 입금해야 합니다.",
   "wallet.ledgerHow":
     "Ledger를 연결하고 Ethereum 앱을 여세요. 기기 화면에서 거래 전용 키를 한 번 승인합니다.",
   "wallet.apiHow":
@@ -673,6 +673,16 @@ export const messages: Messages = {
   "wallet.disconnect": "연결 해제",
   "wallet.disconnectHint":
     "이 기기에서 키를 삭제합니다. 승인까지 끝내려면 Hyperliquid에서 API 지갑을 삭제하세요.",
+  "wallet.wcStart": "QR 코드 표시",
+  "wallet.wcPreparing": "링크 준비 중…",
+  "wallet.wcScan": "휴대폰 지갑으로 스캔하거나 링크를 데스크톱 지갑에 복사하세요.",
+  "wallet.wcCopy": "링크 복사",
+  "wallet.wcCopied": "복사됨",
+  "wallet.wcCancel": "취소",
+  "wallet.wcSign":
+    "{address}에 연결되었습니다. 지갑에서 서명을 승인하면 pewterdesk의 API 지갑이 승인됩니다.",
+  "wallet.wcSending": "Hyperliquid에서 승인 중…",
+  "wallet.wcRetry": "다시 시도",
   "settings.connected": "연결된 지갑",
   "settings.noConnected": "아직 연결된 지갑이 없습니다.",
   "settings.wallets.desc":

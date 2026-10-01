@@ -644,7 +644,7 @@ export const messages: Messages = {
   "wallet.trust2": "Без сервера pewterdesk, без аккаунта, без хранения средств",
   "wallet.trust3": "Для каждой биржи - торговый ключ без права вывода",
   "wallet.wcHow":
-    "Отсканируйте QR-код в Rabby, MetaMask, Rainbow или любом кошельке с WalletConnect. Он один раз одобряет ключ только для торговли; pewterdesk никогда не видит вашу сид-фразу.",
+    "Отсканируйте в Rabby, MetaMask, Rainbow или любом кошельке с WalletConnect и подтвердите одну подпись. Она одобряет новый API-кошелёк только для торговли на Hyperliquid; pewterdesk никогда не видит вашу сид-фразу. Сначала на счёт Hyperliquid нужно внести депозит.",
   "wallet.ledgerHow":
     "Подключите Ledger и откройте приложение Ethereum. Он один раз одобряет ключ только для торговли на экране устройства.",
   "wallet.apiHow":
@@ -680,6 +680,16 @@ export const messages: Messages = {
   "wallet.disconnect": "Отключить",
   "wallet.disconnectHint":
     "Удаляет ключ с этого устройства. Чтобы отозвать и одобрение, удалите API-кошелёк на Hyperliquid.",
+  "wallet.wcStart": "Показать QR-код",
+  "wallet.wcPreparing": "Готовим ссылку…",
+  "wallet.wcScan": "Отсканируйте кошельком в телефоне или скопируйте ссылку в настольный кошелёк.",
+  "wallet.wcCopy": "Копировать ссылку",
+  "wallet.wcCopied": "Скопировано",
+  "wallet.wcCancel": "Отмена",
+  "wallet.wcSign":
+    "Подключено к {address}. Подтвердите подпись в кошельке, чтобы одобрить API-кошелёк pewterdesk.",
+  "wallet.wcSending": "Одобряем через Hyperliquid…",
+  "wallet.wcRetry": "Повторить",
   "settings.connected": "Подключённый кошелёк",
   "settings.noConnected": "Кошелёк ещё не подключён.",
   "settings.wallets.desc":

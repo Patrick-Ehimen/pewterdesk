@@ -38,7 +38,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost wss://relay.walletconnect.org https://verify.walletconnect.org; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

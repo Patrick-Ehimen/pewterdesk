@@ -650,7 +650,7 @@ export const messages: Messages = {
   "wallet.trust2": "Sin servidor de pewterdesk, sin cuenta, sin custodia",
   "wallet.trust3": "Cada exchange recibe una clave de trading que no puede retirar",
   "wallet.wcHow":
-    "Escanea un código QR con Rabby, MetaMask, Rainbow o cualquier wallet WalletConnect. Aprueba una clave solo para operar una vez; pewterdesk nunca ve tu frase semilla.",
+    "Escanea con Rabby, MetaMask, Rainbow o cualquier wallet compatible con WalletConnect y aprueba una firma. Autoriza una nueva API wallet solo para operar en Hyperliquid; pewterdesk nunca ve tu frase semilla. Tu cuenta de Hyperliquid necesita un depósito antes.",
   "wallet.ledgerHow":
     "Conecta tu Ledger y abre su app de Ethereum. Aprueba una clave solo para operar una vez, en la pantalla del dispositivo.",
   "wallet.apiHow":
@@ -687,6 +687,17 @@ export const messages: Messages = {
   "wallet.disconnect": "Desconectar",
   "wallet.disconnectHint":
     "Borra la clave de este dispositivo. Para revocar también su aprobación, elimina la API wallet en Hyperliquid.",
+  "wallet.wcStart": "Mostrar código QR",
+  "wallet.wcPreparing": "Preparando un enlace…",
+  "wallet.wcScan":
+    "Escanéalo con la wallet del móvil o copia el enlace en una wallet de escritorio.",
+  "wallet.wcCopy": "Copiar enlace",
+  "wallet.wcCopied": "Copiado",
+  "wallet.wcCancel": "Cancelar",
+  "wallet.wcSign":
+    "Conectado a {address}. Aprueba la firma en tu wallet para autorizar la API wallet de pewterdesk.",
+  "wallet.wcSending": "Autorizando con Hyperliquid…",
+  "wallet.wcRetry": "Reintentar",
   "settings.connected": "Wallet conectada",
   "settings.noConnected": "Aún no hay ninguna wallet conectada.",
   "settings.wallets.desc":

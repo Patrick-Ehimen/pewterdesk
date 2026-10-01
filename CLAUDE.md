@@ -105,10 +105,14 @@ discover it on their own. The reasoning behind the rules is in
   user's main wallet key.
 
 The webview CSP in `apps/desktop/src-tauri/tauri.conf.json` is part of this
-surface, not cosmetic. `connect-src` allows only `'self'` and IPC, and it
-stays that way - the webview never needs the network, because venue crates
-make every request. Each venue crate connects only to its own hosts and
-explicitly configured RPC endpoints.
+surface, not cosmetic. `connect-src` allows `'self'`, IPC, and WalletConnect's
+relay and verify hosts (`wss://relay.walletconnect.org`,
+`https://verify.walletconnect.org`), which onboarding needs to reach the
+user's wallet - nothing else, and never a venue: venue crates make every venue
+request. No key passes through the webview for WalletConnect either: Rust
+generates the agent key and builds the approval, and only the wallet's
+signature comes back (`wallet.rs`). Each venue crate connects only to its own
+hosts and explicitly configured RPC endpoints.
 
 ## Status
 

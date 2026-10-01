@@ -13,12 +13,21 @@
 //!   withdraw (docs/adr/0001-venues-in-rust.md, point 5).
 //! - Errors are fixed strings or the venue's own messages, never built from
 //!   the key.
+//! - Connecting through a wallet (WalletConnect) generates the agent key here,
+//!   in Rust. JS only carries the typed data to the wallet and the signature
+//!   back: the approval it signs is built here and kept here, the signature
+//!   must recover to the connected main address, and only then is it sent to
+//!   the venue and the key stored. JS can't change what gets approved.
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::Mutex;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pewterdesk_core::{KeySource, VenueError, VenueId};
-use pewterdesk_exchange_hyperliquid::agent::{agent_address, ApprovedAgent};
+use pewterdesk_exchange_hyperliquid::agent::{
+    agent_address, generate_agent, ApproveAgent, ApprovedAgent, WalletSignature, AGENT_NAME,
+};
 use serde::Serialize;
+use serde_json::Value;
 use tauri::State;
 use zeroize::Zeroizing;
 
@@ -172,6 +181,114 @@ pub async fn disconnect_wallet(venue: VenueId, address: String) -> Result<(), Ve
     keychain::delete_key(key_account(venue, &address))
         .await
         .map_err(|e| VenueError::Key(e.into()))
+}
+
+/// An agent approval waiting on the user's wallet. The new key never leaves
+/// this struct until the approval is through and it goes to the keychain.
+struct Pending {
+    venue: VenueId,
+    address: String,
+    key: Zeroizing<String>,
+    approval: ApproveAgent,
+    started: Instant,
+}
+
+/// The one approval in flight, if any; starting another replaces it.
+#[derive(Default)]
+pub struct Onboarding(Mutex<Option<Pending>>);
+
+/// How long the wallet has to sign before the approval is dropped.
+const PENDING_FOR: Duration = Duration::from_secs(5 * 60);
+
+/// Starts approving a new agent for `address`: generates its key and
+/// returns the typed data for the wallet to sign (`eth_signTypedData_v4`) on
+/// `chain_id`, the chain the wallet is connected to.
+#[tauri::command]
+pub async fn begin_agent_approval(
+    onboarding: State<'_, Onboarding>,
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+    chain_id: u64,
+) -> Result<Value, VenueError> {
+    only_hyperliquid(venue)?;
+    let address = normalize_address(&address)?;
+    if chain_id == 0 {
+        return Err(VenueError::InvalidRequest(
+            "the wallet's chain is unknown".into(),
+        ));
+    }
+    let (key, agent) = generate_agent();
+    let approval = ApproveAgent {
+        chain: venues.hyperliquid().chain(),
+        signature_chain_id: chain_id,
+        agent_address: agent,
+        agent_name: AGENT_NAME.into(),
+        nonce: now_ms(),
+    };
+    let typed = approval.typed_data();
+    *onboarding.0.lock().unwrap() = Some(Pending {
+        venue,
+        address,
+        key,
+        approval,
+        started: Instant::now(),
+    });
+    Ok(typed)
+}
+
+/// Finishes the approval with the wallet's signature: checks it's the
+/// connected main wallet's, sends it to the venue, and stores the key.
+#[tauri::command]
+pub async fn finish_agent_approval(
+    onboarding: State<'_, Onboarding>,
+    venues: State<'_, Venues>,
+    signature: String,
+) -> Result<WalletInfo, VenueError> {
+    let pending =
+        onboarding.0.lock().unwrap().take().ok_or_else(|| {
+            VenueError::InvalidRequest("no approval is waiting; start again".into())
+        })?;
+    if pending.started.elapsed() > PENDING_FOR {
+        return Err(VenueError::InvalidRequest(
+            "the approval took too long; start again".into(),
+        ));
+    }
+    let signature = WalletSignature::parse(&signature)?;
+    let signer = signature.signer(&pending.approval.signing_hash()?)?;
+    if signer != pending.address {
+        return Err(VenueError::InvalidRequest(
+            "the signature came from a different wallet than the connected one".into(),
+        ));
+    }
+    venues
+        .hyperliquid()
+        .approve_agent(&pending.approval, &signature)
+        .await?;
+    let Pending {
+        venue,
+        address,
+        key,
+        approval,
+        ..
+    } = pending;
+    keychain::store_key(key_account(venue, &address), key)
+        .await
+        .map_err(|e| VenueError::Key(e.into()))?;
+    Ok(WalletInfo {
+        venue,
+        address,
+        agent: approval.agent_address,
+        agent_name: Some(approval.agent_name),
+        valid_until: None,
+    })
+}
+
+/// Drops an approval in flight (the user closed the dialog or the wallet
+/// refused); its key is zeroed with it.
+#[tauri::command]
+pub fn cancel_agent_approval(onboarding: State<'_, Onboarding>) {
+    onboarding.0.lock().unwrap().take();
 }
 
 #[cfg(test)]

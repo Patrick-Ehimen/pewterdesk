@@ -219,4 +219,16 @@ export const walletClient = {
 
   disconnect: (venue: VenueId, address: string) =>
     call<void>("disconnect_wallet", { venue, address }),
+
+  /**
+   * Connecting through a wallet: Rust generates the agent key and returns
+   * the approval for the wallet to sign; `finishApproval` hands back the
+   * signature, which Rust checks before sending it and storing the key.
+   */
+  beginApproval: (venue: VenueId, address: string, chainId: number) =>
+    call<unknown>("begin_agent_approval", { venue, address, chainId }),
+
+  finishApproval: (signature: string) => call<WalletInfo>("finish_agent_approval", { signature }),
+
+  cancelApproval: () => call<void>("cancel_agent_approval", {}),
 };
