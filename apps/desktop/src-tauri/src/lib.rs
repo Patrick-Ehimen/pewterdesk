@@ -14,6 +14,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(venues)
+        .manage(wallet::Onboarding::default())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             menubar::install(app)?;
@@ -74,6 +75,9 @@ pub fn run() {
             wallet::connect_wallet,
             wallet::wallet_status,
             wallet::disconnect_wallet,
+            wallet::begin_agent_approval,
+            wallet::finish_agent_approval,
+            wallet::cancel_agent_approval,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

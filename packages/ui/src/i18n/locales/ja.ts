@@ -642,7 +642,7 @@ export const messages: Messages = {
   "wallet.trust2": "pewterdesk のサーバー・アカウント・資産預かりなし",
   "wallet.trust3": "取引所ごとに出金できない取引用の鍵を使用",
   "wallet.wcHow":
-    "Rabby、MetaMask、Rainbow など WalletConnect 対応ウォレットで QR コードを読み取ります。取引専用の鍵を一度だけ承認し、pewterdesk がシードフレーズを見ることはありません。",
+    "Rabby、MetaMask、Rainbow など WalletConnect 対応ウォレットでスキャンし、署名を1回承認します。Hyperliquid で取引専用の新しい API ウォレットを承認します。pewterdesk がシードフレーズを見ることはありません。事前に Hyperliquid アカウントへの入金が必要です。",
   "wallet.ledgerHow":
     "Ledger を接続し、Ethereum アプリを開きます。取引専用の鍵をデバイスの画面で一度だけ承認します。",
   "wallet.apiHow":
@@ -678,6 +678,17 @@ export const messages: Messages = {
   "wallet.disconnect": "切断",
   "wallet.disconnectHint":
     "この端末から鍵を削除します。承認も取り消すには、Hyperliquid で API ウォレットを削除してください。",
+  "wallet.wcStart": "QR コードを表示",
+  "wallet.wcPreparing": "リンクを準備中…",
+  "wallet.wcScan":
+    "スマートフォンのウォレットでスキャンするか、リンクをデスクトップのウォレットにコピーしてください。",
+  "wallet.wcCopy": "リンクをコピー",
+  "wallet.wcCopied": "コピーしました",
+  "wallet.wcCancel": "キャンセル",
+  "wallet.wcSign":
+    "{address} に接続しました。ウォレットで署名を承認すると、pewterdesk の API ウォレットが承認されます。",
+  "wallet.wcSending": "Hyperliquid で承認中…",
+  "wallet.wcRetry": "再試行",
   "settings.connected": "接続中のウォレット",
   "settings.noConnected": "まだウォレットは接続されていません。",
   "settings.wallets.desc":

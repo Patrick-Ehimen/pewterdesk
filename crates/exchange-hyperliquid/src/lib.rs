@@ -239,6 +239,39 @@ impl HyperliquidAdapter {
             .await
     }
 
+    /// "Mainnet" or "Testnet": what approvals for this adapter's endpoints sign.
+    pub fn chain(&self) -> &'static str {
+        self.endpoints.chain
+    }
+
+    /// Sends an agent approval the user's main wallet signed. Nothing here
+    /// signs: the caller has built `approval` itself and checked `signature`
+    /// recovers to the account it approves for. The venue still verifies
+    /// the signature, so a wrong one is refused there too.
+    pub async fn approve_agent(
+        &self,
+        approval: &agent::ApproveAgent,
+        signature: &agent::WalletSignature,
+    ) -> Result<(), VenueError> {
+        let response = self
+            .http
+            .post(format!("{}/exchange", self.endpoints.rest))
+            .json(&json!({
+                "action": approval.action(),
+                "nonce": approval.nonce,
+                "signature": signature.to_json(),
+            }))
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        let body: Value = response
+            .json()
+            .await
+            .map_err(|_| VenueError::Network(format!("exchange API returned {status}")))?;
+        agent::approval_result(&body)
+    }
+
     async fn open_orders(&self, address: &str) -> Result<Vec<OpenOrder>, VenueError> {
         self.info(json!({ "type": "frontendOpenOrders", "user": address }))
             .await

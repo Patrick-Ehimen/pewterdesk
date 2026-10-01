@@ -10,6 +10,7 @@ import {
 import { LuKeyRound, LuLock, LuQrCode, LuShieldCheck, LuUsb, LuX } from "react-icons/lu";
 import { type WalletInfo, walletClient } from "../../api/venueClient";
 import { connectedWallet, setConnectedWallet, subscribeWallet } from "../../lib/account";
+import { WalletConnectFlow } from "./WalletConnectFlow";
 
 type MethodId = "walletConnect" | "ledger" | "api";
 
@@ -25,8 +26,8 @@ interface Method {
   soon?: boolean;
 }
 
-// Importing an API wallet works (Hyperliquid); WalletConnect and Ledger
-// still only explain themselves. Each shows the model: a trade-only key that
+// Importing an API wallet and WalletConnect work (Hyperliquid); Ledger still
+// only explains itself. Each shows the model: a trade-only key that
 // can't withdraw (docs/adr/0001-venues-in-rust.md).
 const METHODS: Method[] = [
   {
@@ -43,8 +44,7 @@ const METHODS: Method[] = [
     title: "wallet.wc",
     detail: "wallet.wcDetail",
     how: "wallet.wcHow",
-    steps: ["wallet.stepConnect", "wallet.stepKeySaved", "wallet.stepApprove"],
-    soon: true,
+    steps: ["wallet.stepConnect", "wallet.stepApprove", "wallet.stepKeySaved"],
   },
   {
     id: "ledger",
@@ -298,6 +298,7 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
                 </ol>
 
                 {method.id === "api" && <ApiWalletForm />}
+                {method.id === "walletConnect" && <WalletConnectFlow />}
 
                 <dl className="wallet-scope">
                   <div>

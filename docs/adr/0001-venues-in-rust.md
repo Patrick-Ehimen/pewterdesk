@@ -108,3 +108,19 @@ cost withdrawals.
 - **A generic `sign_typed_data` command in Rust.** This is the easiest to
   write. We rejected it because it signs whatever an injected script asks
   for, including withdrawals.
+
+## Amendment: WalletConnect in the webview (2026-10)
+
+Onboarding through WalletConnect uses Reown's JS sign client in the webview,
+which needs its relay. `connect-src` therefore also allows
+`wss://relay.walletconnect.org` and `https://verify.walletconnect.org`, and
+nothing else; the webview still never reaches a venue. We chose this over
+writing the WalletConnect v2 protocol in Rust, which has no maintained crate.
+
+What keeps keys out of JS is unchanged. Rust generates the agent key, builds
+the `approveAgent` typed data, and keeps both. The webview only carries that
+typed data to the user's wallet and the signature back. Rust checks the
+signature recovers to the connected main address before sending it and
+storing the key. A script in the webview can therefore start an approval, but
+it can't complete one without the user's wallet signing it, and it can't
+change what gets approved.
