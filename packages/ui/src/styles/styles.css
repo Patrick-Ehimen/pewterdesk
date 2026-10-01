@@ -2851,6 +2851,126 @@ input {
   cursor: not-allowed;
 }
 
+/* Size calculator: a folded section of the ticket */
+.pd-calc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--pd-border);
+  padding-top: 8px;
+}
+.pd-calc-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--pd-pewter);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-calc-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pd-calc-toggle:hover {
+  color: var(--pd-text);
+}
+.pd-calc-toggle svg[data-open] {
+  transform: rotate(180deg);
+}
+.pd-calc-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pd-calc-result {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.pd-calc-warning {
+  margin: 0;
+  color: var(--pd-warning);
+  font-size: 12px;
+}
+/* Calculator tabs: underlined like the ticket's order types, smaller */
+.pd-calc-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-calc-tabs button {
+  flex: 1;
+  padding: 6px 2px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pd-calc-tabs button:hover {
+  color: var(--pd-text);
+}
+.pd-calc-tabs button[aria-selected="true"] {
+  color: var(--pd-text);
+  border-bottom-color: var(--pd-brass);
+}
+/* Long / short: a small segmented switch beside the leverage */
+.pd-calc-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  padding: 2px;
+  height: 40px;
+  background: var(--pd-surface-raised);
+  border-radius: 8px;
+}
+.pd-calc-sides button {
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--pd-pewter);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-calc-sides button[data-side="buy"][aria-checked="true"] {
+  background: var(--pd-buy-tint);
+  color: var(--pd-buy);
+}
+.pd-calc-sides button[data-side="sell"][aria-checked="true"] {
+  background: var(--pd-sell-tint);
+  color: var(--pd-sell);
+}
+.pd-calc-row {
+  display: grid;
+}
+.pd-calc-unit {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-calc-use {
+  height: 32px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-calc-use:hover:not(:disabled) {
+  border-color: var(--pd-brass);
+}
+.pd-calc-use:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Quick trade: a floating bar with market long / qty / market short */
 .pd-quick {
   position: fixed;

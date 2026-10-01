@@ -1,5 +1,5 @@
 import type { AccountSnapshot, Market, OrderBook } from "@pewterdesk/core";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { LuArrowUpDown, LuChevronDown } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
 import { decimalsOf, formatNumber } from "../../lib/format";
@@ -17,6 +17,8 @@ import {
 } from "../../lib/ticket";
 import { Hint } from "../common/ColumnHeader";
 import { FloatingTip, Tooltip, useTipTrigger } from "../common/Tooltip";
+import { SizeCalculator } from "./SizeCalculator";
+import { NumberField } from "./TicketField";
 
 const PRO_LABEL: Record<ProType, MessageKey> = {
   scale: "ticket.scale",
@@ -30,39 +32,6 @@ const PRO_LABEL: Record<ProType, MessageKey> = {
 const MARKS = [0, 25, 50, 75, 100];
 /** Leverage assumed when there's no position to read it from. */
 const DEFAULT_LEVERAGE = 10;
-
-/** Digits and one decimal point only; a comma counts as the point. */
-const numeric = (value: string) => {
-  const next = value.replace(",", ".");
-  return /^\d*\.?\d*$/.test(next) ? next : undefined;
-};
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  suffix,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  suffix?: ReactNode;
-}) {
-  return (
-    <label className="pd-ticket-field">
-      <span className="pd-ticket-field-label">{label}</span>
-      <input
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => {
-          const next = numeric(e.target.value);
-          if (next !== undefined) onChange(next);
-        }}
-      />
-      {suffix}
-    </label>
-  );
-}
 
 interface OrderTicketProps {
   market?: Market;
@@ -372,6 +341,19 @@ export function OrderTicket({
           <NumberField label={t("ticket.slPrice")} value={sl} onChange={setSl} />
         </div>
       )}
+
+      <SizeCalculator
+        market={market}
+        mid={mid}
+        takerFee={fees?.taker}
+        side={side}
+        leverage={leverage}
+        available={account ? available : undefined}
+        onUse={(sizeText) => {
+          setUnit("base");
+          setSize(sizeText);
+        }}
+      />
 
       <div className="pd-ticket-spacer" />
 
