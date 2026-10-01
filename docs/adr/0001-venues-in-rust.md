@@ -124,3 +124,12 @@ signature recovers to the connected main address before sending it and
 storing the key. A script in the webview can therefore start an approval, but
 it can't complete one without the user's wallet signing it, and it can't
 change what gets approved.
+
+Browser-extension wallets (MetaMask, Rabby and others) can't reach the
+webview, only pages in the user's browser. For them, the app serves a
+one-time page on 127.0.0.1 and opens it in the system browser. The page plays
+the same part as WalletConnect: it carries Rust's typed data to the extension
+and the signature back, under the same checks. The server listens only on
+127.0.0.1, puts a random token in every path, checks the Host header exactly
+(against DNS rebinding), accepts posts only from the page's own origin, and
+stops after a connection, a cancel, or ten minutes.

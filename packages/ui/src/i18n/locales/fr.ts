@@ -648,9 +648,6 @@ export const messages: Messages = {
   "tray.equity": "Capital {venue} {equity} · PnL {pnl}",
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Moyens de connexion",
-  "wallet.trust1": "Les clés restent dans le trousseau du système de cet appareil",
-  "wallet.trust2": "Aucun serveur pewterdesk, aucun compte, aucune garde",
-  "wallet.trust3": "Chaque plateforme reçoit une clé de trading qui ne peut pas retirer",
   "wallet.wcHow":
     "Scannez avec Rabby, MetaMask, Rainbow ou tout wallet WalletConnect, puis approuvez une signature. Cela autorise un nouvel API wallet limité au trading sur Hyperliquid ; pewterdesk ne voit jamais votre phrase de récupération. Votre compte Hyperliquid doit d'abord avoir reçu un dépôt.",
   "wallet.ledgerHow":
@@ -660,10 +657,6 @@ export const messages: Messages = {
   "wallet.stepConnect": "Connectez votre wallet",
   "wallet.stepKeySaved": "Une clé de trading uniquement est enregistrée dans le trousseau",
   "wallet.stepApprove": "Approuvez-la une fois dans votre wallet",
-  "wallet.canTrade": "Peut trader",
-  "wallet.canTradeValue": "Oui · ordres, annulations",
-  "wallet.canWithdraw": "Peut retirer",
-  "wallet.no": "Non",
   "wallet.coming": "Arrive avec le passage d'ordres",
   "wallet.connectedAddress": "Connecté : {address}",
   "wallet.hlStep1": "Sur Hyperliquid, ouvrez More → API",
@@ -700,6 +693,36 @@ export const messages: Messages = {
     "Connecté à {address}. Approuvez la signature dans votre wallet pour autoriser l'API wallet de pewterdesk.",
   "wallet.wcSending": "Autorisation auprès d'Hyperliquid…",
   "wallet.wcRetry": "Réessayer",
+  "wallet.browser": "Extension du navigateur",
+  "wallet.browserDetail": "MetaMask, Rabby, Coinbase et d'autres",
+  "wallet.browserHow":
+    "Connectez l'extension de wallet de votre navigateur. pewterdesk y ouvre une page ; choisissez votre wallet et approuvez une signature pour autoriser un API wallet limité au trading sur Hyperliquid.",
+  "wallet.browserStep1": "Ouvrez la page que pewterdesk affiche dans votre navigateur",
+  "wallet.browserStep2": "Choisissez votre wallet et approuvez une signature",
+  "wallet.soon": "Bientôt",
+  "wallet.factTrade": "Passe et annule des ordres",
+  "wallet.factWithdraw": "Ne peut ni retirer ni transférer",
+  "wallet.factKeychain": "La clé reste dans le trousseau du système",
+  "browser.pageTitle": "Connecter un wallet · pewterdesk",
+  "browser.title": "Connectez votre wallet",
+  "browser.lead":
+    "Choisissez votre wallet, puis approuvez une signature. Cela autorise un API wallet limité au trading pour pewterdesk sur Hyperliquid.",
+  "browser.note":
+    "Cette page est servie par l'app pewterdesk sur votre ordinateur et s'arrête une fois la connexion faite.",
+  "browser.connecting": "Connexion à votre wallet…",
+  "browser.noAccount": "Votre wallet n'a partagé aucun compte.",
+  "browser.sign": "Approuvez la signature dans votre wallet.",
+  "browser.sending": "Autorisation auprès d'Hyperliquid…",
+  "browser.done": "Connecté. Vous pouvez fermer cet onglet et revenir à pewterdesk.",
+  "browser.noWallet":
+    "Aucun wallet trouvé. Installez MetaMask, Rabby ou une autre extension dans ce navigateur, puis rechargez.",
+  "browser.injected": "Wallet du navigateur",
+  "browser.closed": "La page du navigateur s'est fermée. Recommencez pour vous connecter.",
+  "browser.waiting": "En attente de votre navigateur…",
+  "browser.waitingHint":
+    "Terminez dans la page qui s'est ouverte : choisissez votre wallet et approuvez la signature.",
+  "browser.reopen": "Rouvrir la page",
+  "browser.open": "Ouvrir dans le navigateur",
   "settings.connected": "Wallet connecté",
   "settings.noConnected": "Aucun wallet connecté pour l'instant.",
   "settings.wallets.desc":

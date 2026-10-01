@@ -239,6 +239,20 @@ impl HyperliquidAdapter {
             .await
     }
 
+    /// What Hyperliquid knows `user` as: "user", "agent", "vault",
+    /// "subAccount", or "missing" for an address that has never deposited
+    /// (and so can't approve an agent yet). Read-only and keyless.
+    pub async fn user_role(&self, user: &str) -> Result<String, VenueError> {
+        validate_address(user)?;
+        let reply: Value = self
+            .info(json!({ "type": "userRole", "user": user }))
+            .await?;
+        reply["role"]
+            .as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| VenueError::Network("unexpected userRole response".into()))
+    }
+
     /// "Mainnet" or "Testnet": what approvals for this adapter's endpoints sign.
     pub fn chain(&self) -> &'static str {
         self.endpoints.chain

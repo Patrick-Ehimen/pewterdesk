@@ -1,0 +1,94 @@
+/* The local wallet page. Colours come from the brand tokens, served
+   alongside this file. */
+:root {
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font:
+    15px / 1.5 -apple-system,
+    BlinkMacSystemFont,
+    "Inter",
+    "Segoe UI",
+    sans-serif;
+}
+.card {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 16px;
+}
+.logo {
+  height: 28px;
+  align-self: flex-start;
+}
+h1 {
+  margin: 4px 0 0;
+  font-size: 20px;
+}
+.lead,
+.note {
+  margin: 0;
+  color: var(--pd-pewter);
+}
+.note {
+  font-size: 13px;
+}
+.wallets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wallets button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  color: var(--pd-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wallets button:hover:not(:disabled) {
+  border-color: var(--pd-brass);
+}
+.wallets button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.wallets img {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.status {
+  margin: 0;
+  min-height: 1.5em;
+}
+.status[data-kind="error"] {
+  color: var(--pd-warning);
+}
+.status[data-kind="done"] {
+  color: var(--pd-brass-text);
+  font-weight: 600;
+}

@@ -61,14 +61,19 @@ pub fn open_about_link(link: AboutLink) -> Result<(), String> {
 
 /// Opens `link` in the system browser. The app doesn't wait for it.
 pub fn open(link: AboutLink) -> Result<(), String> {
-    let url = link.url();
+    open_url(&link.url())
+}
+
+/// Opens a URL that Rust built (never one from a command argument) in the
+/// system browser: the About links, and the local wallet page.
+pub(crate) fn open_url(url: &str) -> Result<(), String> {
     let spawned = if cfg!(target_os = "macos") {
-        Command::new("open").arg(&url).spawn()
+        Command::new("open").arg(url).spawn()
     } else if cfg!(target_os = "windows") {
         // `start` takes a window title first; the URL has no shell metacharacters.
-        Command::new("cmd").args(["/C", "start", "", &url]).spawn()
+        Command::new("cmd").args(["/C", "start", "", url]).spawn()
     } else {
-        Command::new("xdg-open").arg(&url).spawn()
+        Command::new("xdg-open").arg(url).spawn()
     };
     spawned
         .map(|_| ())

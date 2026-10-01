@@ -1,3 +1,4 @@
+import { venueLogos, walletLogos } from "@pewterdesk/assets";
 import { dateFormat, type MessageKey, shortAddress, t } from "@pewterdesk/ui";
 import {
   type FormEvent,
@@ -7,48 +8,65 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { LuKeyRound, LuLock, LuQrCode, LuShieldCheck, LuUsb, LuX } from "react-icons/lu";
+import {
+  LuChevronRight,
+  LuCircleCheck,
+  LuCircleX,
+  LuKeyRound,
+  LuLock,
+  LuShieldCheck,
+  LuX,
+} from "react-icons/lu";
 import { type WalletInfo, walletClient } from "../../api/venueClient";
 import { connectedWallet, setConnectedWallet, subscribeWallet } from "../../lib/account";
+import { BrowserWalletFlow } from "./BrowserWalletFlow";
 import { WalletConnectFlow } from "./WalletConnectFlow";
 
-type MethodId = "walletConnect" | "ledger" | "api";
+type MethodId = "browser" | "walletConnect" | "api" | "ledger";
 
 interface Method {
   id: MethodId;
-  icon: ReactNode;
+  /** Wallet logos, overlapped, or an icon where there's no logo. */
+  mark: string[] | ReactNode;
   title: MessageKey;
   detail: MessageKey;
-  /** How it works, then its steps, as the design's enable-trading flow. */
   how: MessageKey;
   steps: MessageKey[];
   /** Not built yet: the pane explains it and says it's coming. */
   soon?: boolean;
 }
 
-// Importing an API wallet and WalletConnect work (Hyperliquid); Ledger still
-// only explains itself. Each shows the model: a trade-only key that
-// can't withdraw (docs/adr/0001-venues-in-rust.md).
+// Each way to connect approves the same thing: a trade-only API wallet that
+// can't withdraw (docs/adr/0001-venues-in-rust.md). Ledger only explains
+// itself so far.
 const METHODS: Method[] = [
   {
-    id: "api",
-    icon: <LuKeyRound size={18} aria-hidden />,
-    title: "wallet.api",
-    detail: "wallet.apiDetail",
-    how: "wallet.apiHow",
-    steps: ["wallet.hlStep1", "wallet.hlStep2", "wallet.hlStep3"],
+    id: "browser",
+    mark: [walletLogos.metamask, walletLogos.rabby, walletLogos.coinbase],
+    title: "wallet.browser",
+    detail: "wallet.browserDetail",
+    how: "wallet.browserHow",
+    steps: ["wallet.browserStep1", "wallet.browserStep2", "wallet.stepKeySaved"],
   },
   {
     id: "walletConnect",
-    icon: <LuQrCode size={18} aria-hidden />,
+    mark: [walletLogos.walletConnect],
     title: "wallet.wc",
     detail: "wallet.wcDetail",
     how: "wallet.wcHow",
     steps: ["wallet.stepConnect", "wallet.stepApprove", "wallet.stepKeySaved"],
   },
   {
+    id: "api",
+    mark: <LuKeyRound size={18} aria-hidden />,
+    title: "wallet.api",
+    detail: "wallet.apiDetail",
+    how: "wallet.apiHow",
+    steps: ["wallet.hlStep1", "wallet.hlStep2", "wallet.hlStep3"],
+  },
+  {
     id: "ledger",
-    icon: <LuUsb size={18} aria-hidden />,
+    mark: [walletLogos.ledger],
     title: "wallet.ledger",
     detail: "wallet.ledgerDetail",
     how: "wallet.ledgerHow",
@@ -57,11 +75,23 @@ const METHODS: Method[] = [
   },
 ];
 
-const TRUST = ["wallet.trust1", "wallet.trust2", "wallet.trust3"] as const;
-
-interface ConnectWalletDialogProps {
-  open: boolean;
-  onClose: () => void;
+/** A method's logos, overlapped like avatars, or its icon on a tile. */
+function Mark({ mark, size = "md" }: { mark: Method["mark"]; size?: "md" | "lg" }) {
+  if (!Array.isArray(mark)) {
+    return (
+      <span className="wallet-mark wallet-mark-icon" data-size={size}>
+        {mark}
+      </span>
+    );
+  }
+  return (
+    <span className="wallet-mark" data-size={size} data-count={mark.length}>
+      {/* The first logo sits on top. */}
+      {mark.map((src, i) => (
+        <img key={src} src={src} alt="" style={{ zIndex: mark.length - i }} />
+      ))}
+    </span>
+  );
 }
 
 /**
@@ -93,7 +123,7 @@ function ApiWalletForm() {
   };
 
   return (
-    <form className="wallet-form" onSubmit={submit}>
+    <form className="wallet-action" onSubmit={submit}>
       <label className="wallet-field">
         <span>{t("wallet.addressLabel")}</span>
         <input
@@ -124,7 +154,7 @@ function ApiWalletForm() {
           {error}
         </p>
       )}
-      <button type="submit" className="wallet-submit" disabled={busy}>
+      <button type="submit" className="wallet-primary" disabled={busy}>
         {t(busy ? "wallet.checking" : "wallet.submit")}
       </button>
     </form>
@@ -161,12 +191,20 @@ function ConnectedPane({ venue, address }: { venue: "hyperliquid" | "aster"; add
   };
 
   return (
-    <section className="wallet-pane wallet-connected" aria-labelledby="wallet-pane-title">
-      <div className="wallet-pane-head">
-        <h3 id="wallet-pane-title">{t("wallet.connected")}</h3>
-        <span className="wallet-venue">Hyperliquid</span>
+    <section className="wallet-detail wallet-connected" aria-labelledby="wallet-pane-title">
+      <div className="wallet-hero">
+        <span className="wallet-mark" data-size="lg" data-count={1}>
+          <img src={venueLogos[venue]} alt="" />
+        </span>
+        <div>
+          <h3 id="wallet-pane-title">
+            <LuCircleCheck size={16} aria-hidden className="wallet-ok" />
+            {t("wallet.connected")}
+          </h3>
+          <p>{t("wallet.viewOnly")}</p>
+        </div>
       </div>
-      <dl className="wallet-scope">
+      <dl className="wallet-rows">
         <div>
           <dt>{t("wallet.mainAddress")}</dt>
           <dd className="pd-num" title={address}>
@@ -194,24 +232,30 @@ function ConnectedPane({ venue, address }: { venue: "hyperliquid" | "aster"; add
           {error}
         </p>
       )}
-      <p className="wallet-lead">{t("wallet.viewOnly")}</p>
-      <button type="button" className="wallet-disconnect" disabled={busy} onClick={disconnect}>
-        {t("wallet.disconnect")}
-      </button>
+      <div className="wallet-actions">
+        <button type="button" className="wallet-danger" disabled={busy} onClick={disconnect}>
+          {t("wallet.disconnect")}
+        </button>
+      </div>
       <p className="wallet-note">{t("wallet.disconnectHint")}</p>
     </section>
   );
 }
 
+interface ConnectWalletDialogProps {
+  open: boolean;
+  onClose: () => void;
+}
+
 /**
- * Connect a wallet, after the design: pick a method on the left, see on the
- * right how it works: a trade-only key, approved once, that can't withdraw.
- * Importing a Hyperliquid API wallet works; once connected, the dialog shows
- * the account and can disconnect it.
+ * Connect a wallet: pick a way on the left (browser extension, WalletConnect,
+ * an API wallet key; Ledger to come), and the right shows how it works and
+ * does it. Every way ends with a trade-only API wallet in the keychain. Once
+ * connected, the dialog shows the account and can disconnect it.
  */
 export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [selected, setSelected] = useState<MethodId>("api");
+  const [selected, setSelected] = useState<MethodId>("browser");
   const method = METHODS.find((m) => m.id === selected) ?? (METHODS[0] as Method);
   const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
 
@@ -221,7 +265,7 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) {
-      setSelected("api");
+      setSelected("browser");
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -250,41 +294,50 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
         </button>
       </header>
 
-      {/* Mounted only while open, so a half-typed key doesn't outlive the dialog. */}
+      {/* Mounted only while open, so a half-typed key or a pending approval doesn't outlive the dialog. */}
       {open && (
-        <div className="wallet-dialog-body">
+        <div className="wallet-body" data-connected={wallet ? true : undefined}>
           {wallet ? (
             <ConnectedPane venue={wallet.venue} address={wallet.address} />
           ) : (
             <>
-              <div className="wallet-methods" role="radiogroup" aria-label={t("wallet.connect")}>
+              <nav className="wallet-list" aria-label={t("wallet.tradingGroup")}>
                 <p className="wallet-group">{t("wallet.tradingGroup")}</p>
-                {METHODS.map((m) => (
-                  // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={m.id === selected}
-                    className="wallet-method"
-                    data-soon={m.soon || undefined}
-                    onClick={() => setSelected(m.id)}
-                  >
-                    <span className="wallet-method-icon">{m.icon}</span>
-                    <span className="wallet-method-text">
-                      <strong>{t(m.title)}</strong>
-                      <span>{t(m.detail)}</span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <section className="wallet-pane" aria-labelledby="wallet-pane-title">
-                <div className="wallet-pane-head">
-                  <h3 id="wallet-pane-title">{t(method.title)}</h3>
-                  {method.soon && <span className="wallet-coming">{t("wallet.coming")}</span>}
+                <div role="radiogroup" aria-label={t("wallet.tradingGroup")}>
+                  {METHODS.map((m) => (
+                    // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
+                    <button
+                      key={m.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={m.id === selected}
+                      className="wallet-option"
+                      data-soon={m.soon || undefined}
+                      onClick={() => setSelected(m.id)}
+                    >
+                      <Mark mark={m.mark} />
+                      <span className="wallet-option-text">
+                        <strong>{t(m.title)}</strong>
+                        <span>{t(m.detail)}</span>
+                      </span>
+                      {m.soon ? (
+                        <span className="wallet-soon">{t("wallet.soon")}</span>
+                      ) : (
+                        <LuChevronRight className="wallet-chevron" size={16} aria-hidden />
+                      )}
+                    </button>
+                  ))}
                 </div>
-                <p className="wallet-lead">{t(method.how)}</p>
+              </nav>
+
+              <section className="wallet-detail" aria-labelledby="wallet-pane-title">
+                <div className="wallet-hero">
+                  <Mark mark={method.mark} size="lg" />
+                  <div>
+                    <h3 id="wallet-pane-title">{t(method.title)}</h3>
+                    <p>{t(method.how)}</p>
+                  </div>
+                </div>
 
                 <ol className="wallet-steps">
                   {method.steps.map((step, i) => (
@@ -297,27 +350,24 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
                   ))}
                 </ol>
 
-                {method.id === "api" && <ApiWalletForm />}
+                {method.id === "browser" && <BrowserWalletFlow />}
                 {method.id === "walletConnect" && <WalletConnectFlow />}
+                {method.id === "api" && <ApiWalletForm />}
+                {method.soon && <p className="wallet-note">{t("wallet.coming")}</p>}
 
-                <dl className="wallet-scope">
-                  <div>
-                    <dt>{t("wallet.canTrade")}</dt>
-                    <dd className="pd-up">{t("wallet.canTradeValue")}</dd>
-                  </div>
-                  <div>
-                    <dt>{t("wallet.canWithdraw")}</dt>
-                    <dd>{t("wallet.no")}</dd>
-                  </div>
-                </dl>
-
-                <ul className="wallet-trust">
-                  {TRUST.map((k) => (
-                    <li key={k}>
-                      <LuShieldCheck size={14} aria-hidden />
-                      {t(k)}
-                    </li>
-                  ))}
+                <ul className="wallet-facts">
+                  <li>
+                    <LuCircleCheck size={14} aria-hidden className="wallet-ok" />
+                    {t("wallet.factTrade")}
+                  </li>
+                  <li>
+                    <LuCircleX size={14} aria-hidden />
+                    {t("wallet.factWithdraw")}
+                  </li>
+                  <li>
+                    <LuShieldCheck size={14} aria-hidden />
+                    {t("wallet.factKeychain")}
+                  </li>
                 </ul>
               </section>
             </>

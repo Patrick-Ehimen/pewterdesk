@@ -93,6 +93,11 @@ discover it on their own. The reasoning behind the rules is in
   wraps it in `Zeroizing`, refuses the main wallet's own key, and stores it
   only if the venue lists it as an approved agent of that account. The
   commands return public addresses only.
+- `apps/desktop/src-tauri/src/browser_connect.rs` - connecting a browser
+  extension wallet. It serves a one-time page on 127.0.0.1 (random port, a
+  random token in every path, the exact Host checked, posts only from the
+  page's own origin) that asks the extension to sign the approval
+  `wallet.rs` builds. It stops after a connection, a cancel, or 10 minutes.
 - Signing code in each `crates/exchange-<venue>` (none written yet) - what
   turns a key into a signed venue action. The highest-stakes code in the repo.
   Hold keys only as `Zeroizing` and only for the signing call.

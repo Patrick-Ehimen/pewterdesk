@@ -113,19 +113,21 @@ export function WalletConnectFlow() {
   switch (step.kind) {
     case "idle":
       return (
-        <button type="button" className="wallet-submit" onClick={start}>
-          {t("wallet.wcStart")}
-        </button>
+        <div className="wallet-action">
+          <button type="button" className="wallet-primary" onClick={start}>
+            {t("wallet.wcStart")}
+          </button>
+        </div>
       );
     case "pairing":
       return (
-        <div className="wallet-wc">
+        <div className="wallet-action">
           {step.uri ? <QrCode value={step.uri} /> : <div className="wallet-qr" aria-hidden />}
-          <p className="wallet-lead">{t(step.uri ? "wallet.wcScan" : "wallet.wcPreparing")}</p>
-          <div className="wallet-wc-actions">
+          <p className="wallet-note">{t(step.uri ? "wallet.wcScan" : "wallet.wcPreparing")}</p>
+          <div className="wallet-actions">
             <button
               type="button"
-              className="wallet-link"
+              className="wallet-text"
               disabled={!step.uri}
               onClick={() => {
                 if (!step.uri) return;
@@ -134,7 +136,7 @@ export function WalletConnectFlow() {
             >
               {t(copied ? "wallet.wcCopied" : "wallet.wcCopy")}
             </button>
-            <button type="button" className="wallet-link" onClick={cancel}>
+            <button type="button" className="wallet-text" onClick={cancel}>
               {t("wallet.wcCancel")}
             </button>
           </div>
@@ -142,24 +144,30 @@ export function WalletConnectFlow() {
       );
     case "signing":
       return (
-        <div className="wallet-wc">
-          <p className="wallet-lead">
-            {t("wallet.wcSign", { address: shortAddress(step.address) })}
-          </p>
-          <button type="button" className="wallet-link" onClick={cancel}>
+        <div className="wallet-action">
+          <div className="wallet-waiting">
+            <span className="wallet-spinner" aria-hidden />
+            <p>{t("wallet.wcSign", { address: shortAddress(step.address) })}</p>
+          </div>
+          <button type="button" className="wallet-text" onClick={cancel}>
             {t("wallet.wcCancel")}
           </button>
         </div>
       );
     case "sending":
-      return <p className="wallet-lead">{t("wallet.wcSending")}</p>;
+      return (
+        <div className="wallet-waiting">
+          <span className="wallet-spinner" aria-hidden />
+          <strong>{t("wallet.wcSending")}</strong>
+        </div>
+      );
     case "error":
       return (
-        <div className="wallet-wc">
+        <div className="wallet-action">
           <p className="wallet-error" role="alert">
             {step.message}
           </p>
-          <button type="button" className="wallet-submit" onClick={start}>
+          <button type="button" className="wallet-primary" onClick={start}>
             {t("wallet.wcRetry")}
           </button>
         </div>

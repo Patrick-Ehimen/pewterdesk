@@ -640,9 +640,6 @@ export const messages: Messages = {
   "tray.equity": "Капитал {venue} {equity} · PnL {pnl}",
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Способы подключения",
-  "wallet.trust1": "Ключи хранятся в связке ключей ОС на этом устройстве",
-  "wallet.trust2": "Без сервера pewterdesk, без аккаунта, без хранения средств",
-  "wallet.trust3": "Для каждой биржи - торговый ключ без права вывода",
   "wallet.wcHow":
     "Отсканируйте в Rabby, MetaMask, Rainbow или любом кошельке с WalletConnect и подтвердите одну подпись. Она одобряет новый API-кошелёк только для торговли на Hyperliquid; pewterdesk никогда не видит вашу сид-фразу. Сначала на счёт Hyperliquid нужно внести депозит.",
   "wallet.ledgerHow":
@@ -652,10 +649,6 @@ export const messages: Messages = {
   "wallet.stepConnect": "Подключите кошелёк",
   "wallet.stepKeySaved": "Ключ только для торговли сохраняется в связке ключей ОС",
   "wallet.stepApprove": "Одобрите его один раз в кошельке",
-  "wallet.canTrade": "Может торговать",
-  "wallet.canTradeValue": "Да · ордера, отмены",
-  "wallet.canWithdraw": "Может выводить",
-  "wallet.no": "Нет",
   "wallet.coming": "Появится вместе с размещением ордеров",
   "wallet.connectedAddress": "Подключён: {address}",
   "wallet.hlStep1": "На Hyperliquid откройте More → API",
@@ -690,6 +683,36 @@ export const messages: Messages = {
     "Подключено к {address}. Подтвердите подпись в кошельке, чтобы одобрить API-кошелёк pewterdesk.",
   "wallet.wcSending": "Одобряем через Hyperliquid…",
   "wallet.wcRetry": "Повторить",
+  "wallet.browser": "Расширение браузера",
+  "wallet.browserDetail": "MetaMask, Rabby, Coinbase и другие",
+  "wallet.browserHow":
+    "Подключите кошелёк-расширение в браузере. pewterdesk откроет там страницу: выберите кошелёк и подтвердите одну подпись, чтобы одобрить API-кошелёк только для торговли на Hyperliquid.",
+  "wallet.browserStep1": "Откройте страницу, которую pewterdesk покажет в браузере",
+  "wallet.browserStep2": "Выберите кошелёк и подтвердите одну подпись",
+  "wallet.soon": "Скоро",
+  "wallet.factTrade": "Выставляет и отменяет ордера",
+  "wallet.factWithdraw": "Не может выводить и переводить",
+  "wallet.factKeychain": "Ключ хранится в системной связке ключей",
+  "browser.pageTitle": "Подключение кошелька · pewterdesk",
+  "browser.title": "Подключите кошелёк",
+  "browser.lead":
+    "Выберите кошелёк и подтвердите одну подпись. Она одобряет API-кошелёк pewterdesk только для торговли на Hyperliquid.",
+  "browser.note":
+    "Эту страницу показывает приложение pewterdesk на вашем компьютере; она закроется после подключения.",
+  "browser.connecting": "Подключаемся к кошельку…",
+  "browser.noAccount": "Кошелёк не передал ни одного счёта.",
+  "browser.sign": "Подтвердите подпись в кошельке.",
+  "browser.sending": "Одобряем через Hyperliquid…",
+  "browser.done": "Подключено. Можно закрыть вкладку и вернуться в pewterdesk.",
+  "browser.noWallet":
+    "Кошелёк не найден. Установите MetaMask, Rabby или другое расширение в этот браузер и обновите страницу.",
+  "browser.injected": "Кошелёк браузера",
+  "browser.closed": "Страница в браузере закрылась. Начните заново.",
+  "browser.waiting": "Ждём браузер…",
+  "browser.waitingHint":
+    "Завершите на открывшейся странице: выберите кошелёк и подтвердите подпись.",
+  "browser.reopen": "Открыть страницу снова",
+  "browser.open": "Открыть в браузере",
   "settings.connected": "Подключённый кошелёк",
   "settings.noConnected": "Кошелёк ещё не подключён.",
   "settings.wallets.desc":
