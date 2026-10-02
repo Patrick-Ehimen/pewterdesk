@@ -1,11 +1,12 @@
 //! Against Bybit mainnet's public API. Read-only, no key needed, but they
 //! need the network, so they're skipped by default. Run them one at a time
-//! (`make rust-live`).
+//! (`make rust-live`). The one signed request uses a made-up key, never a
+//! real one.
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pewterdesk_core::{CandleInterval, ExchangeAdapter, VenueError};
-use pewterdesk_exchange_bybit::{constants::MAINNET, BybitAdapter};
+use pewterdesk_exchange_bybit::{auth::ApiCredentials, constants::MAINNET, BybitAdapter};
 use tokio::time::timeout;
 
 fn adapter() -> BybitAdapter {
@@ -153,4 +154,25 @@ async fn fetches_funding_history() {
 async fn account_data_is_unsupported_for_now() {
     let err = adapter().account("anything").await.unwrap_err();
     assert!(matches!(err, VenueError::Unsupported(_)), "{err:?}");
+}
+
+/// A made-up key reaches Bybit's key check and is refused as unknown - not
+/// as a malformed request - so the path, headers and signature format are
+/// what Bybit expects. Nothing is stored or accepted.
+#[tokio::test]
+#[ignore = "hits Bybit mainnet"]
+async fn an_unknown_key_is_refused_as_unknown() {
+    let creds = ApiCredentials::new(
+        "PDTESTKEY000000000",
+        zeroize::Zeroizing::new("PDTESTSECRET0000000000000000000000000".into()),
+    )
+    .unwrap();
+    // Both the live host and Demo Trading's.
+    for demo in [false, true] {
+        let err = adapter().api_key_info(&creds, demo).await.unwrap_err();
+        assert!(
+            matches!(&err, VenueError::InvalidRequest(m) if m.contains("recognise")),
+            "demo {demo}: {err:?}"
+        );
+    }
 }

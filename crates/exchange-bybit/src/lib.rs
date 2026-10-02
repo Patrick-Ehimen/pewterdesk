@@ -9,12 +9,16 @@
 //! and are left out: the terminal shows perpetuals only.
 //!
 //! Account data and orders aren't available yet: Bybit serves them only to
-//! requests signed with an API key. Its trade-only key is an API key created
-//! with order permissions and without withdrawal; onboarding and signing
-//! (HMAC over the request) get their own reviewed task - see
-//! docs/adr/0001-venues-in-rust.md.
+//! requests signed with an API key. Its trade-only key is an API key with
+//! contract trading permissions only. [`auth`] signs requests (HMAC over the
+//! request) and decides whether a key qualifies; onboarding uses
+//! [`BybitAdapter::api_key_info`] to ask Bybit about a key before it's
+//! stored - see docs/adr/0001-venues-in-rust.md.
 
+mod account;
+pub mod auth;
 pub mod constants;
+mod orders;
 mod tape;
 mod wire;
 mod ws;
@@ -25,8 +29,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, ExchangeAdapter, FundingRate, Market,
-    MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest, OrderType, Trade,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, ExchangeAdapter, Fill,
+    FundingPayment, FundingRate, KeySource, Market, MarketHistory, MarketStats, MarketSummary,
+    Order, OrderAmend, OrderBook, OrderRequest, OrderType, PositionProtection, Trade,
     TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
@@ -58,6 +63,11 @@ const HISTORY_PACE: Duration = Duration::from_millis(300);
 const FUNDING_PAGE: usize = 200;
 /// Pages fetched per `funding_history` call at most.
 const FUNDING_MAX_PAGES: usize = 10;
+/// The account is re-read this often: five signed requests, well inside
+/// Bybit's private limits.
+const ACCOUNT_EVERY: Duration = Duration::from_secs(5);
+/// How long a reading of Bybit's clock is trusted.
+const CLOCK_EVERY: Duration = Duration::from_secs(60);
 /// The instrument list is paged; this is Bybit's largest page.
 const INSTRUMENT_PAGE: u32 = 1000;
 
@@ -72,6 +82,9 @@ fn now_ms() -> u64 {
 struct Rest {
     http: reqwest::Client,
     base: &'static str,
+    /// Bybit's clock minus ours (ms), and when that was measured: signed
+    /// requests are stamped by Bybit's clock, re-read every `CLOCK_EVERY`.
+    clock: Arc<std::sync::Mutex<Option<(i64, std::time::Instant)>>>,
 }
 
 impl Rest {
@@ -101,6 +114,163 @@ impl Rest {
             .await
             .map_err(|e| VenueError::Network(format!("unexpected Bybit response: {e}")))?;
         wire::result(reply)
+    }
+
+    /// Bybit's clock minus ours, re-read every `CLOCK_EVERY`. Bybit refuses
+    /// a request stamped outside its window, so signed requests are stamped
+    /// by its clock; reading it also opens the connection, so the first
+    /// signed request isn't held up by the handshake. Offline, the signed
+    /// request would fail anyway; the local clock is the fallback.
+    async fn clock_offset(&self) -> i64 {
+        if let Some((offset, at)) = *self.clock.lock().unwrap() {
+            if at.elapsed() < CLOCK_EVERY {
+                return offset;
+            }
+        }
+        match self.server_time().await {
+            Ok(server) => {
+                let offset = server as i64 - now_ms() as i64;
+                *self.clock.lock().unwrap() = Some((offset, std::time::Instant::now()));
+                offset
+            }
+            Err(_) => 0,
+        }
+    }
+
+    /// A GET on a private endpoint, signed with `creds`. Crate-private, and
+    /// the path and every query pair are `'static` - this crate's own
+    /// constants - so nothing outside chooses what gets signed or where it
+    /// goes. Values are plain ASCII words, so the query needs no encoding
+    /// and the string signed is exactly the one sent.
+    async fn signed_get<T: DeserializeOwned>(
+        &self,
+        path: &'static str,
+        query: &[(&'static str, &'static str)],
+        creds: &auth::ApiCredentials,
+    ) -> Result<T, VenueError> {
+        let query = query
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join("&");
+        let url = if query.is_empty() {
+            format!("{}{path}", self.base)
+        } else {
+            format!("{}{path}?{query}", self.base)
+        };
+        self.signed(self.http.get(url), &query, creds, false).await
+    }
+
+    /// `signed_get` for a query with computed values (timestamps). Every
+    /// value must be plain ASCII letters and digits, so it still needs no
+    /// encoding and the string signed is exactly the one sent.
+    async fn signed_get_values<T: DeserializeOwned>(
+        &self,
+        path: &'static str,
+        query: &[(&'static str, String)],
+        creds: &auth::ApiCredentials,
+    ) -> Result<T, VenueError> {
+        let plain = |v: &String| !v.is_empty() && v.bytes().all(|b| b.is_ascii_alphanumeric());
+        if !query.iter().all(|(_, v)| plain(v)) {
+            return Err(VenueError::InvalidRequest("unexpected query value".into()));
+        }
+        let query = query
+            .iter()
+            .map(|(k, v)| format!("{k}={v}"))
+            .collect::<Vec<_>>()
+            .join("&");
+        let url = format!("{}{path}?{query}", self.base);
+        self.signed(self.http.get(url), &query, creds, false).await
+    }
+
+    /// A POST to a private endpoint with `body`, signed with `creds`. The
+    /// body is one of `orders`' structs, serialized once here: the bytes
+    /// signed are the bytes sent. Never retried - a resend could place an
+    /// order twice.
+    async fn signed_post<T: DeserializeOwned, B: serde::Serialize>(
+        &self,
+        path: &'static str,
+        body: &B,
+        creds: &auth::ApiCredentials,
+    ) -> Result<T, VenueError> {
+        let json = serde_json::to_string(body)
+            .map_err(|_| VenueError::InvalidRequest("the order couldn't be encoded".into()))?;
+        let request = self
+            .http
+            .post(format!("{}{path}", self.base))
+            .header("Content-Type", "application/json")
+            .body(json.clone());
+        self.signed(request, &json, creds, true).await
+    }
+
+    /// Stamps (by Bybit's clock), signs `payload` and sends `request`.
+    /// `writes` marks a request that changes something, whose fate is
+    /// unknown if the connection drops mid-way.
+    async fn signed<T: DeserializeOwned>(
+        &self,
+        request: reqwest::RequestBuilder,
+        payload: &str,
+        creds: &auth::ApiCredentials,
+        writes: bool,
+    ) -> Result<T, VenueError> {
+        let timestamp = (now_ms() as i64 + self.clock_offset().await) as u64;
+        let signature = creds.sign(timestamp, auth::RECV_WINDOW, payload);
+        let response = request
+            .header("X-BAPI-API-KEY", creds.api_key())
+            .header("X-BAPI-TIMESTAMP", timestamp.to_string())
+            .header("X-BAPI-RECV-WINDOW", auth::RECV_WINDOW.to_string())
+            .header("X-BAPI-SIGN", signature)
+            .send()
+            .await
+            .map_err(|e| {
+                if writes && !e.is_connect() {
+                    VenueError::Network(
+                        "the connection dropped after sending; check your open orders before trying again".into(),
+                    )
+                } else {
+                    VenueError::Network(e.without_url().to_string())
+                }
+            })?;
+        let status = response.status();
+        if status.as_u16() == 429 {
+            return Err(VenueError::Network(format!("rate limited ({status})")));
+        }
+        // Bybit answers auth failures with a 401, often with an empty body:
+        // read the body for its code where there is one.
+        let reply: wire::Reply = match response.json().await {
+            Ok(reply) => reply,
+            Err(_) if status.as_u16() == 401 => {
+                return Err(VenueError::InvalidRequest(
+                    "Bybit refused the key; check it was made for this account type (live or demo) and hasn't been deleted".into(),
+                ));
+            }
+            Err(_) if !status.is_success() => {
+                return Err(VenueError::Network(format!("Bybit API returned {status}")));
+            }
+            Err(e) => {
+                return Err(VenueError::Network(format!(
+                    "unexpected Bybit response: {e}"
+                )));
+            }
+        };
+        if reply.ret_code != 0 {
+            return Err(auth::auth_error(reply.ret_code, reply.ret_msg));
+        }
+        wire::result(reply)
+    }
+
+    /// Bybit's clock, in ms.
+    async fn server_time(&self) -> Result<u64, VenueError> {
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Time {
+            time_nano: String,
+        }
+        let time: Time = self.get("/v5/market/time", &[]).await?;
+        time.time_nano
+            .parse::<u128>()
+            .map(|ns| (ns / 1_000_000) as u64)
+            .map_err(|_| VenueError::Network("unexpected Bybit server time".into()))
     }
 
     async fn instruments(&self) -> Result<Vec<wire::Instrument>, VenueError> {
@@ -210,10 +380,15 @@ fn with_first<T: Send + 'static>(first: T, mut live: mpsc::Receiver<T>) -> mpsc:
 
 pub struct BybitAdapter {
     rest: Rest,
+    /// Demo Trading's host, for demo accounts' private requests; unset
+    /// where the network has none.
+    demo: Option<Rest>,
     endpoints: &'static Endpoints,
     /// Live perpetuals and their funding intervals, from the instrument
     /// list: fetched on first use and refreshed whenever `markets` runs.
     meta: tokio::sync::Mutex<Option<Arc<Meta>>>,
+    /// Where account reads get the stored API key; see `with_keys`.
+    keys: Option<Arc<dyn KeySource>>,
 }
 
 impl BybitAdapter {
@@ -228,13 +403,113 @@ impl BybitAdapter {
             .build()
             .map_err(|e| VenueError::Network(e.to_string()))?;
         Ok(Self {
+            demo: endpoints.demo_rest.map(|base| Rest {
+                http: http.clone(),
+                base,
+                clock: Arc::default(),
+            }),
             rest: Rest {
                 http,
                 base: endpoints.rest,
+                clock: Arc::default(),
             },
             endpoints,
             meta: tokio::sync::Mutex::new(None),
+            keys: None,
         })
+    }
+
+    /// What Bybit says about the key `creds` holds: its account, its
+    /// permissions and IP binding. Onboarding checks it with
+    /// [`auth::check_trade_only`] before the key is stored.
+    pub async fn api_key_info(
+        &self,
+        creds: &auth::ApiCredentials,
+        demo: bool,
+    ) -> Result<auth::ApiKeyInfo, VenueError> {
+        self.private(demo)?
+            .signed_get("/v5/user/query-api", &[], creds)
+            .await
+    }
+
+    /// The host private requests go to: Demo Trading's for demo accounts.
+    fn private(&self, demo: bool) -> Result<&Rest, VenueError> {
+        if demo {
+            self.demo
+                .as_ref()
+                .ok_or(VenueError::Unsupported("demo accounts on this network"))
+        } else {
+            Ok(&self.rest)
+        }
+    }
+
+    /// The host for account `id` (`demo:` in front for a demo account).
+    fn rest_for(&self, id: &str) -> Result<&Rest, VenueError> {
+        self.private(auth::parse_account(id)?.0)
+    }
+
+    /// The host and stored key for reading account `id`'s own data.
+    async fn reader(&self, id: &str) -> Result<(&Rest, auth::ApiCredentials), VenueError> {
+        let rest = self.rest_for(id)?;
+        let keys = self
+            .keys
+            .as_deref()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        let stored = keys
+            .key(&auth::key_account(id)?)
+            .await
+            .map_err(VenueError::Key)?;
+        Ok((rest, auth::ApiCredentials::from_stored(&stored)?))
+    }
+
+    /// The stored key for `account`, checking it's this account's Bybit key:
+    /// a caller can't point an order at another venue's or account's key.
+    async fn trading_creds(
+        &self,
+        account: &TradingAccount,
+    ) -> Result<auth::ApiCredentials, VenueError> {
+        if account.key != auth::key_account(&account.address)? {
+            return Err(VenueError::InvalidRequest(
+                "that key isn't this Bybit account's".into(),
+            ));
+        }
+        let keys = self
+            .keys
+            .as_deref()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        let stored = keys.key(&account.key).await.map_err(VenueError::Key)?;
+        auth::ApiCredentials::from_stored(&stored)
+    }
+
+    /// The touch and last trade for `market`, to price a market order's
+    /// bound and orient a trigger. From the live host: demo trades on live
+    /// prices.
+    async fn quote(&self, market: &str) -> Result<orders::Quote, VenueError> {
+        let ticker = self
+            .rest
+            .tickers(Some(market))
+            .await?
+            .into_iter()
+            .next()
+            .ok_or_else(|| VenueError::InvalidRequest(format!("no price for {market}")))?;
+        let price = |s: &Option<String>| {
+            s.as_deref()
+                .and_then(|v| v.parse::<rust_decimal::Decimal>().ok())
+                .map(pewterdesk_core::Decimal)
+                .unwrap_or_default()
+        };
+        Ok(orders::Quote {
+            bid: price(&ticker.bid1_price),
+            ask: price(&ticker.ask1_price),
+            last: price(&ticker.last_price),
+        })
+    }
+
+    /// Adds the app's `KeySource`, which account reads take the stored API
+    /// key from. Without one, account data is `Unsupported`.
+    pub fn with_keys(mut self, keys: Arc<dyn KeySource>) -> Self {
+        self.keys = Some(keys);
+        self
     }
 
     async fn meta(&self) -> Result<Arc<Meta>, VenueError> {
@@ -261,8 +536,58 @@ impl BybitAdapter {
     }
 }
 
-const NO_ACCOUNT_DATA: &str =
-    "Bybit account data (it needs requests signed with an API key, not set up yet)";
+const NO_ACCOUNT_DATA: &str = "Bybit account data without a key store";
+
+/// Reads account `uid`: its stored key from `keys`, held only while these
+/// requests are signed, then the balance and, per settle coin, positions
+/// and open orders. Read-only: nothing here places, moves or changes
+/// anything.
+async fn fetch_account(
+    rest: &Rest,
+    keys: &dyn KeySource,
+    uid: &str,
+) -> Result<AccountSnapshot, VenueError> {
+    let stored = keys
+        .key(&auth::key_account(uid)?)
+        .await
+        .map_err(VenueError::Key)?;
+    let creds = auth::ApiCredentials::from_stored(&stored)?;
+    drop(stored);
+    let wallet: account::List<account::Wallet> = rest
+        .signed_get(
+            "/v5/account/wallet-balance",
+            &[("accountType", "UNIFIED")],
+            &creds,
+        )
+        .await?;
+    let mut positions = Vec::new();
+    let mut orders = Vec::new();
+    for coin in account::SETTLE_COINS {
+        let page: account::List<account::WirePosition> = rest
+            .signed_get(
+                "/v5/position/list",
+                &[("category", "linear"), ("settleCoin", coin)],
+                &creds,
+            )
+            .await?;
+        positions.extend(page.list);
+        let page: account::List<account::WireOrder> = rest
+            .signed_get(
+                "/v5/order/realtime",
+                &[("category", "linear"), ("settleCoin", coin)],
+                &creds,
+            )
+            .await?;
+        orders.extend(page.list);
+    }
+    Ok(account::snapshot(
+        uid,
+        wallet.list.into_iter().next(),
+        positions,
+        orders,
+        now_ms(),
+    ))
+}
 
 #[async_trait]
 impl ExchangeAdapter for BybitAdapter {
@@ -626,35 +951,258 @@ impl ExchangeAdapter for BybitAdapter {
         Ok(rates)
     }
 
-    async fn account(&self, _address: &str) -> Result<AccountSnapshot, VenueError> {
-        Err(VenueError::Unsupported(NO_ACCOUNT_DATA))
+    /// `address` is the Bybit account whose API key is stored: its UID, or
+    /// `demo:` and the UID for a demo account (read from the demo host).
+    async fn account(&self, address: &str) -> Result<AccountSnapshot, VenueError> {
+        let keys = self
+            .keys
+            .as_deref()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        fetch_account(self.rest_for(address)?, keys, address).await
     }
 
+    /// Polled: a snapshot every `ACCOUNT_EVERY`. A failed poll keeps the
+    /// last snapshot rather than ending the stream.
     async fn subscribe_account(
         &self,
-        _address: &str,
+        address: &str,
     ) -> Result<mpsc::Receiver<AccountSnapshot>, VenueError> {
-        Err(VenueError::Unsupported(NO_ACCOUNT_DATA))
+        let keys = self
+            .keys
+            .clone()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        let rest = self.rest_for(address)?.clone();
+        let first = fetch_account(&rest, keys.as_ref(), address).await?;
+        let (tx, rx) = mpsc::channel(4);
+        let uid = address.to_owned();
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = tx.closed() => return,
+                    _ = tokio::time::sleep(ACCOUNT_EVERY) => {}
+                }
+                if let Ok(next) = fetch_account(&rest, keys.as_ref(), &uid).await {
+                    if tx.send(next).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        });
+        Ok(with_first(first, rx))
     }
 
+    /// The account's latest fills (up to 100, newest first), from the last
+    /// seven days Bybit serves by default.
+    async fn fills(&self, address: &str) -> Result<Vec<Fill>, VenueError> {
+        let (rest, creds) = self.reader(address).await?;
+        let page: account::List<account::WireExecution> = rest
+            .signed_get(
+                "/v5/execution/list",
+                &[("category", "linear"), ("limit", "100")],
+                &creds,
+            )
+            .await?;
+        Ok(page.list.into_iter().filter_map(account::fill).collect())
+    }
+
+    /// Funding settled on the account's positions since `start_time`, newest
+    /// first. Bybit's log serves at most seven days per request, so this
+    /// walks back a week at a time (five weeks at most).
+    async fn funding_payments(
+        &self,
+        address: &str,
+        start_time: u64,
+    ) -> Result<Vec<FundingPayment>, VenueError> {
+        const WEEK: u64 = 7 * 24 * 3_600_000;
+        let (rest, creds) = self.reader(address).await?;
+        let mut paid = Vec::new();
+        let mut end = now_ms();
+        for _ in 0..5 {
+            if end <= start_time {
+                break;
+            }
+            let start = start_time.max(end.saturating_sub(WEEK - 1));
+            let page: account::List<account::WireSettlement> = rest
+                .signed_get_values(
+                    "/v5/account/transaction-log",
+                    &[
+                        ("accountType", "UNIFIED".into()),
+                        ("category", "linear".into()),
+                        ("type", "SETTLEMENT".into()),
+                        ("startTime", start.to_string()),
+                        ("endTime", end.to_string()),
+                        ("limit", "50".into()),
+                    ],
+                    &creds,
+                )
+                .await?;
+            paid.extend(page.list.into_iter().filter_map(account::funding));
+            end = start.saturating_sub(1);
+        }
+        paid.sort_by_key(|p| std::cmp::Reverse(p.time));
+        Ok(paid)
+    }
+
+    /// The account's recently closed positions (up to 100, newest first),
+    /// from the last seven days Bybit serves by default.
+    async fn closed_trades(&self, address: &str) -> Result<Vec<ClosedTrade>, VenueError> {
+        let (rest, creds) = self.reader(address).await?;
+        let page: account::List<account::WireClosed> = rest
+            .signed_get(
+                "/v5/position/closed-pnl",
+                &[("category", "linear"), ("limit", "100")],
+                &creds,
+            )
+            .await?;
+        Ok(page.list.into_iter().filter_map(account::closed).collect())
+    }
+
+    /// The account's recent orders in any state (up to 50 per settle coin,
+    /// newest first), from the last seven days Bybit serves by default.
+    async fn order_history(&self, address: &str) -> Result<Vec<Order>, VenueError> {
+        let (rest, creds) = self.reader(address).await?;
+        let mut orders = Vec::new();
+        for coin in account::SETTLE_COINS {
+            let page: account::List<account::WireOrder> = rest
+                .signed_get(
+                    "/v5/order/history",
+                    &[
+                        ("category", "linear"),
+                        ("settleCoin", coin),
+                        ("limit", "50"),
+                    ],
+                    &creds,
+                )
+                .await?;
+            orders.extend(page.list.into_iter().filter_map(account::order));
+        }
+        orders.sort_by_key(|o| std::cmp::Reverse(o.created_at));
+        Ok(orders)
+    }
+
+    /// Places `request` for `account` (its UID, or `demo:` and the UID).
+    /// Checked against the live market list, its tick and step, and the
+    /// current price before anything is signed; see `orders::create`.
+    /// Resolves once Bybit has accepted it: `Pending` until the account
+    /// stream shows it open or filled.
     async fn place_order(
         &self,
-        _account: &TradingAccount,
-        _request: &OrderRequest,
+        account: &TradingAccount,
+        request: &OrderRequest,
     ) -> Result<Order, VenueError> {
-        Err(VenueError::Unsupported(
-            "order placement (not implemented yet)",
-        ))
+        let rest = self.rest_for(&account.address)?;
+        let meta = self.live_market(&request.market).await?;
+        let (tick, step) = meta.steps(&request.market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{:?} has no price tick", request.market))
+        })?;
+        let quote = self.quote(&request.market).await?;
+        let body = orders::create(request, tick, step, quote)?;
+        let creds = self.trading_creds(account).await?;
+        #[derive(serde::Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Placed {
+            order_id: String,
+        }
+        let placed: Placed = rest.signed_post("/v5/order/create", &body, &creds).await?;
+        drop(creds);
+        let price = body
+            .price()
+            .and_then(|p| p.parse::<rust_decimal::Decimal>().ok())
+            .map(pewterdesk_core::Decimal);
+        Ok(Order {
+            venue: VenueId::Bybit,
+            id: placed.order_id,
+            client_id: request.client_id.clone(),
+            market: request.market.clone(),
+            side: request.side,
+            order_type: request.kind.order_type(),
+            size: request.size,
+            filled_size: pewterdesk_core::Decimal::default(),
+            price: match request.kind {
+                pewterdesk_core::OrderKind::Market { .. } => None,
+                _ => price,
+            },
+            trigger_price: match request.kind {
+                pewterdesk_core::OrderKind::Trigger { trigger_price, .. } => Some(trigger_price),
+                _ => None,
+            },
+            reduce_only: request.reduce_only,
+            status: pewterdesk_core::OrderStatus::Pending,
+            created_at: now_ms(),
+            category: match request.kind {
+                pewterdesk_core::OrderKind::Trigger { .. } => {
+                    pewterdesk_core::OrderCategory::Conditional
+                }
+                _ => pewterdesk_core::OrderCategory::Regular,
+            },
+            trigger_by: match request.kind {
+                pewterdesk_core::OrderKind::Trigger { .. } => {
+                    Some(pewterdesk_core::PriceSource::Last)
+                }
+                _ => None,
+            },
+            take_profit: None,
+            stop_loss: None,
+        })
     }
 
     async fn cancel_order(
         &self,
-        _account: &TradingAccount,
-        _market: &str,
-        _order_id: &str,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
     ) -> Result<(), VenueError> {
-        Err(VenueError::Unsupported(
-            "order cancellation (not implemented yet)",
-        ))
+        let rest = self.rest_for(&account.address)?;
+        wire::validate_market(market)?;
+        let body = orders::cancel(market, order_id)?;
+        let creds = self.trading_creds(account).await?;
+        let _: serde_json::Value = rest.signed_post("/v5/order/cancel", &body, &creds).await?;
+        Ok(())
+    }
+
+    /// Changes an open order on Bybit (`/v5/order/amend`): its price, size,
+    /// or attached TP/SL, each checked against the market's tick and step.
+    async fn amend_order(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
+        amend: &OrderAmend,
+    ) -> Result<(), VenueError> {
+        let rest = self.rest_for(&account.address)?;
+        let meta = self.live_market(market).await?;
+        let (tick, step) = meta
+            .steps(market)
+            .ok_or_else(|| VenueError::InvalidRequest(format!("{market:?} has no price tick")))?;
+        let body = orders::amend(market, order_id, amend, tick, step)?;
+        let creds = self.trading_creds(account).await?;
+        let _: serde_json::Value = rest.signed_post("/v5/order/amend", &body, &creds).await?;
+        Ok(())
+    }
+
+    /// Sets the position's TP, SL and trailing stop on Bybit in one call
+    /// (`/v5/position/trading-stop`, `Full` mode: each closes the whole
+    /// position). Prices are checked against the market's tick first.
+    async fn set_position_protection(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        protection: &PositionProtection,
+    ) -> Result<(), VenueError> {
+        let rest = self.rest_for(&account.address)?;
+        let meta = self.live_market(market).await?;
+        let (tick, _) = meta
+            .steps(market)
+            .ok_or_else(|| VenueError::InvalidRequest(format!("{market:?} has no price tick")))?;
+        let body = orders::protection(market, protection, tick)?;
+        let creds = self.trading_creds(account).await?;
+        match rest
+            .signed_post::<serde_json::Value, _>("/v5/position/trading-stop", &body, &creds)
+            .await
+        {
+            // Bybit answers a request that changes nothing with an error.
+            Err(VenueError::InvalidRequest(m)) if m.contains("not modified") => Ok(()),
+            other => other.map(|_| ()),
+        }
     }
 }

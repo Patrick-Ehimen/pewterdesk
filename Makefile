@@ -48,9 +48,20 @@ doctor: ## Check that the local toolchain can actually build and run the app
 
 ##@ Running
 
+# `make dev` runs the app through scripts/dev-run.sh, which signs it with the
+# local "PewterDesk Dev" certificate when there is one (`make dev-cert`), so
+# macOS keychain permissions survive rebuilds.
+DEV_RUNNER := $(CURDIR)/scripts/dev-run.sh
+
 .PHONY: dev
 dev: ## Run the desktop app in a native window (Tauri; needs Rust)
+	CARGO_TARGET_X86_64_APPLE_DARWIN_RUNNER=$(DEV_RUNNER) \
+	CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER=$(DEV_RUNNER) \
 	$(PNPM) --filter $(DESKTOP_PKG) run tauri dev
+
+.PHONY: dev-cert
+dev-cert: ## macOS: create the local signing certificate that stops dev keychain prompts
+	./scripts/dev-cert.sh
 
 .PHONY: dev-ui
 dev-ui: ## Run the desktop frontend in a browser only (no Rust, port 1420)

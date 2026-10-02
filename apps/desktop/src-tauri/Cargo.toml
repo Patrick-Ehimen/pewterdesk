@@ -27,6 +27,7 @@ tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-ap
 async-trait = "0.1"
 getrandom = "0.2"
 keyring = "4"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "query", "gzip"] }
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
 pewterdesk-exchange-bybit = { path = "../../../crates/exchange-bybit" }

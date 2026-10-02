@@ -2,8 +2,11 @@ use tauri::Manager;
 
 mod about;
 mod browser_connect;
+mod bybit_key;
+mod coin_info;
 mod keychain;
 mod menubar;
+mod share;
 mod splash;
 mod tray;
 mod venues;
@@ -15,6 +18,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .manage(venues)
+        .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
@@ -23,6 +27,15 @@ pub fn run() {
             tray::install(app)?;
             splash::arm_fallback(app.handle());
             Ok(())
+        })
+        // A page starting to load (a reload, a language switch) drops the old
+        // page's streams, which it can no longer unsubscribe from.
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                webview
+                    .state::<venues::Venues>()
+                    .end_streams_for(webview.label());
+            }
         })
         .on_menu_event(|app, event| menubar::on_menu(app, event.id().as_ref()))
         // Closing the main window keeps the app in the menu bar (tray), where
@@ -61,6 +74,8 @@ pub fn run() {
             venues::order_book,
             venues::account,
             venues::fills,
+            venues::closed_trades,
+            share::save_share_image,
             venues::funding_payments,
             venues::order_history,
             venues::subscribe_order_book,
@@ -73,6 +88,10 @@ pub fn run() {
             venues::candles,
             venues::market_icon,
             venues::subscribe_account,
+            venues::place_order,
+            venues::cancel_order,
+            venues::amend_order,
+            venues::set_position_protection,
             venues::unsubscribe,
             wallet::connect_wallet,
             wallet::wallet_status,
@@ -83,6 +102,14 @@ pub fn run() {
             browser_connect::start_browser_connect,
             browser_connect::reopen_browser_connect,
             browser_connect::cancel_browser_connect,
+            bybit_key::connect_bybit_key,
+            bybit_key::bybit_key_status,
+            bybit_key::disconnect_bybit_key,
+            coin_info::coin_info,
+            coin_info::open_coin_link,
+            coin_info::set_coingecko_key,
+            coin_info::has_coingecko_key,
+            coin_info::clear_coingecko_key,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

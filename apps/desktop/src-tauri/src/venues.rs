@@ -6,27 +6,39 @@
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
 //! - These commands and `ExchangeAdapter` together are the whole signing
-//!   surface. When orders land, they add place and cancel, nothing else.
+//!   surface: `place_order`, `cancel_order`, `amend_order` (an open order's
+//!   price, size or attached TP/SL) and `set_position_protection`
+//!   (a position's TP, SL and trailing stop: protective, reduce-only),
+//!   nothing else. They build the
+//!   account's key reference themselves and, for now, refuse everything but
+//!   Bybit demo accounts (`trading_account`).
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
+//! - Bybit's account reads are signed with its stored API key: the adapter
+//!   gets the keychain as a `KeySource` and signs only its own fixed,
+//!   read-only requests (balance, positions, open orders).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, ExchangeAdapter, Fill, FundingPayment, FundingRate,
-    Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, Trade, VenueError,
-    VenueId,
+    AccountSnapshot, Candle, CandleInterval, ClosedTrade, ExchangeAdapter, Fill, FundingPayment,
+    FundingRate, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook,
+    OrderRequest, PositionProtection, Trade, TradingAccount, VenueError, VenueId,
 };
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
-use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
+use pewterdesk_exchange_bybit::{
+    auth as bybit_auth, constants::MAINNET as BYBIT_MAINNET, BybitAdapter,
+};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
 use tauri::async_runtime::{self, JoinHandle};
 use tauri::ipc::Channel;
-use tauri::State;
+use tauri::{State, Webview};
 use tokio::sync::mpsc;
+
+use crate::keychain::KeychainKeySource;
 
 /// One message on a subscription's channel. `closed` is final: the venue ended
 /// the stream (e.g. it rejected the market), and nothing more will arrive.
@@ -37,11 +49,18 @@ pub enum StreamEvent<T> {
     Closed,
 }
 
+/// A stream to one webview (the main window or the tray panel).
+struct Subscription {
+    webview: String,
+    task: JoinHandle<()>,
+}
+
 pub struct Venues {
     hyperliquid: HyperliquidAdapter,
     aster: AsterAdapter,
     bybit: BybitAdapter,
-    subscriptions: Arc<Mutex<HashMap<u32, JoinHandle<()>>>>,
+    /// Each live stream's forwarding task, and the webview it streams to.
+    subscriptions: Arc<Mutex<HashMap<u32, Subscription>>>,
     next_id: AtomicU32,
 }
 
@@ -50,7 +69,8 @@ impl Venues {
         Ok(Self {
             hyperliquid: HyperliquidAdapter::new(&MAINNET)?,
             aster: AsterAdapter::new(&ASTER_MAINNET)?,
-            bybit: BybitAdapter::new(&BYBIT_MAINNET)?,
+            // Account reads take the stored API key from the keychain.
+            bybit: BybitAdapter::new(&BYBIT_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             subscriptions: Arc::default(),
             next_id: AtomicU32::new(1),
         })
@@ -61,6 +81,10 @@ impl Venues {
         &self.hyperliquid
     }
 
+    pub fn bybit(&self) -> &BybitAdapter {
+        &self.bybit
+    }
+
     fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
@@ -69,8 +93,29 @@ impl Venues {
         }
     }
 
-    /// Forwards `rx` to the webview until it ends or `unsubscribe` is called.
-    fn forward<T>(&self, mut rx: mpsc::Receiver<T>, channel: Channel<StreamEvent<T>>) -> u32
+    /// Ends every stream to `webview`. Called when it starts loading a page:
+    /// a reload (or a language switch) drops the old page without it
+    /// unsubscribing, and a send to a page that's gone doesn't fail, so its
+    /// streams would otherwise run - and poll venues - for good.
+    pub fn end_streams_for(&self, webview: &str) {
+        let mut subscriptions = self.subscriptions.lock().unwrap();
+        subscriptions.retain(|_, sub| {
+            let keep = sub.webview != webview;
+            if !keep {
+                sub.task.abort();
+            }
+            keep
+        });
+    }
+
+    /// Forwards `rx` to `webview`'s channel until it ends, `unsubscribe` is
+    /// called, or that webview loads a new page.
+    fn forward<T>(
+        &self,
+        mut rx: mpsc::Receiver<T>,
+        channel: Channel<StreamEvent<T>>,
+        webview: &Webview,
+    ) -> u32
     where
         T: Clone + Serialize + Send + 'static,
     {
@@ -87,7 +132,13 @@ impl Venues {
             let _ = channel.send(StreamEvent::Closed);
             subscriptions.lock().unwrap().remove(&id);
         });
-        registry.insert(id, task);
+        registry.insert(
+            id,
+            Subscription {
+                webview: webview.label().to_owned(),
+                task,
+            },
+        );
         id
     }
 }
@@ -125,6 +176,15 @@ pub async fn fills(
 }
 
 #[tauri::command]
+pub async fn closed_trades(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+) -> Result<Vec<ClosedTrade>, VenueError> {
+    venues.adapter(venue)?.closed_trades(&address).await
+}
+
+#[tauri::command]
 pub async fn funding_payments(
     venues: State<'_, Venues>,
     venue: VenueId,
@@ -150,30 +210,33 @@ pub async fn order_history(
 #[tauri::command]
 pub async fn subscribe_order_book(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     market: String,
     on_event: Channel<StreamEvent<OrderBook>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_order_book(&market).await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_trades(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     market: String,
     on_event: Channel<StreamEvent<Vec<Trade>>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_trades(&market).await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_market_stats(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     market: String,
     on_event: Channel<StreamEvent<MarketStats>>,
@@ -182,13 +245,14 @@ pub async fn subscribe_market_stats(
         .adapter(venue)?
         .subscribe_market_stats(&market)
         .await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_candles(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     market: String,
     interval: CandleInterval,
@@ -198,29 +262,31 @@ pub async fn subscribe_candles(
         .adapter(venue)?
         .subscribe_candles(&market, interval)
         .await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_market_summaries(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     on_event: Channel<StreamEvent<Vec<MarketSummary>>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_market_summaries().await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Returns the id to pass to `unsubscribe`.
 #[tauri::command]
 pub async fn subscribe_market_history(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     on_event: Channel<StreamEvent<MarketHistory>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_market_history().await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
 }
 
 /// Older candles for a chart scrolled back past what it has.
@@ -267,19 +333,157 @@ pub async fn market_icon(
 #[tauri::command]
 pub async fn subscribe_account(
     venues: State<'_, Venues>,
+    webview: Webview,
     venue: VenueId,
     address: String,
     on_event: Channel<StreamEvent<AccountSnapshot>>,
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_account(&address).await?;
-    Ok(venues.forward(rx, on_event))
+    Ok(venues.forward(rx, on_event, &webview))
+}
+
+/// Who an order is for, and which keychain entry holds its key - built
+/// here from the account id, never taken from the UI, so a call can't pair
+/// an account with another's key.
+///
+/// Orders are on for Bybit demo accounts only, for now: demo funds, on
+/// Bybit's demo host. Live accounts and other venues are refused here until
+/// the signing code has had its review; lifting that is this one match.
+fn trading_account(venue: VenueId, account: &str) -> Result<TradingAccount, VenueError> {
+    match venue {
+        VenueId::Bybit => {
+            let (demo, _) = bybit_auth::parse_account(account)?;
+            if !demo {
+                return Err(VenueError::Unsupported(
+                    "orders on live Bybit accounts (only demo accounts can trade for now)",
+                ));
+            }
+            Ok(TradingAccount {
+                address: account.to_owned(),
+                key: bybit_auth::key_account(account)?,
+            })
+        }
+        VenueId::Hyperliquid | VenueId::Aster => {
+            Err(VenueError::Unsupported("orders on this venue (not yet)"))
+        }
+    }
+}
+
+/// Places an order for `account`. With `cancel_order`, the only commands
+/// that sign a venue action: see the module's invariants.
+#[tauri::command]
+pub async fn place_order(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    request: OrderRequest,
+) -> Result<Order, VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues.adapter(venue)?.place_order(&trading, &request).await
+}
+
+#[tauri::command]
+pub async fn cancel_order(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    market: String,
+    order_id: String,
+) -> Result<(), VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues
+        .adapter(venue)?
+        .cancel_order(&trading, &market, &order_id)
+        .await
+}
+
+/// Changes `account`'s open order `order_id`: price, size, or attached TP/SL.
+/// Behind the same gate as orders (`trading_account`).
+#[tauri::command]
+pub async fn amend_order(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    market: String,
+    order_id: String,
+    amend: OrderAmend,
+) -> Result<(), VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues
+        .adapter(venue)?
+        .amend_order(&trading, &market, &order_id, &amend)
+        .await
+}
+
+/// Sets the take-profit, stop-loss and trailing stop on `account`'s
+/// position in `market`, all at once (`None` removes one). Protective only;
+/// behind the same gate as orders (`trading_account`).
+#[tauri::command]
+pub async fn set_position_protection(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    market: String,
+    protection: PositionProtection,
+) -> Result<(), VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues
+        .adapter(venue)?
+        .set_position_protection(&trading, &market, &protection)
+        .await
 }
 
 /// Idempotent: an unknown or already-ended id is fine. Dropping the forwarding
 /// task drops the adapter's receiver, which closes the venue connection.
 #[tauri::command]
 pub fn unsubscribe(venues: State<'_, Venues>, id: u32) {
-    if let Some(task) = venues.subscriptions.lock().unwrap().remove(&id) {
-        task.abort();
+    if let Some(sub) = venues.subscriptions.lock().unwrap().remove(&id) {
+        sub.task.abort();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_reload_ends_only_that_webviews_streams() {
+        let venues = Venues::new().unwrap();
+        let stream = |webview: &str| Subscription {
+            webview: webview.into(),
+            task: async_runtime::spawn(std::future::pending::<()>()),
+        };
+        {
+            let mut subs = venues.subscriptions.lock().unwrap();
+            subs.insert(1, stream("main"));
+            subs.insert(2, stream("main"));
+            subs.insert(3, stream("tray"));
+        }
+        venues.end_streams_for("main");
+        let mut subs = venues.subscriptions.lock().unwrap();
+        assert_eq!(subs.keys().copied().collect::<Vec<_>>(), [3]);
+        // The tray's stream is still running; the main window's were aborted.
+        let tray = subs.remove(&3).unwrap();
+        assert!(!tray.task.inner().is_finished());
+        tray.task.abort();
+    }
+
+    #[test]
+    fn only_bybit_demo_accounts_can_trade() {
+        let demo = trading_account(VenueId::Bybit, "demo:24617703").unwrap();
+        assert_eq!(demo.address, "demo:24617703");
+        assert_eq!(demo.key, "bybit:demo:24617703");
+        assert!(matches!(
+            trading_account(VenueId::Bybit, "24617703"),
+            Err(VenueError::Unsupported(_))
+        ));
+        assert!(trading_account(VenueId::Bybit, "demo:x").is_err());
+        let hl = format!("0x{}", "a".repeat(40));
+        for venue in [VenueId::Hyperliquid, VenueId::Aster] {
+            assert!(matches!(
+                trading_account(venue, &hl),
+                Err(VenueError::Unsupported(_))
+            ));
+        }
     }
 }

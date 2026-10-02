@@ -60,6 +60,9 @@ pnpm and cargo, so it can't drift from the underlying scripts.
   also fails if the generated TS types are stale
 - `make rust-bindings` - regenerate `packages/core/src/generated/` after changing `crates/core`
 - `make dev` - run the desktop app in a native window (needs Rust)
+- `make dev-cert` - macOS, once per machine: a local self-signed "PewterDesk
+  Dev" certificate that `make dev` signs the app with (`scripts/dev-run.sh`),
+  so keychain "Always Allow" survives rebuilds instead of prompting each time
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk -- --ignored` - the keychain tests that touch the
   real OS store, skipped by default
@@ -93,18 +96,45 @@ discover it on their own. The reasoning behind the rules is in
   wraps it in `Zeroizing`, refuses the main wallet's own key, and stores it
   only if the venue lists it as an approved agent of that account. The
   commands return public addresses only.
+- `apps/desktop/src-tauri/src/bybit_key.rs` and `crates/exchange-bybit/src/auth.rs`
+  - Bybit onboarding. The API key and secret cross IPC once, into
+  `connect_bybit_key`, which signs one fixed request (`/v5/user/query-api`)
+  to ask Bybit what the key may do, and stores a live key only if every
+  permission is on `auth::ALLOWED` (contract trading, nothing that moves
+  funds) - an allowlist, so anything unknown is refused. Demo Trading keys
+  skip the allowlist (demo funds only); they're still checked on the demo
+  host, where live keys don't authenticate. The commands return the UID and
+  permissions only.
 - `apps/desktop/src-tauri/src/browser_connect.rs` - connecting a browser
   extension wallet. It serves a one-time page on 127.0.0.1 (random port, a
   random token in every path, the exact Host checked, posts only from the
   page's own origin) that asks the extension to sign the approval
   `wallet.rs` builds. It stops after a connection, a cancel, or 10 minutes.
-- Signing code in each `crates/exchange-<venue>` (none written yet) - what
-  turns a key into a signed venue action. The highest-stakes code in the repo.
-  Hold keys only as `Zeroizing` and only for the signing call.
-- The `ExchangeAdapter` trait and the Tauri commands that expose it. Together
-  they are the entire signing surface: place and cancel orders, nothing else.
-  Never add withdraw, transfer, key approval, or anything that signs
-  caller-supplied bytes or typed data.
+- `apps/desktop/src-tauri/src/coin_info.rs` - the Markets panel's Overview
+  tab, from CoinGecko (`api.coingecko.com` only). Its optional demo API key
+  lives in the keychain (`coingecko:demo`) and is never returned. Coin links
+  reach JS as labels and indexes and open only via `open_coin_link`, which
+  opens a URL Rust itself fetched, filtered by `safe_url` (it goes through
+  the OS shell on Windows) - never a URL from the UI.
+- Signing code in each `crates/exchange-<venue>` - what turns a key into a
+  signed venue action. The highest-stakes code in the repo. Hold keys only as
+  `Zeroizing` and only for the signing call. So far only Bybit's:
+  `crates/exchange-bybit/src/orders.rs` builds the create/cancel bodies (every
+  field a constant or checked against the live market's tick and step; market
+  orders always go as IOC limits at the slippage bound), and `auth.rs` signs
+  (HMAC over exactly the bytes sent). Demo accounts (ids `demo:{uid}`, keys
+  under `bybit:demo:{uid}`) use Bybit's demo host, `api-demo.bybit.com`.
+- The `ExchangeAdapter` trait and the Tauri commands that expose it
+  (`place_order`, `cancel_order`, `amend_order`, `set_position_protection` in
+  `venues.rs`). Together they are the entire signing surface: place, cancel
+  and amend orders (an open order's price, size or attached TP/SL - never its
+  market, side or kind), and set a position's take-profit, stop-loss and
+  trailing stop (protective, reduce-only, closing the whole position) -
+  nothing else. Never add withdraw,
+  transfer, key approval, or anything that signs caller-supplied bytes or
+  typed data. The commands build the account's keychain reference themselves
+  (`trading_account`) and, for now, accept Bybit demo accounts only - lifting
+  that gate is a security-relevant change.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
   wallet, Aster API wallet with withdraw off), not the
   user's main wallet key.

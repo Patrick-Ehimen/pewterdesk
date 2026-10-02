@@ -3064,6 +3064,7 @@ dependencies = [
  "pewterdesk-exchange-aster",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
+ "reqwest",
  "serde",
  "serde_json",
  "tauri",
@@ -3108,13 +3109,17 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "futures-util",
+ "hex",
+ "hmac 0.12.1",
  "pewterdesk-core",
  "reqwest",
  "rust_decimal",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "tokio",
  "tokio-tungstenite",
+ "zeroize",
 ]
 
 [[package]]

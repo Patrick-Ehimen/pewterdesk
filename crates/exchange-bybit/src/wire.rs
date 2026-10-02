@@ -44,11 +44,11 @@ pub struct Page<T> {
 }
 
 /// A number Bybit sends as a string, where an empty string means none.
-fn opt_decimal(s: &str) -> Option<Decimal> {
+pub(crate) fn opt_decimal(s: &str) -> Option<Decimal> {
     s.parse::<rust_decimal::Decimal>().ok().map(Decimal)
 }
 
-fn decimal(s: &str) -> Decimal {
+pub(crate) fn decimal(s: &str) -> Decimal {
     opt_decimal(s).unwrap_or_default()
 }
 
@@ -128,17 +128,30 @@ pub fn market(i: &Instrument) -> Market {
 #[derive(Default)]
 pub struct Meta {
     pub funding_secs: HashMap<String, u32>,
+    /// Each live market's price tick and size step, which orders must keep to.
+    pub steps: HashMap<String, (Decimal, Decimal)>,
 }
 
 impl Meta {
     pub fn new(instruments: &[Instrument]) -> Self {
+        let live = || instruments.iter().filter(|i| i.is_live());
         Self {
-            funding_secs: instruments
-                .iter()
-                .filter(|i| i.is_live())
+            funding_secs: live()
                 .map(|i| (i.symbol.clone(), i.funding_interval * 60))
                 .collect(),
+            steps: live()
+                .map(|i| {
+                    let tick = decimal(&i.price_filter.tick_size);
+                    let step = decimal(&i.lot_size_filter.qty_step);
+                    (i.symbol.clone(), (tick, step))
+                })
+                .collect(),
         }
+    }
+
+    /// `market`'s price tick and size step, if it's a live perpetual.
+    pub fn steps(&self, market: &str) -> Option<(Decimal, Decimal)> {
+        self.steps.get(market).copied()
     }
 
     pub fn is_live(&self, market: &str) -> bool {
@@ -384,6 +397,8 @@ pub struct Ticker {
     pub funding_rate: Option<String>,
     #[serde(default)]
     pub next_funding_time: Option<String>,
+    #[serde(default)]
+    pub last_price: Option<String>,
     #[serde(default)]
     pub bid1_price: Option<String>,
     #[serde(default)]
@@ -639,6 +654,7 @@ mod tests {
     fn ranks_summaries_by_turnover() {
         let meta = Meta {
             funding_secs: HashMap::from([("A".into(), 3600), ("B".into(), 28_800)]),
+            steps: HashMap::new(),
         };
         let t = |symbol: &str, turnover: &str| Ticker {
             symbol: symbol.into(),

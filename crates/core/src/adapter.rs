@@ -6,9 +6,9 @@ use tokio::sync::mpsc;
 use ts_rs::TS;
 
 use crate::domain::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, Fill, FundingPayment, FundingRate,
-    Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest, Trade,
-    TradingAccount, VenueId,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, Fill, FundingPayment,
+    FundingRate, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook,
+    OrderRequest, PositionProtection, Trade, TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
 
@@ -38,8 +38,8 @@ pub enum VenueError {
 ///
 /// The trait has no withdraw, transfer or key-approval method, and no way to
 /// sign caller-supplied bytes: whatever can drive an adapter - including a
-/// script injected into the webview - can place and cancel orders with the
-/// trade-only key, and nothing else. Adding such a method is a
+/// script injected into the webview - can place and cancel orders, and set a
+/// position's protective exits, with the trade-only key, and nothing else. Adding such a method is a
 /// security-sensitive change; see docs/adr/0001-venues-in-rust.md.
 ///
 /// Read-only methods need no key, so market data and account views work before
@@ -165,6 +165,12 @@ pub trait ExchangeAdapter: Send + Sync {
         Err(VenueError::Unsupported("funding payments"))
     }
 
+    /// The account's recently closed positions, newest first, with what each
+    /// made. Read-only, like `fills`.
+    async fn closed_trades(&self, _address: &str) -> Result<Vec<ClosedTrade>, VenueError> {
+        Err(VenueError::Unsupported("closed trades"))
+    }
+
     /// The account's recent orders in any state (filled, cancelled,
     /// rejected, still open), newest first, as many as the venue keeps.
     async fn order_history(&self, _address: &str) -> Result<Vec<Order>, VenueError> {
@@ -193,4 +199,34 @@ pub trait ExchangeAdapter: Send + Sync {
         market: &str,
         order_id: &str,
     ) -> Result<(), VenueError>;
+
+    /// Changes an open order's price, size, or attached TP and SL. Order
+    /// management, like `cancel_order`: it can't change the market, the side
+    /// or the kind of order. Part of the signing surface with `place_order`,
+    /// `cancel_order` and `set_position_protection`, and nothing beyond them.
+    async fn amend_order(
+        &self,
+        _account: &TradingAccount,
+        _market: &str,
+        _order_id: &str,
+        _amend: &OrderAmend,
+    ) -> Result<(), VenueError> {
+        Err(VenueError::Unsupported("changing an order"))
+    }
+
+    /// Changes an open position's take-profit, stop-loss and trailing stop:
+    /// each kept, removed or set (`ExitChange`). Protective only: each exit is
+    /// reduce-only and closes the position; it can't open, add to or move
+    /// funds. Part of the signing surface with `place_order` and
+    /// `cancel_order`, and nothing beyond them.
+    async fn set_position_protection(
+        &self,
+        _account: &TradingAccount,
+        _market: &str,
+        _protection: &PositionProtection,
+    ) -> Result<(), VenueError> {
+        Err(VenueError::Unsupported(
+            "take-profit and stop-loss on positions",
+        ))
+    }
 }
