@@ -21,6 +21,8 @@ import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
 import venueAster from "./venues/aster.svg";
 import venueBybit from "./venues/bybit.svg";
+import venueDydx from "./venues/dydx.svg";
+import venueGmx from "./venues/gmx.svg";
 import venueHyperliquid from "./venues/hyperliquid.svg";
 import walletCoinbase from "./wallets/coinbase.svg";
 import walletLedger from "./wallets/ledger.svg";
@@ -81,4 +83,10 @@ export const walletLogos = {
   trust: walletTrust,
   walletConnect: walletWalletConnect,
   zerion: walletZerion,
+} as const;
+
+/** Venues pewterdesk will support but doesn't yet, for "coming soon" in onboarding. Sources: venues/README.md. */
+export const upcomingVenueLogos = {
+  gmx: venueGmx,
+  dydx: venueDydx,
 } as const;

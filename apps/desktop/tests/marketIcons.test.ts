@@ -35,6 +35,19 @@ describe("market logo sources", () => {
     });
     await expect(firstIcon(iconSources("bybit", "BTCUSDT"), fetchIcon)).resolves.toBe("<svg/>");
     expect(fetchIcon).toHaveBeenCalledTimes(2);
-    await expect(firstIcon([["aster", "NOPEUSDT"]], fetchIcon)).resolves.toBeUndefined();
+  });
+
+  it("says there's no logo only when every source answered none", async () => {
+    const none = vi.fn(async () => undefined);
+    await expect(firstIcon(iconSources("bybit", "BTCUSDT"), none)).resolves.toBeUndefined();
+  });
+
+  it("fails, rather than caching no logo, when a source failed", async () => {
+    // Hyperliquid rate-limited and Aster has none: try again later, don't save "none".
+    const flaky = vi.fn(async (venue: string) => {
+      if (venue === "hyperliquid") throw new Error("rate limited");
+      return undefined;
+    });
+    await expect(firstIcon(iconSources("bybit", "BTCUSDT"), flaky)).rejects.toThrow("rate limited");
   });
 });

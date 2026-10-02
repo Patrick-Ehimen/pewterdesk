@@ -7,6 +7,8 @@ export interface PnlCardState {
   open: boolean;
   /** Unset until it's first moved; it then appears above the bottom bar's left end. */
   position?: CardPosition;
+  /** Its size as a multiple of the default; unset is 1. */
+  scale?: number;
 }
 
 const isPosition = (p: unknown): p is CardPosition =>
@@ -19,8 +21,12 @@ export function loadPnlCard(): PnlCardState {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
     if (typeof saved !== "object" || saved === null) return { open: false };
-    const { open, position } = saved as Record<string, unknown>;
-    return { open: open === true, position: isPosition(position) ? position : undefined };
+    const { open, position, scale } = saved as Record<string, unknown>;
+    return {
+      open: open === true,
+      position: isPosition(position) ? position : undefined,
+      scale: typeof scale === "number" && Number.isFinite(scale) ? scale : undefined,
+    };
   } catch {
     return { open: false };
   }

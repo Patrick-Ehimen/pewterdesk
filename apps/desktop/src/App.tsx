@@ -1,5 +1,16 @@
 import { logo, venueLogos } from "@pewterdesk/assets";
-import type { AccountSnapshot, Market, OrderBook, VenueId } from "@pewterdesk/core";
+import type {
+  AccountSnapshot,
+  ClosedTrade,
+  Market,
+  Order,
+  OrderAmend,
+  OrderBook,
+  OrderRequest,
+  Position,
+  PositionProtection,
+  VenueId,
+} from "@pewterdesk/core";
 import {
   AccountSummary,
   AlertsPopover,
@@ -8,21 +19,28 @@ import {
   type BookSides,
   BookSidesPicker,
   type BookUnit,
+  ClosedTradesTable,
+  closedRoi,
+  dateFormat,
   decimalsOf,
   FundingHistoryTable,
+  formatNumber,
   formatSigned,
   type IconLoader,
   MarketPicker,
   MarketStatsBar,
+  OpenOrdersPanel,
   OpenOrdersTable,
   OptionsMenu,
   OrderBookSkeleton,
   OrderBookView,
   OrderTicket,
   PnlCard,
+  PnlShareDialog,
   PositionsTable,
   QuickTrade,
   type RowMode,
+  type ShareCard,
   SummarySkeleton,
   type SymbolFor,
   TableSkeleton,
@@ -50,11 +68,14 @@ import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
 import { FeedView } from "./components/FeedView";
 import { HeaderActions } from "./components/header/HeaderActions";
+import { VenueSwitcher } from "./components/header/VenueSwitcher";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
+import { Onboarding } from "./components/onboarding/Onboarding";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
+import { VenuesPage } from "./components/pages/VenuesPage";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
 import { pageLabel, pageOptions, ROW_MODES, VIEW_KEYS } from "./components/preferences";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
@@ -62,6 +83,9 @@ import { SettingsPage } from "./components/settings/SettingsPage";
 import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
 import { Movement } from "./components/statusbar/Movement";
 import { Tickers } from "./components/statusbar/Tickers";
+import { WatchlistBar } from "./components/statusbar/WatchlistBar";
+import { accountName } from "./components/wallet/AccountList";
+import { ApiKeyDialog } from "./components/wallet/ApiKeyDialog";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, useAppearance } from "./hooks/useAppearance";
@@ -75,6 +99,7 @@ import {
   useAccount,
   useAccountFills,
   useAccountFunding,
+  useClosedTrades,
   useMarketStats,
   useMarketSummaries,
   useMarkets,
@@ -84,10 +109,17 @@ import {
 } from "./hooks/useVenueFeeds";
 import { useWatchlist } from "./hooks/useWatchlist";
 import { useWorkspace } from "./hooks/useWorkspace";
-import { connectedWallet, subscribeWallet } from "./lib/account";
+import {
+  accountsState,
+  activeAccount,
+  canTrade,
+  isDemoAccount,
+  subscribeAccounts,
+} from "./lib/account";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import { peekSavedIcon, withIconCache } from "./lib/iconCache";
 import { firstIcon, iconSources } from "./lib/marketIcons";
+import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
@@ -125,7 +157,7 @@ const VENUE_CHIPS = VENUE_IDS.map((id) => ({
   logo: venueLogos[id],
 }));
 
-type ActivityTab = "positions" | "orders" | "fills" | "funding" | "orderHistory";
+type ActivityTab = "positions" | "orders" | "closedPnl" | "fills" | "funding" | "orderHistory";
 type BookTab = "book" | "trades";
 const SOUND = ["on", "off"] as const;
 
@@ -138,17 +170,39 @@ function ActivityPanel({
   account,
   address,
   symbolFor,
+  onCancel,
+  quoteFor,
+  baseFor,
+  tickFor,
+  onProtect,
+  onAmend,
+  onShare,
 }: {
   venue: VenueId;
   account: Feed<AccountSnapshot>;
   address: string | undefined;
   symbolFor: SymbolFor;
+  /** Cancels an open order; unset where the account can't trade. */
+  onCancel?: (order: Order) => Promise<void>;
+  /** The coin a market's PnL and value are in, shown beside them. */
+  quoteFor: (marketId: string) => string;
+  /** The coin a market's size is in, e.g. "BTC". */
+  baseFor: (marketId: string) => string;
+  /** A market's price tick. */
+  tickFor: (marketId: string) => string;
+  /** Changes an open order; unset where the account can't trade. */
+  onAmend?: (order: Order, amend: OrderAmend) => Promise<void>;
+  /** Opens the P&L share card for a position or a closed trade. */
+  onShare: (from: { position: Position } | { closed: ClosedTrade }) => void;
+  /** Sets a position's TP, SL and trailing stop; unset where the account can't trade. */
+  onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
   const [tab, setTab] = useState<ActivityTab>("positions");
   const snapshot = account.status === "live" || account.status === "closed" ? account.data : null;
   const fills = useAccountFills(venue, address, tab === "fills");
   const funding = useAccountFunding(venue, address, tab === "funding");
   const orderHistory = useOrderHistory(venue, address, tab === "orderHistory");
+  const closed = useClosedTrades(venue, address, tab === "closedPnl");
   const loading = <TableSkeleton columns={6} />;
   return (
     <>
@@ -162,6 +216,7 @@ function ActivityPanel({
             id: "orders",
             label: `${t("tab.openOrders")}${snapshot ? ` (${snapshot.openOrders.length})` : ""}`,
           },
+          { id: "closedPnl", label: t("tab.closedPnl") },
           { id: "fills", label: t("tab.tradeHistory") },
           { id: "funding", label: t("tab.fundingHistory") },
           { id: "orderHistory", label: t("tab.orderHistory") },
@@ -170,7 +225,22 @@ function ActivityPanel({
         onChange={setTab}
       />
       <div className="app-scroll">
-        {tab === "fills" ? (
+        {tab === "closedPnl" ? (
+          <FeedView
+            feed={closed}
+            idle={t("feed.noAccount")}
+            loading={loading}
+            live={(data) => (
+              <ClosedTradesTable
+                trades={data}
+                symbolFor={symbolFor}
+                quoteFor={quoteFor}
+                baseFor={baseFor}
+                onShare={(c) => onShare({ closed: c })}
+              />
+            )}
+          />
+        ) : tab === "fills" ? (
           <FeedView
             feed={fills}
             idle={t("feed.noAccount")}
@@ -204,9 +274,25 @@ function ActivityPanel({
             loading={loading}
             live={(data) =>
               tab === "positions" ? (
-                <PositionsTable positions={data.positions} symbolFor={symbolFor} />
+                <PositionsTable
+                  positions={data.positions}
+                  symbolFor={symbolFor}
+                  quoteFor={quoteFor}
+                  baseFor={baseFor}
+                  tickFor={tickFor}
+                  onProtect={onProtect}
+                  onShare={(p) => onShare({ position: p })}
+                />
               ) : (
-                <OpenOrdersTable orders={data.openOrders} symbolFor={symbolFor} />
+                <OpenOrdersPanel
+                  orders={data.openOrders}
+                  symbolFor={symbolFor}
+                  quoteFor={quoteFor}
+                  baseFor={baseFor}
+                  onCancel={onCancel}
+                  onAmend={onAmend}
+                  tickFor={tickFor}
+                />
               )
             }
           />
@@ -335,11 +421,108 @@ export function App() {
   };
   // Aster serves account data only to signed requests, which need a
   // connected API wallet; until then it has no account to show.
-  // The connected account, on the venue it belongs to.
-  const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
-  const address = wallet?.venue === venue ? wallet.address : undefined;
+  // The venue's active account: a main address, or on Bybit a UID (read
+  // with the API key Rust keeps in the keychain). A venue can have several.
+  const accounts = useSyncExternalStore(subscribeAccounts, accountsState);
+  const activeOnVenue = activeAccount(accounts, venue);
+  const address = activeOnVenue?.id;
+  // Orders go only where Rust allows them: Bybit demo accounts, for now.
+  const trading = canTrade(activeOnVenue) ? activeOnVenue : undefined;
+  const placeOrder = trading
+    ? async (request: OrderRequest) => {
+        await venueClient.placeOrder(trading.venue, trading.id, request);
+      }
+    : undefined;
+  const cancelOrder = trading
+    ? async (order: Order) => {
+        await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+      }
+    : undefined;
+  // The P&L share card: built from a position (live) or a closed trade.
+  const [shareCard, setShareCard] = useState<Omit<ShareCard, "demoLabel">>();
+  const openShare = (from: { position: Position } | { closed: ClosedTrade }) => {
+    const quote = quoteFor("position" in from ? from.position.market : from.closed.market);
+    const side = "position" in from ? from.position.side : from.closed.side;
+    const lev = "position" in from ? from.position.leverage : from.closed.leverage;
+    const sideLabel = `${t(side === "long" ? "side.long" : "side.short")}${
+      lev ? ` ${formatNumber(lev)}x` : ""
+    }`;
+    const brandLogo = isLightTheme(appearance.theme)
+      ? logo.horizontal.lightBg
+      : logo.horizontal.darkBg;
+    const base = {
+      venue: venueInfo.label,
+      venueLogo: venueLogos[venue],
+      brandLogo,
+      sideLabel,
+      side,
+    };
+    if ("position" in from) {
+      const p = from.position;
+      const pnl = Number(p.unrealizedPnl);
+      const margin = Number(p.margin);
+      setShareCard({
+        ...base,
+        market: symbolFor(p.market),
+        profit: pnl >= 0,
+        roi:
+          margin > 0
+            ? { label: t("share.roi"), value: `${formatSigned((pnl / margin) * 100)}%` }
+            : undefined,
+        pnl: { label: t("share.unrealized", { quote }), value: formatSigned(pnl) },
+        prices: [
+          { label: t("share.entry"), value: formatNumber(p.entryPrice) },
+          { label: t("share.market"), value: formatNumber(p.markPrice) },
+        ],
+        footnote: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(Date.now()),
+      });
+    } else {
+      const c = from.closed;
+      const pnl = Number(c.closedPnl);
+      const roi = closedRoi(c);
+      setShareCard({
+        ...base,
+        market: symbolFor(c.market),
+        profit: pnl >= 0,
+        roi:
+          roi === undefined ? undefined : { label: t("share.roi"), value: `${formatSigned(roi)}%` },
+        pnl: { label: t("share.realized", { quote }), value: formatSigned(pnl) },
+        prices: [
+          { label: t("share.entry"), value: formatNumber(c.entryPrice) },
+          { label: t("share.exit"), value: formatNumber(c.exitPrice) },
+        ],
+        footnote: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(c.time),
+      });
+    }
+  };
+  const amend = trading
+    ? async (order: Order, change: OrderAmend) => {
+        await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+      }
+    : undefined;
+  const protect = trading
+    ? async (position: Position, protection: PositionProtection) => {
+        await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+      }
+    : undefined;
   const appearance = useAppearance();
   const themeTransition = useThemeTransition(appearance.setTheme);
+  // First-run setup, until it's done; it also picks which venues show.
+  const [setup, setSetup] = useState(loadOnboarding);
+  const venueChips = VENUE_CHIPS.filter((chip) => setup.venues.includes(chip.id));
+  const finishSetup = (next: OnboardingState) => {
+    saveOnboarding(next);
+    setSetup(next);
+    const first = next.venues[0];
+    if (first && !next.venues.includes(venue)) showMarket(first);
+  };
+  /** Adds a venue to the terminal, or removes it (never the last one). */
+  const toggleVenue = (id: VenueId) => {
+    const has = setup.venues.includes(id);
+    if (has && setup.venues.length === 1) return;
+    const venues = VENUE_IDS.filter((v) => (v === id ? !has : setup.venues.includes(v)));
+    finishSetup({ ...setup, venues });
+  };
   const watchlist = useWatchlist(venue);
   const [workspace, setWorkspace] = useWorkspace();
   const [editing, setEditing] = useState(false);
@@ -357,6 +540,11 @@ export function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alerts = useAlerts(alertsOpen);
   const [walletOpen, setWalletOpen] = useState(false);
+  // The exchange whose API-key dialog is open (Bybit connects with a key, not a wallet).
+  const [apiKeyFor, setApiKeyFor] = useState<VenueId>();
+  /** Opens the venue's own connect flow: a wallet, or an exchange API key. */
+  const openConnect = (id: VenueId = venue) =>
+    VENUES[id].auth === "apiKey" ? setApiKeyFor(id) : setWalletOpen(true);
   const [aboutOpen, setAboutOpen] = useState(false);
   // A market picked from the tray panel goes on screen, switching venue if need be.
   const showFromTray = useRef(showMarket);
@@ -425,7 +613,8 @@ export function App() {
           : undefined,
     starred: pickerWatchlist.starred,
     onToggleStar: (m: Market) => pickerWatchlist.toggle(m.id),
-    venues: VENUE_CHIPS,
+    venues: venueChips,
+    onManageVenues: () => goTo("venues"),
     venue: pickerOpen ? pickerVenue : venue,
     onVenueChange: setPickerVenue,
   };
@@ -485,6 +674,23 @@ export function App() {
   const symbolFor = useCallback(
     (id: string) => marketList.find((m) => m.id === id)?.symbol ?? id,
     [marketList],
+  );
+  /** A market's price tick, e.g. "0.1". */
+  const tickFor = useCallback(
+    (id: string) => marketList.find((m) => m.id === id)?.tickSize ?? "0.01",
+    [marketList],
+  );
+  /** The coin a market's size is counted in, e.g. "BTC". */
+  const baseFor = useCallback(
+    (id: string) => marketList.find((m) => m.id === id)?.base ?? id,
+    [marketList],
+  );
+  /** The coin a market settles in, and its PnL is counted in: USDT or USDC. */
+  const quoteFor = useCallback(
+    (id: string) =>
+      marketList.find((m) => m.id === id)?.quote ??
+      (venue === "hyperliquid" || !id.endsWith("USDT") ? "USDC" : "USDT"),
+    [marketList, venue],
   );
 
   /** Switches page; leaving the workspace ends layout editing (closing its gaps). */
@@ -549,10 +755,23 @@ export function App() {
         );
       case "positions":
         return (
-          <ActivityPanel venue={venue} account={account} address={address} symbolFor={symbolFor} />
+          <ActivityPanel
+            venue={venue}
+            account={account}
+            address={address}
+            symbolFor={symbolFor}
+            onCancel={cancelOrder}
+            quoteFor={quoteFor}
+            baseFor={baseFor}
+            tickFor={tickFor}
+            onProtect={protect}
+            onAmend={amend}
+            onShare={openShare}
+          />
         );
       case "trade":
-        // Orders can't be placed yet, so no onSubmit: the button says why.
+        // Orders go to Bybit demo accounts only, for now; elsewhere there's no
+        // onSubmit, and the button says why.
         return (
           <div className="app-scroll">
             <OrderTicket
@@ -561,7 +780,14 @@ export function App() {
               account={accountData}
               fees={selected?.listedBy ? undefined : venueInfo.fees}
               maxSlippage={venueInfo.maxSlippage}
-              onConnect={() => setWalletOpen(true)}
+              onConnect={() => openConnect()}
+              onSubmit={placeOrder}
+              unavailableReason={
+                venue === "bybit" && activeOnVenue && !trading ? t("ticket.demoOnly") : undefined
+              }
+              accountBadge={
+                activeOnVenue && isDemoAccount(activeOnVenue) ? t("accounts.demo") : undefined
+              }
             />
           </div>
         );
@@ -578,6 +804,17 @@ export function App() {
         return null;
     }
   };
+
+  if (!setup.done) {
+    return (
+      <Onboarding
+        initial={setup}
+        theme={appearance.theme}
+        onTheme={themeTransition.switchTheme}
+        onDone={finishSetup}
+      />
+    );
+  }
 
   return (
     <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
@@ -607,6 +844,15 @@ export function App() {
             options={pageOptions()}
             value={page}
             onChange={goTo}
+          />
+          <VenueSwitcher
+            venue={venue}
+            venues={setup.venues}
+            onChange={(id) => {
+              showMarket(id);
+              goTo("trade");
+            }}
+            onSeeAll={() => goTo("venues")}
           />
           <div className="app-spacer" />
           {/* The market on screen, beside its watchlist star; opens the market picker. */}
@@ -653,7 +899,7 @@ export function App() {
                 paused={alerts.paused}
                 onPausedChange={alerts.setPaused}
                 market={selected}
-                venues={VENUE_CHIPS}
+                venues={venueChips}
                 currentOf={alerts.currentOf}
                 onCreate={alerts.create}
                 onToggle={alerts.toggle}
@@ -675,7 +921,11 @@ export function App() {
             theme={appearance.theme}
             onTheme={themeTransition.switchTheme}
             address={address}
-            onOpenWallet={() => setWalletOpen(true)}
+            accountName={activeOnVenue && accountName(accounts, activeOnVenue)}
+            account={activeOnVenue}
+            demo={activeOnVenue !== undefined && isDemoAccount(activeOnVenue)}
+            connectAuth={venueInfo.auth}
+            onOpenWallet={() => openConnect()}
           />
         </header>
 
@@ -684,7 +934,17 @@ export function App() {
             account={account}
             markets={marketList}
             venue={venueInfo.label}
-            onConnect={() => setWalletOpen(true)}
+            connectAuth={venueInfo.auth}
+            onConnect={() => openConnect()}
+          />
+        ) : page === "venues" ? (
+          <VenuesPage
+            chosen={setup.venues}
+            onToggle={toggleVenue}
+            onManage={(id) => {
+              showMarket(id);
+              openConnect(id);
+            }}
           />
         ) : page === "journal" ? (
           <ComingSoonPage
@@ -703,7 +963,7 @@ export function App() {
             onTheme={themeTransition.switchTheme}
             marketColors={appearance.market}
             onMarketColors={appearance.setMarket}
-            address={address}
+            address={activeAccount(accounts, "hyperliquid")?.id}
             onOpenWallet={() => setWalletOpen(true)}
             onResetLayout={() =>
               setWorkspace((w) => ({
@@ -713,6 +973,12 @@ export function App() {
               }))
             }
             onClearWatchlist={watchlist.clear}
+            onRunSetup={() => {
+              const again = { ...setup, done: false };
+              saveOnboarding(again);
+              setSetup(again);
+              goTo("trade");
+            }}
           />
         ) : (
           <>
@@ -764,6 +1030,7 @@ export function App() {
                     venues={pickerProps.venues}
                     pickerVenue={pickerProps.venue}
                     onPickerVenueChange={pickerProps.onVenueChange}
+                    onPickerManageVenues={pickerProps.onManageVenues}
                     pickerLoading={pickerProps.loading}
                   />
                 )}
@@ -783,6 +1050,11 @@ export function App() {
         )}
 
         <ConnectWalletDialog open={walletOpen} onClose={() => setWalletOpen(false)} />
+        <ApiKeyDialog
+          open={apiKeyFor !== undefined}
+          onClose={() => setApiKeyFor(undefined)}
+          venue={apiKeyFor ?? venue}
+        />
 
         <StatusBar
           connection={connection}
@@ -804,24 +1076,33 @@ export function App() {
             </>
           }
         >
-          <button
-            type="button"
-            className="app-bar-button app-bar-pnl"
-            aria-pressed={pnlCard.open}
-            title={t("pnl.toggle")}
-            onClick={() => updatePnlCard({ ...pnlCard, open: !pnlCard.open })}
-          >
-            <LuWallet size={13} aria-hidden />
-            {t("pnl.pnl")}
-            <span className="pd-num" data-trend={pnlTrend}>
-              {unrealized === undefined ? "-" : formatSigned(unrealized, 2)}
-            </span>
-          </button>
-          <Movement
-            venue={venue}
-            markets={marketList}
-            onOpenMarket={(v, id) => showMarket(v, id)}
-          />
+          {/* PnL, Market movement and Watchlist sit close together, as one group. */}
+          <div className="app-bar-group">
+            <button
+              type="button"
+              className="app-bar-button app-bar-pnl"
+              aria-pressed={pnlCard.open}
+              title={t("pnl.toggle")}
+              onClick={() => updatePnlCard({ ...pnlCard, open: !pnlCard.open })}
+            >
+              <LuWallet size={13} aria-hidden />
+              {t("pnl.pnl")}
+              <span className="pd-num" data-trend={pnlTrend}>
+                {unrealized === undefined ? "-" : formatSigned(unrealized, 2)}
+              </span>
+            </button>
+            <Movement
+              venue={venue}
+              markets={marketList}
+              onOpenMarket={(v, id) => showMarket(v, id)}
+            />
+            <WatchlistBar
+              venue={venue}
+              venues={setup.venues}
+              markets={marketList}
+              onOpenMarket={(v, id) => showMarket(v, id)}
+            />
+          </div>
           <Tickers
             venue={venue}
             ids={venueInfo.majors}
@@ -854,10 +1135,22 @@ export function App() {
             balance={balance}
             pnl={unrealized}
             connected={accountData !== undefined}
-            onConnect={() => setWalletOpen(true)}
+            connectText={t(venueInfo.auth === "apiKey" ? "pnl.connectApiKey" : "pnl.connect")}
+            onConnect={() => openConnect()}
             position={pnlCard.position ?? pnlDefault}
             onMove={(position) => updatePnlCard({ ...pnlCard, position })}
+            scale={pnlCard.scale}
+            onResize={(scale) => updatePnlCard({ ...pnlCard, scale })}
             onClose={() => updatePnlCard({ ...pnlCard, open: false })}
+          />
+        )}
+
+        {shareCard && (
+          <PnlShareDialog
+            card={shareCard}
+            demo={activeOnVenue !== undefined && isDemoAccount(activeOnVenue)}
+            onSave={appClient.saveShareImage}
+            onClose={() => setShareCard(undefined)}
           />
         )}
 

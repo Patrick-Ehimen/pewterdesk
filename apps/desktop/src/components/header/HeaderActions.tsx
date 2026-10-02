@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from "react";
 import {
   LuGlobe,
+  LuKeyRound,
   LuLayoutGrid,
   LuPalette,
   LuSettings,
@@ -19,8 +20,10 @@ import {
   LuZap,
 } from "react-icons/lu";
 import type { Theme } from "../../hooks/useAppearance";
+import type { VenueAccount } from "../../lib/account";
 import { switchLanguage } from "../../lib/language";
 import { languageOptions, themeOptions } from "../preferences";
+import { AccountAvatar } from "../wallet/AccountAvatar";
 
 /** Lucide icons (via react-icons) at the header's icon size. */
 const ICON_SIZE = 17;
@@ -43,6 +46,14 @@ interface HeaderActionsProps {
   theme: Theme;
   onTheme: (theme: Theme) => void;
   address: string | undefined;
+  /** The active account's name, for the chip's tooltip. */
+  accountName?: string;
+  /** The active account, whose picture the chip shows. */
+  account?: Pick<VenueAccount, "venue" | "id">;
+  /** Marks a demo account (demo funds) on the chip. */
+  demo?: boolean;
+  /** How the venue on screen connects, which the button names. */
+  connectAuth: "wallet" | "apiKey";
   onOpenWallet: () => void;
 }
 
@@ -63,6 +74,10 @@ export function HeaderActions({
   theme,
   onTheme,
   address,
+  accountName,
+  account,
+  demo,
+  connectAuth,
   onOpenWallet,
 }: HeaderActionsProps) {
   const locale = currentLocale();
@@ -135,16 +150,33 @@ export function HeaderActions({
         <button
           type="button"
           className="app-wallet-chip"
-          title={t("wallet.connectedAddress", { address })}
+          // Just the picture; the name and address are in the tooltip.
+          title={t("wallet.connectedAddress", {
+            address: accountName ? `${accountName} · ${address}` : address,
+          })}
+          aria-label={t("wallet.connectedAddress", {
+            address: accountName ? `${accountName} · ${address}` : address,
+          })}
           onClick={onOpenWallet}
         >
-          <span className="pd-live-dot" data-live aria-hidden />
-          <span className="pd-num">{shortAddress(address)}</span>
+          {account ? (
+            <AccountAvatar account={account} size={34} live />
+          ) : (
+            <>
+              <span className="pd-live-dot" data-live aria-hidden />
+              <span className="pd-num">{shortAddress(address)}</span>
+            </>
+          )}
+          {demo && <span className="app-demo-tag">{t("accounts.demo")}</span>}
         </button>
       ) : (
         <button type="button" className="app-connect" onClick={onOpenWallet}>
-          <LuWallet size={ICON_SIZE} aria-hidden />
-          {t("wallet.connect")}
+          {connectAuth === "apiKey" ? (
+            <LuKeyRound size={ICON_SIZE} aria-hidden />
+          ) : (
+            <LuWallet size={ICON_SIZE} aria-hidden />
+          )}
+          {t(connectAuth === "apiKey" ? "apiKey.connect" : "wallet.connect")}
         </button>
       )}
     </div>

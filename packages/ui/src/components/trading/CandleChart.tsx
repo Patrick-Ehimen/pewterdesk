@@ -17,7 +17,7 @@ import {
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { LuX } from "react-icons/lu";
 import { type MessageKey, t as tr } from "../../i18n";
-import { type DrawnCandle, joinedCandle, joinedCandles } from "../../lib/chart";
+import { type DrawnCandle, formatCountdown, joinedCandle, joinedCandles } from "../../lib/chart";
 import { formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import {
   bollinger,
@@ -45,6 +45,8 @@ const LOAD_OLDER_MARGIN = 50;
 const PRICE_PANE_STRETCH = 3;
 /** Height of the title strip added above a screenshot. */
 const SHOT_TITLE_PX = 32;
+/** From the last price's line to the top of the countdown under its label. */
+const COUNTDOWN_OFFSET_PX = 10;
 
 type Any = ISeriesApi<SeriesType>;
 type LinePoint = { time: UTCTimestamp; value?: number };
@@ -426,6 +428,11 @@ interface CandleChartProps {
   indicators?: readonly IndicatorId[];
   /** Offered as a × beside each indicator in the readout. */
   onRemoveIndicator?: (id: IndicatorId) => void;
+  /**
+   * The candle width in ms: shown as the time left until the latest candle
+   * closes, under the last price on the price scale. None without it.
+   */
+  intervalMs?: number;
   ref?: Ref<CandleChartHandle>;
 }
 
@@ -447,9 +454,11 @@ export function CandleChart({
   chartType = "candles",
   indicators = DEFAULT_INDICATORS,
   onRemoveIndicator,
+  intervalMs,
   ref,
 }: CandleChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const countdownRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi>(null);
   const drawnRef = useRef<Drawn>(null);
   const tokensRef = useRef<Tokens>(null);
@@ -598,6 +607,56 @@ export function CandleChart({
     };
   }, [candles, seriesKey, chartType, indicatorsKey, styleVersion]);
 
+  // The candle countdown, kept under the last price's label on the price
+  // scale: followed every frame (the scale moves as prices do and as it's
+  // dragged), its text changing once a second. Written to the DOM directly,
+  // so a ticking clock doesn't re-render the chart.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `chartType`/`styleVersion` rebuild the series it reads
+  useEffect(() => {
+    const el = countdownRef.current;
+    if (!el || !intervalMs) return;
+    let frame = 0;
+    let text = "";
+    const hide = () => {
+      el.hidden = true;
+    };
+    const follow = () => {
+      frame = requestAnimationFrame(follow);
+      const chart = chartRef.current;
+      const main = drawnRef.current?.main;
+      const last = main?.data().at(-1) as
+        | { time: number; value?: number; open?: number; close?: number }
+        | undefined;
+      const price = last?.close ?? last?.value;
+      if (!chart || !main || !last || price === undefined) return hide();
+      const y = main.priceToCoordinate(price);
+      const paneHeight = chart.panes()[0]?.getHeight() ?? 0;
+      if (y === null || y < 0 || y > paneHeight) return hide();
+      const next = formatCountdown(last.time * 1000 + intervalMs - Date.now());
+      if (next !== text) {
+        text = next;
+        el.textContent = next;
+      }
+      // Coloured like the label it hangs from: the candle's direction for
+      // candles and bars, neutral for the line styles.
+      const trend =
+        last.open === undefined || last.close === undefined
+          ? "flat"
+          : last.close >= last.open
+            ? "up"
+            : "down";
+      if (el.dataset.trend !== trend) el.dataset.trend = trend;
+      el.style.width = `${chart.priceScale("right").width()}px`;
+      el.style.transform = `translateY(${Math.round(y + COUNTDOWN_OFFSET_PX)}px)`;
+      el.hidden = false;
+    };
+    frame = requestAnimationFrame(follow);
+    return () => {
+      cancelAnimationFrame(frame);
+      hide();
+    };
+  }, [intervalMs, chartType, styleVersion]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -648,6 +707,7 @@ export function CandleChart({
   return (
     <div className="pd-candle-chart">
       <div ref={hostRef} className="pd-candle-host" />
+      <div ref={countdownRef} className="pd-candle-countdown pd-num" hidden aria-hidden />
       {current && (
         <Legend
           title={title}

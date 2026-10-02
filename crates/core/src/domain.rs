@@ -460,6 +460,67 @@ pub struct Order {
     /// Milliseconds since the Unix epoch.
     #[ts(type = "number")]
     pub created_at: u64,
+    /// What the order is for: a plain order, a conditional one, or one of a
+    /// position's exits.
+    #[serde(default)]
+    pub category: OrderCategory,
+    /// Which price a trigger watches, where the venue says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_by: Option<PriceSource>,
+    /// A take-profit and stop-loss attached to the order, set on the
+    /// position it opens once it fills.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub take_profit: Option<Decimal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_loss: Option<Decimal>,
+}
+
+/// Changes to an open order, any of them at once: its limit price, its
+/// size, and the TP and SL attached to it. Leaves it a limit order on the
+/// same market and side.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, export_to = TS_FILE, optional_fields)]
+pub struct OrderAmend {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub price: Option<Decimal>,
+    /// In base units, a multiple of `Market::size_step`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub size: Option<Decimal>,
+    #[serde(default)]
+    pub take_profit: ExitChange,
+    #[serde(default)]
+    pub stop_loss: ExitChange,
+}
+
+/// What an order is for, so they can be listed apart.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum OrderCategory {
+    /// A limit or market order.
+    #[default]
+    Regular,
+    /// Waits for a trigger price, then becomes a market or limit order.
+    Conditional,
+    /// A position's take-profit.
+    TakeProfit,
+    /// A position's stop-loss.
+    StopLoss,
+    /// A position's trailing stop.
+    TrailingStop,
+    /// Closes the position as its maintenance margin rate nears liquidation.
+    MmrClose,
+}
+
+/// The price a trigger watches.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum PriceSource {
+    Last,
+    Mark,
+    Index,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -479,6 +540,84 @@ pub struct Position {
     pub unrealized_pnl: Decimal,
     /// Collateral backing this position, in the quote asset.
     pub margin: Decimal,
+    /// PnL already realized on this position (closed parts, fees, funding),
+    /// in the quote asset; absent where the venue doesn't report it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub realized_pnl: Option<Decimal>,
+    /// The position's own take-profit, stop-loss and trailing stop, where the
+    /// venue keeps them on the position (see `PositionProtection`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub take_profit: Option<Decimal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_loss: Option<Decimal>,
+    /// The trailing stop's distance from the best price, in price units.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trailing_stop: Option<Decimal>,
+    /// The position's leverage, where the venue reports it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leverage: Option<Decimal>,
+}
+
+/// A position that's been closed (in full or in part), with what it made.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE, optional_fields)]
+pub struct ClosedTrade {
+    pub venue: VenueId,
+    pub market: String,
+    /// The side of the position that was closed.
+    pub side: PositionSide,
+    /// How much was closed, in base units.
+    pub size: Decimal,
+    /// Average entry and exit prices of the part closed.
+    pub entry_price: Decimal,
+    pub exit_price: Decimal,
+    /// PnL realised, after fees, in the quote asset.
+    pub closed_pnl: Decimal,
+    /// What the closed part cost to open, in the quote asset.
+    pub entry_value: Decimal,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub leverage: Option<Decimal>,
+    /// When it closed; milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// What to do with one of a position's exits.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(tag = "action", content = "price", rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum ExitChange {
+    /// Leave it as it is (set or not).
+    #[default]
+    Keep,
+    /// Take it off.
+    Remove,
+    /// Set it to this price (or, for a trailing stop, this distance).
+    Set(Decimal),
+}
+
+/// Changes to a position's protective exits: each kept, removed or set, so
+/// one can change without touching the others. Every exit closes the whole
+/// position, reduce-only - it can't open or add to one.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[ts(export, export_to = TS_FILE, optional_fields)]
+pub struct PositionProtection {
+    /// Closes the position at this price, on the profitable side.
+    #[serde(default)]
+    pub take_profit: ExitChange,
+    /// Closes the position at market once the price reaches this, on the losing side.
+    #[serde(default)]
+    pub stop_loss: ExitChange,
+    /// Follows the best price at this distance (price units) and closes the
+    /// position at market when the price comes back that far.
+    #[serde(default)]
+    pub trailing_stop: ExitChange,
+    /// Where a trailing stop being set starts following the price; from now
+    /// if unset. Only with `trailing_stop: Set`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trailing_activation: Option<Decimal>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]

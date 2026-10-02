@@ -1,6 +1,12 @@
 import type { Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
-import { marketFill, positionLeverage, sizeFromPercent, slippageOf } from "../src/lib/ticket";
+import {
+  marketFill,
+  positionLeverage,
+  sizeFromPercent,
+  slippageOf,
+  ticketOrder,
+} from "../src/lib/ticket";
 
 const asks = [
   { price: 100, size: 1 },
@@ -38,5 +44,63 @@ describe("order ticket maths", () => {
     } as unknown as Position;
     expect(positionLeverage(position)).toBe(10);
     expect(positionLeverage({ ...position, margin: "0" })).toBeUndefined();
+  });
+});
+
+describe("ticket orders", () => {
+  const base = {
+    market: { id: "BTCUSDT", sizeStep: "0.001" },
+    side: "buy" as const,
+    sizeBase: 0.0129,
+    limitPrice: "",
+    trigger: "",
+    reduceOnly: false,
+    tpsl: false,
+    maxSlippage: 0.05,
+  };
+
+  it("sends a market order with its slippage bound, size cut to the step", () => {
+    expect(ticketOrder({ ...base, type: "market" })).toEqual({
+      request: {
+        market: "BTCUSDT",
+        side: "buy",
+        size: "0.012",
+        reduceOnly: false,
+        type: "market",
+        maxSlippageBps: 500,
+      },
+    });
+    const wide = ticketOrder({ ...base, type: "market", maxSlippage: 0.5 });
+    expect("request" in wide && wide.request).toMatchObject({ maxSlippageBps: 1000 });
+  });
+
+  it("sends limit and trigger orders with their prices as typed", () => {
+    expect(ticketOrder({ ...base, type: "limit", limitPrice: " 80000.5 " })).toMatchObject({
+      request: { type: "limit", price: "80000.5" },
+    });
+    expect(
+      ticketOrder({
+        ...base,
+        side: "sell",
+        type: "stopMarket",
+        trigger: "79000",
+        reduceOnly: true,
+      }),
+    ).toMatchObject({ request: { type: "trigger", triggerPrice: "79000", reduceOnly: true } });
+    expect(
+      ticketOrder({ ...base, type: "stopLimit", trigger: "85000", limitPrice: "85100" }),
+    ).toMatchObject({ request: { type: "trigger", triggerPrice: "85000", limitPrice: "85100" } });
+  });
+
+  it("says what's missing or not available", () => {
+    expect(ticketOrder({ ...base, type: "market", sizeBase: 0.0004 })).toEqual({ blocked: "size" });
+    expect(ticketOrder({ ...base, type: "limit", limitPrice: "0" })).toEqual({ blocked: "price" });
+    expect(ticketOrder({ ...base, type: "takeMarket" })).toEqual({ blocked: "trigger" });
+    expect(ticketOrder({ ...base, type: "takeLimit", trigger: "90000" })).toEqual({
+      blocked: "price",
+    });
+    expect(ticketOrder({ ...base, type: "twap" })).toEqual({ blocked: "type" });
+    expect(ticketOrder({ ...base, type: "scale" })).toEqual({ blocked: "type" });
+    expect(ticketOrder({ ...base, type: "market", tpsl: true })).toEqual({ blocked: "tpsl" });
   });
 });

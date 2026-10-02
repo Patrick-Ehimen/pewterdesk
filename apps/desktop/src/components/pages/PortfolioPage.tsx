@@ -16,6 +16,8 @@ interface PortfolioPageProps {
   markets: Market[];
   /** The venue's display name, e.g. "Hyperliquid". */
   venue: string;
+  /** How the venue connects, which the empty state names. */
+  connectAuth: "wallet" | "apiKey";
   onConnect: () => void;
 }
 
@@ -44,7 +46,13 @@ function Card({
  * One venue so far, so "by venue" is Hyperliquid alone; funding history isn't
  * wired up yet, so the design's funding panel is left out rather than faked.
  */
-export function PortfolioPage({ account, markets, venue, onConnect }: PortfolioPageProps) {
+export function PortfolioPage({
+  account,
+  markets,
+  venue,
+  connectAuth,
+  onConnect,
+}: PortfolioPageProps) {
   const quote = markets[0]?.quote ?? "USDC";
   const baseOf = (id: string) => markets.find((m) => m.id === id)?.base ?? id;
 
@@ -53,9 +61,13 @@ export function PortfolioPage({ account, markets, venue, onConnect }: PortfolioP
       case "idle":
         return (
           <div className="page-empty">
-            <p>{t("portfolio.empty")}</p>
+            <p>
+              {connectAuth === "apiKey"
+                ? t("portfolio.emptyApiKey", { venue })
+                : t("portfolio.empty")}
+            </p>
             <button type="button" className="settings-button" data-primary onClick={onConnect}>
-              {t("wallet.connect")}
+              {t(connectAuth === "apiKey" ? "apiKey.connect" : "wallet.connect")}
             </button>
           </div>
         );

@@ -4135,10 +4135,11 @@ fieldset.pd-alerts-chips {
 
 /* The floating PnL card (after the design): dragged anywhere by its body */
 .pd-pnl-card {
+  --pnl-scale: 1;
   position: fixed;
   z-index: 900;
-  min-width: 300px;
-  padding: 16px 20px 12px;
+  min-width: calc(300px * var(--pnl-scale));
+  padding: calc(16px * var(--pnl-scale)) calc(20px * var(--pnl-scale)) calc(12px * var(--pnl-scale));
   border: 1px solid var(--pd-border-strong);
   border-radius: 12px;
   background:
@@ -4168,7 +4169,7 @@ fieldset.pd-alerts-chips {
 .pd-pnl-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: calc(24px * var(--pnl-scale));
 }
 .pd-pnl-col {
   display: flex;
@@ -4181,10 +4182,12 @@ fieldset.pd-alerts-chips {
   align-items: center;
   gap: 8px;
   color: var(--pd-text);
-  font-size: 30px;
+  font-size: calc(30px * var(--pnl-scale));
   font-weight: 500;
 }
 .pd-pnl-value img {
+  width: calc(28px * var(--pnl-scale));
+  height: calc(28px * var(--pnl-scale));
   border-radius: 50%;
 }
 .pd-pnl-value[data-trend="up"] {
@@ -4195,12 +4198,12 @@ fieldset.pd-alerts-chips {
 }
 .pd-pnl-label {
   color: var(--pd-pewter);
-  font-size: 14px;
+  font-size: calc(14px * var(--pnl-scale));
 }
 .pd-pnl-venue {
   margin: 10px 0 0;
   color: var(--pd-pewter-dim);
-  font-size: 12px;
+  font-size: calc(12px * var(--pnl-scale));
   text-align: center;
   letter-spacing: 0.04em;
 }
@@ -4236,4 +4239,652 @@ fieldset.pd-alerts-chips {
 .pd-pnl-close:hover {
   color: var(--pd-text);
   background: var(--pd-surface);
+}
+
+/* The "Add venue" chip: dashed, so it reads as an action, not a venue */
+.pd-picker-venue.pd-picker-add {
+  border-style: dashed;
+  color: var(--pd-pewter);
+}
+
+/* The account the ticket trades, when it isn't a live one ("Demo") */
+.pd-ticket-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-info);
+  border-radius: 6px;
+  color: var(--pd-info);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* What happened to the last order sent */
+.pd-ticket-result {
+  margin: 0;
+  color: var(--pd-warning);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.pd-ticket-result[data-ok] {
+  color: var(--pd-pewter);
+}
+.pd-ticket-modes:has(.pd-ticket-badge) {
+  grid-template-columns: auto 1fr 1fr;
+}
+
+/* Cancelling an open order */
+.pd-order-cancel-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+.pd-order-cancel {
+  padding: 3px 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.pd-order-cancel:hover:not(:disabled) {
+  background: var(--pd-surface-raised);
+}
+.pd-order-cancel:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.pd-order-cancel-error {
+  display: block;
+  color: var(--pd-warning);
+  font-size: 11.5px;
+  white-space: normal;
+}
+
+/* The time left on the latest candle, hung under the last price's label on
+   the price scale (positioned from the chart, see CandleChart) */
+.pd-candle-countdown {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 1px 0 2px;
+  border-radius: 0 0 2px 2px;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.pd-candle-countdown[data-trend="up"] {
+  background: var(--pd-buy);
+  color: var(--pd-on-buy);
+}
+.pd-candle-countdown[data-trend="down"] {
+  background: var(--pd-sell);
+  color: var(--pd-on-sell);
+}
+
+/* The PnL card's resize grip: drag the corner to scale the whole card */
+.pd-pnl-grip {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 0 50%,
+    var(--pd-pewter-dim) 50% 58%,
+    transparent 58% 70%,
+    var(--pd-pewter-dim) 70% 78%,
+    transparent 78%
+  );
+  opacity: 0.6;
+}
+.pd-pnl-card:hover .pd-pnl-grip {
+  opacity: 1;
+}
+
+/* A position's TP / SL (and trailing stop), with its edit button */
+.pd-tpsl {
+  white-space: nowrap;
+}
+.pd-tpsl-edit {
+  margin-left: 6px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-pewter);
+  vertical-align: middle;
+  cursor: pointer;
+}
+.pd-tpsl-edit:hover {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+}
+
+/* The TP/SL and trailing stop dialogs, after the venue's own */
+.pd-protect {
+  width: min(460px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--pd-border);
+  border-radius: 16px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+}
+.pd-protect::backdrop {
+  background: color-mix(in srgb, var(--pd-bg) 70%, transparent);
+}
+.pd-protect form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 26px 24px;
+}
+.pd-protect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pd-protect-head h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.pd-protect-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-protect-stats > div:last-child {
+  text-align: right;
+}
+.pd-protect-stats dt {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-protect-stats dd {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.pd-protect-stats dd[data-warn] {
+  color: var(--pd-warning);
+}
+.pd-protect-tabs {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-protect-tabs button {
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-protect-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--pd-brass);
+  color: var(--pd-text);
+}
+.pd-protect-tabs button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.pd-protect-help {
+  margin-left: auto;
+  color: var(--pd-pewter);
+}
+.pd-protect-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pd-protect-section + .pd-protect-section {
+  padding-top: 12px;
+  border-top: 1px solid var(--pd-border);
+}
+.pd-protect-section h4 {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  font-weight: 500;
+}
+.pd-protect-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.pd-protect-stepper,
+.pd-protect-roi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--pd-surface-raised);
+}
+.pd-protect-stepper:focus-within,
+.pd-protect-roi:focus-within {
+  border-color: var(--pd-brass);
+}
+.pd-protect-stepper input,
+.pd-protect-roi input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  outline: none;
+}
+.pd-protect-stepper button {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-protect-stepper button:hover {
+  color: var(--pd-text);
+}
+.pd-protect-bar {
+  width: 1px;
+  height: 16px;
+  background: var(--pd-border-strong);
+}
+.pd-protect-suffix {
+  color: var(--pd-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.pd-protect-slider input {
+  width: 100%;
+  accent-color: var(--pd-brass);
+}
+.pd-protect-marks {
+  display: flex;
+  justify-content: space-between;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.pd-protect-est {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pd-protect-labelrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pd-protect-label,
+.pd-protect-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter);
+  font-size: 14px;
+}
+.pd-protect-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--pd-brass);
+}
+.pd-protect-mode {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-protect-explain {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pd-protect-error {
+  margin: 0;
+  color: var(--pd-warning);
+  font-size: 12.5px;
+}
+.pd-protect-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+}
+.pd-protect-confirm,
+.pd-protect-cancel {
+  height: 46px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-protect-confirm {
+  border: 0;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+.pd-protect-confirm:hover:not(:disabled) {
+  background: var(--pd-brass-hover);
+}
+.pd-protect-cancel {
+  border: 1px solid var(--pd-border-strong);
+  background: none;
+  color: var(--pd-text);
+}
+.pd-protect-confirm:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.pd-protect-remove {
+  align-self: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* The box's own border shows focus; no second ring on the field inside it */
+.pd-protect-stepper input:focus-visible,
+.pd-protect-roi input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.pd-tpsl-pair {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  vertical-align: middle;
+}
+
+/* Open orders, split by kind as the venue does */
+.pd-orders-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pd-order-segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 6px;
+}
+.pd-order-segments button {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-order-segments button:hover {
+  color: var(--pd-text);
+}
+.pd-order-segments button[aria-selected="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.pd-order-trigger {
+  display: block;
+  white-space: nowrap;
+}
+.pd-order-id {
+  font-size: 12px;
+}
+.pd-order-id-line {
+  display: block;
+}
+.pd-orders-panel th {
+  white-space: nowrap;
+}
+/* Eleven columns: a little less padding so they fit without scrolling */
+.pd-orders-panel th,
+.pd-orders-panel td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+/* An order value with its edit button, and the box it turns into */
+.pd-order-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.pd-order-editing {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+}
+.pd-order-editing input {
+  width: 9ch;
+  padding: 3px 6px;
+  border: 1px solid var(--pd-brass);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  text-align: right;
+}
+.pd-order-editing input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+/* "+ Add" a TP/SL to an order */
+.pd-order-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-order-add:hover {
+  background: var(--pd-border-strong);
+}
+
+/* The P&L share card dialog */
+.pd-share {
+  width: min(760px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--pd-border);
+  border-radius: 16px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+}
+.pd-share::backdrop {
+  background: color-mix(in srgb, var(--pd-bg) 70%, transparent);
+}
+.pd-share-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 8px;
+}
+.pd-share-head h3 {
+  margin: 0;
+  font-size: 19px;
+}
+.pd-share-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+}
+.pd-share-stage {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.pd-share-canvas {
+  border-radius: 18px;
+  box-shadow: 0 18px 48px -18px color-mix(in srgb, var(--pd-bg) 90%, transparent);
+}
+.pd-share-arrow {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  cursor: pointer;
+}
+.pd-share-arrow:hover {
+  background: var(--pd-border-strong);
+}
+.pd-share-under {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+}
+.pd-share-dots {
+  display: flex;
+  gap: 6px;
+}
+.pd-share-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--pd-border-strong);
+}
+.pd-share-dot[data-on] {
+  width: 18px;
+  background: var(--pd-text);
+}
+.pd-share-layouts {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+}
+.pd-share-layouts button {
+  display: grid;
+  place-items: center;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-share-layouts button[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.pd-share-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px 20px;
+}
+.pd-share-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pd-pewter);
+  font-size: 14px;
+}
+.pd-share-actions {
+  display: inline-flex;
+  gap: 10px;
+  margin-left: auto;
+}
+.pd-share-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pd-share-action[data-primary] {
+  border-color: transparent;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+.pd-share-status {
+  margin: 0;
+  padding: 0 24px 18px;
+  color: var(--pd-warning);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.pd-share-status[data-ok] {
+  color: var(--pd-pewter);
+}
+/* A PnL over its ROI, with the share button beside them */
+.pd-pnl-with-share {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.pd-pnl-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.35;
+}
+.pd-pnl-share {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-pnl-share:hover {
+  color: var(--pd-text);
 }

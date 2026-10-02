@@ -6,8 +6,9 @@
 
 use pewterdesk_core::{
     AccountSnapshot, BookLevel, Candle as DomainCandle, CandleInterval, Decimal, Fill, FillEffect,
-    FundingPayment, FundingRate, Market, MarketStats, MarketSummary, Order, OrderBook, OrderStatus,
-    OrderType, Position, PositionSide, Side, Trade, VenueError, VenueId,
+    FundingPayment, FundingRate, Market, MarketStats, MarketSummary, Order, OrderBook,
+    OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, Trade,
+    VenueError, VenueId,
 };
 use rust_decimal::Decimal as RawDecimal;
 use serde::Deserialize;
@@ -456,6 +457,12 @@ fn position(p: PerpPosition) -> Option<Position> {
         liquidation_price: p.liquidation_px,
         unrealized_pnl: p.unrealized_pnl,
         margin: p.margin_used,
+        // Not in the clearinghouse state; TP/SL live as separate orders here.
+        realized_pnl: None,
+        take_profit: None,
+        stop_loss: None,
+        trailing_stop: None,
+        leverage: None,
     })
 }
 
@@ -528,6 +535,19 @@ pub fn order(o: OpenOrder) -> Result<Order, VenueError> {
         reduce_only: o.reduce_only,
         status: OrderStatus::Open,
         created_at: o.timestamp,
+        category: if !o.is_trigger {
+            OrderCategory::Regular
+        } else if o.order_type.starts_with("Take Profit") {
+            OrderCategory::TakeProfit
+        } else if o.order_type.starts_with("Stop") && o.reduce_only {
+            OrderCategory::StopLoss
+        } else {
+            OrderCategory::Conditional
+        },
+        // Hyperliquid triggers watch the mark price.
+        trigger_by: o.is_trigger.then_some(PriceSource::Mark),
+        take_profit: None,
+        stop_loss: None,
     })
 }
 

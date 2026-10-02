@@ -276,3 +276,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* An API key field with its save button (the CoinGecko key) */
+.settings-key-form {
+  display: flex;
+  gap: 8px;
+}
+.settings-key-form input {
+  width: 220px;
+  padding: 7px 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+}
+.settings-key-form input:focus-visible {
+  outline: none;
+  border-color: var(--pd-brass);
+}
+.settings-error {
+  margin: 6px 0 0;
+  color: var(--pd-warning);
+  font-size: 12.5px;
+}

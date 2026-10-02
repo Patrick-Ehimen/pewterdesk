@@ -7,8 +7,9 @@ import {
   shortAddress,
   t,
 } from "@pewterdesk/ui";
-import { useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
+import { coinClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { switchLanguage } from "../../lib/language";
@@ -66,6 +67,8 @@ export interface SettingsPageProps {
   onOpenWallet: () => void;
   onResetLayout: () => void;
   onClearWatchlist: () => void;
+  /** Shows the first-run setup again. */
+  onRunSetup: () => void;
 }
 
 /** Full-page settings, after the design's settings screen. */
@@ -253,10 +256,89 @@ function resetAllPreferences() {
   window.location.reload();
 }
 
-function AdvancedSection({ onResetLayout, onClearWatchlist }: SettingsPageProps) {
+/**
+ * The CoinGecko demo API key for the Overview tab's coin info: checked with
+ * CoinGecko, then kept in the keychain. Without one, the overview works
+ * keyless at a lower rate limit. The key never comes back from Rust.
+ */
+function CoinGeckoKey() {
+  const [saved, setSaved] = useState<boolean>();
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    coinClient.hasKey().then(setSaved, () => setSaved(false));
+  }, []);
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    const pasted = key;
+    setKey("");
+    setBusy(true);
+    setError(undefined);
+    try {
+      await coinClient.setKey(pasted);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    setError(undefined);
+    try {
+      await coinClient.clearKey();
+      setSaved(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    }
+  };
+
+  return (
+    <SettingRow title={t("settings.coingecko")} help={t("settings.coingeckoHelp")}>
+      {saved ? (
+        <div className="settings-actions">
+          <span className="settings-help">{t("settings.coingeckoSaved")}</span>
+          <button type="button" className="settings-button" onClick={remove}>
+            {t("settings.coingeckoRemove")}
+          </button>
+        </div>
+      ) : (
+        <form className="settings-key-form" onSubmit={save}>
+          <input
+            type="password"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="CG-…"
+            aria-label={t("settings.coingecko")}
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+          <button type="submit" className="settings-button" data-primary disabled={busy}>
+            {busy ? t("apiKey.checking", { venue: "CoinGecko" }) : t("settings.coingeckoSave")}
+          </button>
+        </form>
+      )}
+      {error && (
+        <p className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+    </SettingRow>
+  );
+}
+
+function AdvancedSection({ onResetLayout, onClearWatchlist, onRunSetup }: SettingsPageProps) {
   return (
     <>
       <SectionHead title={navLabel("advanced")} description={t("settings.advanced.desc")} />
+      <CoinGeckoKey />
+      <SettingRow title={t("settings.runSetup")} help={t("settings.runSetupDesc")}>
+        <DoneButton onClick={onRunSetup}>{t("settings.runSetup")}</DoneButton>
+      </SettingRow>
       <SettingRow title={t("settings.resetLayout")} help={t("settings.resetLayoutHelp")}>
         <DoneButton onClick={onResetLayout}>{t("settings.resetLayout")}</DoneButton>
       </SettingRow>

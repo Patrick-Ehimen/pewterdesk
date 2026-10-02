@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
+  LuChevronLeft,
   LuChevronRight,
   LuCircleCheck,
   LuCircleX,
@@ -19,11 +20,20 @@ import {
   LuX,
 } from "react-icons/lu";
 import { type WalletInfo, walletClient } from "../../api/venueClient";
-import { connectedWallet, setConnectedWallet, subscribeWallet } from "../../lib/account";
+import {
+  type AccountsState,
+  accountsState,
+  activeAccount,
+  addAccount,
+  removeAccount,
+  subscribeAccounts,
+  venueAccounts,
+} from "../../lib/account";
+import { AccountList } from "./AccountList";
 import { BrowserWalletFlow } from "./BrowserWalletFlow";
 import { WalletConnectFlow } from "./WalletConnectFlow";
 
-type MethodId = "browser" | "walletConnect" | "api" | "ledger";
+export type MethodId = "browser" | "walletConnect" | "api" | "ledger";
 
 interface Method {
   id: MethodId;
@@ -115,7 +125,7 @@ function ApiWalletForm() {
     setError(undefined);
     try {
       const info = await walletClient.connect("hyperliquid", address, pasted);
-      setConnectedWallet({ venue: info.venue, address: info.address });
+      addAccount(info.venue, info.address);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.failed"));
     } finally {
@@ -184,7 +194,7 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
     setError(undefined);
     try {
       await walletClient.disconnect(venue, address);
-      setConnectedWallet(undefined);
+      removeAccount(venue, address);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.failed"));
       setBusy(false);
@@ -243,6 +253,117 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
   );
 }
 
+/**
+ * The ways to connect and the chosen one's flow, or the connected account:
+ * the dialog's body, also the onboarding's connect step. Each flow abandons
+ * a half-done connection when it unmounts.
+ */
+export function ConnectWalletBody({
+  selected,
+  onSelect,
+}: {
+  selected: MethodId;
+  onSelect: (id: MethodId) => void;
+}) {
+  const method = METHODS.find((m) => m.id === selected) ?? (METHODS[0] as Method);
+  const state = useSyncExternalStore(subscribeAccounts, accountsState);
+  const wallet = activeAccount(state, "hyperliquid");
+  // Adding another account shows the ways to connect until one connects:
+  // any change to the accounts (the new one saved) ends it.
+  const [addingFrom, setAddingFrom] = useState<AccountsState>();
+  const adding = addingFrom === state;
+  return (
+    <div className="wallet-body" data-connected={wallet && !adding ? true : undefined}>
+      {wallet && !adding ? (
+        <div className="wallet-accounts">
+          <div className="wallet-accounts-list">
+            <AccountList venue="hyperliquid" onAdd={() => setAddingFrom(state)} />
+          </div>
+          <ConnectedPane key={wallet.id} venue={wallet.venue} address={wallet.id} />
+        </div>
+      ) : (
+        <>
+          <nav className="wallet-list" aria-label={t("wallet.tradingGroup")}>
+            {adding && venueAccounts(state, "hyperliquid").length > 0 && (
+              <button type="button" className="acct-back" onClick={() => setAddingFrom(undefined)}>
+                <LuChevronLeft size={15} aria-hidden />
+                {t("accounts.back")}
+              </button>
+            )}
+            <p className="wallet-group">{t("wallet.tradingGroup")}</p>
+            <div role="radiogroup" aria-label={t("wallet.tradingGroup")}>
+              {METHODS.map((m) => (
+                // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={m.id === selected}
+                  className="wallet-option"
+                  data-soon={m.soon || undefined}
+                  onClick={() => onSelect(m.id)}
+                >
+                  <Mark mark={m.mark} />
+                  <span className="wallet-option-text">
+                    <strong>{t(m.title)}</strong>
+                    <span>{t(m.detail)}</span>
+                  </span>
+                  {m.soon ? (
+                    <span className="wallet-soon">{t("wallet.soon")}</span>
+                  ) : (
+                    <LuChevronRight className="wallet-chevron" size={16} aria-hidden />
+                  )}
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <section className="wallet-detail" aria-labelledby="wallet-pane-title">
+            <div className="wallet-hero">
+              <Mark mark={method.mark} size="lg" />
+              <div>
+                <h3 id="wallet-pane-title">{t(method.title)}</h3>
+                <p>{t(method.how)}</p>
+              </div>
+            </div>
+
+            <ol className="wallet-steps">
+              {method.steps.map((step, i) => (
+                <li key={step}>
+                  <span className="wallet-step-num" aria-hidden>
+                    {i + 1}
+                  </span>
+                  {t(step)}
+                </li>
+              ))}
+            </ol>
+
+            {method.id === "browser" && <BrowserWalletFlow />}
+            {method.id === "walletConnect" && <WalletConnectFlow />}
+            {method.id === "api" && <ApiWalletForm />}
+            {method.soon && <p className="wallet-note">{t("wallet.coming")}</p>}
+
+            <ul className="wallet-facts">
+              <li>
+                <LuCircleCheck size={14} aria-hidden className="wallet-ok" />
+                {t("wallet.factTrade")}
+              </li>
+              <li>
+                <LuCircleX size={14} aria-hidden />
+                {t("wallet.factWithdraw")}
+              </li>
+              <li>
+                <LuShieldCheck size={14} aria-hidden />
+                {t("wallet.factKeychain")}
+              </li>
+            </ul>
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface ConnectWalletDialogProps {
   open: boolean;
   onClose: () => void;
@@ -257,8 +378,10 @@ interface ConnectWalletDialogProps {
 export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<MethodId>("browser");
-  const method = METHODS.find((m) => m.id === selected) ?? (METHODS[0] as Method);
-  const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
+  const wallet = activeAccount(
+    useSyncExternalStore(subscribeAccounts, accountsState),
+    "hyperliquid",
+  );
 
   // Drive the native dialog from `open`: showModal gives focus trapping,
   // Escape and the backdrop for free.
@@ -296,85 +419,7 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
       </header>
 
       {/* Mounted only while open, so a half-typed key or a pending approval doesn't outlive the dialog. */}
-      {open && (
-        <div className="wallet-body" data-connected={wallet ? true : undefined}>
-          {wallet ? (
-            <ConnectedPane venue={wallet.venue} address={wallet.address} />
-          ) : (
-            <>
-              <nav className="wallet-list" aria-label={t("wallet.tradingGroup")}>
-                <p className="wallet-group">{t("wallet.tradingGroup")}</p>
-                <div role="radiogroup" aria-label={t("wallet.tradingGroup")}>
-                  {METHODS.map((m) => (
-                    // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
-                    <button
-                      key={m.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={m.id === selected}
-                      className="wallet-option"
-                      data-soon={m.soon || undefined}
-                      onClick={() => setSelected(m.id)}
-                    >
-                      <Mark mark={m.mark} />
-                      <span className="wallet-option-text">
-                        <strong>{t(m.title)}</strong>
-                        <span>{t(m.detail)}</span>
-                      </span>
-                      {m.soon ? (
-                        <span className="wallet-soon">{t("wallet.soon")}</span>
-                      ) : (
-                        <LuChevronRight className="wallet-chevron" size={16} aria-hidden />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </nav>
-
-              <section className="wallet-detail" aria-labelledby="wallet-pane-title">
-                <div className="wallet-hero">
-                  <Mark mark={method.mark} size="lg" />
-                  <div>
-                    <h3 id="wallet-pane-title">{t(method.title)}</h3>
-                    <p>{t(method.how)}</p>
-                  </div>
-                </div>
-
-                <ol className="wallet-steps">
-                  {method.steps.map((step, i) => (
-                    <li key={step}>
-                      <span className="wallet-step-num" aria-hidden>
-                        {i + 1}
-                      </span>
-                      {t(step)}
-                    </li>
-                  ))}
-                </ol>
-
-                {method.id === "browser" && <BrowserWalletFlow />}
-                {method.id === "walletConnect" && <WalletConnectFlow />}
-                {method.id === "api" && <ApiWalletForm />}
-                {method.soon && <p className="wallet-note">{t("wallet.coming")}</p>}
-
-                <ul className="wallet-facts">
-                  <li>
-                    <LuCircleCheck size={14} aria-hidden className="wallet-ok" />
-                    {t("wallet.factTrade")}
-                  </li>
-                  <li>
-                    <LuCircleX size={14} aria-hidden />
-                    {t("wallet.factWithdraw")}
-                  </li>
-                  <li>
-                    <LuShieldCheck size={14} aria-hidden />
-                    {t("wallet.factKeychain")}
-                  </li>
-                </ul>
-              </section>
-            </>
-          )}
-        </div>
-      )}
+      {open && <ConnectWalletBody selected={selected} onSelect={setSelected} />}
 
       <footer className="wallet-dialog-foot">
         <LuLock size={14} aria-hidden />

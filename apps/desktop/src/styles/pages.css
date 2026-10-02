@@ -163,3 +163,145 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Venues (design/screens/34-VenueHub): a card per venue with its status,
+   trading key and markets, and the actions to add, remove or connect it. */
+.venues-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.venues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.venues-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+}
+.venues-card[data-added] {
+  border-color: var(--pd-border-strong);
+}
+.venues-card[data-soon],
+.venues-missing {
+  border-style: dashed;
+}
+.venues-card > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.venues-card > header img {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.venues-card > header > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.venues-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.venues-card > header span {
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.venues-card dl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.venues-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.venues-card dt {
+  color: var(--pd-pewter);
+}
+.venues-card dd {
+  margin: 0;
+}
+.venues-card footer {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.venues-button {
+  flex: 1;
+  padding: 8px 14px;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.venues-button:hover:not(:disabled) {
+  background: var(--pd-surface-raised);
+}
+.venues-button:disabled {
+  color: var(--pd-pewter-dim);
+  cursor: not-allowed;
+}
+.venues-button[data-primary] {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.venues-button[data-primary]:hover {
+  background: var(--pd-brass-hover);
+}
+/* Reachable is green, like the connection's live dot; unreachable warns. */
+.venues-status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.venues-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pd-pewter-dim);
+}
+.venues-status[data-up] .venues-dot {
+  background: var(--pd-buy);
+}
+.venues-status[data-down] {
+  color: var(--pd-warning);
+}
+.venues-status[data-down] .venues-dot {
+  background: var(--pd-warning);
+}
+.venues-soon-text,
+.venues-missing p {
+  margin: 0;
+  color: var(--pd-pewter);
+  line-height: 1.5;
+}
+.venues-missing {
+  justify-content: center;
+}
+.venues-missing .venues-button {
+  flex: none;
+  align-self: flex-start;
+}
+.venues-error {
+  color: var(--pd-warning);
+}

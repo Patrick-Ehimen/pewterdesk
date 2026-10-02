@@ -52,11 +52,45 @@ orderBook: boolean, orderTypes: Array<OrderType>,
 isolatedCollateral: boolean, };
 
 /**
+ * A position that's been closed (in full or in part), with what it made.
+ */
+export type ClosedTrade = { venue: VenueId, market: string, 
+/**
+ * The side of the position that was closed.
+ */
+side: PositionSide, 
+/**
+ * How much was closed, in base units.
+ */
+size: Decimal, 
+/**
+ * Average entry and exit prices of the part closed.
+ */
+entryPrice: Decimal, exitPrice: Decimal, 
+/**
+ * PnL realised, after fees, in the quote asset.
+ */
+closedPnl: Decimal, 
+/**
+ * What the closed part cost to open, in the quote asset.
+ */
+entryValue: Decimal, leverage?: Decimal, 
+/**
+ * When it closed; milliseconds since the Unix epoch.
+ */
+time: number, };
+
+/**
  * A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes
  * and balances are never floats: deserializing rejects JSON numbers, so a
  * value that went through a JS `number` can't silently reach a signed order.
  */
 export type Decimal = string;
+
+/**
+ * What to do with one of a position's exits.
+ */
+export type ExitChange = { "action": "keep" } | { "action": "remove" } | { "action": "set", "price": Decimal };
 
 /**
  * One of an account's own fills: part or all of an order that traded.
@@ -269,7 +303,32 @@ id: string, clientId?: string, market: string, side: Side, type: OrderType, size
 /**
  * Milliseconds since the Unix epoch.
  */
-createdAt: number, };
+createdAt: number, 
+/**
+ * What the order is for: a plain order, a conditional one, or one of a
+ * position's exits.
+ */
+category: OrderCategory, 
+/**
+ * Which price a trigger watches, where the venue says.
+ */
+triggerBy?: PriceSource, 
+/**
+ * A take-profit and stop-loss attached to the order, set on the
+ * position it opens once it fills.
+ */
+takeProfit?: Decimal, stopLoss?: Decimal, };
+
+/**
+ * Changes to an open order, any of them at once: its limit price, its
+ * size, and the TP and SL attached to it. Leaves it a limit order on the
+ * same market and side.
+ */
+export type OrderAmend = { price?: Decimal, 
+/**
+ * In base units, a multiple of `Market::size_step`.
+ */
+size?: Decimal, takeProfit: ExitChange, stopLoss: ExitChange, };
 
 export type OrderBook = { market: string, 
 /**
@@ -284,6 +343,11 @@ asks: Array<BookLevel>,
  * Milliseconds since the Unix epoch.
  */
 time: number, };
+
+/**
+ * What an order is for, so they can be listed apart.
+ */
+export type OrderCategory = "regular" | "conditional" | "takeProfit" | "stopLoss" | "trailingStop" | "mmrClose";
 
 /**
  * The order-type-specific half of an [`OrderRequest`].
@@ -361,9 +425,57 @@ liquidationPrice?: Decimal, unrealizedPnl: Decimal,
 /**
  * Collateral backing this position, in the quote asset.
  */
-margin: Decimal, };
+margin: Decimal, 
+/**
+ * PnL already realized on this position (closed parts, fees, funding),
+ * in the quote asset; absent where the venue doesn't report it.
+ */
+realizedPnl?: Decimal, 
+/**
+ * The position's own take-profit, stop-loss and trailing stop, where the
+ * venue keeps them on the position (see `PositionProtection`).
+ */
+takeProfit?: Decimal, stopLoss?: Decimal, 
+/**
+ * The trailing stop's distance from the best price, in price units.
+ */
+trailingStop?: Decimal, 
+/**
+ * The position's leverage, where the venue reports it.
+ */
+leverage?: Decimal, };
+
+/**
+ * Changes to a position's protective exits: each kept, removed or set, so
+ * one can change without touching the others. Every exit closes the whole
+ * position, reduce-only - it can't open or add to one.
+ */
+export type PositionProtection = { 
+/**
+ * Closes the position at this price, on the profitable side.
+ */
+takeProfit: ExitChange, 
+/**
+ * Closes the position at market once the price reaches this, on the losing side.
+ */
+stopLoss: ExitChange, 
+/**
+ * Follows the best price at this distance (price units) and closes the
+ * position at market when the price comes back that far.
+ */
+trailingStop: ExitChange, 
+/**
+ * Where a trailing stop being set starts following the price; from now
+ * if unset. Only with `trailing_stop: Set`.
+ */
+trailingActivation?: Decimal, };
 
 export type PositionSide = "long" | "short";
+
+/**
+ * The price a trigger watches.
+ */
+export type PriceSource = "last" | "mark" | "index";
 
 export type Side = "buy" | "sell";
 

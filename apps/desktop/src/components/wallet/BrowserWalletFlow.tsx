@@ -1,7 +1,7 @@
 import { type MessageKey, t } from "@pewterdesk/ui";
 import { useEffect, useState } from "react";
 import { walletClient } from "../../api/venueClient";
-import { setConnectedWallet } from "../../lib/account";
+import { addAccount } from "../../lib/account";
 
 /** The local page's text, keyed as `app.js` reads it. */
 const PAGE_STRINGS: Record<string, MessageKey> = {
@@ -36,7 +36,7 @@ export function BrowserWalletFlow() {
   useEffect(() => {
     const stop = walletClient.onBrowser((event) => {
       if (event.status === "connected") {
-        setConnectedWallet({ venue: event.wallet.venue, address: event.wallet.address });
+        addAccount(event.wallet.venue, event.wallet.address);
       } else {
         setStep((s) => (s.kind === "waiting" ? { kind: "idle", notice: t("browser.closed") } : s));
       }
