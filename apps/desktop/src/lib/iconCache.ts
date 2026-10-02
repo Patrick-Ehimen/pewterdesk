@@ -10,8 +10,9 @@ const PREFIX = "pd.icons.";
  * Bumped when where logos come from changes, so saved answers from before
  * are dropped rather than kept for a week. 2: Bybit markets borrow their
  * coin's logo from Hyperliquid and Aster; version 1 saved "none" for all.
+ * 3: a failed lookup was saved as "none" (BTC's logo went missing that way).
  */
-export const STORE_VERSION = 2;
+export const STORE_VERSION = 3;
 /** The whole store starts over after this, so changed logos come through. */
 export const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A bigger logo isn't kept; Aster's are about 1.5 KB wrapped, most of Hyperliquid's less. */

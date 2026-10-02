@@ -2,7 +2,7 @@ import { shortAddress, t } from "@pewterdesk/ui";
 import { create as createQr } from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { walletClient } from "../../api/venueClient";
-import { setConnectedWallet } from "../../lib/account";
+import { addAccount } from "../../lib/account";
 import {
   endSession,
   signTypedData,
@@ -97,7 +97,7 @@ export function WalletConnectFlow() {
       const info = await walletClient.finishApproval(signature);
       session.current = undefined;
       void endSession(connected).catch(() => undefined);
-      setConnectedWallet({ venue: info.venue, address: info.address });
+      addAccount(info.venue, info.address);
     } catch (e) {
       if (!alive()) return;
       abandon();

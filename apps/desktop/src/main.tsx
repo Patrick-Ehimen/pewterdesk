@@ -7,6 +7,7 @@ import "./styles/pages.css";
 import "./styles/settings.css";
 import "./styles/tray.css";
 import "./styles/wallet.css";
+import "./styles/onboarding.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";
 import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";

@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
   useCallback,
@@ -18,6 +19,13 @@ export interface CardPosition {
 
 const EDGE = 8;
 const KEY_STEP = 10;
+/** How small and how large the card can be made, as a multiple of its default. */
+export const PNL_SCALE_MIN = 0.6;
+export const PNL_SCALE_MAX = 2;
+const SCALE_STEP = 0.1;
+
+const clampScale = (s: number) =>
+  Math.round(Math.min(PNL_SCALE_MAX, Math.max(PNL_SCALE_MIN, s)) * 100) / 100;
 
 function clamp(p: CardPosition, el: HTMLElement | null): CardPosition {
   const w = el?.offsetWidth ?? 0;
@@ -31,7 +39,9 @@ function clamp(p: CardPosition, el: HTMLElement | null): CardPosition {
 /**
  * The floating PnL card, after the design: the connected account's balance
  * and unrealized PnL on the current venue, over everything, dragged
- * anywhere by its body (or moved with the arrow keys once focused). Without
+ * anywhere by its body (or moved with the arrow keys once focused), and
+ * sized by the grip in its corner (or + and - once focused): text and
+ * spacing scale together. Without
  * a connected wallet it says so rather than showing zeros.
  */
 export function PnlCard({
@@ -41,9 +51,12 @@ export function PnlCard({
   balance,
   pnl,
   connected,
+  connectText,
   onConnect,
   position,
   onMove,
+  scale = 1,
+  onResize,
   onClose,
 }: {
   venue: string;
@@ -53,14 +66,46 @@ export function PnlCard({
   balance?: number;
   pnl?: number;
   connected: boolean;
+  /** The connect button's text, for a venue that connects some other way than a wallet. */
+  connectText?: string;
   onConnect: () => void;
   position: CardPosition;
   onMove: (position: CardPosition) => void;
+  /** Its size, as a multiple of the default (1). */
+  scale?: number;
+  onResize?: (scale: number) => void;
   onClose: () => void;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const [pos, setPos] = useState(position);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const [size, setSize] = useState(clampScale(scale));
+  const resizing = useRef<{ x: number; width: number; scale: number } | null>(null);
+
+  useEffect(() => {
+    if (!resizing.current) setSize(clampScale(scale));
+  }, [scale]);
+  // A bigger card may now run off the screen: pull it back in.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-clamped whenever the size changes
+  useLayoutEffect(() => setPos((p) => clamp(p, cardRef.current)), [size]);
+
+  // The grip: the card grows with the pointer's travel, in proportion to its width.
+  const onGripDown = (e: PointerEvent<HTMLElement>) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    resizing.current = { x: e.clientX, width: cardRef.current?.offsetWidth ?? 1, scale: size };
+  };
+  const onGripMove = (e: PointerEvent<HTMLElement>) => {
+    const r = resizing.current;
+    if (r) setSize(clampScale(r.scale * ((r.width + e.clientX - r.x) / r.width)));
+  };
+  const onGripUp = (e: PointerEvent<HTMLElement>) => {
+    if (!resizing.current) return;
+    resizing.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    onResize?.(size);
+  };
 
   useEffect(() => {
     if (!drag.current) setPos(position);
@@ -90,6 +135,13 @@ export function PnlCard({
   };
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "Escape") return onClose();
+    if ((e.key === "+" || e.key === "=" || e.key === "-") && e.target === e.currentTarget) {
+      e.preventDefault();
+      const next = clampScale(size + (e.key === "-" ? -SCALE_STEP : SCALE_STEP));
+      setSize(next);
+      onResize?.(next);
+      return;
+    }
     const step = e.shiftKey ? KEY_STEP * 10 : KEY_STEP;
     const move: Record<string, [number, number]> = {
       ArrowLeft: [-step, 0],
@@ -106,7 +158,7 @@ export function PnlCard({
   };
 
   const trend = pnl === undefined || pnl === 0 ? undefined : pnl > 0 ? "up" : "down";
-  const logo = venueLogo && <img src={venueLogo} alt="" width={20} height={20} />;
+  const logo = venueLogo && <img src={venueLogo} alt="" width={28} height={28} />;
 
   return (
     <section
@@ -115,7 +167,7 @@ export function PnlCard({
       aria-label={t("pnl.title", { venue })}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so the arrow keys can move it
       tabIndex={0}
-      style={{ left: pos.x, top: pos.y }}
+      style={{ left: pos.x, top: pos.y, "--pnl-scale": size } as CSSProperties}
       onPointerDown={onDown}
       onPointerMove={onDrag}
       onPointerUp={onUp}
@@ -124,6 +176,14 @@ export function PnlCard({
       <button type="button" className="pd-pnl-close" aria-label={t("pnl.close")} onClick={onClose}>
         <LuX size={14} aria-hidden />
       </button>
+      <span
+        className="pd-pnl-grip"
+        title={t("pnl.resize")}
+        aria-hidden
+        onPointerDown={onGripDown}
+        onPointerMove={onGripMove}
+        onPointerUp={onGripUp}
+      />
       <div className="pd-pnl-cols">
         <div className="pd-pnl-col">
           <strong className="pd-pnl-value pd-num">
@@ -139,14 +199,16 @@ export function PnlCard({
             {logo}
             {connected && pnl !== undefined ? formatSigned(pnl, 2) : "-"}
           </strong>
-          <span className="pd-pnl-label">{t("pnl.pnl")}</span>
+          <span className="pd-pnl-label">
+            {t("pnl.pnl")} · {quote}
+          </span>
         </div>
       </div>
       {connected ? (
         <p className="pd-pnl-venue">{venue}</p>
       ) : (
         <button type="button" className="pd-pnl-connect" onClick={onConnect}>
-          {t("pnl.connect")}
+          {connectText ?? t("pnl.connect")}
         </button>
       )}
     </section>

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { LuMenu, LuSearch } from "react-icons/lu";
+import { LuMenu, LuPlus, LuSearch } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
 import { decimalsOf, formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import {
@@ -67,6 +67,8 @@ interface MarketPickerProps {
   venues?: readonly { id: VenueId; label: string; logo?: string }[];
   venue?: VenueId;
   onVenueChange?: (venue: VenueId) => void;
+  /** Adds an "Add venue" chip after the venues, which calls this (and closes). */
+  onManageVenues?: () => void;
   /** The market list is on its way: skeleton rows stand in. */
   loading?: boolean;
   /** What the opening button shows; a menu icon when unset. */
@@ -104,6 +106,7 @@ export function MarketPicker({
   venues,
   venue,
   onVenueChange,
+  onManageVenues,
   loading = false,
   trigger,
   triggerClassName,
@@ -274,7 +277,7 @@ export function MarketPicker({
               />
             </label>
 
-            {venues && venues.length > 1 && (
+            {venues && (venues.length > 1 || onManageVenues) && (
               <div className="pd-picker-venues" role="radiogroup" aria-label={t("picker.venues")}>
                 {venues.map((v) => (
                   // biome-ignore lint/a11y/useSemanticElements: chip-style radio, like the other segmented controls
@@ -290,6 +293,19 @@ export function MarketPicker({
                     {v.label}
                   </button>
                 ))}
+                {onManageVenues && (
+                  <button
+                    type="button"
+                    className="pd-picker-venue pd-picker-add"
+                    onClick={() => {
+                      close();
+                      onManageVenues();
+                    }}
+                  >
+                    <LuPlus size={14} aria-hidden />
+                    {t("picker.addVenue")}
+                  </button>
+                )}
               </div>
             )}
 

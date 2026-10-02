@@ -32,20 +32,25 @@ export function iconSources(venue: VenueId, market: string): [VenueId, string][]
 }
 
 /**
- * The first logo any source has, or undefined. A source that fails (an id
- * that venue doesn't list) just moves on to the next.
+ * The first logo any source has. Undefined only when every source answered
+ * that it has none; if one failed (a timeout, a rate limit, offline) and no
+ * other had a logo, this rejects instead, so the "no logo" isn't saved for a
+ * week and the next look tries again.
  */
 export async function firstIcon(
   sources: [VenueId, string][],
   fetchIcon: (venue: VenueId, market: string) => Promise<string | undefined>,
 ): Promise<string | undefined> {
+  let failure: unknown;
   for (const [venue, market] of sources) {
     try {
       const icon = await fetchIcon(venue, market);
       if (icon) return icon;
-    } catch {
-      // Not listed there; try the next.
+    } catch (e) {
+      // Try the next; remember it failed rather than had nothing.
+      failure ??= e;
     }
   }
+  if (failure !== undefined) throw failure;
   return undefined;
 }

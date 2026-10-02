@@ -1,4 +1,4 @@
-import type { AccountSnapshot, Market, OrderBook } from "@pewterdesk/core";
+import type { AccountSnapshot, Market, OrderBook, OrderRequest } from "@pewterdesk/core";
 import { useEffect, useId, useRef, useState } from "react";
 import { LuArrowUpDown, LuChevronDown } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
@@ -12,13 +12,24 @@ import {
   positionLeverage,
   sizeFromPercent,
   slippageOf,
+  type TicketBlock,
   type TicketSide,
   type TicketType,
+  ticketOrder,
 } from "../../lib/ticket";
 import { Hint } from "../common/ColumnHeader";
 import { FloatingTip, Tooltip, useTipTrigger } from "../common/Tooltip";
 import { SizeCalculator } from "./SizeCalculator";
 import { NumberField } from "./TicketField";
+
+/** What the button says when the order can't go yet. */
+const BLOCKED: Record<TicketBlock, MessageKey> = {
+  size: "ticket.needSize",
+  price: "ticket.needPrice",
+  trigger: "ticket.needTrigger",
+  type: "ticket.typeSoon",
+  tpsl: "ticket.tpslSoon",
+};
 
 const PRO_LABEL: Record<ProType, MessageKey> = {
   scale: "ticket.scale",
@@ -44,10 +55,15 @@ interface OrderTicketProps {
   maxSlippage: number;
   onConnect: () => void;
   /**
-   * Place the order. Unset while orders can't be placed: the button stays
-   * visible but disabled, and says why.
+   * Place the order; resolves once the venue has it, or rejects with why
+   * not. Unset while orders can't be placed: the button stays visible but
+   * disabled, and says why.
    */
-  onSubmit?: () => void;
+  onSubmit?: (request: OrderRequest) => Promise<void>;
+  /** A marker for the account the ticket trades, e.g. "Demo". */
+  accountBadge?: string;
+  /** Why orders can't be placed, where there's a better reason than "not yet". */
+  unavailableReason?: string;
 }
 
 /**
@@ -64,6 +80,8 @@ export function OrderTicket({
   maxSlippage,
   onConnect,
   onSubmit,
+  accountBadge,
+  unavailableReason,
 }: OrderTicketProps) {
   const [type, setType] = useState<TicketType>("market");
   const [side, setSide] = useState<TicketSide>("buy");
@@ -83,6 +101,8 @@ export function OrderTicket({
   const proRef = useRef<HTMLDivElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
   const submitTip = useTipTrigger();
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string }>();
   const reasonId = useId();
 
   // A new market starts a fresh order.
@@ -91,6 +111,7 @@ export function OrderTicket({
     for (const reset of [setSize, setLimitPrice, setTrigger, setStart, setEnd, setTp, setSl]) {
       reset("");
     }
+    setResult(undefined);
   }, [market?.id]);
 
   // The Pro menu closes on a click elsewhere.
@@ -167,11 +188,48 @@ export function OrderTicket({
     v === undefined || !Number.isFinite(v) ? "-" : `${formatNumber(v, 2)} ${quote}`;
   const pct = (v: number) => `${formatNumber(v * 100, 2)}`;
   const isPro = type !== "market" && type !== "limit";
-  const unavailable = !onSubmit;
+  const built = market
+    ? ticketOrder({
+        market,
+        type,
+        side,
+        sizeBase,
+        limitPrice,
+        trigger,
+        reduceOnly,
+        tpsl,
+        maxSlippage,
+      })
+    : undefined;
+  const blocked = built && "blocked" in built ? BLOCKED[built.blocked] : undefined;
+  const reason: MessageKey | undefined = !onSubmit
+    ? "quick.unavailable"
+    : !market
+      ? "ticket.needSize"
+      : blocked;
+  const unavailable = reason !== undefined || sending;
+  const reasonText =
+    reason === "quick.unavailable" && unavailableReason ? unavailableReason : reason && t(reason);
+
+  const submit = async () => {
+    if (!onSubmit || !built || !("request" in built) || sending) return;
+    setSending(true);
+    setResult(undefined);
+    try {
+      await onSubmit(built.request);
+      setResult({ ok: true, text: t("ticket.sent") });
+      setSize("");
+    } catch (err) {
+      setResult({ ok: false, text: err instanceof Error ? err.message : t("ticket.failed") });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="pd-ticket">
       <div className="pd-ticket-modes">
+        {accountBadge && <span className="pd-ticket-badge">{accountBadge}</span>}
         {/* Changing either signs a venue action, so they wait for trading. */}
         <Tooltip content={t("quick.unavailable")} className="pd-ticket-chip">
           {t(market?.listedBy ? "ticket.isolated" : "ticket.cross")}
@@ -365,19 +423,24 @@ export function OrderTicket({
             className="pd-ticket-submit"
             data-side={side}
             aria-disabled={unavailable || undefined}
-            aria-describedby={unavailable ? reasonId : undefined}
-            onClick={onSubmit}
+            aria-describedby={reason ? reasonId : undefined}
+            onClick={() => void submit()}
             {...submitTip.handlers}
           >
-            {t(side === "buy" ? "ticket.buy" : "ticket.sell")}
+            {sending ? t("ticket.sending") : t(side === "buy" ? "ticket.buy" : "ticket.sell")}
           </button>
-          {unavailable && (
+          {reason && (
             <span id={reasonId} className="pd-visually-hidden">
-              {t("quick.unavailable")}
+              {reasonText}
             </span>
           )}
-          {unavailable && submitTip.open && (
-            <FloatingTip getAnchor={() => submitRef.current}>{t("quick.unavailable")}</FloatingTip>
+          {reason && submitTip.open && (
+            <FloatingTip getAnchor={() => submitRef.current}>{reasonText}</FloatingTip>
+          )}
+          {result && (
+            <p className="pd-ticket-result" data-ok={result.ok || undefined} role="status">
+              {result.text}
+            </p>
           )}
         </>
       ) : (

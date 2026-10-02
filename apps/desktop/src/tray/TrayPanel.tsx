@@ -20,7 +20,7 @@ import { useStoredChoice } from "../hooks/useStoredChoice";
 import { TRAY_MODE_LABEL, TRAY_MODES, type TrayMode } from "../hooks/useTraySync";
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
-import { connectedWallet, subscribeWallet } from "../lib/account";
+import { connectedWallet, subscribeAccounts } from "../lib/account";
 import { peekSavedIcon, withIconCache } from "../lib/iconCache";
 import { firstIcon, iconSources } from "../lib/marketIcons";
 import { loadMarket } from "../lib/selectedMarket";
@@ -306,7 +306,7 @@ export function TrayPanel() {
     !query.trim() &&
     (waiting || (activeTab === "movers" && bySummary.size === 0 && rows.length === 0));
 
-  const wallet = useSyncExternalStore(subscribeWallet, connectedWallet);
+  const wallet = useSyncExternalStore(subscribeAccounts, connectedWallet);
   const address = wallet?.venue === ACCOUNT_VENUE ? wallet.address : undefined;
   const account = useAccount(ACCOUNT_VENUE, open ? address : undefined);
   const snapshot =
@@ -573,40 +573,41 @@ export function TrayPanel() {
           )}
         </section>
 
-        <section className="tray-section" aria-labelledby="tray-account">
-          <h2 id="tray-account" className="tray-label">
-            {t("tray.account")} · {VENUES[ACCOUNT_VENUE].label}
-          </h2>
-          {snapshot ? (
-            <>
-              <p className="tray-equity pd-num">
-                {formatNumber(snapshot.equity, 2)}
-                {pnl !== undefined && <span data-trend={trendOf(pnl)}> {formatSigned(pnl)}</span>}
-              </p>
-              <ul className="tray-positions">
-                {snapshot.positions.map((p) => {
-                  const upnl = Number(p.unrealizedPnl);
-                  return (
-                    <li key={`${p.market}:${p.side}`}>
-                      <span>
-                        <strong>{p.market}</strong>{" "}
-                        <span data-trend={p.side === "long" ? "up" : "down"}>
-                          {t(p.side === "long" ? "side.long" : "side.short").toLowerCase()}{" "}
-                          {formatNumber(p.size)}
+        {/* Only with a connected account: no empty "no wallet" row. */}
+        {snapshot && (
+          <section className="tray-section" aria-labelledby="tray-account">
+            <h2 id="tray-account" className="tray-label">
+              {t("tray.account")} · {VENUES[ACCOUNT_VENUE].label}
+            </h2>
+            {snapshot && (
+              <>
+                <p className="tray-equity pd-num">
+                  {formatNumber(snapshot.equity, 2)}
+                  {pnl !== undefined && <span data-trend={trendOf(pnl)}> {formatSigned(pnl)}</span>}
+                </p>
+                <ul className="tray-positions">
+                  {snapshot.positions.map((p) => {
+                    const upnl = Number(p.unrealizedPnl);
+                    return (
+                      <li key={`${p.market}:${p.side}`}>
+                        <span>
+                          <strong>{p.market}</strong>{" "}
+                          <span data-trend={p.side === "long" ? "up" : "down"}>
+                            {t(p.side === "long" ? "side.long" : "side.short").toLowerCase()}{" "}
+                            {formatNumber(p.size)}
+                          </span>
                         </span>
-                      </span>
-                      <span className="pd-num" data-trend={trendOf(upnl)}>
-                        {formatSigned(upnl)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          ) : (
-            <p className="tray-muted">{t("tray.noAccount")}</p>
-          )}
-        </section>
+                        <span className="pd-num" data-trend={trendOf(upnl)}>
+                          {formatSigned(upnl)}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </section>
+        )}
 
         <section className="tray-section" aria-labelledby="tray-show">
           <h2 id="tray-show" className="tray-label">

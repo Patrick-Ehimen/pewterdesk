@@ -2,6 +2,7 @@ import type {
   AccountSnapshot,
   Candle,
   CandleInterval,
+  ClosedTrade,
   Fill,
   FundingPayment,
   FundingRate,
@@ -15,7 +16,7 @@ import type {
 } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type StreamHandlers, venueClient } from "../api/venueClient";
+import { type CoinInfo, coinClient, type StreamHandlers, venueClient } from "../api/venueClient";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
 import { RETRY_MS, useRetry } from "./useRetry";
@@ -265,6 +266,15 @@ function usePolled<T>(key: string | undefined, load: () => Promise<T>): Feed<T> 
   return feed;
 }
 
+/**
+ * The overview for a market's base coin while `base` is set: null when
+ * CoinGecko doesn't list it. Re-asked every 30 seconds, which Rust's cache
+ * answers for ten minutes at a time.
+ */
+export function useCoinInfo(base: string | undefined): Feed<CoinInfo | null> {
+  return usePolled<CoinInfo | null>(base, () => coinClient.info(base ?? ""));
+}
+
 /** The connected account's fills, newest first, while `enabled`. */
 export function useAccountFills(venue: VenueId, address: string | undefined, enabled: boolean) {
   return usePolled<Fill[]>(enabled && address ? `${venue}:${address}` : undefined, () =>
@@ -280,6 +290,13 @@ export function useAccountFunding(venue: VenueId, address: string | undefined, e
       address ?? "",
       Date.now() - ACCOUNT_FUNDING_DAYS * 86_400_000,
     ),
+  );
+}
+
+/** The connected account's recently closed positions, while `enabled`. */
+export function useClosedTrades(venue: VenueId, address: string | undefined, enabled: boolean) {
+  return usePolled<ClosedTrade[]>(enabled && address ? `${venue}:${address}` : undefined, () =>
+    venueClient.closedTrades(venue, address ?? ""),
   );
 }
 

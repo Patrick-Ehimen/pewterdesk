@@ -1,7 +1,18 @@
-import type { Fill, FillEffect, FundingPayment, Order, Position } from "@pewterdesk/core";
+import type {
+  ClosedTrade,
+  Fill,
+  FillEffect,
+  FundingPayment,
+  Order,
+  Position,
+  PositionProtection,
+} from "@pewterdesk/core";
+import { useState } from "react";
+import { LuPencil, LuSquareArrowOutUpRight } from "react-icons/lu";
 import { dateFormat, type MessageKey, t } from "../../i18n";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
 import { EmptyState } from "../common/Status";
+import { TpSlDialog, TrailingStopDialog } from "./ProtectionEditor";
 
 /** Maps a `Market::id` to its display symbol; falls back to the id. */
 export type SymbolFor = (marketId: string) => string;
@@ -18,51 +29,182 @@ const TIME: Intl.DateTimeFormatOptions = {
 export function PositionsTable({
   positions,
   symbolFor,
+  quoteFor,
+  baseFor,
+  tickFor,
+  onProtect,
+  onShare,
 }: {
   positions: Position[];
   symbolFor: SymbolFor;
+  /** The coin a market's PnL and value are in, e.g. "USDT"; shown beside them. */
+  quoteFor?: (marketId: string) => string;
+  /** The coin a market's size is in, e.g. "BTC"; shown beside it. */
+  baseFor?: (marketId: string) => string;
+  /** A market's price tick, which the TP/SL and trailing stop steppers move by. */
+  tickFor?: (marketId: string) => string;
+  /** Opens the P&L share card for a position; unset hides the share button. */
+  onShare?: (position: Position) => void;
+  /** Changes a position's TP, SL or trailing stop; unset where it can't be (no edit buttons then). */
+  onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
+  const [editing, setEditing] = useState<{ kind: "tpsl" | "trail"; position: Position }>();
   if (positions.length === 0) return <EmptyState>{t("positions.empty")}</EmptyState>;
+  const coin = (market: string) => {
+    const q = quoteFor?.(market);
+    return q ? ` ${q}` : "";
+  };
   return (
-    <table className="pd-table">
-      <thead>
-        <tr>
-          <th>{t("col.market")}</th>
-          <th>{t("col.side")}</th>
-          <th className="pd-num">{t("col.size")}</th>
-          <th className="pd-num">{t("col.entry")}</th>
-          <th className="pd-num">{t("col.mark")}</th>
-          <th className="pd-num">{t("col.liq")}</th>
-          <th className="pd-num">{t("col.upnl")}</th>
-          <th className="pd-num">{t("col.margin")}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {positions.map((p) => {
-          const pnl = Number(p.unrealizedPnl);
-          const margin = Number(p.margin);
-          return (
-            <tr key={`${p.market}:${p.side}`}>
-              <td className="pd-strong">{symbolFor(p.market)}</td>
-              <td className={p.side === "long" ? "pd-up" : "pd-down"}>
-                {t(p.side === "long" ? "side.long" : "side.short")}
-              </td>
-              <td className="pd-num">{formatNumber(p.size)}</td>
-              <td className="pd-num">{formatNumber(p.entryPrice)}</td>
-              <td className="pd-num">{formatNumber(p.markPrice)}</td>
-              <td className="pd-num pd-warn">
-                {p.liquidationPrice ? formatNumber(p.liquidationPrice) : "-"}
-              </td>
-              <td className={`pd-num ${trendClass(pnl)}`}>
-                {formatSigned(pnl)}
-                {margin > 0 && ` (${formatSigned((pnl / margin) * 100)}%)`}
-              </td>
-              <td className="pd-num">{formatNumber(margin, 2)}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <>
+      <table className="pd-table">
+        <thead>
+          <tr>
+            <th>{t("col.market")}</th>
+            <th>{t("col.side")}</th>
+            <th className="pd-num">{t("col.size")}</th>
+            <th className="pd-num">{t("col.value")}</th>
+            <th className="pd-num">{t("col.entry")}</th>
+            <th className="pd-num">{t("col.mark")}</th>
+            <th className="pd-num">{t("col.liq")}</th>
+            <th className="pd-num">{t("col.upnlRoi")}</th>
+            <th className="pd-num">{t("col.rpnl")}</th>
+            <th className="pd-num">{t("col.margin")}</th>
+            <th className="pd-num">{t("col.tpsl")}</th>
+            <th className="pd-num">{t("col.trailing")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {positions.map((p) => {
+            const pnl = Number(p.unrealizedPnl);
+            const margin = Number(p.margin);
+            const realized = p.realizedPnl === undefined ? undefined : Number(p.realizedPnl);
+            return (
+              <tr key={`${p.market}:${p.side}`}>
+                <td className="pd-strong">{symbolFor(p.market)}</td>
+                <td className={p.side === "long" ? "pd-up" : "pd-down"}>
+                  {t(p.side === "long" ? "side.long" : "side.short")}
+                </td>
+                <td className="pd-num">
+                  {formatNumber(p.size)}
+                  {baseFor && ` ${baseFor(p.market)}`}
+                </td>
+                <td className="pd-num">
+                  {formatNumber(Number(p.size) * Number(p.markPrice), 2)}
+                  {coin(p.market)}
+                </td>
+                <td className="pd-num">{formatNumber(p.entryPrice)}</td>
+                <td className="pd-num">{formatNumber(p.markPrice)}</td>
+                <td className="pd-num pd-warn">
+                  {p.liquidationPrice ? formatNumber(p.liquidationPrice) : "-"}
+                </td>
+                <PnlCell
+                  pnl={pnl}
+                  roi={margin > 0 ? (pnl / margin) * 100 : undefined}
+                  coin={coin(p.market)}
+                  share={
+                    onShare && {
+                      label: t("share.button", { symbol: symbolFor(p.market) }),
+                      onClick: () => onShare(p),
+                    }
+                  }
+                />
+                <td className={`pd-num ${realized === undefined ? "" : trendClass(realized)}`}>
+                  {realized === undefined ? "-" : `${formatSigned(realized)}${coin(p.market)}`}
+                </td>
+                <td className="pd-num">{formatNumber(margin, 2)}</td>
+                <td className="pd-num pd-tpsl">
+                  {/* TP over SL, in the market colors: what it would make, what it would lose. */}
+                  <span className="pd-tpsl-pair">
+                    <span className={p.takeProfit ? "pd-up" : undefined}>
+                      {p.takeProfit ? formatNumber(p.takeProfit) : "-"}
+                    </span>
+                    <span className={p.stopLoss ? "pd-down" : undefined}>
+                      {p.stopLoss ? formatNumber(p.stopLoss) : "-"}
+                    </span>
+                  </span>
+                  {onProtect && (
+                    <button
+                      type="button"
+                      className="pd-tpsl-edit"
+                      aria-label={t("protect.edit", { symbol: symbolFor(p.market) })}
+                      title={t("protect.edit", { symbol: symbolFor(p.market) })}
+                      onClick={() => setEditing({ kind: "tpsl", position: p })}
+                    >
+                      <LuPencil size={13} aria-hidden />
+                    </button>
+                  )}
+                </td>
+                <td className="pd-num pd-tpsl">
+                  <span>{p.trailingStop ? formatNumber(p.trailingStop) : "-"}</span>
+                  {onProtect && (
+                    <button
+                      type="button"
+                      className="pd-tpsl-edit"
+                      aria-label={t("protect.editTrail", { symbol: symbolFor(p.market) })}
+                      title={t("protect.editTrail", { symbol: symbolFor(p.market) })}
+                      onClick={() => setEditing({ kind: "trail", position: p })}
+                    >
+                      <LuPencil size={13} aria-hidden />
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {editing && onProtect && (
+        <ProtectionDialog
+          kind={editing.kind}
+          position={editing.position}
+          symbol={symbolFor(editing.position.market)}
+          quote={quoteFor?.(editing.position.market) ?? ""}
+          tick={tickFor?.(editing.position.market) ?? "0.01"}
+          onSave={(protection) => onProtect(editing.position, protection)}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
+    </>
+  );
+}
+
+/** Cancels one order, showing that it's on its way and, if it fails, why. */
+function CancelButton({
+  order,
+  onCancel,
+}: {
+  order: Order;
+  onCancel: (order: Order) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  return (
+    <>
+      <button
+        type="button"
+        className="pd-order-cancel"
+        disabled={busy}
+        title={error}
+        onClick={async () => {
+          setBusy(true);
+          setError(undefined);
+          try {
+            await onCancel(order);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : t("orders.cancelFailed"));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {t(busy ? "orders.cancelling" : "orders.cancel")}
+      </button>
+      {error && (
+        <span className="pd-order-cancel-error" role="alert">
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -70,11 +212,14 @@ export function OpenOrdersTable({
   orders,
   symbolFor,
   empty,
+  onCancel,
 }: {
   orders: Order[];
   symbolFor: SymbolFor;
   /** What an empty list says; defaults to "no open orders". */
   empty?: string;
+  /** Cancels an order; unset where orders can't be cancelled (no column then). */
+  onCancel?: (order: Order) => Promise<void>;
 }) {
   if (orders.length === 0) return <EmptyState>{empty ?? t("orders.empty")}</EmptyState>;
   return (
@@ -91,6 +236,7 @@ export function OpenOrdersTable({
           <th className="pd-num">{t("col.trigger")}</th>
           <th>{t("col.reduceOnly")}</th>
           <th>{t("col.status")}</th>
+          {onCancel && <th aria-label={t("orders.cancel")} />}
         </tr>
       </thead>
       <tbody>
@@ -108,6 +254,11 @@ export function OpenOrdersTable({
             <td className="pd-num">{o.triggerPrice ? formatNumber(o.triggerPrice) : "-"}</td>
             <td>{t(o.reduceOnly ? "common.yes" : "common.no")}</td>
             <td>{t(`orderStatus.${o.status}`)}</td>
+            {onCancel && (
+              <td className="pd-order-cancel-cell">
+                <CancelButton order={o} onCancel={onCancel} />
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
@@ -141,7 +292,7 @@ export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolF
           <th className="pd-num">{t("col.size")}</th>
           <th className="pd-num">{t("col.value")}</th>
           <th className="pd-num">{t("col.fee")}</th>
-          <th className="pd-num">{t("col.closedPnl")}</th>
+          <th className="pd-num">{t("col.closedPnlRoi")}</th>
         </tr>
       </thead>
       <tbody>
@@ -208,6 +359,129 @@ export function FundingHistoryTable({
               <td className="pd-num">{formatNumber(Math.abs(size))}</td>
               <td className="pd-num">{formatSigned(Number(p.rate) * 100, 4)}%</td>
               <td className={`pd-num ${trendClass(amount)}`}>{formatSigned(amount, 4)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/** The TP/SL or the trailing stop dialog. */
+function ProtectionDialog({
+  kind,
+  ...props
+}: { kind: "tpsl" | "trail" } & Parameters<typeof TpSlDialog>[0]) {
+  return kind === "tpsl" ? <TpSlDialog {...props} /> : <TrailingStopDialog {...props} />;
+}
+
+/**
+ * A PnL as the venue shows it: the amount and its coin over the ROI in
+ * brackets, both in the result's colour, with the share button beside them.
+ */
+function PnlCell({
+  pnl,
+  roi,
+  coin,
+  share,
+}: {
+  pnl: number;
+  roi?: number;
+  coin: string;
+  share?: { label: string; onClick: () => void };
+}) {
+  return (
+    <td className={`pd-num ${trendClass(pnl)}`}>
+      <span className="pd-pnl-with-share">
+        <span className="pd-pnl-stack">
+          <span>
+            {formatNumber(pnl, 4)}
+            {coin}
+          </span>
+          {roi !== undefined && <span>({formatNumber(roi, 2)}%)</span>}
+        </span>
+        {share && (
+          <button
+            type="button"
+            className="pd-pnl-share"
+            aria-label={share.label}
+            title={share.label}
+            onClick={share.onClick}
+          >
+            <LuSquareArrowOutUpRight size={15} aria-hidden />
+          </button>
+        )}
+      </span>
+    </td>
+  );
+}
+
+/** ROI on a closed trade: its PnL against the margin it used (entry value over leverage). */
+export function closedRoi(c: ClosedTrade): number | undefined {
+  const margin = Number(c.entryValue) / (c.leverage ? Number(c.leverage) : 1);
+  return margin > 0 ? (Number(c.closedPnl) / margin) * 100 : undefined;
+}
+
+/** The account's recently closed positions, each with what it made, and a share button. */
+export function ClosedTradesTable({
+  trades,
+  symbolFor,
+  quoteFor,
+  baseFor,
+  onShare,
+}: {
+  trades: ClosedTrade[];
+  symbolFor: SymbolFor;
+  quoteFor?: (marketId: string) => string;
+  baseFor?: (marketId: string) => string;
+  onShare?: (trade: ClosedTrade) => void;
+}) {
+  if (trades.length === 0) return <EmptyState>{t("closed.empty")}</EmptyState>;
+  const coin = (fn: ((m: string) => string) | undefined, market: string) =>
+    fn ? ` ${fn(market)}` : "";
+  return (
+    <table className="pd-table">
+      <thead>
+        <tr>
+          <th>{t("col.market")}</th>
+          <th>{t("col.side")}</th>
+          <th className="pd-num">{t("col.size")}</th>
+          <th className="pd-num">{t("col.entry")}</th>
+          <th className="pd-num">{t("col.exit")}</th>
+          <th className="pd-num">{t("col.closedPnl")}</th>
+          <th className="pd-num">{t("col.leverage")}</th>
+          <th>{t("col.time")}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {trades.map((c) => {
+          const pnl = Number(c.closedPnl);
+          const roi = closedRoi(c);
+          return (
+            <tr key={`${c.market}:${c.time}:${c.size}:${c.exitPrice}`}>
+              <td className="pd-strong">{symbolFor(c.market)}</td>
+              <td className={c.side === "long" ? "pd-up" : "pd-down"}>
+                {t(c.side === "long" ? "side.long" : "side.short")}
+              </td>
+              <td className="pd-num">
+                {formatNumber(c.size)}
+                {coin(baseFor, c.market)}
+              </td>
+              <td className="pd-num">{formatNumber(c.entryPrice)}</td>
+              <td className="pd-num">{formatNumber(c.exitPrice)}</td>
+              <PnlCell
+                pnl={pnl}
+                roi={roi}
+                coin={coin(quoteFor, c.market)}
+                share={
+                  onShare && {
+                    label: t("share.button", { symbol: symbolFor(c.market) }),
+                    onClick: () => onShare(c),
+                  }
+                }
+              />
+              <td className="pd-num">{c.leverage ? `${formatNumber(c.leverage)}x` : "-"}</td>
+              <td className="pd-muted">{dateFormat(TIME).format(c.time)}</td>
             </tr>
           );
         })}

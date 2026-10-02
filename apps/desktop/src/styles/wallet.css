@@ -397,3 +397,316 @@
     border-bottom: 1px solid var(--pd-border);
   }
 }
+
+/* Connect with an exchange API key (Bybit): a narrow card on the same shell -
+   how to make the key, the form, then the connected account. */
+.apikey-dialog {
+  width: min(520px, calc(100vw - 32px));
+}
+.apikey-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+.apikey-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.apikey-logo {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+.apikey-intro p {
+  margin: 0;
+  line-height: 1.5;
+}
+.apikey-label {
+  margin: 0;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.apikey-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--pd-pewter);
+  line-height: 1.5;
+}
+.apikey-steps li::marker {
+  color: var(--pd-pewter-dim);
+}
+.apikey-form,
+.apikey-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.apikey-connected h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+}
+.apikey-connected .wallet-rows dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.apikey-connected .wallet-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* A venue's accounts: the active one marked, each renamable, and a way to
+   add another. Sits above the active account's details in both dialogs. */
+.wallet-accounts {
+  display: flex;
+  flex-direction: column;
+}
+.wallet-accounts-list {
+  padding: 22px 28px 0;
+}
+.acct {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.acct-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.acct-add,
+.acct-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.acct-add:hover,
+.acct-back:hover {
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+}
+.acct-back {
+  align-self: flex-start;
+  margin-bottom: 6px;
+}
+.acct-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--pd-border);
+  border-radius: 12px;
+}
+.acct-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+}
+.acct-row + .acct-row {
+  border-top: 1px solid var(--pd-border);
+}
+.acct-pick {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.acct-pick:hover {
+  background: var(--pd-surface-raised);
+}
+/* An account's picture, or its identicon in the theme's pewter tones */
+.acct-avatar {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  border-radius: 50%;
+  background: var(--pd-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--pd-border-strong);
+}
+.acct-avatar-img,
+.acct-identicon {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+.acct-avatar-img {
+  object-fit: cover;
+}
+.acct-identicon rect[data-shade="1"] {
+  fill: var(--pd-pewter-dim);
+}
+.acct-identicon rect[data-shade="2"] {
+  fill: var(--pd-pewter);
+}
+.acct-avatar-live {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  box-shadow: 0 0 0 2px var(--pd-bg);
+}
+/* The active account's picture wears the one brass ring */
+.acct-row[data-active] .acct-avatar {
+  box-shadow:
+    0 0 0 2px var(--pd-surface),
+    0 0 0 3.5px var(--pd-brass);
+}
+.acct-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.acct-text strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acct-text span {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.acct-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.acct-badge + .acct-badge {
+  margin-left: 6px;
+}
+/* Demo funds, not real ones: the one place blue marks an account */
+.acct-badge-demo {
+  border-color: var(--pd-info);
+  color: var(--pd-info);
+}
+/* Editing an account: its picture (click to change) and its name */
+.acct-edit {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0 8px 6px;
+}
+.acct-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.acct-avatar-pick {
+  position: relative;
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.acct-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pd-bg) 55%, transparent);
+  color: var(--pd-text);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.acct-avatar-pick:hover .acct-avatar-overlay,
+.acct-avatar-pick:focus-visible .acct-avatar-overlay {
+  opacity: 1;
+}
+.acct-edit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding-left: 48px;
+}
+.acct-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-info);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.acct-link:hover {
+  color: var(--pd-text);
+}
+.acct-edit-error {
+  color: var(--pd-warning);
+  font-size: 12.5px;
+}
+.acct-edit-name {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+}
+.acct-edit-name:focus-visible {
+  outline: none;
+  border-color: var(--pd-brass);
+}
+
+/* Live or Demo Trading, picked before the key is pasted */
+.apikey-env {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.apikey-env-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  background: none;
+  color: var(--pd-text);
+  text-align: left;
+  cursor: pointer;
+}
+.apikey-env-option span {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.apikey-env-option[aria-checked="true"] {
+  border-color: var(--pd-brass);
+  background: var(--pd-surface-raised);
+}

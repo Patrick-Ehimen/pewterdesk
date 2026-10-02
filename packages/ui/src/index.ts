@@ -36,6 +36,7 @@ export { MarketMovement, type MovementVenue } from "./components/trading/MarketM
 export { MarketPicker } from "./components/trading/MarketPicker";
 export { MarketStatsBar } from "./components/trading/MarketStatsBar";
 export { MiniChart } from "./components/trading/MiniChart";
+export { OpenOrdersPanel } from "./components/trading/OpenOrdersPanel";
 export {
   BOOK_SIDES,
   BOOK_UNITS,
@@ -55,7 +56,10 @@ export {
 } from "./components/trading/OrderBookView";
 export { OrderTicket } from "./components/trading/OrderTicket";
 export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
+export { PnlShareDialog } from "./components/trading/PnlShareDialog";
 export {
+  ClosedTradesTable,
+  closedRoi,
   FundingHistoryTable,
   OpenOrdersTable,
   PositionsTable,
@@ -84,7 +88,6 @@ export {
   TokenIconProvider,
 } from "./components/trading/TokenIcon";
 export { TradesView } from "./components/trading/TradesView";
-
 export {
   currentLocale,
   dateFormat,
@@ -109,6 +112,7 @@ export {
   type MarketAlert,
   watchedValue,
 } from "./lib/alerts";
+export { formatCountdown, INTERVAL_MS } from "./lib/chart";
 export {
   avgFillTo,
   type DepthLevel,
@@ -120,7 +124,6 @@ export {
   WALL_FACTOR,
   type Wall,
 } from "./lib/depth";
-
 export {
   decimalsOf,
   formatCompact,
@@ -143,7 +146,6 @@ export {
   INDICATORS,
   type IndicatorId,
 } from "./lib/indicators";
-
 export {
   changeOver,
   FILTERS,
@@ -169,3 +171,4 @@ export {
   sortRows,
   trackOpenInterest,
 } from "./lib/screener";
+export type { ShareCard } from "./lib/shareCard";

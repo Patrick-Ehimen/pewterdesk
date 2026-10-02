@@ -106,6 +106,19 @@ export const appClient = {
     if (isTauri()) await invoke("app_ready");
   },
 
+  /**
+   * Saves a P&L share card (a PNG) to the Downloads folder, under a name
+   * Rust picks; resolves to where it went. Sent as raw bytes.
+   */
+  saveShareImage: async (png: Blob): Promise<string> => {
+    if (!isTauri()) throw new Error("not in the desktop app");
+    try {
+      return await invoke<string>("save_share_image", new Uint8Array(await png.arrayBuffer()));
+    } catch (err) {
+      throw new Error(typeof err === "string" ? err : "couldn't save the image");
+    }
+  },
+
   /** Opens one of the fixed links in the system browser. */
   openLink: async (link: AboutLink): Promise<void> => {
     if (!isTauri()) throw new Error("not in the desktop app");

@@ -2,6 +2,7 @@ import type {
   AccountSnapshot,
   Candle,
   CandleInterval,
+  ClosedTrade,
   Fill,
   FundingPayment,
   FundingRate,
@@ -10,7 +11,10 @@ import type {
   MarketStats,
   MarketSummary,
   Order,
+  OrderAmend,
   OrderBook,
+  OrderRequest,
+  PositionProtection,
   Trade,
   VenueError,
   VenueId,
@@ -140,6 +144,34 @@ export const venueClient = {
   account: (venue: VenueId, address: string) =>
     call<AccountSnapshot>("account", { venue, address }),
 
+  /**
+   * Places an order for `account` (an account id from `lib/account.ts`).
+   * Rust builds the key reference itself and, for now, takes Bybit demo
+   * accounts only. Resolves once the venue has accepted it.
+   */
+  placeOrder: (venue: VenueId, account: string, request: OrderRequest) =>
+    call<Order>("place_order", { venue, account, request }),
+
+  cancelOrder: (venue: VenueId, account: string, market: string, orderId: string) =>
+    call<void>("cancel_order", { venue, account, market, orderId }),
+
+  /** Changes an open order's price, size or attached TP/SL. */
+  amendOrder: (
+    venue: VenueId,
+    account: string,
+    market: string,
+    orderId: string,
+    amend: OrderAmend,
+  ) => call<void>("amend_order", { venue, account, market, orderId, amend }),
+
+  /** Changes a position's TP, SL and trailing stop; each kept, removed or set. */
+  setProtection: (
+    venue: VenueId,
+    account: string,
+    market: string,
+    protection: PositionProtection,
+  ) => call<void>("set_position_protection", { venue, account, market, protection }),
+
   subscribeOrderBook: (venue: VenueId, market: string, handlers: StreamHandlers<OrderBook>) =>
     subscribe("subscribe_order_book", { venue, market }, handlers),
 
@@ -180,6 +212,9 @@ export const venueClient = {
 
   /** The account's recent fills, newest first. */
   fills: (venue: VenueId, address: string) => call<Fill[]>("fills", { venue, address }),
+
+  closedTrades: (venue: VenueId, address: string) =>
+    call<ClosedTrade[]>("closed_trades", { venue, address }),
 
   /** Funding paid or received since `startTime` (ms), newest first. */
   fundingPayments: (venue: VenueId, address: string, startTime: number) =>
@@ -258,4 +293,96 @@ export const walletClient = {
       void unlisten.then((stop) => stop());
     };
   },
+};
+
+/**
+ * A connected Bybit API key, as `bybit_key.rs` describes it: the account and
+ * what the key may do, never the key. Keep in sync with `BybitKeyInfo` there.
+ */
+export interface BybitKeyInfo {
+  /** The Bybit account: its UID, or `demo:` and the UID for a demo account. */
+  uid: string;
+  /** A Demo Trading account: demo funds, on Bybit's demo host. */
+  demo: boolean;
+  /** Whether Bybit answered just now; offline, only `uid` is known. */
+  checked: boolean;
+  readOnly: boolean;
+  subAccount: boolean;
+  ipRestricted: boolean;
+  /** ISO 8601, when the key lapses. */
+  expiresAt: string | null;
+  /** As `Group.Permission`, e.g. `ContractTrade.Order`. */
+  permissions: string[];
+  /** Why a stored key no longer passes the check, if it doesn't. */
+  problem: string | null;
+}
+
+/**
+ * Connecting Bybit with an API key. `connect` hands the key and secret to
+ * Rust once; Rust asks Bybit what the key may do and stores it only if it
+ * can trade contracts and nothing else. Nothing returns either half.
+ */
+export const bybitKeyClient = {
+  connect: (apiKey: string, apiSecret: string, demo: boolean) =>
+    call<BybitKeyInfo>("connect_bybit_key", { apiKey, apiSecret, demo }),
+
+  status: (uid: string) => call<BybitKeyInfo | null>("bybit_key_status", { uid }),
+
+  disconnect: (uid: string) => call<void>("disconnect_bybit_key", { uid }),
+};
+
+/** What a coin link is, for its label and icon. Mirrors `LinkKind` in `coin_info.rs`. */
+export type CoinLinkKind =
+  | "explorer"
+  | "github"
+  | "x"
+  | "reddit"
+  | "telegram"
+  | "website"
+  | "whitepaper"
+  | "forum";
+
+/** A link Rust fetched for a coin: shown by its host, opened by its index. */
+export interface CoinLink {
+  kind: CoinLinkKind;
+  label: string;
+  index: number;
+}
+
+/**
+ * A coin's overview from CoinGecko, as `coin_info.rs` describes it. Amounts
+ * in USD; each is null where CoinGecko has none. Keep in sync with
+ * `CoinInfo` there.
+ */
+export interface CoinInfo {
+  id: string;
+  name: string;
+  symbol: string;
+  /** Plain text, paragraphs separated by blank lines. */
+  description: string;
+  tags: string[];
+  marketCap: number | null;
+  fdv: number | null;
+  circulatingSupply: number | null;
+  totalSupply: number | null;
+  maxSupply: number | null;
+  links: CoinLink[];
+}
+
+/**
+ * Coin overviews, fetched by Rust from CoinGecko. Links open only through
+ * Rust, by index into what it fetched; the optional demo key goes to the
+ * keychain and never comes back.
+ */
+export const coinClient = {
+  /** The overview for a market's base coin, or null if CoinGecko doesn't list it. */
+  info: (base: string) => call<CoinInfo | null>("coin_info", { base }),
+
+  open: (id: string, index: number) => call<void>("open_coin_link", { id, index }),
+
+  setKey: (key: string) => call<void>("set_coingecko_key", { key }),
+
+  hasKey: () => call<boolean>("has_coingecko_key", {}),
+
+  clearKey: () => call<void>("clear_coingecko_key", {}),
 };

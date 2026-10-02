@@ -15,6 +15,7 @@ import {
   type FundingResolution,
   fundingSeries,
   IconButton,
+  INTERVAL_MS,
   Tabs,
   t,
 } from "@pewterdesk/ui";
@@ -33,9 +34,10 @@ import {
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
 import { LoadingMark } from "../Splash";
+import { CoinOverview } from "./CoinOverview";
 import { ScreenerPanel } from "./ScreenerPanel";
 
-type MarketsTab = "chart" | "depth" | "screener" | "watchlist";
+type MarketsTab = "chart" | "overview" | "depth" | "screener" | "watchlist";
 
 /**
  * Which chart the Charts tab shows: candles, the funding history, or
@@ -63,8 +65,8 @@ interface MarketsPanelProps {
 }
 
 /**
- * Chart, depth, screener and watchlist for the market on screen, tabbed as in
- * the design. Each tab only subscribes to what it shows: candles while the
+ * Chart, overview (what the coin is), depth, screener and watchlist for the
+ * market on screen, tabbed as in the design. Each tab only subscribes to what it shows: candles while the
  * chart is open, the screener's poll while a list is open.
  */
 export function MarketsPanel({
@@ -150,6 +152,7 @@ export function MarketsPanel({
       <Tabs
         tabs={[
           { id: "chart", label: t("tab.chart") },
+          { id: "overview", label: t("tab.overview") },
           { id: "depth", label: t("tab.depth") },
           { id: "screener", label: t("tab.screener") },
           { id: "watchlist", label: t("tab.watchlist") },
@@ -276,6 +279,7 @@ export function MarketsPanel({
                         updatePrefs((p) => ({ ...p, indicators: toggled(p.indicators, id) }))
                       }
                       candles={data}
+                      intervalMs={INTERVAL_MS[interval]}
                       seriesKey={`${market?.id}:${interval}`}
                       priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}
                       market={market}
@@ -290,6 +294,8 @@ export function MarketsPanel({
             </div>
           )}
         </div>
+      ) : tab === "overview" ? (
+        <CoinOverview market={market} />
       ) : tab === "depth" ? (
         <div className="app-fill">
           <FeedView

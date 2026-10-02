@@ -94,6 +94,8 @@ interface MarketStatsBarProps {
   venues?: readonly { id: VenueId; label: string; logo?: string }[];
   pickerVenue?: VenueId;
   onPickerVenueChange?: (venue: VenueId) => void;
+  /** The picker's "Add venue" chip. */
+  onPickerManageVenues?: () => void;
   pickerLoading?: boolean;
 }
 
@@ -115,6 +117,7 @@ export function MarketStatsBar({
   venues,
   pickerVenue,
   onPickerVenueChange,
+  onPickerManageVenues,
   pickerLoading,
 }: MarketStatsBarProps) {
   const now = useNow(1000);
@@ -152,6 +155,7 @@ export function MarketStatsBar({
           venues={venues}
           venue={pickerVenue}
           onVenueChange={onPickerVenueChange}
+          onManageVenues={onPickerManageVenues}
           loading={pickerLoading}
         />
 

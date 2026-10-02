@@ -6,6 +6,7 @@ import { type Locale, languageName, type MenuOption, type RowMode, t } from "@pe
 import {
   LuBriefcaseBusiness,
   LuChartCandlestick,
+  LuLandmark,
   LuNewspaper,
   LuNotebookPen,
   LuSettings,
@@ -52,6 +53,7 @@ export const VIEW_KEYS = { book: "pd.view.book", trades: "pd.view.trades" } as c
 const PAGE_ICONS = {
   trade: LuChartCandlestick,
   portfolio: LuBriefcaseBusiness,
+  venues: LuLandmark,
   journal: LuNotebookPen,
   news: LuNewspaper,
   settings: LuSettings,

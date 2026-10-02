@@ -11,6 +11,11 @@ export interface VenueInfo {
   maxSlippage: number;
   /** The bottom bar's tickers: BTC, ETH, SOL, BNB, HYPE and ASTER, by market id here. */
   majors: readonly string[];
+  /**
+   * How an account connects: a wallet that approves a trade-only key, or an
+   * exchange API key made on the venue's site. Picks the connect flow.
+   */
+  auth: "wallet" | "apiKey";
 }
 
 export const VENUES: Record<VenueId, VenueInfo> = {
@@ -23,6 +28,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     // pewterdesk's own cap; Bybit's price protection varies by market.
     maxSlippage: 0.05,
     majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
+    auth: "apiKey",
   },
   // Builder-deployed (HIP-3) markets scale fees per deployer; the ticket shows none for them.
   hyperliquid: {
@@ -31,6 +37,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     fees: { taker: 0.00045, maker: 0.00015 },
     maxSlippage: 0.08,
     majors: ["BTC", "ETH", "SOL", "BNB", "HYPE", "ASTER"],
+    auth: "wallet",
   },
   aster: {
     label: "Aster",
@@ -39,6 +46,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     // Aster's `marketTakeBound` for its main markets.
     maxSlippage: 0.05,
     majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
+    auth: "wallet",
   },
 };
 
