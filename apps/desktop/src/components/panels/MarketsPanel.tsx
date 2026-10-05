@@ -1,4 +1,12 @@
-import type { CandleInterval, Market, OrderBook, VenueId } from "@pewterdesk/core";
+import type {
+  AccountSnapshot,
+  CandleInterval,
+  Market,
+  OrderBook,
+  Position,
+  PositionProtection,
+  VenueId,
+} from "@pewterdesk/core";
 import {
   ALL_INTERVALS,
   CandleChart,
@@ -10,6 +18,8 @@ import {
   DepthView,
   decimalsOf,
   EmptyState,
+  type ExitKind,
+  exitMove,
   FUNDING_RESOLUTIONS,
   FundingChart,
   type FundingResolution,
@@ -19,10 +29,15 @@ import {
   Tabs,
   t,
 } from "@pewterdesk/ui";
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { LuFullscreen, LuMaximize2, LuMinimize2, LuSettings, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
-import { type Feed, useCandles, useFundingHistory } from "../../hooks/useVenueFeeds";
+import {
+  type Feed,
+  useAccountFills,
+  useCandles,
+  useFundingHistory,
+} from "../../hooks/useVenueFeeds";
 import {
   type ChartPrefs,
   exportChartImage,
@@ -62,6 +77,13 @@ interface MarketsPanelProps {
   expanded?: ExpandMode;
   /** Expand in a mode, or collapse with `undefined`. */
   onExpand: (mode: ExpandMode | undefined) => void;
+  /** The connected account on this venue, whose trading the chart shows. */
+  address?: string;
+  account?: AccountSnapshot;
+  /** Sets a position's TP / SL; with it, they can be dragged on the chart. */
+  onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
+  /** Each new value brings the panel to the chart (e.g. a position was clicked). */
+  showChart?: number;
 }
 
 /**
@@ -80,6 +102,10 @@ export function MarketsPanel({
   onToggleStar,
   expanded,
   onExpand,
+  address,
+  account,
+  onProtect,
+  showChart,
 }: MarketsPanelProps) {
   const [tab, setTab] = useState<MarketsTab>("chart");
   const [interval, setInterval] = useStoredChoice<CandleInterval>(
@@ -92,6 +118,13 @@ export function MarketsPanel({
     CHART_KINDS,
     "standard",
   );
+  // A position clicked elsewhere: show its market's chart, whatever tab is up.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs on each new request only
+  useEffect(() => {
+    if (!showChart) return;
+    setTab("chart");
+    setChartKind("standard");
+  }, [showChart]);
   // Chart style, indicators and toolbar favorites, remembered between sessions.
   const [prefs, setPrefs] = useState(loadChartPrefs);
   const updatePrefs = (change: (p: ChartPrefs) => ChartPrefs) =>
@@ -109,6 +142,31 @@ export function MarketsPanel({
     standardChart ? market?.id : undefined,
     interval,
   );
+  // The account's trading in this market, over the candles.
+  const fills = useAccountFills(venue, address, standardChart);
+  const allFills = fills.status === "live" ? fills.data : undefined;
+  const marketId = market?.id;
+  const position = account?.positions.find((p) => p.market === marketId);
+  const allOrders = account?.openOrders;
+  const orders = useMemo(
+    () => allOrders?.filter((o) => o.market === marketId),
+    [allOrders, marketId],
+  );
+  const marketFills = useMemo(
+    () => allFills?.filter((f) => f.market === marketId),
+    [allFills, marketId],
+  );
+  // Dragging a TP or SL line sets it, as the TP / SL editor would.
+  const moveExit =
+    onProtect && position && market
+      ? async (kind: ExitKind, price: number) => {
+          const move = exitMove(position, kind, price, market.tickSize);
+          if (move.result === "invalid") throw new Error(t(move.error));
+          if (move.result === "unchanged") return undefined;
+          await onProtect(position, move.protection);
+          return move.price;
+        }
+      : undefined;
   const funding = useFundingHistory(venue, fundingChart ? market?.id : undefined);
   const [resolution, setResolution] = useStoredChoice<FundingResolution>(
     "pd.funding.resolution",
@@ -284,6 +342,10 @@ export function MarketsPanel({
                       priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}
                       market={market}
                       onNeedOlder={loadOlder}
+                      position={position}
+                      orders={orders}
+                      fills={marketFills}
+                      onMoveExit={moveExit}
                       title={[market?.symbol, interval, venueName, market?.listedBy]
                         .filter(Boolean)
                         .join(" · ")}

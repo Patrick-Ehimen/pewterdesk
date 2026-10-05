@@ -65,19 +65,23 @@ export function ratioLevel(ratio: number): "safe" | "warn" | "danger" {
   return "safe";
 }
 
-/** A half-circle gauge filled to `ratio` (0-1). Decorative: the value is read out beside it. */
+/**
+ * A half-dial: the safe half on the left, the danger half on the right, and
+ * a needle that swings from the left (0) to the right (1) with `ratio`. Decorative:
+ * the value is read out beside it.
+ */
 function Gauge({ ratio }: { ratio: number }) {
-  const r = 8;
-  const length = Math.PI * r;
-  const filled = Math.min(1, Math.max(0, ratio)) * length;
+  // Swings from 150 degrees (0) to 30 (1): clear of the dial's flat edge at
+  // both ends, so the needle shows even at zero.
+  const angle = (Math.PI / 180) * (150 - 120 * Math.min(1, Math.max(0, ratio)));
+  const x = 10 + 7 * Math.cos(angle);
+  const y = 10 - 7 * Math.sin(angle);
   return (
-    <svg className="pd-gauge" viewBox="0 0 20 11" width={24} height={13} aria-hidden>
-      <path className="pd-gauge-track" d="M2 10 A8 8 0 0 1 18 10" />
-      <path
-        className="pd-gauge-fill"
-        d="M2 10 A8 8 0 0 1 18 10"
-        strokeDasharray={`${filled} ${length}`}
-      />
+    <svg className="pd-gauge" viewBox="0 0 20 11" width={30} height={17} aria-hidden>
+      <path className="pd-gauge-safe" d="M1 10 A9 9 0 0 1 10 1 L10 10 Z" />
+      <path className="pd-gauge-danger" d="M10 1 A9 9 0 0 1 19 10 L10 10 Z" />
+      <line className="pd-gauge-needle" x1="10" y1="10" x2={x.toFixed(2)} y2={y.toFixed(2)} />
+      <circle className="pd-gauge-hub" cx="10" cy="10" r="2.2" />
     </svg>
   );
 }
@@ -98,7 +102,7 @@ interface AccountSummaryProps {
   maxLeverageFor?: (market: string) => number | undefined;
 }
 
-/** The account panel: margin ratio, value, PnL, maintenance margin and leverage. */
+/** The account panel: margin ratio, value, PnL, initial and maintenance margin, what's available, and leverage. */
 export function AccountSummary({ snapshot, maxLeverageFor }: AccountSummaryProps) {
   const totals = snapshot ? accountTotals(snapshot, maxLeverageFor) : undefined;
   const ratio = totals?.maintenanceRatio ?? 0;
@@ -127,9 +131,27 @@ export function AccountSummary({ snapshot, maxLeverageFor }: AccountSummaryProps
         </div>
         <div>
           <dt>
+            <Term label={t("account.initialMargin")} hint={t("account.initialMarginHint")} />
+          </dt>
+          <dd>
+            {usd(totals?.marginUsed ?? 0)}
+            <span className="pd-account-share">{formatPercent(totals?.marginRatio ?? 0)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>
             <Term label={t("account.maintenance")} hint={t("account.maintenanceHint")} />
           </dt>
-          <dd>{usd(totals?.maintenanceMargin ?? 0)}</dd>
+          <dd>
+            {usd(totals?.maintenanceMargin ?? 0)}
+            <span className="pd-account-share">{formatPercent(ratio)}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>
+            <Term label={t("account.available")} hint={t("account.availableHint")} />
+          </dt>
+          <dd>{usd(totals?.available ?? 0)}</dd>
         </div>
         <div>
           <dt>

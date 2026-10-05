@@ -101,6 +101,40 @@ export const appClient = {
     if (isTauri()) await invoke("resize_tray_panel", { height });
   },
 
+  /** Shows the floating window, or hides it if it's showing. */
+  toggleFloat: async () => {
+    if (isTauri()) await invoke("toggle_float");
+  },
+
+  /** Floating window: brings itself up (a risk alert). */
+  showFloat: async () => {
+    if (isTauri()) await invoke("show_float");
+  },
+
+  /** Floating window: hides itself. */
+  hideFloat: async () => {
+    if (isTauri()) await invoke("hide_float");
+  },
+
+  /** Floating window: fits its window to its content, in points. */
+  resizeFloat: async (width: number, height: number) => {
+    if (isTauri()) await invoke("resize_float", { width, height });
+  },
+
+  /** Floating window: snaps to a nearby edge; resolves to where it settled. */
+  snapFloat: async (): Promise<[number, number] | undefined> =>
+    isTauri() ? ((await invoke<[number, number] | null>("snap_float")) ?? undefined) : undefined,
+
+  /** Floating window: goes back to where it was last left. */
+  placeFloat: async (x: number, y: number) => {
+    if (isTauri()) await invoke("place_float", { x, y });
+  },
+
+  /** Floating window: whether screen shares and recordings can't see it. */
+  setFloatProtected: async (hidden: boolean) => {
+    if (isTauri()) await invoke("set_float_protected", { protected: hidden });
+  },
+
   /** Main window: it's loaded, so the launch splash can give way to it. */
   appReady: async () => {
     if (isTauri()) await invoke("app_ready");

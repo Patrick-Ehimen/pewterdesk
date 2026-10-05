@@ -10,6 +10,7 @@ import {
 } from "react";
 import { LuGripVertical, LuX } from "react-icons/lu";
 import { t } from "../../i18n";
+import { lockTextSelection } from "../../lib/dragSelect";
 import { formatNumber } from "../../lib/format";
 import { FloatingTip, useTipTrigger } from "../common/Tooltip";
 
@@ -28,6 +29,8 @@ const KEY_STEP = 10;
 interface QuickTradeProps {
   /** The market's coin, for the quantity's label, e.g. "HYPE". */
   base?: string;
+  /** The coin the order's value is in, e.g. "USDT". */
+  quote?: string;
   /** Best bid and ask; unset until the book arrives. */
   bid?: number;
   ask?: number;
@@ -35,11 +38,14 @@ interface QuickTradeProps {
   qty: string;
   onQty: (qty: string) => void;
   /**
-   * Place a market order. Unset while orders can't be placed: the buttons
-   * stay visible but disabled, and say why.
+   * Place a market order; resolves once the venue has it, or rejects with
+   * why not. Unset while orders can't be placed: the buttons stay visible
+   * but disabled, and say why.
    */
-  onLong?: () => void;
-  onShort?: () => void;
+  onLong?: () => Promise<void>;
+  onShort?: () => Promise<void>;
+  /** Why orders can't be placed, where there's a better reason than "not yet". */
+  unavailableReason?: string;
   position: QuickTradePosition;
   /** Called once a drag (or arrow-key move) ends, with where the bar landed. */
   onMove: (position: QuickTradePosition) => void;
@@ -62,6 +68,7 @@ function clamp(p: QuickTradePosition, el: HTMLElement | null): QuickTradePositio
  */
 export function QuickTrade({
   base,
+  quote,
   bid,
   ask,
   decimals,
@@ -69,6 +76,7 @@ export function QuickTrade({
   onQty,
   onLong,
   onShort,
+  unavailableReason,
   position,
   onMove,
   onClose,
@@ -82,6 +90,23 @@ export function QuickTrade({
   const longTip = useTipTrigger();
   const shortTip = useTipTrigger();
   const tipFor = longTip.open ? "long" : shortTip.open ? "short" : undefined;
+  const [sending, setSending] = useState(false);
+  const send = async (act: () => Promise<void>) => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await act();
+      // Placed: the bar starts over, so a second click can't repeat it.
+      onQty("");
+    } catch {
+      // Whoever placed it says why not (a toast).
+    } finally {
+      setSending(false);
+    }
+  };
+  // What the quantity comes to, at the middle of the book.
+  const mid = bid !== undefined && ask !== undefined ? (bid + ask) / 2 : (ask ?? bid);
+  const value = Number(qty) > 0 && mid !== undefined && mid > 0 ? Number(qty) * mid : undefined;
 
   // Follow outside changes (e.g. a restored position) unless mid-drag.
   useEffect(() => {
@@ -96,9 +121,14 @@ export function QuickTrade({
     return () => window.removeEventListener("resize", reclamp);
   }, [reclamp]);
 
+  // Dragging over the page would otherwise select its text.
+  const unlock = useRef<() => void>(undefined);
+  useEffect(() => () => unlock.current?.(), []);
+
   const onGripDown = (e: PointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    unlock.current = lockTextSelection();
     drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
   };
   const onGripMove = (e: PointerEvent<HTMLButtonElement>) => {
@@ -109,6 +139,7 @@ export function QuickTrade({
   const onGripUp = (e: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current) return;
     drag.current = null;
+    unlock.current?.();
     e.currentTarget.releasePointerCapture(e.pointerId);
     onMove(pos);
   };
@@ -138,9 +169,9 @@ export function QuickTrade({
       "data-side": which === "long" ? "buy" : "sell",
       // aria-disabled, not disabled, so it can still be hovered and focused
       // to read why.
-      "aria-disabled": act ? undefined : true,
+      "aria-disabled": act && !sending ? undefined : true,
       "aria-describedby": act ? undefined : reasonId,
-      onClick: act,
+      onClick: act && (() => void send(act)),
       ...(which === "long" ? longTip : shortTip).handlers,
     };
   };
@@ -172,18 +203,26 @@ export function QuickTrade({
         <span className="pd-quick-price">{price(ask)}</span>
       </button>
 
-      <input
-        className="pd-quick-qty"
-        inputMode="decimal"
-        placeholder={t("quick.qty")}
-        aria-label={t("quick.qtyLabel", { base: base ?? "" })}
-        value={qty}
-        onChange={(e) => {
-          // Digits and one decimal point only.
-          const next = e.target.value.replace(",", ".");
-          if (/^\d*\.?\d*$/.test(next)) onQty(next);
-        }}
-      />
+      <div className="pd-quick-size">
+        <input
+          className="pd-quick-qty"
+          inputMode="decimal"
+          placeholder={t("quick.qty")}
+          aria-label={t("quick.qtyLabel", { base: base ?? "" })}
+          value={qty}
+          onChange={(e) => {
+            // Digits and one decimal point only.
+            const next = e.target.value.replace(",", ".");
+            if (/^\d*\.?\d*$/.test(next)) onQty(next);
+          }}
+        />
+        {value !== undefined && (
+          <span className="pd-quick-value">
+            ≈ {formatNumber(value, 2)}
+            {quote ? ` ${quote}` : ""}
+          </span>
+        )}
+      </div>
 
       <button {...side("short")}>
         <span className="pd-quick-label">{t("quick.short")}</span>
@@ -202,12 +241,12 @@ export function QuickTrade({
 
       {unavailable && (
         <span id={reasonId} className="pd-visually-hidden">
-          {t("quick.unavailable")}
+          {unavailableReason ?? t("quick.unavailable")}
         </span>
       )}
       {unavailable && tipFor && (
         <FloatingTip getAnchor={() => (tipFor === "long" ? longRef : shortRef).current}>
-          {t("quick.unavailable")}
+          {unavailableReason ?? t("quick.unavailable")}
         </FloatingTip>
       )}
     </section>

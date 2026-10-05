@@ -11,6 +11,7 @@ import { useState } from "react";
 import { LuPencil, LuSquareArrowOutUpRight } from "react-icons/lu";
 import { dateFormat, type MessageKey, t } from "../../i18n";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
+import { toastError } from "../../lib/toasts";
 import { EmptyState } from "../common/Status";
 import { TpSlDialog, TrailingStopDialog } from "./ProtectionEditor";
 
@@ -26,6 +27,14 @@ const TIME: Intl.DateTimeFormatOptions = {
   hour12: false,
 };
 
+/**
+ * An entry or liquidation price: two places from 1 up (86,372.16), and as
+ * the venue sent it below that, where two places would lose the price
+ * (0.0043032).
+ */
+const positionPrice = (price: string) =>
+  Math.abs(Number(price)) >= 1 ? formatNumber(Number(price), 2) : formatNumber(price);
+
 export function PositionsTable({
   positions,
   symbolFor,
@@ -34,6 +43,7 @@ export function PositionsTable({
   tickFor,
   onProtect,
   onShare,
+  onSelect,
 }: {
   positions: Position[];
   symbolFor: SymbolFor;
@@ -45,6 +55,8 @@ export function PositionsTable({
   tickFor?: (marketId: string) => string;
   /** Opens the P&L share card for a position; unset hides the share button. */
   onShare?: (position: Position) => void;
+  /** Opens a position's market (its chart); a click anywhere on the row but its buttons. */
+  onSelect?: (position: Position) => void;
   /** Changes a position's TP, SL or trailing stop; unset where it can't be (no edit buttons then). */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
@@ -56,7 +68,7 @@ export function PositionsTable({
   };
   return (
     <>
-      <table className="pd-table">
+      <table className="pd-table pd-positions">
         <thead>
           <tr>
             <th>{t("col.market")}</th>
@@ -79,12 +91,47 @@ export function PositionsTable({
             const margin = Number(p.margin);
             const realized = p.realizedPnl === undefined ? undefined : Number(p.realizedPnl);
             return (
-              <tr key={`${p.market}:${p.side}`}>
-                <td className="pd-strong">{symbolFor(p.market)}</td>
+              <tr
+                key={`${p.market}:${p.side}`}
+                className={onSelect ? "pd-position-row" : undefined}
+                onClick={(e) => {
+                  // The row's own controls (edit, share) keep to themselves.
+                  if (!onSelect || (e.target as HTMLElement).closest("button, input, a, dialog")) {
+                    return;
+                  }
+                  onSelect(p);
+                }}
+              >
+                <td className="pd-strong">
+                  {onSelect ? (
+                    <button
+                      type="button"
+                      className="pd-row-button"
+                      title={t("positions.openChart", { symbol: symbolFor(p.market) })}
+                      onClick={() => onSelect(p)}
+                    >
+                      {symbolFor(p.market)}
+                    </button>
+                  ) : (
+                    symbolFor(p.market)
+                  )}
+                  {/* Cross or isolated and the leverage, in the side's color. */}
+                  {(p.marginMode || p.leverage) && (
+                    <span className={`pd-position-mode ${p.side === "long" ? "pd-up" : "pd-down"}`}>
+                      {[
+                        p.marginMode &&
+                          t(p.marginMode === "isolated" ? "ticket.isolated" : "ticket.cross"),
+                        p.leverage && `${formatNumber(p.leverage, 2)}x`,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    </span>
+                  )}
+                </td>
                 <td className={p.side === "long" ? "pd-up" : "pd-down"}>
                   {t(p.side === "long" ? "side.long" : "side.short")}
                 </td>
-                <td className="pd-num">
+                <td className={`pd-num ${p.side === "long" ? "pd-up" : "pd-down"}`}>
                   {formatNumber(p.size)}
                   {baseFor && ` ${baseFor(p.market)}`}
                 </td>
@@ -92,10 +139,10 @@ export function PositionsTable({
                   {formatNumber(Number(p.size) * Number(p.markPrice), 2)}
                   {coin(p.market)}
                 </td>
-                <td className="pd-num">{formatNumber(p.entryPrice)}</td>
+                <td className="pd-num">{positionPrice(p.entryPrice)}</td>
                 <td className="pd-num">{formatNumber(p.markPrice)}</td>
                 <td className="pd-num pd-warn">
-                  {p.liquidationPrice ? formatNumber(p.liquidationPrice) : "-"}
+                  {p.liquidationPrice ? positionPrice(p.liquidationPrice) : "-"}
                 </td>
                 <PnlCell
                   pnl={pnl}
@@ -177,34 +224,24 @@ function CancelButton({
   onCancel: (order: Order) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
   return (
-    <>
-      <button
-        type="button"
-        className="pd-order-cancel"
-        disabled={busy}
-        title={error}
-        onClick={async () => {
-          setBusy(true);
-          setError(undefined);
-          try {
-            await onCancel(order);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : t("orders.cancelFailed"));
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        {t(busy ? "orders.cancelling" : "orders.cancel")}
-      </button>
-      {error && (
-        <span className="pd-order-cancel-error" role="alert">
-          {error}
-        </span>
-      )}
-    </>
+    <button
+      type="button"
+      className="pd-order-cancel"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await onCancel(order);
+        } catch (err) {
+          toastError(t("toast.cancelFailed"), err, t("orders.cancelFailed"));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {t(busy ? "orders.cancelling" : "orders.cancel")}
+    </button>
   );
 }
 
@@ -223,7 +260,7 @@ export function OpenOrdersTable({
 }) {
   if (orders.length === 0) return <EmptyState>{empty ?? t("orders.empty")}</EmptyState>;
   return (
-    <table className="pd-table">
+    <table className="pd-table pd-positions">
       <thead>
         <tr>
           <th>{t("col.time")}</th>
@@ -282,7 +319,7 @@ const buying = (f: Fill) => f.side === "buy";
 export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolFor: SymbolFor }) {
   if (fills.length === 0) return <EmptyState>{t("history.fillsEmpty")}</EmptyState>;
   return (
-    <table className="pd-table">
+    <table className="pd-table pd-positions">
       <thead>
         <tr>
           <th>{t("col.time")}</th>
@@ -334,7 +371,7 @@ export function FundingHistoryTable({
 }) {
   if (payments.length === 0) return <EmptyState>{t("history.fundingEmpty")}</EmptyState>;
   return (
-    <table className="pd-table">
+    <table className="pd-table pd-positions">
       <thead>
         <tr>
           <th>{t("col.time")}</th>
@@ -395,7 +432,7 @@ function PnlCell({
       <span className="pd-pnl-with-share">
         <span className="pd-pnl-stack">
           <span>
-            {formatNumber(pnl, 4)}
+            {formatNumber(pnl, 2)}
             {coin}
           </span>
           {roi !== undefined && <span>({formatNumber(roi, 2)}%)</span>}
@@ -440,7 +477,7 @@ export function ClosedTradesTable({
   const coin = (fn: ((m: string) => string) | undefined, market: string) =>
     fn ? ` ${fn(market)}` : "";
   return (
-    <table className="pd-table">
+    <table className="pd-table pd-positions">
       <thead>
         <tr>
           <th>{t("col.market")}</th>

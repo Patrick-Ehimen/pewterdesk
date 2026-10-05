@@ -13,7 +13,14 @@ import {
   t,
 } from "@pewterdesk/ui";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { LuChevronLeft, LuChevronRight, LuExternalLink, LuPower, LuSearch } from "react-icons/lu";
+import {
+  LuChevronLeft,
+  LuChevronRight,
+  LuExternalLink,
+  LuPictureInPicture2,
+  LuPower,
+  LuSearch,
+} from "react-icons/lu";
 import { appClient } from "../api/appClient";
 import { venueClient } from "../api/venueClient";
 import { useStoredChoice } from "../hooks/useStoredChoice";
@@ -634,6 +641,11 @@ export function TrayPanel() {
             <LuExternalLink size={15} aria-hidden />
             <span>{t("tray.open")}</span>
             <kbd>⌘ O</kbd>
+          </button>
+          <button type="button" onClick={() => void appClient.toggleFloat()}>
+            <LuPictureInPicture2 size={15} aria-hidden />
+            <span>{t("float.open")}</span>
+            <kbd>⌃⌥ Space</kbd>
           </button>
           <button type="button" onClick={() => void appClient.quitFromTray()}>
             <LuPower size={15} aria-hidden />

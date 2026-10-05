@@ -1,8 +1,15 @@
-import type { AccountSnapshot, Market, OrderBook, OrderRequest } from "@pewterdesk/core";
+import type {
+  AccountSnapshot,
+  MarginMode,
+  Market,
+  OrderBook,
+  OrderRequest,
+  TradeSettings,
+} from "@pewterdesk/core";
 import { useEffect, useId, useRef, useState } from "react";
-import { LuArrowUpDown, LuChevronDown } from "react-icons/lu";
+import { LuArrowUpDown, LuChevronDown, LuTriangleAlert } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
-import { decimalsOf, formatNumber } from "../../lib/format";
+import { decimalsOf, formatNumber, onTick } from "../../lib/format";
 import {
   hasLimitPrice,
   hasTrigger,
@@ -17,10 +24,18 @@ import {
   type TicketType,
   ticketOrder,
 } from "../../lib/ticket";
+import {
+  estLiquidation,
+  positionAfter,
+  type TicketCheck,
+  ticketChecks,
+} from "../../lib/ticketChecks";
 import { Hint } from "../common/ColumnHeader";
 import { FloatingTip, Tooltip, useTipTrigger } from "../common/Tooltip";
+import { type ConfirmChange, type ConfirmRow, OrderConfirmDialog } from "./OrderConfirmDialog";
 import { SizeCalculator } from "./SizeCalculator";
 import { NumberField } from "./TicketField";
+import { LeverageDialog, MarginModeDialog } from "./TradeSettingsDialogs";
 
 /** What the button says when the order can't go yet. */
 const BLOCKED: Record<TicketBlock, MessageKey> = {
@@ -41,6 +56,8 @@ const PRO_LABEL: Record<ProType, MessageKey> = {
 };
 /** The slider's marks, in percent of what's available. */
 const MARKS = [0, 25, 50, 75, 100];
+/** What the confirmation's checkbox stops asking under, in the quote coin. */
+const SKIP_UNDER = 10_000;
 /** Leverage assumed when there's no position to read it from. */
 const DEFAULT_LEVERAGE = 10;
 
@@ -64,6 +81,20 @@ interface OrderTicketProps {
   accountBadge?: string;
   /** Why orders can't be placed, where there's a better reason than "not yet". */
   unavailableReason?: string;
+  /** The account's margin mode and leverage on this market, where the venue reports them. */
+  settings?: TradeSettings;
+  /** Changes the leverage; unset where it can't be (the chip is then inert). */
+  onLeverage?: (leverage: number) => Promise<void>;
+  /** Changes the margin mode; unset where it can't be. */
+  onMarginMode?: (mode: MarginMode) => Promise<void>;
+  /** A price to size against while the book has none (e.g. the mark). */
+  fallbackPrice?: number;
+  /** Shows a summary to confirm before an order is sent. */
+  confirmOrders?: boolean;
+  /** Orders worth less than this, in the quote coin, skip the confirmation. */
+  confirmSkipUnder?: number;
+  /** The confirmation's "don't confirm orders under…" was ticked, with that amount. */
+  onConfirmSkipUnder?: (amount: number) => void;
 }
 
 /**
@@ -82,7 +113,16 @@ export function OrderTicket({
   onSubmit,
   accountBadge,
   unavailableReason,
+  settings,
+  onLeverage,
+  onMarginMode,
+  fallbackPrice,
+  confirmOrders,
+  confirmSkipUnder,
+  onConfirmSkipUnder,
 }: OrderTicketProps) {
+  const [confirming, setConfirming] = useState<OrderRequest>();
+  const [editing, setEditing] = useState<"leverage" | "margin">();
   const [type, setType] = useState<TicketType>("market");
   const [side, setSide] = useState<TicketSide>("buy");
   const [size, setSize] = useState("");
@@ -102,7 +142,6 @@ export function OrderTicket({
   const submitRef = useRef<HTMLButtonElement>(null);
   const submitTip = useTipTrigger();
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; text: string }>();
   const reasonId = useId();
 
   // A new market starts a fresh order.
@@ -111,7 +150,6 @@ export function OrderTicket({
     for (const reset of [setSize, setLimitPrice, setTrigger, setStart, setEnd, setTp, setSl]) {
       reset("");
     }
-    setResult(undefined);
   }, [market?.id]);
 
   // The Pro menu closes on a click elsewhere.
@@ -134,8 +172,10 @@ export function OrderTicket({
 
   const position = market && account?.positions.find((p) => p.market === market.id);
   const leverage =
-    (position && positionLeverage(position)) ??
-    Math.min(DEFAULT_LEVERAGE, market?.maxLeverage ?? DEFAULT_LEVERAGE);
+    (settings && Number(settings.leverage)) ||
+    ((position && positionLeverage(position)) ??
+      Math.min(DEFAULT_LEVERAGE, market?.maxLeverage ?? DEFAULT_LEVERAGE));
+  const marginMode: MarginMode = settings?.marginMode ?? (market?.listedBy ? "isolated" : "cross");
   const available = account ? Number(account.availableMargin) : 0;
 
   // The price the order is valued at: the limit for limit types, the trigger
@@ -147,7 +187,9 @@ export function OrderTicket({
     if (type === "scale" && Number(start) > 0 && Number(end) > 0) {
       return (Number(start) + Number(end)) / 2;
     }
-    return type === "market" || type === "twap" ? best : mid;
+    const touch = type === "market" || type === "twap" ? best : mid;
+    // No book yet (loading, or stale): size against the fallback instead.
+    return Number.isFinite(touch) && touch > 0 ? touch : (fallbackPrice ?? Number.NaN);
   })();
   const sizeBase =
     unit === "base" ? Number(size) || 0 : price > 0 ? (Number(size) || 0) / price : 0;
@@ -202,42 +244,222 @@ export function OrderTicket({
       })
     : undefined;
   const blocked = built && "blocked" in built ? BLOCKED[built.blocked] : undefined;
+  const checks = market
+    ? ticketChecks({
+        market,
+        type,
+        side,
+        sizeBase,
+        limitPrice,
+        trigger,
+        reduceOnly,
+        bestBid,
+        bestAsk,
+        price,
+        available: account ? available : undefined,
+        leverage,
+        position,
+      })
+    : [];
+  const errors = checks.filter((c) => c.level === "error").length;
+  const stateOf = (field: TicketCheck["field"]) => {
+    const found = checks.filter((c) => c.field === field);
+    return found.some((c) => c.level === "error") ? "error" : found.length > 0 ? "warn" : undefined;
+  };
+  const priceText = (v: number) => formatNumber(v, decimalsOf(market?.tickSize ?? "0"));
+  const sizeText = (v: number) => formatNumber(v, sizeDecimals);
+  /** A check as a line under its field, with a one-click fix where there is one. */
+  const note = (c: TicketCheck) => {
+    let text: string;
+    let fix: { label: string; apply: () => void } | undefined;
+    if (c.code === "tick") text = t("check.tick", { tick: c.tick });
+    else if (c.code === "crosses") {
+      text = t(side === "buy" ? "check.crossesBuy" : "check.crossesSell", {
+        pct: formatNumber(c.past * 100, 2),
+        price: priceText(Number(limitPrice)),
+      });
+      const midText = onTick(c.mid, market?.tickSize ?? "0");
+      fix = {
+        label: t("check.useMid", { price: formatNumber(midText) }),
+        apply: () => setLimitPrice(midText),
+      };
+    } else if (c.code === "minSize") text = t("check.minSize", { min: c.min, base });
+    else if (c.code === "step") {
+      text = t("check.step", { step: c.step, size: sizeText(c.sends), base });
+    } else {
+      text = t("check.margin", {
+        need: formatNumber(c.need, 2),
+        quote,
+        leverage: formatNumber(leverage, Number.isInteger(leverage) ? 0 : 2),
+        have: formatNumber(c.have, 2),
+      });
+      const max = c.max;
+      if (max > 0) {
+        fix = {
+          label: t("check.useMax", { size: sizeText(max) }),
+          apply: () => {
+            setUnit("base");
+            setSize(max.toFixed(sizeDecimals));
+          },
+        };
+      }
+    }
+    return (
+      <p key={`${c.field}:${c.code}`} className="pd-ticket-note" data-level={c.level} role="alert">
+        <LuTriangleAlert className="pd-ticket-note-icon" size={13} aria-hidden />
+        <span>
+          {text}{" "}
+          {fix && (
+            <button type="button" className="pd-ticket-fix" onClick={fix.apply}>
+              {fix.label}
+            </button>
+          )}
+        </span>
+      </p>
+    );
+  };
+  const notesFor = (field: TicketCheck["field"]) =>
+    checks.filter((c) => c.field === field).map(note);
   const reason: MessageKey | undefined = !onSubmit
     ? "quick.unavailable"
     : !market
       ? "ticket.needSize"
-      : blocked;
+      : (blocked ?? (errors > 0 ? "check.fix" : undefined));
   const unavailable = reason !== undefined || sending;
   const reasonText =
     reason === "quick.unavailable" && unavailableReason ? unavailableReason : reason && t(reason);
 
-  const submit = async () => {
-    if (!onSubmit || !built || !("request" in built) || sending) return;
+  const send = async (request: OrderRequest) => {
+    if (!onSubmit || sending) return;
     setSending(true);
-    setResult(undefined);
     try {
-      await onSubmit(built.request);
-      setResult({ ok: true, text: t("ticket.sent") });
+      await onSubmit(request);
       setSize("");
-    } catch (err) {
-      setResult({ ok: false, text: err instanceof Error ? err.message : t("ticket.failed") });
+    } catch {
+      // Whoever placed it says why not (a toast); the size stays to retry.
     } finally {
       setSending(false);
     }
+  };
+  const submit = () => {
+    if (!onSubmit || !built || !("request" in built) || sending || errors > 0) return;
+    const small =
+      confirmSkipUnder !== undefined && orderValue !== undefined && orderValue < confirmSkipUnder;
+    if (confirmOrders && !small) setConfirming(built.request);
+    else void send(built.request);
+  };
+
+  // What the confirmation shows, from the ticket as it stands.
+  const confirmRows = (): ConfirmRow[] => {
+    const typeLabel = t(
+      type === "market" ? "ticket.market" : type === "limit" ? "ticket.limit" : PRO_LABEL[type],
+    );
+    const fee = fees && (type === "limit" ? fees.maker : fees.taker);
+    const rows: (ConfirmRow | false | undefined)[] = [
+      { label: t("confirm.type"), value: typeLabel },
+      hasTrigger(type) && { label: t("ticket.triggerPrice"), value: priceText(Number(trigger)) },
+      hasLimitPrice(type) && {
+        label: t("confirm.limitPrice"),
+        value: priceText(Number(limitPrice)),
+      },
+      type === "market" &&
+        fillPrice > 0 && { label: t("confirm.estPrice"), value: priceText(fillPrice) },
+      { label: t("ticket.size"), value: `${sizeText(sizeBase)} ${base}` },
+      { label: t("ticket.orderValue"), value: money(orderValue) },
+      !reduceOnly && {
+        label: t("confirm.margin", {
+          mode: t(marginMode === "isolated" ? "ticket.isolated" : "ticket.cross"),
+          leverage: formatNumber(leverage, Number.isInteger(leverage) ? 0 : 2),
+        }),
+        value: money(margin),
+      },
+      fee !== undefined &&
+        orderValue !== undefined && {
+          label: t("confirm.fee", {
+            kind: t(type === "limit" ? "confirm.maker" : "confirm.taker"),
+            rate: formatNumber(fee * 100, 4),
+          }),
+          value: money(orderValue * fee),
+        },
+      type === "market" && { label: t("confirm.maxSlippage"), value: `${pct(maxSlippage)}%` },
+      reduceOnly && { label: t("confirm.flags"), value: t("ticket.reduceOnly") },
+    ];
+    return rows.filter((r): r is ConfirmRow => Boolean(r));
+  };
+  // The position the order leaves, and roughly where that would be liquidated.
+  const after =
+    fillPrice > 0 && sizeBase > 0
+      ? positionAfter(position, side, sizeBase, fillPrice, reduceOnly)
+      : undefined;
+  const marginInfo = {
+    mode: marginMode,
+    leverage,
+    equity: account ? Number(account.equity) : undefined,
+  };
+  const estLiq = after && estLiquidation(after.to, marginInfo);
+  const confirmAfter = (): ConfirmChange[] | undefined => {
+    if (!after) return undefined;
+    const { from, to } = after;
+    const liqFrom = position?.liquidationPrice ? priceText(Number(position.liquidationPrice)) : "-";
+    const sized = (p: { size: number }) =>
+      p.size === 0
+        ? t("confirm.flat")
+        : `${sizeText(Math.abs(p.size))} ${t(p.size > 0 ? "side.long" : "side.short")}`;
+    const entry = (p: { entry?: number }) => (p.entry === undefined ? "-" : priceText(p.entry));
+    return [
+      {
+        label: t("ticket.size"),
+        from: sized(from),
+        to: sized(to),
+        tone: to.size > 0 ? "buy" : to.size < 0 ? "sell" : undefined,
+      },
+      { label: t("confirm.avgEntry"), from: entry(from), to: entry(to) },
+      {
+        label: t("confirm.estLiq"),
+        from: liqFrom,
+        to: estLiq === undefined ? "-" : priceText(estLiq),
+        tone: estLiq === undefined ? undefined : "warn",
+      },
+    ];
   };
 
   return (
     <div className="pd-ticket">
       <div className="pd-ticket-modes">
         {accountBadge && <span className="pd-ticket-badge">{accountBadge}</span>}
-        {/* Changing either signs a venue action, so they wait for trading. */}
-        <Tooltip content={t("quick.unavailable")} className="pd-ticket-chip">
-          {t(market?.listedBy ? "ticket.isolated" : "ticket.cross")}
+        {/* Changing either signs a venue action: only where the account can trade. */}
+        <Tooltip
+          content={onMarginMode ? t("ticket.changeMargin") : t("quick.unavailable")}
+          className={`pd-ticket-chip${onMarginMode ? " pd-ticket-chip-on" : ""}`}
+          onClick={onMarginMode && (() => setEditing("margin"))}
+        >
+          {t(marginMode === "isolated" ? "ticket.isolated" : "ticket.cross")}
         </Tooltip>
-        <Tooltip content={t("quick.unavailable")} className="pd-ticket-chip">
-          {leverage}x
+        <Tooltip
+          content={onLeverage ? t("ticket.changeLeverage") : t("quick.unavailable")}
+          className={`pd-ticket-chip${onLeverage ? " pd-ticket-chip-on" : ""}`}
+          onClick={onLeverage && (() => setEditing("leverage"))}
+        >
+          {formatNumber(leverage, Number.isInteger(leverage) ? 0 : 2)}x
         </Tooltip>
       </div>
+      {editing === "margin" && onMarginMode && (
+        <MarginModeDialog
+          current={marginMode}
+          accountWide={settings?.marginModeAccountWide ?? false}
+          onSave={onMarginMode}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
+      {editing === "leverage" && onLeverage && (
+        <LeverageDialog
+          symbol={market?.symbol ?? ""}
+          current={leverage}
+          max={Number(settings?.maxLeverage ?? market?.maxLeverage ?? leverage)}
+          onSave={onLeverage}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
 
       <div className="pd-ticket-types" role="tablist" aria-label={t("ticket.orderType")}>
         {(["market", "limit"] as const).map((id) => (
@@ -319,11 +541,23 @@ export function OrderTicket({
       </dl>
 
       {hasTrigger(type) && (
-        <NumberField label={t("ticket.triggerPrice")} value={trigger} onChange={setTrigger} />
+        <NumberField
+          label={t("ticket.triggerPrice")}
+          value={trigger}
+          onChange={setTrigger}
+          state={stateOf("trigger")}
+        />
       )}
+      {notesFor("trigger")}
       {hasLimitPrice(type) && (
-        <NumberField label={t("ticket.price")} value={limitPrice} onChange={setLimitPrice} />
+        <NumberField
+          label={t("ticket.price")}
+          value={limitPrice}
+          onChange={setLimitPrice}
+          state={stateOf("price")}
+        />
       )}
+      {notesFor("price")}
       {type === "scale" && (
         <div className="pd-ticket-row">
           <NumberField label={t("ticket.startPrice")} value={start} onChange={setStart} />
@@ -341,6 +575,7 @@ export function OrderTicket({
         label={t("ticket.size")}
         value={size}
         onChange={setSize}
+        state={stateOf("size")}
         suffix={
           <button
             type="button"
@@ -353,6 +588,8 @@ export function OrderTicket({
           </button>
         }
       />
+
+      {notesFor("size")}
 
       <div className="pd-ticket-slider">
         <div className="pd-ticket-track">
@@ -417,6 +654,7 @@ export function OrderTicket({
 
       {account ? (
         <>
+          {errors > 0 && onSubmit && <p className="pd-ticket-blocked">{t("check.fix")}</p>}
           <button
             ref={submitRef}
             type="button"
@@ -424,7 +662,7 @@ export function OrderTicket({
             data-side={side}
             aria-disabled={unavailable || undefined}
             aria-describedby={reason ? reasonId : undefined}
-            onClick={() => void submit()}
+            onClick={submit}
             {...submitTip.handlers}
           >
             {sending ? t("ticket.sending") : t(side === "buy" ? "ticket.buy" : "ticket.sell")}
@@ -437,11 +675,6 @@ export function OrderTicket({
           {reason && submitTip.open && (
             <FloatingTip getAnchor={() => submitRef.current}>{reasonText}</FloatingTip>
           )}
-          {result && (
-            <p className="pd-ticket-result" data-ok={result.ok || undefined} role="status">
-              {result.text}
-            </p>
-          )}
         </>
       ) : (
         <button type="button" className="pd-ticket-submit" data-connect onClick={onConnect}>
@@ -449,10 +682,31 @@ export function OrderTicket({
         </button>
       )}
 
+      {confirming && (
+        <OrderConfirmDialog
+          side={confirming.side}
+          symbol={market?.symbol ?? ""}
+          rows={confirmRows()}
+          after={confirmAfter()}
+          skipLabel={
+            onConfirmSkipUnder && t("confirm.skip", { amount: formatNumber(SKIP_UNDER, 0), quote })
+          }
+          onConfirm={(skip) => {
+            if (skip) onConfirmSkipUnder?.(SKIP_UNDER);
+            const request = confirming;
+            setConfirming(undefined);
+            void send(request);
+          }}
+          onCancel={() => setConfirming(undefined)}
+        />
+      )}
+
       <dl className="pd-ticket-summary">
         <div className="pd-ticket-line">
           <dt>{t("ticket.liqPrice")}</dt>
-          <dd>-</dd>
+          <dd className={estLiq === undefined ? undefined : "pd-warn"}>
+            {estLiq === undefined ? "-" : `≈ ${priceText(estLiq)}`}
+          </dd>
         </div>
         <div className="pd-ticket-line">
           <dt>{t("ticket.orderValue")}</dt>

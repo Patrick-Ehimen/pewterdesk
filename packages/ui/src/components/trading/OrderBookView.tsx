@@ -102,6 +102,49 @@ export function bookLadder(book: OrderBook, depth: number): BookLadder {
   return ladder;
 }
 
+/** How coarse the book's price levels can be shown: multiples of the market's tick. */
+export const BOOK_GROUPS = ["1", "10", "100", "500", "1000"] as const;
+export type BookGroup = (typeof BOOK_GROUPS)[number];
+
+/** Slack for float division when bucketing prices. */
+const BUCKET_SLACK = 1e-9;
+
+/** `tick` times `group`, as text without float noise: "0.1" x 500 is "50". */
+export function groupStep(tick: string, group: BookGroup): string {
+  const step = (Number(tick) * Number(group)).toFixed(decimalsOf(tick));
+  return step.includes(".") ? step.replace(/\.?0+$/, "") : step;
+}
+
+/**
+ * The book with its levels merged into steps of `step`: bids rounded down,
+ * asks up (so a grouped level never looks better than a real one), sizes
+ * summed. Only the levels the venue sent, so a coarse step shows few rows.
+ */
+export function groupBook(book: OrderBook, step: string): OrderBook {
+  const size = Number(step);
+  if (!(size > 0)) return book;
+  const places = decimalsOf(step);
+  const sizePlaces = Math.max(0, ...[...book.bids, ...book.asks].map((l) => decimalsOf(l.size)));
+  const merge = (levels: BookLevel[], round: (n: number) => number): BookLevel[] => {
+    const out: { bucket: number; size: number }[] = [];
+    for (const level of levels) {
+      const bucket = round(Number(level.price) / size);
+      const last = out.at(-1);
+      if (last && last.bucket === bucket) last.size += Number(level.size);
+      else out.push({ bucket, size: Number(level.size) });
+    }
+    return out.map((l) => ({
+      price: (l.bucket * size).toFixed(places),
+      size: l.size.toFixed(sizePlaces),
+    }));
+  };
+  return {
+    ...book,
+    bids: merge(book.bids, (n) => Math.floor(n + BUCKET_SLACK)),
+    asks: merge(book.asks, (n) => Math.ceil(n - BUCKET_SLACK)),
+  };
+}
+
 type BookSide = "bid" | "ask";
 
 const rowKey = (side: BookSide, price: string) => `${side}:${price}`;
@@ -309,6 +352,8 @@ interface OrderBookViewProps {
   unit?: BookUnit;
   /** Offered as a switch beside the Size and Total headers. */
   onUnitChange?: (unit: BookUnit) => void;
+  /** Merges price levels into steps of this size (see `groupStep`); unset shows them as sent. */
+  step?: string;
 }
 
 /** Which of the book's sides show. */
@@ -433,7 +478,8 @@ function bookColumns(
  * all: bids under the spread, or asks over it.
  */
 export function OrderBookView({
-  book,
+  book: sent,
+  step,
   depth,
   base,
   quote,
@@ -444,13 +490,16 @@ export function OrderBookView({
 }: OrderBookViewProps) {
   // Showing sides are the same flex size, so measuring one is enough.
   const [sideRef, rowsThatFit] = useRowsThatFit<HTMLDivElement>(ROW_HEIGHT[mode]);
+  const book = useMemo(() => (step ? groupBook(sent, step) : sent), [sent, step]);
   const ladder = bookLadder(book, depth ?? Math.max(rowsThatFit, 1));
+  // The price between the sides is the real one, whatever the grouping.
+  const touch = bookLadder(sent, 1);
   // Quote values: whole units when the book runs to hundreds, else cents,
   // the same on every row so the column lines up.
   const deepestValue = Math.max(0, ...[...ladder.asks, ...ladder.bids].map((r) => r.notional));
   const quoteDecimals = deepestValue >= 100 ? 0 : 2;
-  const { midDecimals } = ladder;
-  const midShown = ladder.mid === undefined ? undefined : Number(ladder.mid.toFixed(midDecimals));
+  const { midDecimals } = touch;
+  const midShown = touch.mid === undefined ? undefined : Number(touch.mid.toFixed(midDecimals));
   const trend = usePriceTrend(midShown);
   const flashes = useLevelFlashes(book);
   const hover = useHoveredRow<HTMLDivElement>();
@@ -496,14 +545,6 @@ export function OrderBookView({
             </span>
           )}
         </span>
-        {ladder.spread !== undefined && ladder.spreadBps !== undefined && (
-          <span className="pd-muted">
-            {t("book.spread", {
-              spread: formatNumber(ladder.spread, midDecimals),
-              bps: formatNumber(ladder.spreadBps, 1),
-            })}
-          </span>
-        )}
       </div>
       {sides !== "asks" && (
         <div ref={sides === "bids" ? sideRef : undefined} className="pd-book-side" data-side="bid">
@@ -528,7 +569,7 @@ export function OrderBookView({
           <LevelTip
             row={hovered.row}
             side={hovered.side}
-            mid={ladder.mid}
+            mid={touch.mid}
             priceDecimals={midDecimals}
             base={base}
             quote={quote}

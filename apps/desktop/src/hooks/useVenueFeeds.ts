@@ -1,5 +1,6 @@
 import type {
   AccountSnapshot,
+  Announcement,
   Candle,
   CandleInterval,
   ClosedTrade,
@@ -145,7 +146,27 @@ export function useCandles(
   market: string | undefined,
   interval: CandleInterval,
 ): CandleFeed {
-  const [feed, setFeed] = useState<Feed<Candle[]>>({ status: "idle" });
+  const [state, setState] = useState<{ key?: string; feed: Feed<Candle[]> }>({
+    feed: { status: "idle" },
+  });
+  // The feed only ever belongs to the market and interval it was loaded for.
+  // Right after a switch, before the effect below resets it, the last
+  // market's candles would otherwise go out under the new one's name, and a
+  // chart would then take the new history as a live update of them.
+  const key = market === undefined ? undefined : `${venue}:${market}:${interval}`;
+  const feed: Feed<Candle[]> =
+    state.key === key ? state.feed : { status: key === undefined ? "idle" : "loading" };
+  const setFeed = useCallback(
+    (next: Feed<Candle[]> | ((prev: Feed<Candle[]>) => Feed<Candle[]>)) =>
+      setState((prev) => ({
+        key,
+        feed:
+          typeof next === "function"
+            ? next(prev.key === key ? prev.feed : { status: "loading" })
+            : next,
+      })),
+    [key],
+  );
   // Shared by the stream and `loadOlder`; reset per market and interval.
   const series = useRef<Candle[] | undefined>(undefined);
   const loading = useRef(false);
@@ -195,7 +216,7 @@ export function useCandles(
       unsubscribe();
       save(true);
     };
-  }, [venue, market, interval, retry]);
+  }, [venue, market, interval, retry, setFeed]);
 
   const loadOlder = useCallback(() => {
     const oldest = series.current?.[0];
@@ -222,11 +243,13 @@ export function useCandles(
         if (asked === generation.current) loading.current = false;
       },
     );
-  }, [venue, market, interval]);
+  }, [venue, market, interval, setFeed]);
 
   return { feed, loadOlder };
 }
 
+/** A venue's announcements are re-read this often while the News page is open. */
+const ANNOUNCEMENTS_REFRESH_MS = 5 * 60_000;
 /** An account's history refreshes this often while its tab is open. */
 const HISTORY_REFRESH_MS = 30_000;
 /** Funding payments shown: the last 30 days. */
@@ -236,7 +259,11 @@ const ACCOUNT_FUNDING_DAYS = 30;
  * Loads `load()` while `key` is set, then again every 30 seconds. A failed
  * refresh keeps the last data rather than replacing it with an error.
  */
-function usePolled<T>(key: string | undefined, load: () => Promise<T>): Feed<T> {
+function usePolled<T>(
+  key: string | undefined,
+  load: () => Promise<T>,
+  everyMs = HISTORY_REFRESH_MS,
+): Feed<T> {
   const [feed, setFeed] = useState<Feed<T>>({ status: "idle" });
   // `load` is rebuilt every render; `key` is what identifies the data.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
@@ -257,7 +284,7 @@ function usePolled<T>(key: string | undefined, load: () => Promise<T>): Feed<T> 
           ),
       );
     void run();
-    const id = setInterval(run, HISTORY_REFRESH_MS);
+    const id = setInterval(run, everyMs);
     return () => {
       current = false;
       clearInterval(id);
@@ -412,5 +439,14 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
 export function useAccount(venue: VenueId, address: string | undefined): Feed<AccountSnapshot> {
   return useStream(address && `${venue}:${address}`, (handlers) =>
     venueClient.subscribeAccount(venue, address ?? "", handlers),
+  );
+}
+
+/** A venue's latest announcements, newest first, while `enabled`. */
+export function useAnnouncements(venue: VenueId, enabled: boolean): Feed<Announcement[]> {
+  return usePolled<Announcement[]>(
+    enabled ? venue : undefined,
+    () => venueClient.announcements(venue),
+    ANNOUNCEMENTS_REFRESH_MS,
   );
 }

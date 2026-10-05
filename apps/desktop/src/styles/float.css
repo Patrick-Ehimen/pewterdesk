@@ -1,0 +1,514 @@
+/* The floating window: its own small always-on-top window, after
+   FloatWindow.png and FloatStates.png. The window is transparent and sized
+   to this card (float.rs resizes it as the card's size changes). */
+html:has(.float),
+html:has(.float) body {
+  width: max-content;
+  height: auto;
+  background: transparent;
+}
+/* The window grows with the widget up to a limit (float.rs); past that, or
+   on a short screen, the page scrolls inside it rather than being cut off. */
+html:has(.float) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+html:has(.float)::-webkit-scrollbar {
+  display: none;
+}
+html:has(.float) {
+  color-scheme: normal;
+}
+html:has(.float) #root {
+  display: inline-block;
+}
+.float {
+  display: flex;
+  flex-direction: column;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  color: var(--pd-text);
+  font-size: 13px;
+  user-select: none;
+  overflow: hidden;
+}
+.float-full {
+  width: 340px;
+}
+.float-num {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.float-muted {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+
+/* Header */
+.float-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 8px 6px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.float-head-fill {
+  flex: 1;
+  align-self: stretch;
+}
+.float-grip {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 26px;
+  color: var(--pd-pewter);
+  cursor: grab;
+}
+.float-grip svg {
+  pointer-events: none;
+}
+.float-market {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font: 600 13px var(--pd-font-mono);
+  cursor: pointer;
+}
+.float-icon {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+  overflow: hidden;
+}
+.float-icon:hover,
+.float-icon[aria-pressed="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+
+/* Market picker */
+.float-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.float-picker input {
+  height: 30px;
+  margin-bottom: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  outline: none;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  user-select: text;
+}
+.float-pick {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.float-pick:hover {
+  background: var(--pd-surface-raised);
+}
+
+/* Price */
+.float-price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 6px;
+}
+.float-price > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.float-last {
+  font: 600 22px var(--pd-font-mono);
+}
+
+/* Ticket */
+.float-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 12px 12px;
+}
+.float-types,
+.float-presets,
+.float-sides {
+  display: grid;
+  gap: 6px;
+}
+.float-types {
+  grid-template-columns: 1fr 1fr 1.2fr;
+}
+.float-presets {
+  grid-template-columns: repeat(4, 1fr);
+}
+.float-sides {
+  grid-template-columns: 1fr 1fr;
+}
+.float-types button,
+.float-presets button {
+  height: 28px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: 12.5px var(--pd-font-mono);
+  cursor: pointer;
+}
+.float-types button[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.float-types button:disabled,
+.float-presets button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.float-presets button:hover:not(:disabled) {
+  color: var(--pd-text);
+}
+.float-size {
+  display: flex;
+  gap: 6px;
+}
+.float-field {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: var(--pd-bg);
+}
+.float-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--pd-text);
+  font: 15px var(--pd-font-mono);
+  user-select: text;
+}
+.float-field > .float-muted {
+  flex: none;
+  white-space: nowrap;
+}
+.float-lev {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 44px;
+  padding: 0 6px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.float-lev:hover:not(:disabled),
+.float-lev[aria-expanded="true"] {
+  border-color: var(--pd-brass);
+}
+.float-lev:disabled {
+  color: var(--pd-pewter);
+  cursor: default;
+}
+.float-leverage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+}
+.float-leverage-presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 6px;
+}
+.float-confirm {
+  height: 36px;
+}
+.float-warn {
+  color: var(--pd-warning);
+}
+
+/* Hold-to-confirm buttons: a fill grows across while held */
+.float-hold {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+}
+.float-hold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: scaleX(var(--hold, 0));
+  transform-origin: left;
+  background: color-mix(in srgb, var(--pd-text) 22%, transparent);
+  pointer-events: none;
+}
+.float-hold[aria-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.float-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.float-side:has([data-side="buy"]) {
+  background: var(--pd-buy);
+  color: var(--pd-on-buy);
+}
+.float-side:has([data-side="sell"]) {
+  background: var(--pd-sell);
+  color: var(--pd-on-sell);
+}
+.float-side strong {
+  font-size: 13px;
+}
+.float-side span {
+  font: 10.5px var(--pd-font-mono);
+  opacity: 0.8;
+}
+.float-why {
+  line-height: 1.35;
+}
+.float-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 7px 10px;
+  border-left: 3px solid var(--pd-warning);
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+  font-size: 12px;
+}
+.float-result[data-ok] {
+  border-left-color: var(--pd-buy);
+}
+.float-result span {
+  color: var(--pd-pewter);
+  overflow-wrap: anywhere;
+}
+
+/* Positions */
+.float-positions {
+  border-top: 1px solid var(--pd-border);
+}
+.float-label {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding: 8px 12px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.float-none {
+  padding: 0 12px 10px;
+}
+.float-position {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 0 0;
+  border-top: 1px solid var(--pd-border);
+}
+.float-position-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 4px 8px 12px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.float-position-main:hover {
+  background: color-mix(in srgb, var(--pd-surface-raised) 60%, transparent);
+}
+.float-pnl {
+  margin-left: auto;
+}
+.float-near {
+  color: var(--pd-warning);
+  font-size: 11.5px;
+}
+
+/* Footer */
+.float-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--pd-border);
+}
+.float-button {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.float-button:has([data-danger]) {
+  border-color: var(--pd-sell);
+  color: var(--pd-sell);
+}
+.float-keys {
+  margin-left: auto;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.float-keys kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  font: 10.5px var(--pd-font-mono);
+}
+
+/* The pill and the ticker strip: one line */
+.float-pill {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  cursor: grab;
+}
+.float-strip {
+  gap: 14px;
+  border-radius: 8px;
+}
+.float-tick {
+  display: inline-flex;
+  gap: 6px;
+}
+.float-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--pd-buy);
+}
+.float-dot[data-trend="down"] {
+  background: var(--pd-sell);
+}
+.float-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--pd-border-strong);
+}
+
+/* A position near liquidation takes the widget over */
+.float-alert {
+  gap: 8px;
+  width: 340px;
+  padding: 14px;
+  border-color: var(--pd-warning);
+  cursor: grab;
+}
+.float-alert-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+}
+.float-alert-title svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--pd-warning);
+}
+.float-alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.float-link {
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  cursor: pointer;
+}
+.float-link:hover {
+  color: var(--pd-text);
+}
+
+/* Text boxes: the box's own border lights up while typing; the input inside
+   shows no ring of its own. */
+.float-field:focus-within,
+.float-picker input:focus-visible {
+  border-color: var(--pd-brass);
+}
+.float-field input:focus-visible,
+.float-picker input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}

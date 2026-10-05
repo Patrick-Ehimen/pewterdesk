@@ -58,6 +58,14 @@ export interface SettingsPageProps {
   onClose: () => void;
   soundOn: boolean;
   onSound: (on: boolean) => void;
+  /** The ticket asks before sending an order. */
+  /** Fills, alerts and liquidation warnings also show as desktop notifications. */
+  notifications: boolean;
+  onNotifications: (on: boolean) => void;
+  /** Sends one now, so the system's permission prompt can be answered. */
+  onTestNotification: () => void;
+  confirmOrders: boolean;
+  onConfirmOrders: (on: boolean) => void;
   theme: Theme;
   onTheme: (theme: Theme) => void;
   marketColors: MarketColors;
@@ -120,7 +128,15 @@ export function SettingsPage(props: SettingsPageProps) {
   );
 }
 
-function GeneralSection({ soundOn, onSound }: SettingsPageProps) {
+function GeneralSection({
+  soundOn,
+  onSound,
+  confirmOrders,
+  onConfirmOrders,
+  notifications,
+  onNotifications,
+  onTestNotification,
+}: SettingsPageProps) {
   const locale = currentLocale();
   return (
     <>
@@ -137,6 +153,30 @@ function GeneralSection({ soundOn, onSound }: SettingsPageProps) {
       <GroupLabel>{t("settings.sounds")}</GroupLabel>
       <SettingRow title={t("settings.sounds")} help={t("settings.soundsHelp")}>
         <Switch checked={soundOn} onChange={onSound} label={t("settings.sounds")} />
+      </SettingRow>
+      <GroupLabel>{t("settings.notifications")}</GroupLabel>
+      <SettingRow title={t("settings.notifications")} help={t("settings.notificationsHelp")}>
+        <Switch
+          checked={notifications}
+          onChange={onNotifications}
+          label={t("settings.notifications")}
+        />
+      </SettingRow>
+      <SettingRow
+        title={t("settings.notificationsTest")}
+        help={t("settings.notificationsTestHelp")}
+      >
+        <button type="button" className="settings-button" onClick={onTestNotification}>
+          {t("settings.notificationsSend")}
+        </button>
+      </SettingRow>
+      <GroupLabel>{t("settings.confirmOrders")}</GroupLabel>
+      <SettingRow title={t("settings.confirmOrders")} help={t("settings.confirmOrdersHelp")}>
+        <Switch
+          checked={confirmOrders}
+          onChange={onConfirmOrders}
+          label={t("settings.confirmOrders")}
+        />
       </SettingRow>
     </>
   );

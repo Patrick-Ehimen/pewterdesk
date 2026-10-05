@@ -13,15 +13,18 @@ export function NumberField({
   onChange,
   suffix,
   placeholder,
+  state,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   suffix?: ReactNode;
   placeholder?: string;
+  /** Outlines the field where a check found something. */
+  state?: "error" | "warn";
 }) {
   return (
-    <label className="pd-ticket-field">
+    <label className="pd-ticket-field" data-state={state}>
       <span className="pd-ticket-field-label">{label}</span>
       <input
         inputMode="decimal"

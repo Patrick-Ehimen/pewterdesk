@@ -9,7 +9,7 @@ import {
 } from "react";
 import { LuCircleHelp, LuMinus, LuPlus, LuX } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
-import { decimalsOf, formatNumber, formatSigned, trendClass } from "../../lib/format";
+import { formatNumber, formatSigned, onTick, trendClass } from "../../lib/format";
 
 /** What both dialogs need about the position and its market. */
 interface DialogProps {
@@ -26,13 +26,6 @@ interface DialogProps {
 
 const KEEP: ExitChange = { action: "keep" };
 
-/** `value` on the tick grid, as text with the tick's decimals. */
-function onTick(value: number, tick: string): string {
-  const step = Number(tick);
-  const snapped = step > 0 ? Math.round(value / step) * step : value;
-  return snapped.toFixed(decimalsOf(tick));
-}
-
 /** The change that turns `current` into what's typed: kept if equal, removed if cleared. */
 function changeTo(typed: string, current: string | undefined): ExitChange {
   const v = typed.trim();
@@ -42,7 +35,7 @@ function changeTo(typed: string, current: string | undefined): ExitChange {
 }
 
 /** The dialog frame: title, close, the position's figures, the form, and Confirm / Cancel. */
-function Shell({
+export function Shell({
   title,
   stats,
   busy,
@@ -94,16 +87,18 @@ function Shell({
             <LuX size={18} aria-hidden />
           </button>
         </header>
-        <dl className="pd-protect-stats">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <dt>{t(s.label)}</dt>
-              <dd className="pd-num" data-warn={s.warn || undefined}>
-                {s.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        {stats.length > 0 && (
+          <dl className="pd-protect-stats">
+            {stats.map((s) => (
+              <div key={s.label}>
+                <dt>{t(s.label)}</dt>
+                <dd className="pd-num" data-warn={s.warn || undefined}>
+                  {s.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
         {children}
         {error && (
           <p className="pd-protect-error" role="alert">
@@ -125,7 +120,7 @@ function Shell({
 }
 
 /** A price box with − / + steppers that move it by `step`, from `from` when empty. */
-function Stepper({
+export function Stepper({
   value,
   onChange,
   step,

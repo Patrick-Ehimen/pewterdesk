@@ -27,6 +27,7 @@ const PREVIEW: Record<ShareLayout, number> = { landscape: 0.9, portrait: 0.9 };
 /** The saved and copied image's pixel density. */
 const EXPORT_SCALE = 3;
 
+import { toast, toastError } from "../../lib/toasts";
 import { Switch } from "../common/Switch";
 
 /**
@@ -57,7 +58,6 @@ export function PnlShareDialog({
   const [layout, setLayout] = useState<ShareLayout>("landscape");
   const [showDemo, setShowDemo] = useState(true);
   const [images, setImages] = useState<{ brand?: HTMLImageElement; venue?: HTMLImageElement }>();
-  const [status, setStatus] = useState<{ ok: boolean; text: string }>();
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -96,17 +96,17 @@ export function PnlShareDialog({
   const copy = async () => {
     try {
       await navigator.clipboard.write([new ClipboardItem({ "image/png": png() })]);
-      setStatus({ ok: true, text: t("share.copied") });
+      toast({ title: t("share.title"), body: t("share.copied") });
     } catch {
-      setStatus({ ok: false, text: t("share.failed") });
+      toast({ title: t("share.title"), body: t("share.failed"), tone: "warn" });
     }
   };
   const save = async () => {
     try {
       const path = await onSave(await png());
-      setStatus({ ok: true, text: t("share.saved", { path }) });
+      toast({ title: t("share.title"), body: t("share.saved", { path }) });
     } catch (err) {
-      setStatus({ ok: false, text: err instanceof Error ? err.message : t("share.failed") });
+      toastError(t("share.title"), err, t("share.failed"));
     }
   };
 
@@ -214,11 +214,6 @@ export function PnlShareDialog({
           </button>
         </span>
       </footer>
-      {status && (
-        <p className="pd-share-status" data-ok={status.ok || undefined} role="status">
-          {status.text}
-        </p>
-      )}
     </dialog>
   );
 }
