@@ -200,6 +200,26 @@ pub fn show_float(app: AppHandle) {
     show(&app);
 }
 
+/// From the widget: show it as a notification, in the top-right corner
+/// where the system's own appear, if it isn't on screen already. Returns
+/// whether this brought it up - then closing the notification hides it
+/// again, rather than leaving the widget open where nobody asked for it.
+#[tauri::command]
+pub fn show_float_notice(app: AppHandle) -> bool {
+    let Some(window) = float(&app) else {
+        return false;
+    };
+    if window.is_visible().unwrap_or(false) {
+        return false;
+    }
+    if let (Some((area, scale)), Some((_, size))) = (screen(&window), geometry(&window)) {
+        let gap = EDGE_GAP * scale;
+        move_to(&window, (area.x + area.width - gap - size.0, area.y + gap));
+    }
+    let _ = window.show();
+    true
+}
+
 #[tauri::command]
 pub fn hide_float(app: AppHandle) {
     if let Some(window) = float(&app) {

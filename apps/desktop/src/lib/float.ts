@@ -1,9 +1,15 @@
 import type { Market, OrderRequest, Position } from "@pewterdesk/core";
 
-/** A position this close to its liquidation price sets off the widget's alert. */
-export const RISK_WITHIN = 0.1;
-/** How long "Snooze" quiets one position's alert. */
-export const SNOOZE_MS = 15 * 60_000;
+/**
+ * A position this close to its liquidation price sets off the warning (the
+ * toast, the desktop notification and the widget's alert): 2% of the mark.
+ */
+export const RISK_WITHIN = 0.02;
+/**
+ * Once warned, a position must move back out past this before it can warn
+ * again, so one hovering at the threshold doesn't keep setting it off.
+ */
+export const RISK_CLEAR = 0.03;
 /** How long Buy, Sell and the closing buttons must be held before they act. */
 export const HOLD_MS = 400;
 

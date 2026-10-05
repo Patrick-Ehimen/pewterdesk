@@ -9,7 +9,7 @@ const position = (over: Partial<Position> = {}): Position => ({
   size: "1.00",
   entryPrice: "2400",
   markPrice: "2000",
-  liquidationPrice: "1850",
+  liquidationPrice: "1970",
   unrealizedPnl: "-400",
   margin: "240",
   ...over,
@@ -17,7 +17,7 @@ const position = (over: Partial<Position> = {}): Position => ({
 
 describe("liquidationDistance", () => {
   it("is the gap to liquidation as a share of the mark", () => {
-    expect(liquidationDistance(position())).toBeCloseTo(0.075);
+    expect(liquidationDistance(position())).toBeCloseTo(0.015);
     expect(liquidationDistance(position({ side: "short", liquidationPrice: "2100" }))).toBeCloseTo(
       0.05,
     );
@@ -29,9 +29,10 @@ describe("liquidationDistance", () => {
 });
 
 describe("riskiest", () => {
-  const safe = position({ market: "BTCUSDT", liquidationPrice: "1000" });
+  // 9% away: well clear of the 2% threshold.
+  const safe = position({ market: "BTCUSDT", liquidationPrice: "1820" });
   const close = position();
-  const closer = position({ market: "SOLUSDT", liquidationPrice: "1950" });
+  const closer = position({ market: "SOLUSDT", liquidationPrice: "1990" });
 
   it("picks the position nearest liquidation, within the threshold", () => {
     expect(riskiest([safe], {}, 0)).toBeUndefined();

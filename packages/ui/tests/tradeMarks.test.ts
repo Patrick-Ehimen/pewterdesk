@@ -1,6 +1,6 @@
 import type { Candle, Fill, Order, Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
-import { exitMove, fillMarks, tradeLevels } from "../src/lib/tradeMarks";
+import { exitMove, fillMarks, scaleWithLevels, tradeLevels } from "../src/lib/tradeMarks";
 
 const position = (over: Partial<Position> = {}): Position => ({
   venue: "hyperliquid",
@@ -164,5 +164,27 @@ describe("moving a TP or SL", () => {
       "position:tp",
       "position:sl",
     ]);
+  });
+});
+
+describe("scaleWithLevels", () => {
+  it("leaves the candles' range alone without levels, or with ones inside it", () => {
+    expect(scaleWithLevels(100, 110, [])).toEqual({ min: 100, max: 110 });
+    expect(scaleWithLevels(100, 110, [104, 109])).toEqual({ min: 100, max: 110 });
+  });
+
+  it("takes in a level just outside the candles", () => {
+    // Half the candles' range (5) either way.
+    expect(scaleWithLevels(100, 110, [97, 114])).toEqual({ min: 97, max: 114 });
+  });
+
+  it("leaves a far level off screen rather than flattening the candles", () => {
+    // A short at 0.1104 with its TP at 0.10 and SL at 0.12, candles 0.109 to 0.1105.
+    expect(scaleWithLevels(0.109, 0.1105, [0.1, 0.11044, 0.12])).toEqual({
+      min: 0.109,
+      max: 0.1105,
+    });
+    // A near one is still taken in when a far one is ignored.
+    expect(scaleWithLevels(100, 110, [60, 112])).toEqual({ min: 100, max: 112 });
   });
 });

@@ -1,3 +1,4 @@
+import { appIcon } from "@pewterdesk/assets";
 import type { Candle, Market, OrderRequest, Position, VenueId } from "@pewterdesk/core";
 import {
   decimalsOf,
@@ -6,6 +7,8 @@ import {
   orderText,
   Sparkline,
   sizeFromPercent,
+  TokenIcon,
+  TokenIconProvider,
   t,
   ticketOrder,
   trendClass,
@@ -31,7 +34,6 @@ import {
   LuMinus,
   LuRows3,
   LuSquareArrowOutUpRight,
-  LuTriangleAlert,
   LuX,
 } from "react-icons/lu";
 import { appClient } from "../api/appClient";
@@ -46,11 +48,14 @@ import {
   HOLD_MS,
   liquidationDistance,
   positionKey,
+  RISK_CLEAR,
   riskiest,
-  SNOOZE_MS,
   slippageBps,
 } from "../lib/float";
+import { peekSavedIcon } from "../lib/iconCache";
+import { loadIcon } from "../lib/loadIcon";
 import { loadMarket } from "../lib/selectedMarket";
+import { playSound, type SoundKind } from "../lib/sound";
 import { loadVenue, VENUES } from "../lib/venues";
 
 /** The widget's sizes: everything, one line, or a strip of tickers. */
@@ -70,6 +75,19 @@ const RESULT_MS = 5000;
 /** A drag has ended once the window has been still this long. */
 const SETTLE_MS = 350;
 const POSITION_KEY = "pd.float.position";
+
+/** Where the widget was last left, in physical pixels, if anywhere. */
+function savedPosition(): [number, number] | undefined {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(POSITION_KEY) ?? "null");
+    if (Array.isArray(saved) && saved.length === 2 && saved.every((n) => Number.isInteger(n))) {
+      return [saved[0] as number, saved[1] as number];
+    }
+  } catch {
+    // Unreadable: as good as nothing saved.
+  }
+  return undefined;
+}
 
 /**
  * A button that acts only after being held for `HOLD_MS`, filling as it
@@ -171,13 +189,22 @@ function useCloses(venue: VenueId, market: string | undefined): number[] {
  * The floating window, after the design: a small widget that stays over
  * other apps. Full, it's a market's price, a ticket whose buttons must be
  * held, the open positions with a close on each, and "Flatten all". It
- * folds to a one-line pill or a ticker strip, and a position near its
- * liquidation price takes it over with an alert.
+ * folds to a one-line pill or a ticker strip. A position near its
+ * liquidation price shows as a notification in its place (or on its own,
+ * top right, when the widget is hidden).
  *
  * It calls the same Rust commands as the main window and nothing more: no
  * key reaches it, and where the main window can't trade, neither can it.
  */
 export function FloatWindow() {
+  return (
+    <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
+      <FloatWidget />
+    </TokenIconProvider>
+  );
+}
+
+function FloatWidget() {
   const rootRef = useRef<HTMLElement>(null);
   const venue = useVenue();
   const info = VENUES[venue];
@@ -266,9 +293,16 @@ export function FloatWindow() {
   }, [marketId]);
 
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; title: string; body?: string }>();
+  const [result, setResult] = useState<{
+    ok: boolean;
+    title: string;
+    body?: string;
+    /** What it sounds like, where that isn't an order going through. */
+    sound?: SoundKind;
+  }>();
   useEffect(() => {
     if (!result) return;
+    playSound(result.ok ? (result.sound ?? "order") : "error");
     const id = setTimeout(() => setResult(undefined), RESULT_MS);
     return () => clearTimeout(id);
   }, [result]);
@@ -309,6 +343,7 @@ export function FloatWindow() {
       setLevOpen(false);
       setResult({
         ok: true,
+        sound: "saved",
         title: t("toast.leverageSet"),
         body: t("toast.leverageBody", { symbol: market?.symbol ?? marketId, leverage: next }),
       });
@@ -356,7 +391,11 @@ export function FloatWindow() {
       for (const o of orders) {
         await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id);
       }
-      setResult({ ok: true, title: t("float.cancelled", { count: orders.length }) });
+      setResult({
+        ok: true,
+        sound: "cancel",
+        title: t("float.cancelled", { count: orders.length }),
+      });
     } catch (err) {
       setResult({
         ok: false,
@@ -368,19 +407,47 @@ export function FloatWindow() {
     }
   };
 
-  // A position near its liquidation price takes the widget over, and brings
-  // it up if it was hidden.
-  const [snoozed, setSnoozed] = useState<Record<string, number>>({});
-  const [now, setNow] = useState(Date.now);
+  // A position near its liquidation price shows as a notification, top
+  // right like the system's own. If the widget was hidden it comes up for
+  // that alone, and closing the notification hides it again: the widget
+  // itself opens only when asked for.
+  const [dismissed, setDismissed] = useState<Record<string, number>>({});
+  // A closed notification stays closed until its position has moved back
+  // out of range (or gone), so it doesn't come straight back.
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, []);
-  const risk = riskiest(positions, snoozed, now);
+    if (!snapshot) return;
+    setDismissed((was) => {
+      const keep = Object.keys(was).filter((key) => {
+        const p = snapshot.positions.find((x) => positionKey(x) === key);
+        const distance = p && liquidationDistance(p);
+        return distance !== undefined && distance <= RISK_CLEAR;
+      });
+      return keep.length === Object.keys(was).length
+        ? was
+        : Object.fromEntries(keep.map((key) => [key, Number.POSITIVE_INFINITY]));
+    });
+  }, [snapshot]);
+  const risk = riskiest(positions, dismissed, Date.now());
   const riskKey = risk ? positionKey(risk.position) : undefined;
+  /** Whether the window is up only because of the notification. */
+  const summoned = useRef(false);
   useEffect(() => {
-    if (riskKey) void appClient.showFloat();
+    if (!riskKey) return;
+    void appClient.showFloatNotice().then((broughtUp) => {
+      if (broughtUp) summoned.current = true;
+    });
   }, [riskKey]);
+  /** Closes the notification; the window goes too, if only it brought it up. */
+  const closeNotice = (key: string) => {
+    setDismissed((was) => ({ ...was, [key]: Number.POSITIVE_INFINITY }));
+    if (!summoned.current) return;
+    summoned.current = false;
+    void appClient.hideFloat().then(() => {
+      // Back to where the widget was left, for when it's next opened.
+      const at = savedPosition();
+      if (at) void appClient.placeFloat(at[0], at[1]);
+    });
+  };
 
   // Shift+B and Shift+S buy and sell at once, while the widget has the keys.
   const hotkey = useRef<(side: "buy" | "sell") => void>(() => {});
@@ -415,18 +482,15 @@ export function FloatWindow() {
   // Back where it was left; then, after each drag, snapped and remembered.
   useEffect(() => {
     if (!isTauri()) return;
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem(POSITION_KEY) ?? "null");
-      if (Array.isArray(saved) && saved.every((n) => Number.isInteger(n)) && saved.length === 2) {
-        void appClient.placeFloat(saved[0] as number, saved[1] as number);
-      }
-    } catch {
-      // Nothing saved, or unreadable: it opens in the corner.
-    }
+    // Nothing saved: it opens in the corner.
+    const at = savedPosition();
+    if (at) void appClient.placeFloat(at[0], at[1]);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unlisten = getCurrentWindow().onMoved(() => {
       clearTimeout(timer);
       timer = setTimeout(async () => {
+        // Up as a notification: that corner isn't where the widget lives.
+        if (summoned.current) return;
         const at = await appClient.snapFloat();
         if (!at) return;
         try {
@@ -479,48 +543,34 @@ export function FloatWindow() {
     </button>
   );
 
-  if (risk && mode !== "strip") {
+  if (risk) {
     const p = risk.position;
-    const symbol = marketOf(p.market)?.symbol ?? p.market;
+    const key = positionKey(p);
     return (
-      <main ref={rootRef} className="float float-alert" data-tauri-drag-region>
-        <h1 className="float-alert-title" data-tauri-drag-region>
-          <LuTriangleAlert size={16} aria-hidden />
-          {t("float.riskTitle", {
-            symbol,
-            side: t(p.side === "long" ? "side.long" : "side.short").toLowerCase(),
-            pct: formatNumber(risk.distance * 100, 1),
-          })}
-        </h1>
-        <p className="float-muted" data-tauri-drag-region>
-          {t("float.riskBody", {
-            mark: priceText(Number(p.markPrice), p.market),
-            liq: priceText(Number(p.liquidationPrice), p.market),
-          })}
-        </p>
-        {result && (
-          <p className="float-result" data-ok={result.ok || undefined} role="status">
-            {result.title}
-          </p>
-        )}
-        <div className="float-alert-actions">
-          {trading && (
-            <HoldButton
-              className="float-button"
-              disabled={busy}
-              label={t("float.closeHalf")}
-              onDone={() => close(p, 0.5)}
-            >
-              {t("float.closeHalf")}
-            </HoldButton>
-          )}
+      // The wrapper leaves room for the close button, which sits on the card's corner.
+      <main ref={rootRef} className="float-notice-wrap">
+        <div className="float float-notice" data-tauri-drag-region>
           <button
             type="button"
-            className="float-link"
-            onClick={() => setSnoozed((s) => ({ ...s, [positionKey(p)]: Date.now() + SNOOZE_MS }))}
+            className="float-notice-close"
+            aria-label={t("toast.dismiss")}
+            title={t("toast.dismiss")}
+            onClick={() => closeNotice(key)}
           >
-            {t("float.snooze")}
+            <LuX size={12} aria-hidden />
           </button>
+          <img className="float-notice-icon" src={appIcon} alt="" data-tauri-drag-region />
+          <div className="float-notice-main" data-tauri-drag-region>
+            <div className="float-notice-head" data-tauri-drag-region>
+              <strong data-tauri-drag-region>
+                {t("notify.liqTitle", { symbol: marketOf(p.market)?.symbol ?? p.market })}
+              </strong>
+              <time data-tauri-drag-region>{t("news.now")}</time>
+            </div>
+            <p data-tauri-drag-region>
+              {t("notify.liqBody", { pct: formatNumber(risk.distance * 100, 2) })}
+            </p>
+          </div>
         </div>
       </main>
     );
@@ -529,11 +579,7 @@ export function FloatWindow() {
   if (mode === "pill") {
     return (
       <main ref={rootRef} className="float float-pill" data-tauri-drag-region>
-        <span
-          className="float-dot"
-          data-trend={dayChange && dayChange.abs < 0 ? "down" : "up"}
-          aria-hidden
-        />
+        <TokenIcon market={market} size={18} />
         <strong data-tauri-drag-region>{base || marketId}</strong>
         <span
           className={`float-num ${dayChange ? trendClass(dayChange.abs) : ""}`}
@@ -586,6 +632,7 @@ export function FloatWindow() {
               : undefined;
           return (
             <span key={id} className="float-tick" data-tauri-drag-region>
+              <TokenIcon market={marketOf(id)} size={16} />
               <strong data-tauri-drag-region>{marketOf(id)?.base ?? id}</strong>
               <span className="float-num" data-tauri-drag-region>
                 {priceText(s ? Number(s.markPrice) : undefined, id)}
@@ -621,6 +668,7 @@ export function FloatWindow() {
             setSearch("");
           }}
         >
+          <TokenIcon market={market} size={16} />
           {market?.symbol ?? marketId}
           <LuChevronDown size={13} aria-hidden />
         </button>
@@ -633,7 +681,8 @@ export function FloatWindow() {
         )}
         {iconButton(
           t("tray.open"),
-          () => void appClient.openMainFromTray(),
+          // The main window, on the market this widget is showing, at its chart.
+          () => void appClient.selectMarketFromTray({ venue, marketId, chart: true }),
           <LuSquareArrowOutUpRight size={14} aria-hidden />,
         )}
         {iconButton(t("float.collapse"), () => setMode("pill"), <LuMinus size={14} aria-hidden />)}
@@ -669,7 +718,10 @@ export function FloatWindow() {
                   setPicking(false);
                 }}
               >
-                <strong>{m.symbol}</strong>
+                <span className="float-pick-name">
+                  <TokenIcon market={m} size={18} />
+                  <strong>{m.symbol}</strong>
+                </span>
                 <span className="float-num">
                   {priceText(Number(summaryOf(m.id)?.markPrice) || undefined, m.id)}
                 </span>
@@ -888,6 +940,7 @@ export function FloatWindow() {
                   className="float-position-main"
                   onClick={() => setPicked({ venue, id: p.market })}
                 >
+                  <TokenIcon market={marketOf(p.market)} size={18} />
                   <strong>{marketOf(p.market)?.base ?? p.market}</strong>
                   <span className={p.side === "long" ? "pd-up" : "pd-down"}>
                     {t(p.side === "long" ? "side.long" : "side.short")}

@@ -14,6 +14,7 @@ import {
   LineSeries,
   LineStyle,
   type MouseEventParams,
+  PriceScaleMode,
   type SeriesMarker,
   type SeriesType,
   type Time,
@@ -21,9 +22,11 @@ import {
 } from "lightweight-charts";
 import {
   type PointerEvent,
+  type ReactNode,
   type Ref,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,7 +34,7 @@ import {
 import { LuX } from "react-icons/lu";
 import { type MessageKey, t as tr } from "../../i18n";
 import { type DrawnCandle, formatCountdown, joinedCandle, joinedCandles } from "../../lib/chart";
-import { formatCompact, formatNumber, formatSigned } from "../../lib/format";
+import { formatCompact, formatNumber, formatSigned, trendClass } from "../../lib/format";
 import {
   bollinger,
   type ChartType,
@@ -52,8 +55,10 @@ import {
   type ExitKind,
   fillMarks,
   pnlAt,
+  scaleWithLevels,
   tradeLevels,
 } from "../../lib/tradeMarks";
+import { TipRows } from "../common/Tooltip";
 import { chartOptions, type Tokens, tokens, withAlpha } from "./chartTheme";
 import { TokenIcon } from "./TokenIcon";
 
@@ -72,6 +77,10 @@ const COUNTDOWN_OFFSET_PX = 10;
 const LEVEL_LABEL_GAP_PX = 20;
 /** How far from a movable line, in px, the pointer can grab it. */
 const GRAB_PX = 5;
+/** Room kept between the TP/SL tooltip and the chart's edges, and the pointer. */
+const TIP_EDGE = 8;
+const TIP_GAP_X = 14;
+const TIP_GAP_Y = 12;
 /** How long a moved TP or SL waits for the account to show it before letting go. */
 const SETTLE_MS = 10_000;
 
@@ -536,6 +545,12 @@ interface CandleChartProps {
    * nothing changed; rejects with the message to show.
    */
   onMoveExit?: (kind: ExitKind, price: number) => Promise<Decimal | undefined>;
+  /** The time left on the latest candle, under the last price; on by default. */
+  countdown?: boolean;
+  /** Grid lines behind the candles; on by default. */
+  grid?: boolean;
+  /** A logarithmic price scale, so equal moves in percent are equal in height. */
+  logScale?: boolean;
   ref?: Ref<CandleChartHandle>;
 }
 
@@ -564,6 +579,9 @@ export function CandleChart({
   orders = NO_ORDERS,
   fills = NO_FILLS,
   onMoveExit,
+  countdown = true,
+  grid = true,
+  logScale = false,
   ref,
 }: CandleChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -628,6 +646,16 @@ export function CandleChart({
       shown.current = { key: "", count: 0, first: 0, last: 0 };
     };
   }, []);
+
+  // The view's own settings; a theme change re-applies colors but leaves these.
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.applyOptions({ grid: { vertLines: { visible: grid }, horzLines: { visible: grid } } });
+    chart
+      .priceScale("right")
+      .applyOptions({ mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal });
+  }, [grid, logScale]);
 
   // (Re)build the series whenever the chart type, the indicators or the
   // theme change; the data effect below then draws them in full.
@@ -724,7 +752,7 @@ export function CandleChart({
   // biome-ignore lint/correctness/useExhaustiveDependencies: `chartType`/`styleVersion` rebuild the series it reads
   useEffect(() => {
     const el = countdownRef.current;
-    if (!el || !intervalMs) return;
+    if (!el || !intervalMs || !countdown) return;
     let frame = 0;
     let text = "";
     const hide = () => {
@@ -765,10 +793,28 @@ export function CandleChart({
       cancelAnimationFrame(frame);
       hide();
     };
-  }, [intervalMs, chartType, styleVersion]);
+  }, [intervalMs, countdown, chartType, styleVersion]);
 
   const levels = useMemo(() => tradeLevels(position, orders), [position, orders]);
   const [drag, setDrag] = useState<ExitDrag>();
+  // The TP or SL being hovered, and where its details go.
+  const [exitTip, setExitTip] = useState<{ id: string; x: number; y: number }>();
+  const exitTipRef = useRef<HTMLDivElement>(null);
+  // Placed beside the pointer, on whichever side keeps the whole card inside
+  // the chart: right of it and under the line by default, flipped where that
+  // would run off an edge (and so under the next panel).
+  useLayoutEffect(() => {
+    const tip = exitTipRef.current;
+    const box = tip?.offsetParent;
+    if (!tip || !box || !exitTip) return;
+    const place = (at: number, size: number, room: number, gap: number) => {
+      const after = at + gap;
+      const placed = after + size <= room - TIP_EDGE ? after : at - gap - size;
+      return Math.min(Math.max(TIP_EDGE, placed), Math.max(TIP_EDGE, room - size - TIP_EDGE));
+    };
+    tip.style.left = `${place(exitTip.x, tip.offsetWidth, box.clientWidth, TIP_GAP_X)}px`;
+    tip.style.top = `${place(exitTip.y, tip.offsetHeight, box.clientHeight, TIP_GAP_Y)}px`;
+  }, [exitTip]);
   // A TP or SL being moved is drawn where it's going, PnL and all.
   const drawnLevels = drag
     ? levels.map((l) =>
@@ -804,23 +850,17 @@ export function CandleChart({
     const main = drawnRef.current?.main;
     const t = tokensRef.current;
     if (!main || !t) return;
-    // Price lines don't count towards the price scale, so scrolled to candles
-    // that don't reach them, they'd fall off it: the scale takes them in.
-    // The liquidation price is left out, as it can be far enough away to
-    // flatten the candles.
+    // The candles set the price scale, as on the venue's own chart. A level
+    // just outside them is taken in so its line isn't lost at the edge; one
+    // far away (a distant TP or SL, the liquidation price) stays off screen
+    // rather than flattening the candles to reach it.
     const prices = drawnLevels.filter((l) => l.kind !== "liquidation").map((l) => l.price);
     main.applyOptions({
       autoscaleInfoProvider: (base: () => AutoscaleInfo | null) => {
         const info = base();
         if (!info?.priceRange || prices.length === 0) return info;
-        const { minValue, maxValue } = info.priceRange;
-        return {
-          ...info,
-          priceRange: {
-            minValue: Math.min(minValue, ...prices),
-            maxValue: Math.max(maxValue, ...prices),
-          },
-        };
+        const range = scaleWithLevels(info.priceRange.minValue, info.priceRange.maxValue, prices);
+        return { ...info, priceRange: { minValue: range.min, maxValue: range.max } };
       },
     });
     const lines: IPriceLine[] = drawnLevels.map((level) =>
@@ -898,6 +938,45 @@ export function CandleChart({
     return () => cancelAnimationFrame(frame);
   }, [linesKey]);
 
+  const exitTipLevel =
+    exitTip && drag?.state !== "dragging"
+      ? drawnLevels.find((l) => l.id === exitTip.id)
+      : undefined;
+  /** What a TP or SL would do if it triggered, for its tooltip. */
+  const exitRows = (level: ChartLevel, held: Position): [string, ReactNode][] => {
+    const entry = Number(held.entryPrice);
+    const mark = Number(held.markPrice);
+    const margin = Number(held.margin);
+    const pnl = level.pnl ?? pnlAt(held, level.price, Number(held.size));
+    const pct = (from: number) => `${formatSigned((level.price / from - 1) * 100)}%`;
+    const coin = market?.quote ? ` ${market.quote}` : "";
+    const rows: [string, ReactNode][] = [
+      [tr("protect.trigger"), formatNumber(level.price, priceDecimals)],
+      [
+        tr("chart.tip.pnl"),
+        <span key="pnl" className={trendClass(pnl)}>
+          {formatSigned(pnl)}
+          {coin}
+        </span>,
+      ],
+    ];
+    if (margin > 0) {
+      rows.push([
+        tr("protect.roi"),
+        <span key="roi" className={trendClass(pnl)}>
+          {formatSigned((pnl / margin) * 100)}%
+        </span>,
+      ]);
+    }
+    if (mark > 0) rows.push([tr("chart.tip.fromMark"), pct(mark)]);
+    if (entry > 0) rows.push([tr("chart.tip.fromEntry"), pct(entry)]);
+    rows.push([
+      tr("chart.tip.closes"),
+      `${formatNumber(held.size)}${market?.base ? ` ${market.base}` : ""}`,
+    ]);
+    return rows;
+  };
+
   /** The movable TP or SL under the pointer: its tag, or within a few px of its line. */
   const grabbable = (e: PointerEvent<HTMLDivElement>): ChartLevel | undefined => {
     const chart = chartRef.current;
@@ -916,6 +995,26 @@ export function CandleChart({
     });
   };
 
+  /** The TP or SL whose line the pointer is on (within a few px), movable or not. */
+  const exitUnder = (
+    e: PointerEvent<HTMLDivElement>,
+  ): { level: ChartLevel; y: number } | undefined => {
+    const chart = chartRef.current;
+    const main = drawnRef.current?.main;
+    const host = hostRef.current;
+    if (!chart || !main || !host) return undefined;
+    const rect = host.getBoundingClientRect();
+    // Not over the price scale, which has its own labels.
+    if (e.clientX - rect.left > chart.timeScale().width()) return undefined;
+    const y = e.clientY - rect.top;
+    for (const level of drawnLevels) {
+      if (level.kind !== "takeProfit" && level.kind !== "stopLoss") continue;
+      const at = main.priceToCoordinate(level.price);
+      if (at !== null && Math.abs(at - y) <= GRAB_PX) return { level, y: at };
+    }
+    return undefined;
+  };
+
   // Grabbed before the chart sees the press, so it doesn't pan as well.
   const onGrab = (e: PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 || (drag && drag.state !== "saved")) return;
@@ -925,6 +1024,7 @@ export function CandleChart({
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
+    setExitTip(undefined);
     setDrag({
       id: level.id,
       kind: level.kind,
@@ -948,6 +1048,19 @@ export function CandleChart({
     // it changes with every move.
     if (grabbable(e)) el.dataset.grab = "";
     else delete el.dataset.grab;
+    // Over a TP or SL line: its details, beside the pointer. Set only when
+    // the line under it changes, so moving along a line doesn't re-render.
+    const over = exitUnder(e);
+    if (over?.level.id !== exitTip?.id) {
+      const box = el.getBoundingClientRect();
+      setExitTip(
+        over && {
+          id: over.level.id,
+          x: e.clientX - box.left,
+          y: over.y,
+        },
+      );
+    }
   };
 
   const onRelease = (e: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
@@ -1026,8 +1139,21 @@ export function CandleChart({
       onPointerMove={onPointerMove}
       onPointerUp={(e) => onRelease(e, false)}
       onPointerCancel={(e) => onRelease(e, true)}
+      onPointerLeave={() => setExitTip(undefined)}
     >
       <div ref={hostRef} className="pd-candle-host" />
+      {exitTipLevel && exitTip && position && (
+        <div className="pd-chart-tip" role="tooltip" ref={exitTipRef}>
+          <TipRows
+            title={tr(exitTipLevel.kind === "takeProfit" ? "drawer.tp" : "drawer.sl")}
+            side={exitTipLevel.kind === "takeProfit" ? "bid" : "ask"}
+            rows={exitRows(exitTipLevel, position)}
+          />
+          {onMoveExit && exitTipLevel.movable && (
+            <span className="pd-chart-tip-hint">{tr("chart.tip.drag")}</span>
+          )}
+        </div>
+      )}
       <div ref={countdownRef} className="pd-candle-countdown pd-num" hidden aria-hidden />
       {drawnLevels.length > 0 && (
         <div ref={levelsRef} className="pd-chart-levels" aria-hidden>

@@ -229,3 +229,32 @@ export function fillMarks(
     .map(({ notional: _, ...mark }) => mark)
     .sort((a, b) => a.time - b.time);
 }
+
+/**
+ * How far past the candles a level may sit and still be brought onto the
+ * price scale, as a share of the candles' own range.
+ */
+export const LEVEL_REACH = 0.5;
+
+/**
+ * The price range to show for candles spanning `min` to `max`, with trade
+ * levels (entry, TP, SL, open orders) beside them. The candles decide the
+ * scale: a level just outside them is taken in, so its line doesn't sit a
+ * few pixels off the edge, but one further away than `LEVEL_REACH` of the
+ * candles' range is left off screen rather than squashing the candles flat
+ * to reach it. Its label still shows on the price scale when scrolled to.
+ */
+export function scaleWithLevels(
+  min: number,
+  max: number,
+  levels: readonly number[],
+): { min: number; max: number } {
+  const reach = (max - min) * LEVEL_REACH;
+  let lo = min;
+  let hi = max;
+  for (const price of levels) {
+    if (price < min && price >= min - reach) lo = Math.min(lo, price);
+    if (price > max && price <= max + reach) hi = Math.max(hi, price);
+  }
+  return { min: lo, max: hi };
+}
