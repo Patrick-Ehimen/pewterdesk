@@ -79,8 +79,10 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: PewterDesk ${{ github.ref_name }}
           releaseBody: |
-            Early pre-release: a read-only trading screen on Hyperliquid market data.
-            It can't connect a wallet or place orders yet.
+            Early pre-release. Live market data from Hyperliquid and Bybit; connect
+            a Hyperliquid API wallet or a Bybit API key to see your account.
+            Orders can be placed on Bybit Demo Trading accounts only: live accounts
+            are read-only for now.
 
             Requires macOS 13 (Ventura) or later, Windows 10 or later, or Linux with
             WebKitGTK 4.1 (Ubuntu 22.04 or newer).
