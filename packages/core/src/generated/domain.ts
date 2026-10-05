@@ -18,6 +18,30 @@ availableMargin: Decimal, positions: Array<Position>, openOrders: Array<Order>,
  */
 time: number, };
 
+/**
+ * Something a venue published: a listing, a delisting, maintenance, news.
+ * Text only: the venue's link isn't carried, so nothing here can be opened.
+ */
+export type Announcement = { venue: VenueId, kind: AnnouncementKind, title: string, description: string, 
+/**
+ * The venue's own labels, e.g. "Derivatives".
+ */
+tags: Array<string>, 
+/**
+ * When it was published, in milliseconds since the Unix epoch.
+ */
+time: number, 
+/**
+ * When what it announces takes effect, where the venue says and it
+ * differs from `time` (a listing's opening, a maintenance window).
+ */
+startsAt?: number, };
+
+/**
+ * What a venue's announcement is about.
+ */
+export type AnnouncementKind = "listing" | "delisting" | "maintenance" | "campaign" | "news";
+
 export type BookLevel = { price: Decimal, size: Decimal, };
 
 /**
@@ -177,6 +201,12 @@ time: number, };
  * material from a backend error - can't be passed through.
  */
 export type KeyError = { "kind": "notFound" } | { "kind": "backend", "detail": string };
+
+/**
+ * How a venue margins positions: one pool of collateral backing every
+ * position (cross), or each position backed only by its own (isolated).
+ */
+export type MarginMode = "cross" | "isolated";
 
 export type Market = { venue: VenueId, 
 /**
@@ -443,7 +473,11 @@ trailingStop?: Decimal,
 /**
  * The position's leverage, where the venue reports it.
  */
-leverage?: Decimal, };
+leverage?: Decimal, 
+/**
+ * Cross or isolated, where the venue reports it.
+ */
+marginMode?: MarginMode, };
 
 /**
  * Changes to a position's protective exits: each kept, removed or set, so
@@ -505,6 +539,21 @@ size: Decimal,
  * Milliseconds since the Unix epoch.
  */
 time: number, };
+
+/**
+ * An account's margin mode and its leverage on one market: what the next
+ * order on that market trades with.
+ */
+export type TradeSettings = { marginMode: MarginMode, 
+/**
+ * Where the venue sets the margin mode for the whole account rather than
+ * per market: changing it changes every market.
+ */
+marginModeAccountWide: boolean, leverage: Decimal, 
+/**
+ * The market's highest leverage.
+ */
+maxLeverage: Decimal, };
 
 /**
  * Who is trading, for calls that need a signature.

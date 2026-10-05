@@ -1,5 +1,6 @@
 //! Turning an [`OrderRequest`] into the body of Bybit's `POST /v5/order/create`,
-//! and a cancel into `POST /v5/order/cancel`. Pure translation: no keys, no
+//! and a cancel into `POST /v5/order/cancel` (likewise amends, position
+//! TP/SL, leverage and margin mode). Pure translation: no keys, no
 //! network. The adapter signs exactly the JSON these structs serialize to.
 //!
 //! Security-relevant - review against `.claude/commands/security-review.md`.
@@ -11,7 +12,7 @@
 //! there's no unbounded market order.
 
 use pewterdesk_core::{
-    Decimal, ExitChange, OrderAmend, OrderKind, OrderRequest, PositionProtection, Side,
+    Decimal, ExitChange, MarginMode, OrderAmend, OrderKind, OrderRequest, PositionProtection, Side,
     TimeInForce, VenueError,
 };
 use rust_decimal::RoundingStrategy;
@@ -122,6 +123,63 @@ pub(crate) fn protection(
         return Err(invalid("nothing to change"));
     }
     Ok(body)
+}
+
+/// The body of `POST /v5/position/set-leverage`.
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SetLeverage {
+    category: &'static str,
+    symbol: String,
+    buy_leverage: String,
+    sell_leverage: String,
+}
+
+/// Leverage moves in hundredths on Bybit.
+const LEVERAGE_STEP: rust_decimal::Decimal = rust_decimal::Decimal::from_parts(1, 0, 0, false, 2);
+
+/// The set-leverage body for `market`: between 1 and the market's `max`, in
+/// hundredths, the same both ways (one-way mode has a single position).
+pub(crate) fn leverage(
+    market: &str,
+    leverage: Decimal,
+    max: Decimal,
+) -> Result<SetLeverage, VenueError> {
+    let one = rust_decimal::Decimal::ONE;
+    if leverage.0 < one || leverage.0 > max.0 {
+        return Err(invalid(&format!(
+            "leverage must be between 1 and {}",
+            text(max)
+        )));
+    }
+    if !on_grid(leverage, Decimal(LEVERAGE_STEP)) {
+        return Err(invalid("leverage must be a multiple of 0.01"));
+    }
+    let value = text(leverage);
+    Ok(SetLeverage {
+        category: CATEGORY,
+        symbol: market.to_owned(),
+        buy_leverage: value.clone(),
+        sell_leverage: value,
+    })
+}
+
+/// The body of `POST /v5/account/set-margin-mode`: account-wide on Bybit's
+/// unified accounts. Only cross ("regular") and isolated are ever sent;
+/// portfolio margin isn't offered.
+#[derive(Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SetMarginMode {
+    set_margin_mode: &'static str,
+}
+
+pub(crate) fn margin_mode(mode: MarginMode) -> SetMarginMode {
+    SetMarginMode {
+        set_margin_mode: match mode {
+            MarginMode::Cross => "REGULAR_MARGIN",
+            MarginMode::Isolated => "ISOLATED_MARGIN",
+        },
+    }
 }
 
 /// The body of `POST /v5/order/amend`: only what changes.
@@ -698,5 +756,37 @@ mod tests {
         for bad in ["", "a b", "x\"}", &"9".repeat(65)] {
             assert!(cancel("BTCUSDT", bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn leverage_is_bounded_and_symmetric() {
+        let max = Decimal("100".parse().unwrap());
+        let body = leverage("BTCUSDT", Decimal("12.5".parse().unwrap()), max).unwrap();
+        assert_eq!(
+            serde_json::to_value(&body).unwrap(),
+            serde_json::json!({
+                "category": "linear", "symbol": "BTCUSDT",
+                "buyLeverage": "12.5", "sellLeverage": "12.5"
+            })
+        );
+        for bad in ["0", "0.5", "100.01", "-3", "2.005"] {
+            assert!(
+                leverage("BTCUSDT", Decimal(bad.parse().unwrap()), max).is_err(),
+                "{bad}"
+            );
+        }
+        assert!(leverage("BTCUSDT", max, max).is_ok());
+    }
+
+    #[test]
+    fn margin_modes_map_to_bybits_names() {
+        assert_eq!(
+            serde_json::to_value(margin_mode(MarginMode::Cross)).unwrap(),
+            serde_json::json!({ "setMarginMode": "REGULAR_MARGIN" })
+        );
+        assert_eq!(
+            serde_json::to_value(margin_mode(MarginMode::Isolated)).unwrap(),
+            serde_json::json!({ "setMarginMode": "ISOLATED_MARGIN" })
+        );
     }
 }

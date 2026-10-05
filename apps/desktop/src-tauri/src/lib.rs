@@ -4,19 +4,45 @@ mod about;
 mod browser_connect;
 mod bybit_key;
 mod coin_info;
+mod float;
 mod keychain;
 mod menubar;
+mod notify;
 mod share;
 mod splash;
 mod tray;
 mod venues;
 mod wallet;
 
+/// Control+Option+Space shows or hides the floating window from any app.
+/// If another app already holds the shortcut, the window still opens from
+/// the menu bar and the main window: registering is best-effort.
+fn float_shortcut(app: &tauri::App) {
+    use tauri_plugin_global_shortcut::{
+        Builder, Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+    };
+
+    let toggle = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::Space);
+    let plugin = Builder::new()
+        .with_handler(move |app, shortcut, event| {
+            if shortcut == &toggle && event.state() == ShortcutState::Pressed {
+                float::toggle(app);
+            }
+        })
+        .build();
+    if app.handle().plugin(plugin).is_ok() {
+        let _ = app.global_shortcut().register(toggle);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let venues = venues::Venues::new().expect("failed to set up venue adapters");
 
     tauri::Builder::default()
+        // Used from Rust only (`notify::notify`): the page is granted none of
+        // the plugin's own commands.
+        .plugin(tauri_plugin_notification::init())
         .manage(venues)
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(wallet::Onboarding::default())
@@ -25,6 +51,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             menubar::install(app)?;
             tray::install(app)?;
+            float::install(app)?;
+            float_shortcut(app);
             splash::arm_fallback(app.handle());
             Ok(())
         })
@@ -46,6 +74,7 @@ pub fn run() {
             // splash closes for good.
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 let keep = window.label() == tray::PANEL_LABEL
+                    || window.label() == float::FLOAT_LABEL
                     || (window.label() == "main"
                         && cfg!(any(target_os = "macos", target_os = "windows")));
                 if keep {
@@ -67,6 +96,14 @@ pub fn run() {
             tray::tray_open_main,
             tray::tray_quit,
             tray::resize_tray_panel,
+            notify::notify,
+            float::toggle_float,
+            float::show_float,
+            float::hide_float,
+            float::resize_float,
+            float::snap_float,
+            float::place_float,
+            float::set_float_protected,
             keychain::store_secret,
             keychain::has_secret,
             keychain::delete_secret,
@@ -92,6 +129,10 @@ pub fn run() {
             venues::cancel_order,
             venues::amend_order,
             venues::set_position_protection,
+            venues::trade_settings,
+            venues::announcements,
+            venues::set_leverage,
+            venues::set_margin_mode,
             venues::unsubscribe,
             wallet::connect_wallet,
             wallet::wallet_status,

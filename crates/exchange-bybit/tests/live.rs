@@ -176,3 +176,12 @@ async fn an_unknown_key_is_refused_as_unknown() {
         );
     }
 }
+
+#[tokio::test]
+#[ignore = "hits Bybit mainnet"]
+async fn reads_announcements_newest_first() {
+    let list = adapter().announcements().await.unwrap();
+    assert!(list.len() > 10);
+    assert!(list.iter().all(|a| !a.title.is_empty() && a.time > 0));
+    assert!(list.windows(2).all(|w| w[0].time >= w[1].time));
+}

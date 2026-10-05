@@ -6,9 +6,10 @@ use tokio::sync::mpsc;
 use ts_rs::TS;
 
 use crate::domain::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, Fill, FundingPayment,
-    FundingRate, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook,
-    OrderRequest, PositionProtection, Trade, TradingAccount, VenueId,
+    AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
+    Fill, FundingPayment, FundingRate, MarginMode, Market, MarketHistory, MarketStats,
+    MarketSummary, Order, OrderAmend, OrderBook, OrderRequest, PositionProtection, Trade,
+    TradeSettings, TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
 
@@ -203,7 +204,8 @@ pub trait ExchangeAdapter: Send + Sync {
     /// Changes an open order's price, size, or attached TP and SL. Order
     /// management, like `cancel_order`: it can't change the market, the side
     /// or the kind of order. Part of the signing surface with `place_order`,
-    /// `cancel_order` and `set_position_protection`, and nothing beyond them.
+    /// `cancel_order`, `set_position_protection`, `set_leverage` and
+    /// `set_margin_mode`, and nothing beyond them.
     async fn amend_order(
         &self,
         _account: &TradingAccount,
@@ -214,11 +216,49 @@ pub trait ExchangeAdapter: Send + Sync {
         Err(VenueError::Unsupported("changing an order"))
     }
 
+    /// The venue's latest announcements, newest first. Public, read-only.
+    async fn announcements(&self) -> Result<Vec<Announcement>, VenueError> {
+        Err(VenueError::Unsupported("announcements"))
+    }
+
+    /// The account's margin mode and its leverage on `market`. Read-only.
+    async fn trade_settings(
+        &self,
+        _address: &str,
+        _market: &str,
+    ) -> Result<TradeSettings, VenueError> {
+        Err(VenueError::Unsupported("reading leverage and margin mode"))
+    }
+
+    /// Sets the leverage the account trades `market` with, between 1 and the
+    /// market's maximum. A trading parameter: it moves no funds and opens
+    /// nothing. Part of the signing surface, behind the same gate as orders.
+    async fn set_leverage(
+        &self,
+        _account: &TradingAccount,
+        _market: &str,
+        _leverage: Decimal,
+    ) -> Result<(), VenueError> {
+        Err(VenueError::Unsupported("changing leverage"))
+    }
+
+    /// Switches between cross and isolated margin, for `market` or, where the
+    /// venue sets it per account (`TradeSettings::margin_mode_account_wide`),
+    /// for the whole account. A trading parameter, like `set_leverage`.
+    async fn set_margin_mode(
+        &self,
+        _account: &TradingAccount,
+        _market: &str,
+        _mode: MarginMode,
+    ) -> Result<(), VenueError> {
+        Err(VenueError::Unsupported("changing the margin mode"))
+    }
+
     /// Changes an open position's take-profit, stop-loss and trailing stop:
     /// each kept, removed or set (`ExitChange`). Protective only: each exit is
     /// reduce-only and closes the position; it can't open, add to or move
-    /// funds. Part of the signing surface with `place_order` and
-    /// `cancel_order`, and nothing beyond them.
+    /// funds. Part of the signing surface with the order methods and
+    /// `set_leverage`/`set_margin_mode`, and nothing beyond them.
     async fn set_position_protection(
         &self,
         _account: &TradingAccount,

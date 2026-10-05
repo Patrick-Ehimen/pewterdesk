@@ -16,7 +16,7 @@
     "@pewterdesk/assets": "workspace:*",
     "@pewterdesk/core": "workspace:*",
     "@pewterdesk/ui": "workspace:*",
-    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/api": "^2.12.1",
     "@walletconnect/sign-client": "2.25.0",
     "qrcode": "1.5.4",
     "react": "^19.3.0",
@@ -25,7 +25,7 @@
     "react-icons": "^5.7.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.5",
+    "@tauri-apps/cli": "^2.12.1",
     "@types/qrcode": "1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

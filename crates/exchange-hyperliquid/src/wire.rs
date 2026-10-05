@@ -6,7 +6,7 @@
 
 use pewterdesk_core::{
     AccountSnapshot, BookLevel, Candle as DomainCandle, CandleInterval, Decimal, Fill, FillEffect,
-    FundingPayment, FundingRate, Market, MarketStats, MarketSummary, Order, OrderBook,
+    FundingPayment, FundingRate, MarginMode, Market, MarketStats, MarketSummary, Order, OrderBook,
     OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, Trade,
     VenueError, VenueId,
 };
@@ -131,6 +131,16 @@ pub struct PerpPosition {
     pub unrealized_pnl: Decimal,
     pub liquidation_px: Option<Decimal>,
     pub margin_used: Decimal,
+    #[serde(default)]
+    pub leverage: Option<PerpLeverage>,
+}
+
+/// A position's leverage: `{"type": "cross" | "isolated", "value": 20}`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct PerpLeverage {
+    #[serde(rename = "type")]
+    pub kind: String,
+    pub value: u32,
 }
 
 /// The `frontendOpenOrders` shape, which the `openOrders` WS channel also uses.
@@ -462,7 +472,15 @@ fn position(p: PerpPosition) -> Option<Position> {
         take_profit: None,
         stop_loss: None,
         trailing_stop: None,
-        leverage: None,
+        leverage: p
+            .leverage
+            .as_ref()
+            .map(|l| Decimal(rust_decimal::Decimal::from(l.value))),
+        margin_mode: p.leverage.as_ref().and_then(|l| match l.kind.as_str() {
+            "cross" => Some(MarginMode::Cross),
+            "isolated" => Some(MarginMode::Isolated),
+            _ => None,
+        }),
     })
 }
 

@@ -7,25 +7,28 @@
 //! `.claude/commands/security-review.md`:
 //! - These commands and `ExchangeAdapter` together are the whole signing
 //!   surface: `place_order`, `cancel_order`, `amend_order` (an open order's
-//!   price, size or attached TP/SL) and `set_position_protection`
-//!   (a position's TP, SL and trailing stop: protective, reduce-only),
-//!   nothing else. They build the
+//!   price, size or attached TP/SL), `set_position_protection`
+//!   (a position's TP, SL and trailing stop: protective, reduce-only), and
+//!   the trading parameters `set_leverage` and `set_margin_mode` (they move
+//!   no funds and open nothing), nothing else. They build the
 //!   account's key reference themselves and, for now, refuse everything but
 //!   Bybit demo accounts (`trading_account`).
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter
 //!   gets the keychain as a `KeySource` and signs only its own fixed,
-//!   read-only requests (balance, positions, open orders).
+//!   read-only requests (balance, positions, open orders, leverage and
+//!   margin mode).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, ClosedTrade, ExchangeAdapter, Fill, FundingPayment,
-    FundingRate, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook,
-    OrderRequest, PositionProtection, Trade, TradingAccount, VenueError, VenueId,
+    AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
+    Fill, FundingPayment, FundingRate, MarginMode, Market, MarketHistory, MarketStats,
+    MarketSummary, Order, OrderAmend, OrderBook, OrderRequest, PositionProtection, Trade,
+    TradeSettings, TradingAccount, VenueError, VenueId,
 };
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
 use pewterdesk_exchange_bybit::{
@@ -430,6 +433,64 @@ pub async fn set_position_protection(
     venues
         .adapter(venue)?
         .set_position_protection(&trading, &market, &protection)
+        .await
+}
+
+/// The venue's latest announcements, for the News page. Public, read-only;
+/// text only (no links come back to the UI).
+#[tauri::command]
+pub async fn announcements(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+) -> Result<Vec<Announcement>, VenueError> {
+    venues.adapter(venue)?.announcements().await
+}
+
+/// `address`'s margin mode and leverage on `market`. Read-only.
+#[tauri::command]
+pub async fn trade_settings(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    address: String,
+    market: String,
+) -> Result<TradeSettings, VenueError> {
+    venues
+        .adapter(venue)?
+        .trade_settings(&address, &market)
+        .await
+}
+
+/// Sets `account`'s leverage on `market` (checked against the market's
+/// maximum by the adapter). Behind the same gate as orders.
+#[tauri::command]
+pub async fn set_leverage(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    market: String,
+    leverage: Decimal,
+) -> Result<(), VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues
+        .adapter(venue)?
+        .set_leverage(&trading, &market, leverage)
+        .await
+}
+
+/// Switches `account` between cross and isolated margin (account-wide on
+/// Bybit). Behind the same gate as orders.
+#[tauri::command]
+pub async fn set_margin_mode(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    account: String,
+    market: String,
+    mode: MarginMode,
+) -> Result<(), VenueError> {
+    let trading = trading_account(venue, &account)?;
+    venues
+        .adapter(venue)?
+        .set_margin_mode(&trading, &market, mode)
         .await
 }
 
