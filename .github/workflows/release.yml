@@ -48,7 +48,7 @@ jobs:
             librsvg2-dev libdbus-1-dev patchelf
 
       # Version comes from root package.json's "packageManager" field.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
