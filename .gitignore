@@ -153,3 +153,6 @@ apps/desktop/dist
 text.txt
 design/
 script/
+
+# Python bytecode (scripts/token-logos.py)
+__pycache__/

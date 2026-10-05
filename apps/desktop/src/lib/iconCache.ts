@@ -11,8 +11,12 @@ const PREFIX = "pd.icons.";
  * are dropped rather than kept for a week. 2: Bybit markets borrow their
  * coin's logo from Hyperliquid and Aster; version 1 saved "none" for all.
  * 3: a failed lookup was saved as "none" (BTC's logo went missing that way).
+ * 4: Aster's logo list answers for coins it has no market for.
+ * 5: Bybit's own logo list is asked first, for a connected account.
+ * 6: CoinGecko is asked last, for a crypto coin no venue has a logo for.
+ * 7: logos that ship with the app (assets/tokens) fill in for stocks and ETFs.
  */
-export const STORE_VERSION = 3;
+export const STORE_VERSION = 7;
 /** The whole store starts over after this, so changed logos come through. */
 export const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A bigger logo isn't kept; Aster's are about 1.5 KB wrapped, most of Hyperliquid's less. */
@@ -131,8 +135,8 @@ export function flushIcons(to: Storage | undefined = storage()) {
 
 /** `load`, saving what it fetches; a failed fetch isn't saved, so it's retried. */
 export function withIconCache(load: IconLoader): IconLoader {
-  return (market, venue) =>
-    load(market, venue).then((svg) => {
+  return (market, venue, info) =>
+    load(market, venue, info).then((svg) => {
       rememberIcon(venue, market, svg);
       return svg;
     });

@@ -4,8 +4,15 @@
 //! default; a CoinGecko demo API key, if the user adds one, raises the rate
 //! limit.
 //!
+//! It also serves a coin's logo, as a last resort for a market whose own
+//! venue (and the venues it borrows from) has none: CoinGecko's search names
+//! the logo's file on its image host, `IMAGES`.
+//!
 //! Invariants - review against `.claude/commands/security-review.md`:
-//! - Talks only to `BASE` (api.coingecko.com), never a host from an argument.
+//! - Talks only to `BASE` (api.coingecko.com) and, for logos, `IMAGES`
+//!   (coin-images.coingecko.com) - never a host from an argument. A logo
+//!   CoinGecko lists anywhere else is ignored, redirects aren't followed,
+//!   and only a PNG, JPEG or WebP within a size cap is accepted.
 //!   The coin looked up is a ticker the app validates.
 //! - The demo key is kept in the OS keychain (`KEY_ACCOUNT`), read once per
 //!   session into `Zeroizing` memory (a data key, not a trading one: each
@@ -32,6 +39,13 @@ use crate::about::open_url;
 use crate::keychain::{self, KeychainKeySource};
 
 const BASE: &str = "https://api.coingecko.com/api/v3";
+/// CoinGecko's image host, for coin logos only.
+const IMAGES: &str = "https://coin-images.coingecko.com";
+/// A logo larger than this isn't one; the size asked for is a few KB.
+const MAX_LOGO_BYTES: usize = 96 * 1024;
+/// Logo lookups are spaced this far apart: a list of markets asks for many
+/// at once, and CoinGecko allows only a few requests a minute without a key.
+const LOGO_SPACING: Duration = Duration::from_millis(2500);
 /// CoinGecko refuses requests without a user agent.
 const USER_AGENT: &str = concat!("pewterdesk/", env!("CARGO_PKG_VERSION"));
 /// The keychain entry holding the demo API key.
@@ -96,10 +110,25 @@ struct Coin {
     urls: Vec<String>,
 }
 
-/// The caches: ticker to CoinGecko id (or none), and id to details.
+/// What CoinGecko's search found for a ticker.
+#[derive(Clone)]
+struct Found {
+    id: String,
+    /// Its logo's URL, as listed; checked before it's fetched.
+    image: String,
+}
+
+/// The caches: ticker to what CoinGecko has for it (or none), and id to details.
 pub struct CoinInfoState {
     http: reqwest::Client,
-    ids: Mutex<HashMap<String, Option<String>>>,
+    /// For logos only. Never follows a redirect, so it can't be sent off
+    /// the image host.
+    images: reqwest::Client,
+    ids: Mutex<HashMap<String, Option<Found>>>,
+    /// Logos fetched this session, by ticker (`None`: CoinGecko has none).
+    logos: Mutex<HashMap<String, Option<String>>>,
+    /// When the next logo lookup may start; see `LOGO_SPACING`.
+    next_logo: tokio::sync::Mutex<Instant>,
     coins: Mutex<HashMap<String, (Instant, Arc<Coin>)>>,
     /// The demo key, read from the keychain once per session (`None` until
     /// then): every keychain read can raise a macOS permission prompt, and
@@ -115,8 +144,17 @@ impl CoinInfoState {
             .gzip(true)
             .build()
             .map_err(|e| VenueError::Network(e.to_string()))?;
+        let images = reqwest::Client::builder()
+            .timeout(TIMEOUT)
+            .user_agent(USER_AGENT)
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|e| VenueError::Network(e.to_string()))?;
         Ok(Self {
             http,
+            images,
+            logos: Mutex::default(),
+            next_logo: tokio::sync::Mutex::new(Instant::now()),
             ids: Mutex::default(),
             coins: Mutex::default(),
             key: tokio::sync::Mutex::new(None),
@@ -153,19 +191,82 @@ impl CoinInfoState {
         }
     }
 
-    /// The CoinGecko id for `ticker`: the best-ranked coin with exactly that
-    /// symbol, or none.
-    async fn id_for(&self, ticker: &str, key: Option<&str>) -> Result<Option<String>, VenueError> {
+    /// What CoinGecko has for `ticker`: the best-ranked coin with exactly
+    /// that symbol, or none.
+    async fn find(&self, ticker: &str, key: Option<&str>) -> Result<Option<Found>, VenueError> {
         if let Some(known) = self.ids.lock().unwrap().get(ticker) {
             return Ok(known.clone());
         }
-        let found: SearchReply = self.get("/search", &[("query", ticker)], key).await?;
-        let id = best_match(ticker, &found.coins);
+        let reply: SearchReply = self.get("/search", &[("query", ticker)], key).await?;
+        let found = best_match(ticker, &reply.coins);
         self.ids
             .lock()
             .unwrap()
-            .insert(ticker.to_owned(), id.clone());
-        Ok(id)
+            .insert(ticker.to_owned(), found.clone());
+        Ok(found)
+    }
+
+    /// The CoinGecko id for `ticker`, or none.
+    async fn id_for(&self, ticker: &str, key: Option<&str>) -> Result<Option<String>, VenueError> {
+        Ok(self.find(ticker, key).await?.map(|f| f.id))
+    }
+
+    /// `ticker`'s logo as SVG, or `None` when CoinGecko lists no coin by
+    /// that symbol or no usable logo for it. Lookups wait their turn.
+    async fn logo(&self, ticker: &str, key: Option<&str>) -> Result<Option<String>, VenueError> {
+        if let Some(known) = self.logos.lock().unwrap().get(ticker) {
+            return Ok(known.clone());
+        }
+        {
+            let mut next = self.next_logo.lock().await;
+            // Looked up while this one waited: no need to ask again.
+            if let Some(known) = self.logos.lock().unwrap().get(ticker) {
+                return Ok(known.clone());
+            }
+            tokio::time::sleep_until((*next).into()).await;
+            *next = Instant::now() + LOGO_SPACING;
+        }
+        let url = self
+            .find(ticker, key)
+            .await?
+            .and_then(|f| logo_url(&f.image));
+        let logo = match url {
+            Some(url) => self.fetch_logo(&url).await?,
+            None => None,
+        };
+        self.logos
+            .lock()
+            .unwrap()
+            .insert(ticker.to_owned(), logo.clone());
+        Ok(logo)
+    }
+
+    /// The image at `url` (already checked to be on the image host), as SVG.
+    async fn fetch_logo(&self, url: &str) -> Result<Option<String>, VenueError> {
+        let response = self
+            .images
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        if status.is_server_error() || status.as_u16() == 429 {
+            return Err(VenueError::Network(format!(
+                "CoinGecko's image host returned {status}"
+            )));
+        }
+        if !status.is_success()
+            || response
+                .content_length()
+                .is_some_and(|n| n > MAX_LOGO_BYTES as u64)
+        {
+            return Ok(None);
+        }
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        Ok(logo_svg(&body))
     }
 
     async fn coin(&self, id: &str, key: Option<&str>) -> Result<Arc<Coin>, VenueError> {
@@ -243,14 +344,84 @@ struct SearchCoin {
     symbol: String,
     #[serde(default)]
     market_cap_rank: Option<u32>,
+    /// The logo at its largest size.
+    #[serde(default)]
+    large: String,
 }
 
-fn best_match(ticker: &str, coins: &[SearchCoin]) -> Option<String> {
+fn best_match(ticker: &str, coins: &[SearchCoin]) -> Option<Found> {
     coins
         .iter()
         .filter(|c| c.symbol.eq_ignore_ascii_case(ticker))
         .min_by_key(|c| c.market_cap_rank.unwrap_or(u32::MAX))
-        .map(|c| c.id.clone())
+        .map(|c| Found {
+            id: c.id.clone(),
+            image: c.large.clone(),
+        })
+}
+
+/// The logo to fetch for a listed one: the same file at CoinGecko's small
+/// size (a few KB), and only if it's a plain path on the image host.
+/// Anything else - another host, a query, a path that climbs - is `None`.
+fn logo_url(listed: &str) -> Option<String> {
+    let path = listed
+        .strip_prefix(IMAGES)?
+        .strip_prefix("/coins/images/")?;
+    let path = path.split('?').next().unwrap_or(path);
+    let plain = !path.is_empty()
+        && path.len() <= 200
+        && !path.contains("..")
+        && path
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'/' | b'.' | b'_' | b'-'));
+    plain.then(|| {
+        format!(
+            "{IMAGES}/coins/images/{}",
+            path.replacen("/large/", "/small/", 1)
+        )
+    })
+}
+
+/// `bytes` as an SVG that embeds them, or `None` if they aren't a PNG, JPEG
+/// or WebP image within the size cap. The UI shows it only through an
+/// `<img>`, where nothing in it can run or load anything.
+fn logo_svg(bytes: &[u8]) -> Option<String> {
+    if bytes.len() > MAX_LOGO_BYTES {
+        return None;
+    }
+    let mime = if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
+        "image/png"
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        "image/jpeg"
+    } else if bytes.len() > 12 && &bytes[..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        "image/webp"
+    } else {
+        return None;
+    };
+    Some(format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><image width="64" height="64" href="data:{mime};base64,{}"/></svg>"#,
+        base64(bytes)
+    ))
+}
+
+/// Standard base64 with padding (RFC 4648).
+fn base64(bytes: &[u8]) -> String {
+    const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
+    for chunk in bytes.chunks(3) {
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
+        let sextets = [n >> 18, n >> 12, n >> 6, n];
+        for (i, s) in sextets.iter().enumerate() {
+            if i <= chunk.len() {
+                out.push(ALPHABET[(s & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
 }
 
 #[derive(Deserialize, Default)]
@@ -513,6 +684,26 @@ pub async fn coin_info(
     Ok(Some(state.coin(&id, key).await?.info.clone()))
 }
 
+/// A coin's logo from CoinGecko, as SVG markup, for a market's base coin
+/// (e.g. "MOG", or "1000000MOG": the multiplier is dropped). `None` when
+/// CoinGecko has none. The last place a logo is looked for: the UI asks
+/// only when the market's own venue, and the venues it borrows from, have
+/// none - and never for a stock, ETF, commodity or forex market, whose
+/// ticker would match some unrelated coin.
+#[tauri::command]
+pub async fn coin_logo(
+    state: State<'_, CoinInfoState>,
+    base: String,
+) -> Result<Option<String>, VenueError> {
+    let Some(ticker) = ticker(&base) else {
+        return Ok(None);
+    };
+    let key = state.stored_key().await;
+    state
+        .logo(&ticker, key.as_deref().map(|k| k.as_str()))
+        .await
+}
+
 /// Opens one of the links Rust fetched for coin `id`, by its index - never
 /// a URL from the UI.
 #[tauri::command]
@@ -589,26 +780,68 @@ mod tests {
     }
 
     #[test]
+    fn fetches_logos_only_from_the_image_host() {
+        // The listed (large) logo, asked for at the small size.
+        assert_eq!(
+            logo_url("https://coin-images.coingecko.com/coins/images/31059/large/MOG_LOGO_200x200.png?1696529893").as_deref(),
+            Some("https://coin-images.coingecko.com/coins/images/31059/small/MOG_LOGO_200x200.png")
+        );
+        for bad in [
+            "",
+            "https://evil.example/coins/images/1/large/a.png",
+            "https://coin-images.coingecko.com.evil.example/coins/images/1/large/a.png",
+            "http://coin-images.coingecko.com/coins/images/1/large/a.png",
+            "https://coin-images.coingecko.com/other/1/large/a.png",
+            "https://coin-images.coingecko.com/coins/images/../../x.png",
+            "https://coin-images.coingecko.com/coins/images/1/large/a b.png",
+            "https://coin-images.coingecko.com/coins/images/1/large/a.png#frag",
+        ] {
+            assert_eq!(logo_url(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn wraps_only_raster_images_as_svg() {
+        let svg = logo_svg(b"\x89PNG\r\n\x1a\nrest").unwrap();
+        assert!(svg.starts_with("<svg") && svg.contains("data:image/png;base64,iVBORw0KGgpyZXN0"));
+        assert!(logo_svg(&[0xFF, 0xD8, 0xFF, 0xE0])
+            .unwrap()
+            .contains("image/jpeg"));
+        // Markup, an error page, and something too big to be a logo.
+        assert_eq!(logo_svg(b"<svg onload=\"x()\"></svg>"), None);
+        assert_eq!(logo_svg(b"<html>denied</html>"), None);
+        let mut huge = b"\x89PNG\r\n\x1a\n".to_vec();
+        huge.resize(MAX_LOGO_BYTES + 1, 0);
+        assert_eq!(logo_svg(&huge), None);
+    }
+
+    #[test]
     fn picks_the_best_ranked_exact_symbol() {
         let coins = vec![
             SearchCoin {
                 id: "ape-and-pepe".into(),
                 symbol: "APEPE".into(),
                 market_cap_rank: Some(9),
+                large: String::new(),
             },
             SearchCoin {
                 id: "pepe-copy".into(),
                 symbol: "PEPE".into(),
                 market_cap_rank: None,
+                large: String::new(),
             },
             SearchCoin {
                 id: "pepe".into(),
                 symbol: "pepe".into(),
                 market_cap_rank: Some(56),
+                large: String::new(),
             },
         ];
-        assert_eq!(best_match("PEPE", &coins).as_deref(), Some("pepe"));
-        assert_eq!(best_match("NONE", &coins), None);
+        assert_eq!(
+            best_match("PEPE", &coins).map(|f| f.id).as_deref(),
+            Some("pepe")
+        );
+        assert!(best_match("NONE", &coins).is_none());
     }
 
     #[test]
@@ -722,6 +955,22 @@ mod tests {
                     .as_deref(),
                 Some("pepe")
             );
+        });
+    }
+
+    /// Against CoinGecko's keyless API and image host: needs the network.
+    #[test]
+    #[ignore = "hits CoinGecko"]
+    fn fetches_logos_for_multiplied_tokens() {
+        let state = CoinInfoState::new().unwrap();
+        tauri::async_runtime::block_on(async {
+            // 1000000MOG and 1000000BABYDOGE use the plain coin's logo.
+            for base in ["1000000MOG", "1000000BABYDOGE"] {
+                let logo = state.logo(&ticker(base).unwrap(), None).await.unwrap();
+                let svg = logo.unwrap_or_else(|| panic!("no logo for {base}"));
+                assert!(svg.starts_with("<svg") && svg.contains("base64,"), "{base}");
+            }
+            assert_eq!(state.logo("NOTACOINXYZQ", None).await.unwrap(), None);
         });
     }
 }

@@ -7,6 +7,15 @@
 /// A logo larger than this isn't one; Aster's are about 1 KB.
 pub const MAX_ICON_BYTES: usize = 64 * 1024;
 
+/// The coin a market's name starts with, for a market Aster doesn't list:
+/// `ZECUSDT` is `ZEC`. `None` when the name has no quote coin on the end.
+pub fn base_of(market: &str) -> Option<&str> {
+    ["USDT", "USDC", "USD1", "USD"]
+        .iter()
+        .find_map(|quote| market.strip_suffix(quote))
+        .filter(|base| !base.is_empty())
+}
+
 /// The image's type from its first bytes: only the raster formats Aster uses.
 pub fn raster_type(bytes: &[u8]) -> Option<&'static str> {
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
@@ -86,5 +95,13 @@ mod tests {
         assert_eq!(raster_type(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("image/jpeg"));
         assert_eq!(raster_type(b"RIFF\0\0\0\0WEBPVP8 "), Some("image/webp"));
         assert_eq!(raster_type(b"GIF89a"), None);
+    }
+
+    #[test]
+    fn reads_the_coin_off_a_market_name() {
+        assert_eq!(base_of("ZECUSDT"), Some("ZEC"));
+        assert_eq!(base_of("BTCUSD1"), Some("BTC"));
+        assert_eq!(base_of("USDT"), None);
+        assert_eq!(base_of("BTCPERP"), None);
     }
 }

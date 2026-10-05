@@ -4,7 +4,6 @@ import {
   decimalsOf,
   formatNumber,
   formatSigned,
-  type IconLoader,
   ListedBy,
   matchesSearch,
   Sparkline,
@@ -28,8 +27,8 @@ import { TRAY_MODE_LABEL, TRAY_MODES, type TrayMode } from "../hooks/useTraySync
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
 import { connectedWallet, subscribeAccounts } from "../lib/account";
-import { peekSavedIcon, withIconCache } from "../lib/iconCache";
-import { firstIcon, iconSources } from "../lib/marketIcons";
+import { peekSavedIcon } from "../lib/iconCache";
+import { loadIcon } from "../lib/loadIcon";
 import { loadMarket } from "../lib/selectedMarket";
 import {
   loadMarkets,
@@ -43,12 +42,6 @@ import { loadVenue, VENUES } from "../lib/venues";
 
 /** The only venue whose account can be read without a signed request. */
 const ACCOUNT_VENUE: VenueId = "hyperliquid";
-/** Market logos, as in the main window; stable so TokenIcon's cache holds. */
-// Saved between sessions (lib/iconCache), so they draw at once on the next launch.
-// Bybit serves none, so its markets borrow the coin's logo (lib/marketIcons).
-const loadIcon: IconLoader = withIconCache((market, venue) =>
-  firstIcon(iconSources(venue, market), venueClient.marketIcon),
-);
 /** The hero moves on to the next market this often. */
 const HERO_ADVANCE_MS = 5000;
 /** Dots shown under the hero at most; they scroll with it through a longer list. */
@@ -547,6 +540,11 @@ export function TrayPanel() {
                   }
                 >
                   <span className="tray-coin">
+                    <TokenIcon market={r.market} size={18} />
+                    <strong>{r.market.symbol}</strong>
+                    <span className="pd-lev">{r.market.maxLeverage}x</span>
+                    <ListedBy market={r.market} hint={false} />
+                    {/* Which venue the market is on, after its name. */}
                     <img
                       className="tray-venue"
                       src={venueLogos[r.market.venue]}
@@ -555,9 +553,6 @@ export function TrayPanel() {
                       alt={VENUES[r.market.venue].label}
                       title={VENUES[r.market.venue].label}
                     />
-                    <strong>{r.market.symbol}</strong>
-                    <span className="pd-lev">{r.market.maxLeverage}x</span>
-                    <ListedBy market={r.market} hint={false} />
                   </span>
                   <span className="pd-num" data-trend={trendOf(r.change)}>
                     {r.summary ? priceText(r) : <Skel width={58} />}

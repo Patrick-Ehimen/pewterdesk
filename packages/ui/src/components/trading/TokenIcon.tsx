@@ -6,7 +6,12 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
  * none. The app supplies it (through a venue command); this package never
  * fetches anything itself.
  */
-export type IconLoader = (market: string, venue: VenueId) => Promise<string | undefined>;
+export type IconLoader = (
+  market: string,
+  venue: VenueId,
+  /** The market itself, where the icon has it: what kind it is, its coin. */
+  info?: Market,
+) => Promise<string | undefined>;
 
 /**
  * A logo the app already has at hand (e.g. saved from an earlier session),
@@ -107,7 +112,7 @@ export function TokenIcon({
     if (now !== "loading" || !load || id === undefined || venue === undefined || !key) return;
     const cache = cacheFor(load);
     let current = true;
-    load(id, venue).then(
+    load(id, venue, market).then(
       (svg) => {
         const url = svg ? svgUrl(svg) : null;
         cache.set(key, url);

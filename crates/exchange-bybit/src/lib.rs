@@ -18,12 +18,13 @@
 mod account;
 pub mod auth;
 pub mod constants;
+mod icons;
 mod orders;
 mod tape;
 mod wire;
 mod ws;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -393,7 +394,32 @@ pub struct BybitAdapter {
     meta: tokio::sync::Mutex<Option<Arc<Meta>>>,
     /// Where account reads get the stored API key; see `with_keys`.
     keys: Option<Arc<dyn KeySource>>,
+    /// For logos only (the image host). Never follows a redirect, so it
+    /// can't be sent off that host.
+    assets: reqwest::Client,
+    /// The account last read, whose key signs the logo list request: Bybit
+    /// serves that list only to a key. Unset until an account is connected.
+    icon_account: std::sync::Mutex<Option<String>>,
+    /// Logo URL by coin, once fetched; or when fetching last failed, so a
+    /// key that can't read it isn't asked again for every market.
+    logo_urls: tokio::sync::Mutex<LogoList>,
+    /// Logos fetched this session, by market (`None`: it has none).
+    icons: std::sync::Mutex<HashMap<String, Option<String>>>,
+    icon_fetches: tokio::sync::Semaphore,
 }
+
+#[derive(Default)]
+enum LogoList {
+    #[default]
+    Unread,
+    Read(Arc<HashMap<String, String>>),
+    Failed(std::time::Instant),
+}
+
+/// Logos fetched at once, at most.
+const ICON_FETCHES: usize = 4;
+/// How long a failed read of the logo list stands before it's tried again.
+const LOGO_LIST_RETRY: Duration = Duration::from_secs(300);
 
 impl BybitAdapter {
     /// Talks only to `endpoints`, which are fixed in [`constants`] - never a
@@ -406,7 +432,17 @@ impl BybitAdapter {
             .gzip(true)
             .build()
             .map_err(|e| VenueError::Network(e.to_string()))?;
+        let assets = reqwest::Client::builder()
+            .timeout(REQUEST_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .map_err(|e| VenueError::Network(e.to_string()))?;
         Ok(Self {
+            assets,
+            icon_account: std::sync::Mutex::new(None),
+            logo_urls: tokio::sync::Mutex::new(LogoList::Unread),
+            icons: std::sync::Mutex::new(HashMap::new()),
+            icon_fetches: tokio::sync::Semaphore::new(ICON_FETCHES),
             demo: endpoints.demo_rest.map(|base| Rest {
                 http: http.clone(),
                 base,
@@ -444,6 +480,21 @@ impl BybitAdapter {
                 .ok_or(VenueError::Unsupported("demo accounts on this network"))
         } else {
             Ok(&self.rest)
+        }
+    }
+
+    /// Notes `id` as an account whose key works, for the logo list. A new
+    /// account gets a fresh try at a list an earlier one couldn't read.
+    fn remember_for_logos(&self, id: &str) {
+        let mut account = self.icon_account.lock().unwrap();
+        if account.as_deref() == Some(id) {
+            return;
+        }
+        *account = Some(id.to_owned());
+        if let Ok(mut list) = self.logo_urls.try_lock() {
+            if matches!(*list, LogoList::Failed(_)) {
+                *list = LogoList::Unread;
+            }
         }
     }
 
@@ -507,6 +558,86 @@ impl BybitAdapter {
             ask: price(&ticker.ask1_price),
             last: price(&ticker.last_price),
         })
+    }
+
+    /// Logo URL by coin, from Bybit's convert coin list: a signed, read-only
+    /// request (only the logos are read from the reply) made with the key of
+    /// the account last read. Read once a session; a failure stands for a
+    /// while, so a key that isn't allowed the list isn't asked per market.
+    async fn logo_list(&self) -> Result<Arc<HashMap<String, String>>, VenueError> {
+        let mut list = self.logo_urls.lock().await;
+        match &*list {
+            LogoList::Read(urls) => return Ok(Arc::clone(urls)),
+            LogoList::Failed(at) if at.elapsed() < LOGO_LIST_RETRY => {
+                return Err(VenueError::Network(
+                    "Bybit's logo list wasn't available".into(),
+                ));
+            }
+            _ => {}
+        }
+        let account = self.icon_account.lock().unwrap().clone();
+        // No account yet isn't a failure to remember: one may connect any moment.
+        let account = account.ok_or(VenueError::Unsupported(
+            "Bybit logos before an account is connected",
+        ))?;
+        let read = async {
+            let (rest, creds) = self.reader(&account).await?;
+            rest.signed_get::<icons::CoinList>(
+                "/v5/asset/exchange/query-coin-list",
+                &[("accountType", "eb_convert_uta")],
+                &creds,
+            )
+            .await
+        };
+        match read.await {
+            Ok(coins) => {
+                let urls = Arc::new(icons::logo_urls(coins, self.endpoints.logos));
+                *list = LogoList::Read(Arc::clone(&urls));
+                Ok(urls)
+            }
+            Err(e) => {
+                *list = LogoList::Failed(std::time::Instant::now());
+                Err(e)
+            }
+        }
+    }
+
+    /// The logo at `url` (already checked to be on the image host), as SVG.
+    async fn fetch_icon(&self, url: &str) -> Result<Option<String>, VenueError> {
+        let _permit = self
+            .icon_fetches
+            .acquire()
+            .await
+            .map_err(|_| VenueError::Network("icon fetches closed".into()))?;
+        let response = self
+            .assets
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        if status.is_server_error() || status.as_u16() == 429 {
+            return Err(VenueError::Network(format!(
+                "logo request returned {status}"
+            )));
+        }
+        if !status.is_success()
+            || response
+                .content_length()
+                .is_some_and(|n| n > icons::MAX_ICON_BYTES as u64)
+        {
+            return Ok(None);
+        }
+        let content_type = response
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned);
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        Ok(icons::as_svg(content_type.as_deref(), &body))
     }
 
     /// Adds the app's `KeySource`, which account reads take the stored API
@@ -970,7 +1101,38 @@ impl ExchangeAdapter for BybitAdapter {
             .keys
             .as_deref()
             .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
-        fetch_account(self.rest_for(address)?, keys, address).await
+        let snapshot = fetch_account(self.rest_for(address)?, keys, address).await?;
+        self.remember_for_logos(address);
+        Ok(snapshot)
+    }
+
+    /// The market's coin's logo, from Bybit's own list, as SVG (see
+    /// `icons`). `None` for a coin the list doesn't have. An error while the
+    /// list can't be read (no account connected yet, or a key that isn't
+    /// allowed it), so the caller looks elsewhere rather than taking that
+    /// for "no logo".
+    async fn market_icon(&self, market: &str) -> Result<Option<String>, VenueError> {
+        wire::validate_market(market)?;
+        if let Some(cached) = self.icons.lock().unwrap().get(market) {
+            return Ok(cached.clone());
+        }
+        let meta = self.meta().await?;
+        let Some(base) = meta.bases.get(market) else {
+            return Ok(None);
+        };
+        let urls = self.logo_list().await?;
+        let url = urls
+            .get(&base.to_uppercase())
+            .or_else(|| icons::unmultiplied(base).and_then(|coin| urls.get(&coin.to_uppercase())));
+        let icon = match url {
+            Some(url) => self.fetch_icon(url).await?,
+            None => None,
+        };
+        self.icons
+            .lock()
+            .unwrap()
+            .insert(market.to_owned(), icon.clone());
+        Ok(icon)
     }
 
     /// Polled: a snapshot every `ACCOUNT_EVERY`. A failed poll keeps the
@@ -985,6 +1147,7 @@ impl ExchangeAdapter for BybitAdapter {
             .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
         let rest = self.rest_for(address)?.clone();
         let first = fetch_account(&rest, keys.as_ref(), address).await?;
+        self.remember_for_logos(address);
         let (tx, rx) = mpsc::channel(4);
         let uid = address.to_owned();
         tokio::spawn(async move {

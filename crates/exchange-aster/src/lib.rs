@@ -764,14 +764,23 @@ impl ExchangeAdapter for AsterAdapter {
     }
 
     /// The market's base asset's logo, from Aster's logo list, as SVG (see
-    /// `icons`). `None` for an asset without one.
+    /// `icons`). `None` for an asset without one. The market needn't be one
+    /// Aster lists: its logo list is by asset.
     async fn market_icon(&self, market: &str) -> Result<Option<String>, VenueError> {
         wire::validate_market(market)?;
         if let Some(cached) = self.icons.lock().unwrap().get(market) {
             return Ok(cached.clone());
         }
         let meta = self.meta().await?;
-        let url = match meta.bases.get(market) {
+        // Aster's logo list covers more assets than it has markets for. A
+        // market it doesn't list (another venue's, borrowing the logo) is
+        // looked up by the coin its name starts with.
+        let base = meta
+            .bases
+            .get(market)
+            .map(String::as_str)
+            .or_else(|| icons::base_of(market));
+        let url = match base {
             Some(base) => self.logo_urls().await?.get(base).cloned(),
             None => None,
         };

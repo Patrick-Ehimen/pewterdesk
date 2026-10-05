@@ -394,6 +394,13 @@ export const coinClient = {
   /** The overview for a market's base coin, or null if CoinGecko doesn't list it. */
   info: (base: string) => call<CoinInfo | null>("coin_info", { base }),
 
+  /**
+   * A coin's logo from CoinGecko as SVG markup, by its ticker (a size
+   * multiplier in front is dropped), or undefined if CoinGecko has none.
+   */
+  logo: async (base: string): Promise<string | undefined> =>
+    (await call<string | null>("coin_logo", { base })) ?? undefined,
+
   open: (id: string, index: number) => call<void>("open_coin_link", { id, index }),
 
   setKey: (key: string) => call<void>("set_coingecko_key", { key }),

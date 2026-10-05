@@ -10,16 +10,21 @@ pub struct Endpoints {
     /// made in Bybit's Demo Trading, with demo funds). Market data stays on
     /// `rest`, as demo trading runs on live prices. Checked live (2026-10).
     pub demo_rest: Option<&'static str>,
+    /// Bybit's image host, for coin logos only: the convert coin list names
+    /// each logo's file there. A logo listed anywhere else is ignored.
+    pub logos: &'static str,
 }
 
 pub const MAINNET: Endpoints = Endpoints {
     rest: "https://api.bybit.com",
     ws: "wss://stream.bybit.com/v5/public/linear",
     demo_rest: Some("https://api-demo.bybit.com"),
+    logos: "https://t1.bycsi.com",
 };
 
 pub const TESTNET: Endpoints = Endpoints {
     rest: "https://api-testnet.bybit.com",
     ws: "wss://stream-testnet.bybit.com/v5/public/linear",
     demo_rest: None,
+    logos: "https://t1.bycsi.com",
 };
