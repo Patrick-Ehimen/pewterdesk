@@ -87,8 +87,9 @@ const priceOf = (text: string) => {
 /**
  * The order the ticket describes, or why it can't be sent. The size is cut
  * down to the market's step (never rounded up past what was asked); prices
- * go as typed, for the venue to check against its tick. Scale and TWAP
- * orders, and TP/SL attached to an order, have no venue form yet.
+ * go as typed, for the venue to check against its tick. A take-profit and a
+ * stop-loss can go with the order. Scale and TWAP orders have no venue form
+ * yet.
  */
 export function ticketOrder(input: {
   market: Pick<Market, "id" | "sizeStep">;
@@ -99,12 +100,20 @@ export function ticketOrder(input: {
   limitPrice: string;
   trigger: string;
   reduceOnly: boolean;
+  /** Put a take-profit and/or stop-loss on the position the order opens. */
   tpsl: boolean;
+  /** As typed; only read with `tpsl` on. At least one is needed then. */
+  takeProfit?: string;
+  stopLoss?: string;
   /** A market order's bound, as a fraction (0.05 is 5%). */
   maxSlippage: number;
 }): { request: OrderRequest } | { blocked: TicketBlock } {
   if (input.type === "scale" || input.type === "twap") return { blocked: "type" };
-  if (input.tpsl) return { blocked: "tpsl" };
+  // Exits go with the order (not with a reduce-only one, which opens nothing).
+  const exits = input.tpsl && !input.reduceOnly;
+  const takeProfit = exits ? priceOf(input.takeProfit ?? "") : undefined;
+  const stopLoss = exits ? priceOf(input.stopLoss ?? "") : undefined;
+  if (exits && !takeProfit && !stopLoss) return { blocked: "tpsl" };
   const step = Number(input.market.sizeStep);
   const steps = step > 0 ? Math.floor(input.sizeBase / step + 1e-9) : 0;
   if (!(steps > 0)) return { blocked: "size" };
@@ -135,6 +144,8 @@ export function ticketOrder(input: {
       side: input.side,
       size,
       reduceOnly: input.reduceOnly,
+      ...(takeProfit && { takeProfit }),
+      ...(stopLoss && { stopLoss }),
       ...kind,
     },
   };

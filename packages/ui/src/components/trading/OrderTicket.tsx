@@ -43,7 +43,7 @@ const BLOCKED: Record<TicketBlock, MessageKey> = {
   price: "ticket.needPrice",
   trigger: "ticket.needTrigger",
   type: "ticket.typeSoon",
-  tpsl: "ticket.tpslSoon",
+  tpsl: "ticket.needTpsl",
 };
 
 const PRO_LABEL: Record<ProType, MessageKey> = {
@@ -240,6 +240,8 @@ export function OrderTicket({
         trigger,
         reduceOnly,
         tpsl,
+        takeProfit: tp,
+        stopLoss: sl,
         maxSlippage,
       })
     : undefined;
@@ -256,6 +258,9 @@ export function OrderTicket({
         bestBid,
         bestAsk,
         price,
+        // Only what will go with the order: nothing on a reduce-only one.
+        takeProfit: tpsl && !reduceOnly ? tp : "",
+        stopLoss: tpsl && !reduceOnly ? sl : "",
         available: account ? available : undefined,
         leverage,
         position,
@@ -273,7 +278,9 @@ export function OrderTicket({
     let text: string;
     let fix: { label: string; apply: () => void } | undefined;
     if (c.code === "tick") text = t("check.tick", { tick: c.tick });
-    else if (c.code === "crosses") {
+    else if (c.code === "exitSide") {
+      text = t(c.field === "tp" ? "check.tpSide" : "check.slSide");
+    } else if (c.code === "crosses") {
       text = t(side === "buy" ? "check.crossesBuy" : "check.crossesSell", {
         pct: formatNumber(c.past * 100, 2),
         price: priceText(Number(limitPrice)),
@@ -383,6 +390,14 @@ export function OrderTicket({
         },
       type === "market" && { label: t("confirm.maxSlippage"), value: `${pct(maxSlippage)}%` },
       reduceOnly && { label: t("confirm.flags"), value: t("ticket.reduceOnly") },
+      confirming?.takeProfit !== undefined && {
+        label: t("drawer.tp"),
+        value: priceText(Number(confirming.takeProfit)),
+      },
+      confirming?.stopLoss !== undefined && {
+        label: t("drawer.sl"),
+        value: priceText(Number(confirming.stopLoss)),
+      },
     ];
     return rows.filter((r): r is ConfirmRow => Boolean(r));
   };
@@ -626,15 +641,35 @@ export function OrderTicket({
         />
         {t("ticket.reduceOnly")}
       </label>
-      <label className="pd-ticket-check">
-        <input type="checkbox" checked={tpsl} onChange={(e) => setTpsl(e.target.checked)} />
+      {/* Exits for the position the order opens; a reduce-only order opens none. */}
+      <label className="pd-ticket-check" data-disabled={reduceOnly || undefined}>
+        <input
+          type="checkbox"
+          checked={tpsl && !reduceOnly}
+          disabled={reduceOnly}
+          onChange={(e) => setTpsl(e.target.checked)}
+        />
         {t("ticket.tpsl")}
       </label>
-      {tpsl && (
-        <div className="pd-ticket-row">
-          <NumberField label={t("ticket.tpPrice")} value={tp} onChange={setTp} />
-          <NumberField label={t("ticket.slPrice")} value={sl} onChange={setSl} />
-        </div>
+      {tpsl && !reduceOnly && (
+        <>
+          <div className="pd-ticket-row">
+            <NumberField
+              label={t("ticket.tpPrice")}
+              value={tp}
+              onChange={setTp}
+              state={stateOf("tp")}
+            />
+            <NumberField
+              label={t("ticket.slPrice")}
+              value={sl}
+              onChange={setSl}
+              state={stateOf("sl")}
+            />
+          </div>
+          {notesFor("tp")}
+          {notesFor("sl")}
+        </>
       )}
 
       <SizeCalculator

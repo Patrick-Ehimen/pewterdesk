@@ -73,6 +73,28 @@ pub struct Market {
     /// `None` for the venue's own markets.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub listed_by: Option<String>,
+    /// The venue's own grouping for the market, where it has one. `None` for
+    /// an ordinary crypto market.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub category: Option<MarketCategory>,
+    /// When the market was listed, in milliseconds since the Unix epoch,
+    /// where the venue says.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "number")]
+    pub listed_at: Option<u64>,
+}
+
+/// How a venue groups a market that isn't an ordinary crypto one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum MarketCategory {
+    /// Newer, riskier listings the venue sets apart (Bybit's Innovation Zone).
+    Innovation,
+    Stock,
+    Etf,
+    Commodity,
+    Forex,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -398,6 +420,12 @@ pub struct OrderRequest {
     /// Caller-chosen id for matching the order up later.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub client_id: Option<String>,
+    /// A take-profit and a stop-loss to put on the position the order opens:
+    /// protective exits, set with the order. Not for reduce-only orders.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub take_profit: Option<Decimal>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stop_loss: Option<Decimal>,
     #[serde(flatten)]
     #[ts(flatten)]
     pub kind: OrderKind,

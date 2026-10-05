@@ -227,7 +227,22 @@ sizeStep: Decimal, minSize: Decimal, maxLeverage: number,
  * Hyperliquid, the builder-deployed perp exchange (HIP-3), e.g. "xyz".
  * `None` for the venue's own markets.
  */
-listedBy?: string | null, };
+listedBy?: string | null, 
+/**
+ * The venue's own grouping for the market, where it has one. `None` for
+ * an ordinary crypto market.
+ */
+category?: MarketCategory | null, 
+/**
+ * When the market was listed, in milliseconds since the Unix epoch,
+ * where the venue says.
+ */
+listedAt?: number, };
+
+/**
+ * How a venue groups a market that isn't an ordinary crypto one.
+ */
+export type MarketCategory = "innovation" | "stock" | "etf" | "commodity" | "forex";
 
 /**
  * A market's recent candles, for screening: trends, sparklines, RSI.
@@ -422,7 +437,12 @@ collateral?: Decimal,
 /**
  * Caller-chosen id for matching the order up later.
  */
-clientId?: string, } & ({ "type": "market", 
+clientId?: string, 
+/**
+ * A take-profit and a stop-loss to put on the position the order opens:
+ * protective exits, set with the order. Not for reduce-only orders.
+ */
+takeProfit?: Decimal, stopLoss?: Decimal, } & ({ "type": "market", 
 /**
  * Worst acceptable fill, in basis points from the current price.
  * Adapters send market orders as IOC limits at this bound, so there's

@@ -2,10 +2,12 @@ import type { Market, MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
   PICKER_PRESETS,
+  pickerQuotes,
   pickerRows,
   pickerTabs,
   pickerView,
   presetOf,
+  trendingIds,
 } from "../src/lib/marketPicker";
 
 const market = (id: string, listedBy?: string): Market => ({
@@ -96,7 +98,73 @@ describe("market picker", () => {
   });
 
   it("offers the HIP-3 tab only where there are builder markets", () => {
-    expect(pickerTabs(markets)).toEqual(["favorites", "perps", "hip3"]);
-    expect(pickerTabs([market("BTC")])).toEqual(["favorites", "perps"]);
+    expect(pickerTabs(markets)).toEqual(["favorites", "perps", "trending", "hip3"]);
+    expect(pickerTabs([market("BTC")])).toEqual(["favorites", "perps", "trending"]);
+  });
+
+  describe("categories", () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const NOW = 100 * DAY;
+    const listed: Market[] = [
+      market("BTC"),
+      { ...market("NEWCOIN"), listedAt: NOW - 3 * DAY, category: "innovation" },
+      { ...market("OLDCOIN"), listedAt: NOW - 90 * DAY },
+      { ...market("AAL"), category: "stock", quote: "USDT" },
+      { ...market("ARKK"), category: "etf", quote: "USDT" },
+    ];
+    const listedRows = pickerRows(listed);
+    const ids = (tab: Parameters<typeof pickerView>[1], quote?: string) =>
+      pickerView(
+        listedRows,
+        tab,
+        new Set(),
+        "",
+        { by: "name", descending: false },
+        { now: NOW, quote },
+      ).map((r) => r.market.id);
+
+    it("offers only the tabs the venue has markets for", () => {
+      expect(pickerTabs(listed, NOW)).toEqual([
+        "favorites",
+        "perps",
+        "trending",
+        "new",
+        "innovation",
+        "stock",
+        "etf",
+      ]);
+      // Nothing listed in the last 30 days: no New tab.
+      expect(pickerTabs(listed, NOW + 60 * DAY)).not.toContain("new");
+    });
+
+    it("puts each market under its category, and recent listings under New", () => {
+      expect(ids("stock")).toEqual(["AAL"]);
+      expect(ids("etf")).toEqual(["ARKK"]);
+      expect(ids("innovation")).toEqual(["NEWCOIN"]);
+      expect(ids("new")).toEqual(["NEWCOIN"]);
+      expect(ids("perps")).toHaveLength(5);
+    });
+
+    it("filters by quote coin, the most used first in the list", () => {
+      expect(pickerQuotes(listed)).toEqual(["USDC", "USDT"]);
+      expect(ids("perps", "USDT")).toEqual(["AAL", "ARKK"]);
+      expect(ids("stock", "USDC")).toEqual([]);
+    });
+
+    it("picks the biggest movers among the more traded half as trending", () => {
+      const moving = pickerRows(
+        ["A", "B", "C", "D"].map((id) => market(id)),
+        [
+          summary("A", "150", "100", "10"), // +50%, but barely traded
+          summary("B", "90", "100", "900"), // -10%
+          summary("C", "103", "100", "800"), // +3%
+          summary("D", "100", "100", "5"),
+        ],
+      );
+      expect([...trendingIds(moving)]).toEqual(["B", "C"]);
+      expect(
+        pickerView(moving, "trending", new Set(), "", PICKER_PRESETS.top).map((r) => r.market.id),
+      ).toEqual(["B", "C"]);
+    });
   });
 });

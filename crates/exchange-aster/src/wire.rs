@@ -137,6 +137,8 @@ fn market(s: SymbolInfo) -> Market {
         size_step,
         min_size,
         listed_by: None,
+        category: None,
+        listed_at: None,
     }
 }
 

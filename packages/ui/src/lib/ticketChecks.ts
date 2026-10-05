@@ -8,7 +8,9 @@ const GRID_SLACK = 1e-6;
 
 /** What a check found: an `error` blocks the order, a `warn` only says so. */
 export type TicketCheck =
-  | { field: "price" | "trigger"; level: "error"; code: "tick"; tick: string }
+  | { field: "price" | "trigger" | "tp" | "sl"; level: "error"; code: "tick"; tick: string }
+  /** A take-profit that isn't beyond the order's price, or a stop-loss that isn't behind it. */
+  | { field: "tp" | "sl"; level: "error"; code: "exitSide" }
   | {
       field: "price";
       level: "warn";
@@ -54,6 +56,9 @@ export function ticketChecks(input: {
   bestAsk: number;
   /** The price the order is valued at. */
   price: number;
+  /** A take-profit and stop-loss going with the order, as typed; empty for none. */
+  takeProfit?: string;
+  stopLoss?: string;
   /** Unset until an account is connected: no margin check then. */
   available?: number;
   leverage: number;
@@ -87,6 +92,33 @@ export function ticketChecks(input: {
   const trigger = Number(input.trigger);
   if (hasTrigger(type) && trigger > 0 && !onGrid(trigger, tick)) {
     checks.push({ field: "trigger", level: "error", code: "tick", tick: market.tickSize });
+  }
+
+  // Exits: on the tick, and each on its own side of the price the order goes
+  // in at (its limit, its trigger, or the touch), as the venue will insist.
+  const entry =
+    hasLimitPrice(type) && limit > 0
+      ? limit
+      : hasTrigger(type) && trigger > 0
+        ? trigger
+        : side === "buy"
+          ? input.bestAsk
+          : input.bestBid;
+  for (const [field, text] of [
+    ["tp", input.takeProfit],
+    ["sl", input.stopLoss],
+  ] as const) {
+    const exit = Number(text);
+    if (!(exit > 0)) continue;
+    if (!onGrid(exit, tick)) {
+      checks.push({ field, level: "error", code: "tick", tick: market.tickSize });
+    } else if (entry > 0) {
+      // A take-profit on a buy and a stop-loss on a sell sit above the price.
+      const above = (field === "tp") === (side === "buy");
+      if (above ? exit <= entry : exit >= entry) {
+        checks.push({ field, level: "error", code: "exitSide" });
+      }
+    }
   }
 
   if (!(sizeBase > 0)) return checks;

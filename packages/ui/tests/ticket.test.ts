@@ -101,6 +101,35 @@ describe("ticket orders", () => {
     });
     expect(ticketOrder({ ...base, type: "twap" })).toEqual({ blocked: "type" });
     expect(ticketOrder({ ...base, type: "scale" })).toEqual({ blocked: "type" });
+  });
+
+  it("sends a take-profit and stop-loss with the order", () => {
+    // Asked for, but neither typed.
     expect(ticketOrder({ ...base, type: "market", tpsl: true })).toEqual({ blocked: "tpsl" });
+    const both = ticketOrder({
+      ...base,
+      type: "market",
+      tpsl: true,
+      takeProfit: "90000",
+      stopLoss: " 80000.5 ",
+    });
+    expect("request" in both && both.request).toMatchObject({
+      takeProfit: "90000",
+      stopLoss: "80000.5",
+    });
+    // One alone is fine; the other isn't sent.
+    const one = ticketOrder({ ...base, type: "market", tpsl: true, stopLoss: "80000" });
+    expect("request" in one && "takeProfit" in one.request).toBe(false);
+    // Typed but switched off, or on a reduce-only order: not sent.
+    const off = ticketOrder({ ...base, type: "market", takeProfit: "90000" });
+    expect("request" in off && "takeProfit" in off.request).toBe(false);
+    const reducing = ticketOrder({
+      ...base,
+      type: "market",
+      tpsl: true,
+      reduceOnly: true,
+      takeProfit: "90000",
+    });
+    expect("request" in reducing && "takeProfit" in reducing.request).toBe(false);
   });
 });

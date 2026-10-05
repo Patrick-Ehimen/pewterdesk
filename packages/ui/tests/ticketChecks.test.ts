@@ -65,6 +65,20 @@ describe("ticketChecks", () => {
     ).toEqual([]);
   });
 
+  it("checks a take-profit and stop-loss going with the order", () => {
+    // A buy at 38.391: the take-profit above it, the stop-loss below.
+    expect(codes({ takeProfit: "41", stopLoss: "36.5" })).toEqual([]);
+    expect(ticketChecks({ ...base, takeProfit: "38", stopLoss: "39" })).toEqual([
+      { field: "tp", level: "error", code: "exitSide" },
+      { field: "sl", level: "error", code: "exitSide" },
+    ]);
+    // A sell is the other way round.
+    expect(codes({ side: "sell", takeProfit: "36.5", stopLoss: "41" })).toEqual([]);
+    expect(codes({ takeProfit: "41.0005" })).toEqual(["tick"]);
+    // A market order's exits are checked against the touch.
+    expect(codes({ type: "market", limitPrice: "", takeProfit: "38.4" })).toEqual(["exitSide"]);
+  });
+
   it("checks a trigger's tick", () => {
     expect(codes({ type: "stopMarket", trigger: "38.0005", limitPrice: "" })).toEqual(["tick"]);
   });

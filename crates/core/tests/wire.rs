@@ -53,6 +53,8 @@ fn limit_order_request_parses_from_frontend_json() {
             reduce_only: false,
             collateral: None,
             client_id: None,
+            take_profit: None,
+            stop_loss: None,
             kind: OrderKind::Limit {
                 price: dec("65000"),
                 time_in_force: Some(TimeInForce::PostOnly),

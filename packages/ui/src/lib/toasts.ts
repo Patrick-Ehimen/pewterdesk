@@ -90,5 +90,11 @@ export function orderText(request: OrderRequest, base: string): string {
       : request.type === "limit"
         ? t("toast.kindLimit", { price: formatNumber(request.price) })
         : t("toast.kindTrigger", { price: formatNumber(request.triggerPrice) });
-  return `${head} ${kind}${request.reduceOnly ? ` · ${t("toast.reduceOnly")}` : ""}`;
+  const exits = [
+    request.takeProfit && `TP ${formatNumber(request.takeProfit)}`,
+    request.stopLoss && `SL ${formatNumber(request.stopLoss)}`,
+  ].filter(Boolean);
+  return [`${head} ${kind}`, request.reduceOnly && t("toast.reduceOnly"), ...exits]
+    .filter(Boolean)
+    .join(" · ");
 }

@@ -51,6 +51,13 @@ pub(crate) struct CreateOrder {
     position_idx: u8,
     #[serde(skip_serializing_if = "Option::is_none")]
     order_link_id: Option<String>,
+    /// Exits for the position the order opens, closing all of it.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    take_profit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    stop_loss: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tpsl_mode: Option<&'static str>,
 }
 
 impl CreateOrder {
@@ -363,6 +370,9 @@ pub(crate) fn create(
         reduce_only: request.reduce_only,
         position_idx: ONE_WAY,
         order_link_id: client_id(&request.client_id)?,
+        take_profit: None,
+        stop_loss: None,
+        tpsl_mode: None,
     };
     match &request.kind {
         OrderKind::Market { max_slippage_bps } => {
@@ -423,7 +433,58 @@ pub(crate) fn create(
             }
         }
     }
+    attach_exits(&mut order, request, tick, quote)?;
     Ok(order)
+}
+
+/// Puts the request's take-profit and stop-loss on the order: each on the
+/// tick, and on its own side of the price the order goes in at (its limit,
+/// its trigger, or the touch for a market order) - a take-profit beyond it,
+/// a stop-loss behind. An exit on the wrong side would fire the moment the
+/// order filled, so it's refused rather than sent.
+fn attach_exits(
+    order: &mut CreateOrder,
+    request: &OrderRequest,
+    tick: Decimal,
+    quote: Quote,
+) -> Result<(), VenueError> {
+    if request.take_profit.is_none() && request.stop_loss.is_none() {
+        return Ok(());
+    }
+    if request.reduce_only {
+        return Err(invalid(
+            "a reduce-only order can't carry a take-profit or stop-loss",
+        ));
+    }
+    let entry = match &request.kind {
+        OrderKind::Limit { price, .. } => *price,
+        OrderKind::Trigger { trigger_price, .. } => *trigger_price,
+        OrderKind::Market { .. } => match request.side {
+            Side::Buy => quote.ask,
+            Side::Sell => quote.bid,
+        },
+    };
+    let buying = request.side == Side::Buy;
+    if let Some(tp) = request.take_profit {
+        positive_on(tp, tick, "take-profit")?;
+        if (buying && tp.0 <= entry.0) || (!buying && tp.0 >= entry.0) {
+            return Err(invalid(
+                "the take-profit must be on the profitable side of the order's price",
+            ));
+        }
+        order.take_profit = Some(text(tp));
+    }
+    if let Some(sl) = request.stop_loss {
+        positive_on(sl, tick, "stop-loss")?;
+        if (buying && sl.0 >= entry.0) || (!buying && sl.0 <= entry.0) {
+            return Err(invalid(
+                "the stop-loss must be on the losing side of the order's price",
+            ));
+        }
+        order.stop_loss = Some(text(sl));
+    }
+    order.tpsl_mode = Some("Full");
+    Ok(())
 }
 
 /// The cancel body for order `order_id` on `market`.
@@ -471,6 +532,8 @@ mod tests {
             reduce_only: false,
             collateral: None,
             client_id: None,
+            take_profit: None,
+            stop_loss: None,
             kind,
         }
     }
@@ -788,5 +851,56 @@ mod tests {
             serde_json::to_value(margin_mode(MarginMode::Isolated)).unwrap(),
             serde_json::json!({ "setMarginMode": "ISOLATED_MARGIN" })
         );
+    }
+
+    #[test]
+    fn exits_go_with_the_order_on_their_own_sides() {
+        let market = OrderKind::Market {
+            max_slippage_bps: 500,
+        };
+        let mut r = request(Side::Buy, "0.01", market.clone());
+        r.take_profit = Some(d("90000"));
+        r.stop_loss = Some(d("80000.5"));
+        let b = body(&r);
+        assert_eq!(
+            (&b["takeProfit"], &b["stopLoss"], &b["tpslMode"]),
+            (&json!("90000"), &json!("80000.5"), &json!("Full"))
+        );
+
+        // A short's exits are the other way round, against its limit price.
+        let mut short = request(
+            Side::Sell,
+            "0.01",
+            OrderKind::Limit {
+                price: d("85000"),
+                time_in_force: None,
+            },
+        );
+        short.take_profit = Some(d("80000"));
+        short.stop_loss = Some(d("86000"));
+        let b = body(&short);
+        assert_eq!(
+            (&b["takeProfit"], &b["stopLoss"]),
+            (&json!("80000"), &json!("86000"))
+        );
+
+        // Without exits, none of the three fields is sent.
+        let plain = body(&request(Side::Buy, "0.01", market.clone()));
+        assert!(plain.get("takeProfit").is_none() && plain.get("tpslMode").is_none());
+
+        let refused = |edit: &dyn Fn(&mut OrderRequest)| {
+            let mut r = request(Side::Buy, "0.01", market.clone());
+            edit(&mut r);
+            create(&r, d(TICK), d(STEP), quote()).is_err()
+        };
+        // On the wrong side of the price, off the tick, or on a reduce-only order.
+        assert!(refused(&|r| r.take_profit = Some(d("80000"))));
+        assert!(refused(&|r| r.stop_loss = Some(d("90000"))));
+        assert!(refused(&|r| r.take_profit = Some(d("90000.05"))));
+        assert!(refused(&|r| r.stop_loss = Some(d("0"))));
+        assert!(refused(&|r| {
+            r.reduce_only = true;
+            r.stop_loss = Some(d("80000"));
+        }));
     }
 }

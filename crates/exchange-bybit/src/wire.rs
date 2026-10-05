@@ -6,7 +6,8 @@ use std::collections::{BTreeMap, HashMap};
 
 use pewterdesk_core::{
     Announcement, AnnouncementKind, BookLevel, Candle, CandleInterval, Decimal, FundingRate,
-    Market, MarketStats, MarketSummary, OrderBook, Side, Trade, VenueError, VenueId,
+    Market, MarketCategory, MarketStats, MarketSummary, OrderBook, Side, Trade, VenueError,
+    VenueId,
 };
 use rust_decimal::prelude::ToPrimitive;
 use serde::Deserialize;
@@ -74,6 +75,13 @@ pub struct Instrument {
     /// Minutes between funding payments; 0 on dated futures.
     #[serde(default)]
     pub funding_interval: u32,
+    /// Bybit's grouping: "" for ordinary crypto, else "innovation", "stock",
+    /// "ETF", "commodity" or "forex".
+    #[serde(default)]
+    pub symbol_type: String,
+    /// When it was listed, in milliseconds, as text.
+    #[serde(default)]
+    pub launch_time: String,
 }
 
 #[derive(Deserialize)]
@@ -120,6 +128,16 @@ pub fn market(i: &Instrument) -> Market {
             .unwrap_or(1)
             .max(1),
         listed_by: None,
+        // Anything Bybit adds later reads as an ordinary market.
+        category: match i.symbol_type.as_str() {
+            "innovation" => Some(MarketCategory::Innovation),
+            "stock" => Some(MarketCategory::Stock),
+            "ETF" => Some(MarketCategory::Etf),
+            "commodity" => Some(MarketCategory::Commodity),
+            "forex" => Some(MarketCategory::Forex),
+            _ => None,
+        },
+        listed_at: i.launch_time.parse().ok().filter(|t| *t > 0),
     }
 }
 
@@ -132,6 +150,8 @@ pub struct Meta {
     pub steps: HashMap<String, (Decimal, Decimal)>,
     /// Each live market's highest leverage, which `set_leverage` keeps under.
     pub max_leverage: HashMap<String, Decimal>,
+    /// Each live market's base coin, which its logo is listed under.
+    pub bases: HashMap<String, String>,
 }
 
 impl Meta {
@@ -150,6 +170,9 @@ impl Meta {
                 .collect(),
             max_leverage: live()
                 .map(|i| (i.symbol.clone(), decimal(&i.leverage_filter.max_leverage)))
+                .collect(),
+            bases: live()
+                .map(|i| (i.symbol.clone(), i.base_coin.clone()))
                 .collect(),
         }
     }
@@ -633,9 +656,39 @@ mod tests {
         assert_eq!(btc.symbol, "BTC-USDT");
         assert_eq!(btc.max_leverage, 150);
         assert_eq!(btc.tick_size, d("0.10"));
+        // An ordinary market: no category, and no listing date given here.
+        assert_eq!((btc.category, btc.listed_at), (None, None));
         let meta = Meta::new(&list);
         assert_eq!(meta.funding("BTCUSDT"), 8 * 3600);
         assert!(!meta.is_live("BTC-26DEC26"));
+    }
+
+    #[test]
+    fn reads_a_markets_category_and_listing_date() {
+        let instrument = |kind: &str| -> Instrument {
+            serde_json::from_value(json!({
+                "symbol": "AALUSDT", "contractType": "LinearPerpetual", "status": "Trading",
+                "baseCoin": "AAL", "quoteCoin": "USDT", "fundingInterval": 480,
+                "symbolType": kind, "launchTime": "1784799594000",
+                "leverageFilter": { "maxLeverage": "10.00" },
+                "priceFilter": { "tickSize": "0.01" },
+                "lotSizeFilter": { "qtyStep": "0.01", "minOrderQty": "0.01" }
+            }))
+            .unwrap()
+        };
+        let stock = market(&instrument("stock"));
+        assert_eq!(stock.category, Some(MarketCategory::Stock));
+        assert_eq!(stock.listed_at, Some(1_784_799_594_000));
+        for (kind, want) in [
+            ("innovation", Some(MarketCategory::Innovation)),
+            ("ETF", Some(MarketCategory::Etf)),
+            ("commodity", Some(MarketCategory::Commodity)),
+            ("forex", Some(MarketCategory::Forex)),
+            ("", None),
+            ("something-new", None),
+        ] {
+            assert_eq!(market(&instrument(kind)).category, want, "{kind}");
+        }
     }
 
     #[test]
@@ -727,6 +780,7 @@ mod tests {
             funding_secs: HashMap::from([("A".into(), 3600), ("B".into(), 28_800)]),
             steps: HashMap::new(),
             max_leverage: HashMap::new(),
+            bases: HashMap::new(),
         };
         let t = |symbol: &str, turnover: &str| Ticker {
             symbol: symbol.into(),

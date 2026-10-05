@@ -19,12 +19,14 @@ import {
   type PickerSort,
   type PickerSortKey,
   type PickerTab,
+  pickerQuotes,
   pickerRows,
   pickerTabs,
   pickerView,
   presetOf,
 } from "../../lib/marketPicker";
 import { IconButton } from "../common/IconButton";
+import { Select } from "../common/Select";
 import { StarButton } from "../common/StarButton";
 import { ListedBy } from "./ListedBy";
 import { TokenIcon } from "./TokenIcon";
@@ -35,8 +37,18 @@ const TAB_KEY = "pd.picker.tab";
 const TAB_LABEL: Record<PickerTab, MessageKey> = {
   favorites: "picker.favorites",
   perps: "picker.perps",
+  trending: "picker.trending",
+  new: "picker.new",
+  innovation: "picker.innovation",
+  stock: "picker.stocks",
+  etf: "picker.etfs",
+  commodity: "picker.commodities",
+  forex: "picker.fx",
   hip3: "screener.filter.builder",
 };
+/** The quote filter's "every quote coin". */
+const ALL_QUOTES = "all";
+const QUOTE_KEY = "pd.picker.quote";
 const PRESET_LABEL: Record<PickerPreset, MessageKey> = {
   top: "picker.top",
   gainers: "picker.gainers",
@@ -118,6 +130,22 @@ export function MarketPicker({
   const [query, setQuery] = useState("");
   const [tab, setTabState] = useState(storedTab);
   const [sort, setSort] = useState<PickerSort>(PICKER_PRESETS.top);
+  // Which quote coin's markets show (USDT, USDC), where the venue has several.
+  const [quote, setQuoteState] = useState(() => {
+    try {
+      return localStorage.getItem(QUOTE_KEY) ?? ALL_QUOTES;
+    } catch {
+      return ALL_QUOTES;
+    }
+  });
+  const setQuote = (next: string) => {
+    setQuoteState(next);
+    try {
+      localStorage.setItem(QUOTE_KEY, next);
+    } catch {
+      // Storage unavailable; the choice just won't be remembered.
+    }
+  };
   const [position, setPosition] = useState<{ top: number; left: number }>();
 
   const setOpen = (next: boolean) => {
@@ -134,9 +162,14 @@ export function MarketPicker({
   };
 
   const tabs = pickerTabs(markets);
-  // A remembered HIP-3 tab falls back to Perps on a venue without one.
+  // A remembered tab the venue doesn't have (HIP-3, Stocks) falls back to Perps.
   const activeTab = tabs.includes(tab) ? tab : "perps";
-  const rows = pickerView(pickerRows(markets, summaries), activeTab, starred, query, sort);
+  const quotes = pickerQuotes(markets);
+  // A remembered quote coin this venue doesn't use shows every market.
+  const activeQuote = quotes.length > 1 && quotes.includes(quote) ? quote : undefined;
+  const rows = pickerView(pickerRows(markets, summaries), activeTab, starred, query, sort, {
+    quote: activeQuote,
+  });
   // Prices not here yet: each value cell shimmers until they are.
   const pricesPending = summaries === undefined;
   const value = (content: ReactNode, missing: boolean, width: number) =>
@@ -309,19 +342,34 @@ export function MarketPicker({
               </div>
             )}
 
-            <div className="pd-picker-tabs" role="tablist" aria-label={t("picker.categories")}>
-              {tabs.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={id === activeTab}
-                  className="pd-picker-tab"
-                  onClick={() => setTab(id)}
-                >
-                  {t(TAB_LABEL[id])}
-                </button>
-              ))}
+            {/* The quote coin stays put; the categories beside it scroll sideways. */}
+            <div className="pd-picker-cats">
+              {quotes.length > 1 && (
+                <Select
+                  className="pd-picker-quote"
+                  label={t("picker.quote")}
+                  value={activeQuote ?? ALL_QUOTES}
+                  options={[
+                    { value: ALL_QUOTES, label: t("picker.allQuotes") },
+                    ...quotes.map((q) => ({ value: q, label: q })),
+                  ]}
+                  onChange={setQuote}
+                />
+              )}
+              <div className="pd-picker-tabs" role="tablist" aria-label={t("picker.categories")}>
+                {tabs.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={id === activeTab}
+                    className="pd-picker-tab"
+                    onClick={() => setTab(id)}
+                  >
+                    {t(TAB_LABEL[id])}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="pd-picker-presets" role="radiogroup" aria-label={t("picker.sort")}>

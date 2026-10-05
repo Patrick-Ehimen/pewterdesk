@@ -375,6 +375,8 @@ pub fn market(asset: &AssetMeta, quote: &str) -> Market {
         min_size: step(asset.sz_decimals),
         max_leverage: asset.max_leverage,
         listed_by,
+        category: None,
+        listed_at: None,
     }
 }
 
