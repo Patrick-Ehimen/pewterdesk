@@ -1,4 +1,5 @@
 import type { VenueId } from "@pewterdesk/core";
+import type { ShareTarget } from "@pewterdesk/ui";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 
@@ -29,6 +30,8 @@ export interface TrayUpdate {
 export interface TrayPick {
   venue: VenueId;
   marketId: string;
+  /** Also bring up the Trade page with the market's chart (the floating window asks for it). */
+  chart?: boolean;
 }
 
 /** Events between the tray panel and the main window. */
@@ -79,7 +82,7 @@ export const appClient = {
   /** Main window: calls `handler` with a market picked from the tray panel (any venue). */
   onTraySelectMarket: (handler: (pick: TrayPick) => void) => onEvent(TRAY_SELECT_EVENT, handler),
 
-  /** Tray panel: puts a market on screen in the main window, and opens it. */
+  /** Tray panel and floating window: puts a market on screen in the main window, and opens it. */
   selectMarketFromTray: async (pick: TrayPick) => {
     if (!isTauri()) return;
     await emit(TRAY_SELECT_EVENT, pick);
@@ -110,6 +113,13 @@ export const appClient = {
   showFloat: async () => {
     if (isTauri()) await invoke("show_float");
   },
+
+  /**
+   * Floating window: shows itself as a notification, top right, if it isn't
+   * on screen. Resolves to whether that brought it up.
+   */
+  showFloatNotice: async (): Promise<boolean> =>
+    isTauri() ? await invoke<boolean>("show_float_notice") : false,
 
   /** Floating window: hides itself. */
   hideFloat: async () => {
@@ -150,6 +160,19 @@ export const appClient = {
       return await invoke<string>("save_share_image", new Uint8Array(await png.arrayBuffer()));
     } catch (err) {
       throw new Error(typeof err === "string" ? err : "couldn't save the image");
+    }
+  },
+
+  /**
+   * Opens a site's post page in the system browser, with `text` as the
+   * caption where it takes one. Rust builds the URL from the site's name.
+   */
+  openShare: async (target: ShareTarget, text: string): Promise<void> => {
+    if (!isTauri()) throw new Error("not in the desktop app");
+    try {
+      await invoke("open_share", { target, text });
+    } catch (err) {
+      throw new Error(typeof err === "string" ? err : "couldn't open the browser");
     }
   },
 

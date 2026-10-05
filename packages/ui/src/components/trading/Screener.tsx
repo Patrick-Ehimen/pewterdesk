@@ -199,7 +199,30 @@ interface ScreenerProps {
   progress?: string;
   /** The first snapshot hasn't arrived: skeleton rows in place of markets. */
   loading?: boolean;
+  /** How the table is shown, as the tab's settings choose; everything by default. */
+  display?: ScreenerDisplay;
 }
+
+/** A Screener or Watchlist tab's own settings. */
+export interface ScreenerDisplay {
+  volume: boolean;
+  funding: boolean;
+  /** The "25x" badge beside each market. */
+  leverage: boolean;
+  logos: boolean;
+  /** Tighter rows, to fit more markets. */
+  dense: boolean;
+  /** Markets under this 24h volume (USD) are left out; 0 keeps all. */
+  minVolume: number;
+}
+export const DEFAULT_SCREENER_DISPLAY: ScreenerDisplay = {
+  volume: true,
+  funding: true,
+  leverage: true,
+  logos: true,
+  dense: false,
+  minVolume: 0,
+};
 
 /**
  * Every market, after the design's screener: filter chips with counts,
@@ -218,6 +241,7 @@ export function Screener({
   meta,
   progress,
   loading = false,
+  display = DEFAULT_SCREENER_DISPLAY,
 }: ScreenerProps) {
   const full = variant === "full";
   const [filter, setFilter] = useState<ScreenerFilter>("all");
@@ -238,11 +262,17 @@ export function Screener({
   const active: ScreenerFilter = watchlistOnly ? "starred" : filter;
   const needle = query.trim();
   const shown = sortRows(
-    rows.filter((r) => matchesFilter(r, active, starred) && matchesSearch(r.market, needle)),
+    rows.filter(
+      (r) =>
+        matchesFilter(r, active, starred) &&
+        matchesSearch(r.market, needle) &&
+        r.volume >= display.minVolume,
+    ),
     sort.by,
     sort.descending,
   );
   const show = (c: OptionalColumn) => {
+    if ((c === "volume" && !display.volume) || (c === "funding" && !display.funding)) return false;
     if (!full) return c === "volume" || c === "funding";
     return !hidden.has(c);
   };
@@ -285,7 +315,7 @@ export function Screener({
           : t("screener.noRows");
 
   return (
-    <div className="pd-screener" data-variant={variant}>
+    <div className="pd-screener" data-variant={variant} data-dense={display.dense || undefined}>
       <div className="pd-screener-bar">
         {!watchlistOnly && (
           <div className="pd-chips" role="radiogroup" aria-label={t("markets.show")}>
@@ -435,11 +465,11 @@ export function Screener({
                     className="pd-row-button"
                     onClick={() => onSelect(r.market)}
                   >
-                    <TokenIcon market={r.market} />
+                    {display.logos && <TokenIcon market={r.market} />}
                     {r.market.base}
                   </button>
                   <ListedBy market={r.market} />
-                  <span className="pd-lev">{r.market.maxLeverage}x</span>
+                  {display.leverage && <span className="pd-lev">{r.market.maxLeverage}x</span>}
                 </td>
                 <td className="pd-num">{formatNumber(r.price, decimalsOf(r.rawPrice))}</td>
                 {show("change1h") && <td className="pd-num">{pct(r.change1h)}</td>}

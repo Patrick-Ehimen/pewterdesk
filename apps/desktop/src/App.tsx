@@ -15,10 +15,8 @@ import type {
 import {
   AccountSummary,
   AlertsPopover,
-  BOOK_GROUPS,
   BOOK_SIDES,
   BOOK_UNITS,
-  type BookGroup,
   type BookSides,
   BookSidesPicker,
   type BookUnit,
@@ -30,8 +28,6 @@ import {
   firedAlertText,
   formatNumber,
   formatSigned,
-  groupStep,
-  type IconLoader,
   MarketPicker,
   MarketStatsBar,
   OpenOrdersPanel,
@@ -47,7 +43,6 @@ import {
   PositionsTable,
   QuickTrade,
   type RowMode,
-  Select,
   type ShareCard,
   SummarySkeleton,
   type SymbolFor,
@@ -133,9 +128,9 @@ import {
 } from "./lib/account";
 import { accountEvents } from "./lib/accountEvents";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
-import { liquidationDistance, positionKey, RISK_WITHIN } from "./lib/float";
-import { peekSavedIcon, withIconCache } from "./lib/iconCache";
-import { firstIcon, iconSources } from "./lib/marketIcons";
+import { liquidationDistance, positionKey, RISK_CLEAR, RISK_WITHIN } from "./lib/float";
+import { peekSavedIcon } from "./lib/iconCache";
+import { loadIcon } from "./lib/loadIcon";
 import { desktopNotify, notificationsOn, saveNotifications } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
@@ -149,6 +144,7 @@ import {
   saveQuickTrade,
 } from "./lib/quickTrade";
 import { loadMarket, saveMarket } from "./lib/selectedMarket";
+import { playSound } from "./lib/sound";
 import { loadVenue, saveVenue, VENUE_IDS, VENUES } from "./lib/venues";
 import {
   addPanel,
@@ -163,12 +159,6 @@ import {
 const MIN_SPLASH_MS = 2000;
 const MAX_SPLASH_MS = 8000;
 
-/** Market logos, fetched by the venue adapter; stable so TokenIcon's cache holds. */
-// Saved between sessions (lib/iconCache), so they draw at once on the next launch.
-// Bybit serves none, so its markets borrow the coin's logo (lib/marketIcons).
-const loadIcon: IconLoader = withIconCache((market, venue) =>
-  firstIcon(iconSources(venue, market), venueClient.marketIcon),
-);
 /** The venue chips in the market picker. */
 const VENUE_CHIPS = VENUE_IDS.map((id) => ({
   id,
@@ -333,14 +323,11 @@ function OrderBookPanel({
   venue,
   book,
   market,
-  step,
   marketsLoading,
 }: {
   venue: VenueId;
   book: Feed<OrderBook>;
   market?: Market;
-  /** Merges the book's price levels into steps of this size; unset shows them as sent. */
-  step?: string;
   /** No market can be picked until the list arrives; show the skeleton meanwhile. */
   marketsLoading: boolean;
 }) {
@@ -390,7 +377,6 @@ function OrderBookPanel({
               <div className="book-stale-wrap" data-stale={stale || undefined}>
                 <OrderBookView
                   book={data}
-                  step={step}
                   base={market?.base}
                   quote={market?.quote}
                   mode={bookMode}
@@ -470,8 +456,10 @@ export function App() {
         const text = orderText(request, baseFor(request.market));
         try {
           await venueClient.placeOrder(trading.venue, trading.id, request);
+          playSound("order");
           toast({ title: t("toast.orderPlaced"), body: text });
         } catch (err) {
+          playSound("error");
           const why = err instanceof Error ? err.message : t("ticket.failed");
           toast({ title: t("toast.orderRejected"), body: `${text} · ${why}`, tone: "warn" });
           throw err;
@@ -481,6 +469,7 @@ export function App() {
   const cancelOrder = trading
     ? async (order: Order) => {
         await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+        playSound("cancel");
         toast({ title: t("toast.orderCancelled"), body: orderLine(order) });
       }
     : undefined;
@@ -490,9 +479,8 @@ export function App() {
     const quote = quoteFor("position" in from ? from.position.market : from.closed.market);
     const side = "position" in from ? from.position.side : from.closed.side;
     const lev = "position" in from ? from.position.leverage : from.closed.leverage;
-    const sideLabel = `${t(side === "long" ? "side.long" : "side.short")}${
-      lev ? ` ${formatNumber(lev)}x` : ""
-    }`;
+    const when = (time: number) =>
+      dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(time);
     const brandLogo = isLightTheme(appearance.theme)
       ? logo.horizontal.lightBg
       : logo.horizontal.darkBg;
@@ -500,8 +488,12 @@ export function App() {
       venue: venueInfo.label,
       venueLogo: venueLogos[venue],
       brandLogo,
-      sideLabel,
       side,
+      position: {
+        label: t("share.position"),
+        value: t(side === "long" ? "side.long" : "side.short"),
+      },
+      leverage: lev ? { label: t("share.leverage"), value: `${formatNumber(lev)}x` } : undefined,
     };
     if ("position" in from) {
       const p = from.position;
@@ -513,14 +505,22 @@ export function App() {
         profit: pnl >= 0,
         roi:
           margin > 0
-            ? { label: t("share.roi"), value: `${formatSigned((pnl / margin) * 100)}%` }
+            ? {
+                label: t("share.roi"),
+                short: t("share.roi"),
+                value: `${formatSigned((pnl / margin) * 100)}%`,
+              }
             : undefined,
-        pnl: { label: t("share.unrealized", { quote }), value: formatSigned(pnl) },
+        pnl: {
+          label: t("share.unrealized", { quote }),
+          short: t("share.pnlShort"),
+          value: formatSigned(pnl),
+        },
         prices: [
-          { label: t("share.entry"), value: formatNumber(p.entryPrice) },
-          { label: t("share.market"), value: formatNumber(p.markPrice) },
+          { label: t("share.entry"), value: formatNumber(p.entryPrice), kind: "entry" },
+          { label: t("share.market"), value: formatNumber(p.markPrice), kind: "mark" },
         ],
-        footnote: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(Date.now()),
+        footnote: t("share.asOf", { date: when(Date.now()) }),
       });
     } else {
       const c = from.closed;
@@ -531,25 +531,33 @@ export function App() {
         market: symbolFor(c.market),
         profit: pnl >= 0,
         roi:
-          roi === undefined ? undefined : { label: t("share.roi"), value: `${formatSigned(roi)}%` },
-        pnl: { label: t("share.realized", { quote }), value: formatSigned(pnl) },
+          roi === undefined
+            ? undefined
+            : { label: t("share.roi"), short: t("share.roi"), value: `${formatSigned(roi)}%` },
+        pnl: {
+          label: t("share.realized", { quote }),
+          short: t("share.pnlShort"),
+          value: formatSigned(pnl),
+        },
         prices: [
-          { label: t("share.entry"), value: formatNumber(c.entryPrice) },
-          { label: t("share.exit"), value: formatNumber(c.exitPrice) },
+          { label: t("share.entry"), value: formatNumber(c.entryPrice), kind: "entry" },
+          { label: t("share.exit"), value: formatNumber(c.exitPrice), kind: "exit" },
         ],
-        footnote: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(c.time),
+        footnote: t("share.closedAt", { date: when(c.time) }),
       });
     }
   };
   const amend = trading
     ? async (order: Order, change: OrderAmend) => {
         await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+        playSound("saved");
         toast({ title: t("toast.orderChanged"), body: symbolFor(order.market) });
       }
     : undefined;
   const protect = trading
     ? async (position: Position, protection: PositionProtection) => {
         await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+        playSound("saved");
         toast({ title: t("toast.protectionSaved"), body: symbolFor(position.market) });
       }
     : undefined;
@@ -604,15 +612,26 @@ export function App() {
   showFromTray.current = showMarket;
   useEffect(
     () =>
-      appClient.onTraySelectMarket(({ venue, marketId }) => {
-        if (VENUE_IDS.includes(venue)) showFromTray.current(venue, marketId);
+      appClient.onTraySelectMarket(({ venue, marketId, chart }) => {
+        if (!VENUE_IDS.includes(venue)) return;
+        showFromTray.current(venue, marketId);
+        // From the floating window: straight to that market's chart.
+        if (chart) {
+          setPage("trade");
+          setChartRequest((n) => n + 1);
+        }
       }),
     [],
   );
   // Opened from the macOS menu bar's "About PewterDesk".
   useEffect(() => appClient.onOpenAbout(() => setAboutOpen(true)), []);
-  // Nothing plays sounds yet; this is the preference fill alerts will read.
+  // Whether the app's sounds play (lib/sound reads the same stored choice).
   const [sound, setSound] = useStoredChoice("pd.sound", SOUND, "on");
+  // Switched on, it says so; the choice is saved before the sound checks it.
+  const changeSound = (on: boolean) => {
+    setSound(on ? "on" : "off");
+    if (on) setTimeout(() => playSound("saved"), 80);
+  };
 
   const marketList = markets.status === "live" ? markets.data : [];
   const selected: Market | undefined =
@@ -679,8 +698,6 @@ export function App() {
     saveQuickTrade(next);
   };
   const [quickQty, setQuickQty] = useState("");
-  // How coarse the order book's price levels show, as a multiple of the tick.
-  const [bookGroup, setBookGroup] = useStoredChoice<BookGroup>("pd.book.group", BOOK_GROUPS, "1");
   // The ticket's confirmation: on by default; turning it back on in Settings
   // also forgets "don't confirm orders under…".
   const [notifications, setNotifications] = useState(notificationsOn);
@@ -744,6 +761,7 @@ export function App() {
     applyLeverage &&
     (async (leverage: number) => {
       await applyLeverage(leverage);
+      playSound("saved");
       toast({
         title: t("toast.leverageSet"),
         body: t("toast.leverageBody", { symbol: selected?.symbol ?? "", leverage }),
@@ -753,6 +771,7 @@ export function App() {
     applyMarginMode &&
     (async (mode: MarginMode) => {
       await applyMarginMode(mode);
+      playSound("saved");
       toast({
         title: t("toast.marginSet"),
         body: t(mode === "isolated" ? "ticket.isolated" : "ticket.cross"),
@@ -771,7 +790,10 @@ export function App() {
     const prev = lastSnapshot.current;
     lastSnapshot.current = { key, data: liveAccount };
     if (!prev || prev.key !== key) return;
-    for (const event of accountEvents(prev.data, liveAccount)) {
+    const events = accountEvents(prev.data, liveAccount);
+    // One sound for the snapshot, however many things changed in it.
+    if (events.length > 0) playSound("fill");
+    for (const event of events) {
       if (event.kind === "partialFill") {
         const o = event.order;
         announce({
@@ -826,31 +848,40 @@ export function App() {
     if (!newestFired || newestFired.id === lastFired.current) return;
     const until = alerts.fired.findIndex((f) => f.id === lastFired.current);
     lastFired.current = newestFired.id;
+    playSound("alert");
     for (const f of alerts.fired.slice(0, until === -1 ? 1 : until).reverse()) {
       announce({ title: t("toast.alert"), body: firedAlertText(f) });
     }
   }, [newestFired, alerts.fired]);
 
-  // A position close to its liquidation price: a toast and a desktop
-  // notification, once, and again only after it has moved back out of range.
+  // A position close to its liquidation price: a toast and a sound, once, and again only after it has moved back out of range.
   const warned = useRef(new Set<string>());
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per snapshot; the lookups it reads are stable enough
   useEffect(() => {
-    const positions = liveAccount?.positions ?? [];
-    const near = new Set<string>();
-    for (const p of positions) {
+    // No snapshot (loading, or a reconnect) says nothing about the positions:
+    // what was warned about stays warned about.
+    if (!liveAccount) return;
+    const still = new Set<string>();
+    for (const p of liveAccount.positions) {
       const distance = liquidationDistance(p);
-      if (distance === undefined || distance > RISK_WITHIN) continue;
+      if (distance === undefined) continue;
       const key = positionKey(p);
-      near.add(key);
-      if (warned.current.has(key)) continue;
-      announce({
+      const already = warned.current.has(key);
+      // Warned once within the threshold; forgotten only once it's back out
+      // past a wider one, so hovering at the edge doesn't warn again.
+      if (already && distance <= RISK_CLEAR) still.add(key);
+      if (already || distance > RISK_WITHIN) continue;
+      still.add(key);
+      playSound("alert");
+      // A toast here; outside the app, the floating window shows it as a
+      // notification of its own (FloatWindow), so no system one as well.
+      toast({
         title: t("notify.liqTitle", { symbol: symbolFor(p.market) }),
         body: t("notify.liqBody", { pct: formatNumber(distance * 100, 2) }),
         tone: "warn",
       });
     }
-    warned.current = near;
+    warned.current = still;
   }, [liveAccount]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a switch of venue or account closes it
   useEffect(() => setDrawerFor(undefined), [venue, address]);
@@ -955,9 +986,6 @@ export function App() {
             venue={venue}
             book={book}
             market={selected}
-            step={
-              selected && bookGroup !== "1" ? groupStep(selected.tickSize, bookGroup) : undefined
-            }
             marketsLoading={markets.status === "loading"}
           />
         );
@@ -1032,25 +1060,7 @@ export function App() {
   const renderAside = (kind: PanelKind): ReactNode => {
     switch (kind) {
       case "orderBook":
-        // The market, and how coarse its price levels show: steps of the
-        // market's tick (0.1, 1, 10, 50, 100 where the tick is 0.1).
-        return (
-          <span className="book-aside">
-            {selected?.symbol}
-            {selected && (
-              <Select<BookGroup>
-                className="book-group"
-                label={t("book.group")}
-                value={bookGroup}
-                options={BOOK_GROUPS.map((g) => ({
-                  value: g,
-                  label: groupStep(selected.tickSize, g),
-                }))}
-                onChange={setBookGroup}
-              />
-            )}
-          </span>
-        );
+        return selected?.symbol;
       case "account":
         return venueInfo.label;
       default:
@@ -1143,7 +1153,7 @@ export function App() {
               }
             }}
             soundOn={sound === "on"}
-            onSound={(on) => setSound(on ? "on" : "off")}
+            onSound={changeSound}
             alerts={
               <AlertsPopover
                 alerts={alerts.alerts}
@@ -1154,7 +1164,10 @@ export function App() {
                 market={selected}
                 venues={venueChips}
                 currentOf={alerts.currentOf}
-                onCreate={alerts.create}
+                onCreate={(draft) => {
+                  alerts.create(draft);
+                  playSound("saved");
+                }}
                 onToggle={alerts.toggle}
                 onDelete={alerts.remove}
                 onClearFired={alerts.clearFired}
@@ -1226,13 +1239,17 @@ export function App() {
           <SettingsPage
             onClose={() => goTo("trade")}
             soundOn={sound === "on"}
-            onSound={(on) => setSound(on ? "on" : "off")}
+            onSound={changeSound}
             confirmOrders={orderConfirm.enabled}
-            onConfirmOrders={(enabled) => updateOrderConfirm({ enabled })}
+            onConfirmOrders={(enabled) => {
+              updateOrderConfirm({ enabled });
+              playSound("saved");
+            }}
             notifications={notifications}
             onNotifications={(on) => {
               setNotifications(on);
               saveNotifications(on);
+              playSound("saved");
             }}
             onTestNotification={() =>
               void desktopNotify(t("notify.testTitle"), t("notify.testBody"), true)
@@ -1454,6 +1471,7 @@ export function App() {
             card={shareCard}
             demo={activeOnVenue !== undefined && isDemoAccount(activeOnVenue)}
             onSave={appClient.saveShareImage}
+            onShare={appClient.openShare}
             onClose={() => setShareCard(undefined)}
           />
         )}

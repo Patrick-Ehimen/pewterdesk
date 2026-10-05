@@ -16,6 +16,12 @@ import {
 
 /** The dashed band either side of the mid, as a fraction of it: the default width. */
 export const BAND = 0.005;
+/** Band labels: px per character of the mono type, the gap to their line, and a row's height. */
+const BAND_CHAR_W = 7;
+const BAND_LABEL_GAP = 6;
+const BAND_ROW_H = 34;
+/** Room kept clear at the plot's edge for the venue label under an outside band label. */
+const BAND_EDGE_ROOM = 48;
 /** The narrowest band, and the step the arrow keys move it by (0.05%). */
 const BAND_MIN = 0.0005;
 const BAND_KEY = "pd.depth.band";
@@ -49,6 +55,31 @@ function useSize<T extends HTMLElement>() {
 /** Share of the plot's height the cumulative curves and the level bars may use. */
 const CURVE_H = 0.86;
 const BARS_H = 0.42;
+/** The closest two level bars are ever drawn, in px. */
+const BAR_PITCH_MIN = 2;
+
+/** What the depth chart draws, as the Depth tab's settings choose. */
+export interface DepthDisplay {
+  /** Curves as straight runs between levels instead of steps. */
+  smooth: boolean;
+  grid: boolean;
+  /** A bar for each level's own size, under the curves. */
+  bars: boolean;
+  /** Pick out the unusually large levels. */
+  walls: boolean;
+  /** The draggable ±band around the mid. */
+  band: boolean;
+  /** How many bars fit across the plot; levels closer than that share one. */
+  columns: number;
+}
+export const DEFAULT_DEPTH_DISPLAY: DepthDisplay = {
+  smooth: false,
+  grid: true,
+  bars: true,
+  walls: true,
+  band: true,
+  columns: 200,
+};
 
 interface Hover {
   x: number;
@@ -72,6 +103,9 @@ interface DepthChartProps {
   detailed?: boolean;
   /** Half-width of the detailed view around the mid, as a fraction (0.01 = ±1%). */
   range?: number;
+  /** The compact view zoomed to ±span of the mid, in place of the whole book. */
+  span?: number;
+  display?: DepthDisplay;
 }
 
 /**
@@ -80,7 +114,15 @@ interface DepthChartProps {
  * levels picked out and a band around the mid that can be dragged wider or
  * narrower (both lines move together, mirrored). Hover for a level's details.
  */
-export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }: DepthChartProps) {
+export function DepthChart({
+  book,
+  venue,
+  base,
+  detailed = false,
+  range = 0.01,
+  span,
+  display = DEFAULT_DEPTH_DISPLAY,
+}: DepthChartProps) {
   const gradientId = useId();
   const [ref, { width, height }] = useSize<HTMLDivElement>();
   const [hover, setHover] = useState<Hover>();
@@ -103,11 +145,12 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
   }
 
   const mid = (bestBid.price + bestAsk.price) / 2;
-  // Compact: the whole book. Detailed: ±range around the mid.
-  const minP = detailed ? mid * (1 - range) : (all.bids.at(-1)?.price ?? mid);
-  const maxP = detailed ? mid * (1 + range) : (all.asks.at(-1)?.price ?? mid);
-  const bids = detailed ? all.bids.filter((l) => l.price >= minP) : all.bids;
-  const asks = detailed ? all.asks.filter((l) => l.price <= maxP) : all.asks;
+  // Compact: the whole book, unless zoomed to a span. Detailed: ±range around the mid.
+  const reach = detailed ? range : span;
+  const minP = reach ? mid * (1 - reach) : (all.bids.at(-1)?.price ?? mid);
+  const maxP = reach ? mid * (1 + reach) : (all.asks.at(-1)?.price ?? mid);
+  const bids = reach ? all.bids.filter((l) => l.price >= minP) : all.bids;
+  const asks = reach ? all.asks.filter((l) => l.price <= maxP) : all.asks;
   const bidTotal = bids.at(-1)?.cumulative ?? 0;
   const askTotal = asks.at(-1)?.cumulative ?? 0;
 
@@ -119,8 +162,6 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
   const x = (price: number) => PAD.left + ((price - minP) / (maxP - minP || 1)) * plotW;
   const maxCum = Math.max(bidTotal, askTotal) || 1;
   const yCum = (total: number) => floor - (total / maxCum) * plotH * CURVE_H;
-  const maxLevel = Math.max(...bids.map((l) => l.notional), ...asks.map((l) => l.notional), 0) || 1;
-  const barH = (notional: number) => (notional / maxLevel) * plotH * BARS_H;
 
   // Bars as wide as the tightest gap between levels allows.
   const prices = [...bids, ...asks].map((l) => l.price).sort((a, b) => a - b);
@@ -129,17 +170,43 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
     const d = (prices[i] ?? 0) - (prices[i - 1] ?? 0);
     if (d > 0) gap = Math.min(gap, d);
   }
-  const barW = Math.min(
-    Math.max(((Number.isFinite(gap) ? gap : 0) / (maxP - minP || 1)) * plotW * 0.7, 2),
-    12,
-  );
+  const pitch = ((Number.isFinite(gap) ? gap : 0) / (maxP - minP || 1)) * plotW;
+  // A deep book has more levels than the plot has pixels; drawn one bar each
+  // they merge into a solid block. Levels sharing a column are summed instead.
+  const barPitch = Math.max(plotW / Math.max(display.columns, 1), BAR_PITCH_MIN);
+  const dense = pitch < barPitch;
+  const barW = dense ? Math.max(barPitch - 1, 1) : Math.min(Math.max(pitch * 0.7, 2), 12);
+  const bars = (levels: DepthLevel[]) => {
+    if (!dense) return levels.map((l) => ({ at: x(l.price), notional: l.notional, wall: l.wall }));
+    const columns = new Map<number, { at: number; notional: number; wall: boolean }>();
+    for (const l of levels) {
+      const column = Math.floor((x(l.price) - PAD.left) / barPitch);
+      const bar = columns.get(column);
+      if (bar) {
+        bar.notional += l.notional;
+        bar.wall ||= Boolean(l.wall);
+      } else {
+        columns.set(column, {
+          at: PAD.left + (column + 0.5) * barPitch,
+          notional: l.notional,
+          wall: Boolean(l.wall),
+        });
+      }
+    }
+    return [...columns.values()];
+  };
+  const bidBars = bars(bids);
+  const askBars = bars(asks);
+  const maxLevel = Math.max(...[...bidBars, ...askBars].map((b) => b.notional), 0) || 1;
+  const barH = (notional: number) => (notional / maxLevel) * plotH * BARS_H;
 
-  /** A stepped area from the mid outward, closed down to the axis. */
+  /** An area from the mid outward (stepped, or level to level), closed down to the axis. */
   const area = (levels: DepthLevel[]) => {
     let d = `M ${x(mid)} ${floor}`;
     let prev = 0;
     for (const l of levels) {
-      d += ` L ${x(l.price)} ${yCum(prev)} L ${x(l.price)} ${yCum(l.cumulative)}`;
+      if (!display.smooth) d += ` L ${x(l.price)} ${yCum(prev)}`;
+      d += ` L ${x(l.price)} ${yCum(l.cumulative)}`;
       prev = l.cumulative;
     }
     const last = levels.at(-1);
@@ -157,13 +224,43 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
 
   // The band mirrors around the mid: both lines are one width, so moving one
   // moves the other the opposite way. It stays inside the view.
-  const bandMax = detailed ? range * 0.98 : Math.max(mid - minP, maxP - mid) / mid;
+  const bandMax = reach ? reach * 0.98 : Math.max(mid - minP, maxP - mid) / mid;
   const clampBand = (b: number) => Math.min(Math.max(b, BAND_MIN), Math.max(bandMax, BAND_MIN));
   const bandWidth = clampBand(band);
   const bandLow = mid * (1 - bandWidth);
   const bandHigh = mid * (1 + bandWidth);
   const bidShare = bidTotal / (bidTotal + askTotal || 1);
   const pct = formatNumber(bandWidth * 100, 2);
+  // Where each band line's labels go. Between the lines when both fit there;
+  // on a deep book the lines sit close together, so each goes outside its
+  // line instead, or onto a lower row when there's no room outside either.
+  const bandLines = [
+    { price: bandLow, side: "bid" as const, depth: depthWithin(bids, mid, bandWidth) },
+    { price: bandHigh, side: "ask" as const, depth: depthWithin(asks, mid, bandWidth) },
+  ].map((b) => {
+    const priceText = formatNumber(b.price, decimals);
+    const depthText = `$${formatCompact(b.depth)} ${t("depth.band", { pct })}`;
+    const room = Math.max(priceText.length, depthText.length) * BAND_CHAR_W + BAND_LABEL_GAP;
+    return { ...b, priceText, depthText, room };
+  });
+  const [bidLine, askLine] = bandLines;
+  const bandInside = x(bandHigh) - x(bandLow) >= (bidLine?.room ?? 0) + (askLine?.room ?? 0) + 8;
+  const bidOut = !bandInside && x(bandLow) - PAD.left >= (bidLine?.room ?? 0) + BAND_EDGE_ROOM;
+  const askOut = !bandInside && right - x(bandHigh) >= (askLine?.room ?? 0) + BAND_EDGE_ROOM;
+  const bandLabels = bandLines.map((b) => {
+    const out = b.side === "bid" ? bidOut : askOut;
+    const otherOut = b.side === "bid" ? askOut : bidOut;
+    // Towards the mid unless it's outside: bid labels then run right, ask labels left.
+    const towardsRight = (b.side === "bid") !== out;
+    // Two labels sharing the space between the lines: the ask's drops a row.
+    const lowered = !bandInside && !out && (b.side === "ask" || otherOut);
+    return {
+      ...b,
+      anchor: towardsRight ? ("start" as const) : ("end" as const),
+      labelX: x(b.price) + (towardsRight ? BAND_LABEL_GAP : -BAND_LABEL_GAP),
+      labelY: PAD.top + 6 + (lowered ? BAND_ROW_H : 0),
+    };
+  });
   const priceAt = (px: number) => minP + ((px - PAD.left) / plotW) * (maxP - minP);
 
   // Compact: a few evenly spaced ticks clear of the ends and best prices.
@@ -172,9 +269,12 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
     ? [mid * (1 - range / 2), mid * (1 + range / 2)]
     : [0.2, 0.4, 0.6, 0.8]
         .map((f) => minP + f * (maxP - minP))
-        .filter(
-          (p) => Math.abs(x(p) - x(bestBid.price)) > 40 && Math.abs(x(p) - x(bestAsk.price)) > 40,
-        );
+        .filter((p) => {
+          // Clear of the best bid's label (left of its price) and the best ask's (right).
+          const half = (formatNumber(p, decimals).length * BAND_CHAR_W) / 2 + 10;
+          const label = formatNumber(bestAsk.price, decimals).length * BAND_CHAR_W + 6;
+          return x(p) + half < x(bestBid.price) - label || x(p) - half > x(bestAsk.price) + label;
+        });
 
   const onMove = (e: PointerEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -246,7 +346,9 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
             const y = detailed ? floor - f * plotH * CURVE_H : PAD.top + plotH * f;
             return (
               <g key={f}>
-                <line className="pd-depth-grid" x1={PAD.left} x2={right} y1={y} y2={y} />
+                {display.grid && (
+                  <line className="pd-depth-grid" x1={PAD.left} x2={right} y1={y} y2={y} />
+                )}
                 {detailed && (
                   <text className="pd-depth-tick" x={right + 6} y={y + 4}>
                     ${formatCompact(maxCum * f)}
@@ -276,8 +378,6 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
           {/* Cumulative areas */}
           <path d={area(bids)} fill={`url(#${gradientId}-bid)`} />
           <path d={area(asks)} fill={`url(#${gradientId}-ask)`} />
-          <path className="pd-depth-edge-bid" d={edge(bids)} />
-          <path className="pd-depth-edge-ask" d={edge(asks)} />
           {venue && bids.length > 0 && (
             <text
               className="pd-depth-venue"
@@ -301,14 +401,14 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
           )}
 
           {/* Level bars; walls outlined and glowing */}
-          {(["bid", "ask"] as const).map((side) =>
-            (side === "bid" ? bids : asks).map((l) => (
+          {(display.bars ? (["bid", "ask"] as const) : []).map((side) =>
+            (side === "bid" ? bidBars : askBars).map((l) => (
               <rect
-                key={`${side}${l.price}`}
+                key={`${side}${l.at}`}
                 className="pd-depth-bar"
                 data-side={side}
-                data-wall={l.wall || undefined}
-                x={x(l.price) - barW / 2}
+                data-wall={(display.walls && l.wall) || undefined}
+                x={l.at - barW / 2}
                 y={floor - barH(l.notional)}
                 width={barW}
                 height={Math.max(barH(l.notional), 1)}
@@ -316,6 +416,10 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
               />
             )),
           )}
+
+          {/* The curves' edges, over the bars so they stay readable */}
+          <path className="pd-depth-edge-bid" d={edge(bids)} />
+          <path className="pd-depth-edge-ask" d={edge(asks)} />
 
           {/* Detailed: the mid, as a dashed line and a boxed label */}
           {detailed && (
@@ -338,7 +442,7 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
             { wall: bidWall, side: "bid" },
             { wall: askWall, side: "ask" },
           ].map(({ wall, side }) =>
-            wall ? (
+            wall && display.walls ? (
               <path
                 key={side}
                 className="pd-depth-marker"
@@ -351,21 +455,8 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
           )}
 
           {/* ±band around the mid */}
-          {[
-            {
-              price: bandLow,
-              side: "bid" as const,
-              anchor: "start" as const,
-              depth: depthWithin(bids, mid, bandWidth),
-            },
-            {
-              price: bandHigh,
-              side: "ask" as const,
-              anchor: "end" as const,
-              depth: depthWithin(asks, mid, bandWidth),
-            },
-          ].map((b) =>
-            b.price > minP && b.price < maxP ? (
+          {bandLabels.map((b) =>
+            display.band && b.price > minP && b.price < maxP ? (
               <g
                 key={b.side}
                 className="pd-depth-handle"
@@ -416,20 +507,20 @@ export function DepthChart({ book, venue, base, detailed = false, range = 0.01 }
                 />
                 <text
                   className="pd-depth-band-label"
-                  x={x(b.price) + (b.anchor === "start" ? 6 : -6)}
-                  y={PAD.top + 6}
+                  x={b.labelX}
+                  y={b.labelY}
                   textAnchor={b.anchor}
                 >
-                  {formatNumber(b.price, decimals)}
+                  {b.priceText}
                 </text>
                 <text
                   className="pd-depth-band-depth"
                   data-side={b.side}
-                  x={x(b.price) + (b.anchor === "start" ? 6 : -6)}
-                  y={PAD.top + 22}
+                  x={b.labelX}
+                  y={b.labelY + 16}
                   textAnchor={b.anchor}
                 >
-                  ${formatCompact(b.depth)} {t("depth.band", { pct })}
+                  {b.depthText}
                 </text>
               </g>
             ) : null,

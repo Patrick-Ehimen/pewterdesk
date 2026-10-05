@@ -111,7 +111,10 @@ discover it on their own. The reasoning behind the rules is in
   page's own origin) that asks the extension to sign the approval
   `wallet.rs` builds. It stops after a connection, a cancel, or 10 minutes.
 - `apps/desktop/src-tauri/src/coin_info.rs` - the Markets panel's Overview
-  tab, from CoinGecko (`api.coingecko.com` only). Its optional demo API key
+  tab, from CoinGecko (`api.coingecko.com` only), and a coin's logo as a last
+  resort when no venue has one (`coin_logo`; the image from
+  `coin-images.coingecko.com` only, a raster image within a size cap, never
+  for a stock, ETF, commodity or forex market). Its optional demo API key
   lives in the keychain (`coingecko:demo`) and is never returned. Coin links
   reach JS as labels and indexes and open only via `open_coin_link`, which
   opens a URL Rust itself fetched, filtered by `safe_url` (it goes through
@@ -124,6 +127,10 @@ discover it on their own. The reasoning behind the rules is in
   orders always go as IOC limits at the slippage bound), and `auth.rs` signs
   (HMAC over exactly the bytes sent). Demo accounts (ids `demo:{uid}`, keys
   under `bybit:demo:{uid}`) use Bybit's demo host, `api-demo.bybit.com`.
+  Coin logos come from Bybit's convert coin list (`icons.rs`): one more
+  signed, read-only request (`/v5/asset/exchange/query-coin-list`, only the
+  logos are read), and the images from Bybit's image host, `t1.bycsi.com` -
+  a listed logo anywhere else is ignored.
 - The `ExchangeAdapter` trait and the Tauri commands that expose it
   (`place_order`, `cancel_order`, `amend_order`, `set_position_protection`,
   `set_leverage`, `set_margin_mode` in `venues.rs`). Together they are the
@@ -137,6 +144,12 @@ discover it on their own. The reasoning behind the rules is in
   typed data. The commands build the account's keychain reference themselves
   (`trading_account`) and, for now, accept Bybit demo accounts only - lifting
   that gate is a security-relevant change.
+- `apps/desktop/src-tauri/src/share.rs` - the P&L share card. Saving
+  writes the page's PNG (checked) to Downloads under a name Rust picks.
+  `open_share` opens a social site's post page: the page names one of a
+  fixed set of sites and passes a caption, and Rust builds the URL itself,
+  the caption percent-encoded into its one query value - never a URL from
+  the UI. The image goes by the clipboard, not through any site link.
 - `apps/desktop/src-tauri/src/float.rs` and `apps/desktop/src/float/` - the
   floating window: a second window (the same frontend at `#float`) that stays
   over other apps and can reach the trading commands above. It adds none: its

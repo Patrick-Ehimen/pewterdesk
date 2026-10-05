@@ -19,6 +19,7 @@ import {
 } from "react-icons/lu";
 import { type CoinInfo, type CoinLink, type CoinLinkKind, coinClient } from "../../api/venueClient";
 import { useCoinInfo } from "../../hooks/useVenueFeeds";
+import { DEFAULT_VIEW_PREFS, type ViewPrefs } from "../../lib/viewPrefs";
 
 type Section = "info" | "fundraising" | "tokenomics";
 
@@ -73,7 +74,7 @@ function Detail({ label, hint, value }: { label: MessageKey; hint: MessageKey; v
   );
 }
 
-function Info({ info }: { info: CoinInfo }) {
+function Info({ info, show }: { info: CoinInfo; show: ViewPrefs["overview"] }) {
   const [unfolded, setUnfolded] = useState(false);
   const usd = (v: number | null) => (v === null ? "-" : `$${formatNumber(v, 0)}`);
   const amount = (v: number | null) => (v === null ? "-" : formatNumber(v, 0));
@@ -102,30 +103,36 @@ function Info({ info }: { info: CoinInfo }) {
       </section>
 
       <div className="coin-side">
-        <section aria-labelledby="coin-about-title">
-          <h3 id="coin-about-title">{t("coin.about", { symbol: info.symbol })}</h3>
-          {info.description ? (
-            <>
-              <p className="coin-about" data-folded={(foldable && !unfolded) || undefined}>
-                {info.description}
-              </p>
-              {foldable && (
-                <button type="button" className="coin-more" onClick={() => setUnfolded((u) => !u)}>
-                  {t(unfolded ? "coin.showLess" : "coin.showMore")}
-                  {unfolded ? (
-                    <LuChevronsUp size={15} aria-hidden />
-                  ) : (
-                    <LuChevronsDown size={15} aria-hidden />
-                  )}
-                </button>
-              )}
-            </>
-          ) : (
-            <p className="coin-none">{t("coin.noData")}</p>
-          )}
-        </section>
+        {show.about && (
+          <section aria-labelledby="coin-about-title">
+            <h3 id="coin-about-title">{t("coin.about", { symbol: info.symbol })}</h3>
+            {info.description ? (
+              <>
+                <p className="coin-about" data-folded={(foldable && !unfolded) || undefined}>
+                  {info.description}
+                </p>
+                {foldable && (
+                  <button
+                    type="button"
+                    className="coin-more"
+                    onClick={() => setUnfolded((u) => !u)}
+                  >
+                    {t(unfolded ? "coin.showLess" : "coin.showMore")}
+                    {unfolded ? (
+                      <LuChevronsUp size={15} aria-hidden />
+                    ) : (
+                      <LuChevronsDown size={15} aria-hidden />
+                    )}
+                  </button>
+                )}
+              </>
+            ) : (
+              <p className="coin-none">{t("coin.noData")}</p>
+            )}
+          </section>
+        )}
 
-        {info.tags.length > 0 && (
+        {show.tags && info.tags.length > 0 && (
           <section aria-labelledby="coin-tags-title">
             <h3 id="coin-tags-title">{t("coin.tags")}</h3>
             <ul className="coin-chips">
@@ -138,7 +145,7 @@ function Info({ info }: { info: CoinInfo }) {
           </section>
         )}
 
-        {explorers.length > 0 && (
+        {show.links && explorers.length > 0 && (
           <section aria-labelledby="coin-explore-title">
             <h3 id="coin-explore-title">{t("coin.explore")}</h3>
             <ul className="coin-chips">
@@ -153,7 +160,7 @@ function Info({ info }: { info: CoinInfo }) {
           </section>
         )}
 
-        {socials.length > 0 && (
+        {show.socials && socials.length > 0 && (
           <section aria-labelledby="coin-socials-title">
             <h3 id="coin-socials-title">{t("coin.socials")}</h3>
             <ul className="coin-socials">
@@ -177,7 +184,7 @@ function Info({ info }: { info: CoinInfo }) {
           </section>
         )}
 
-        {official.length > 0 && (
+        {show.links && official.length > 0 && (
           <section aria-labelledby="coin-links-title">
             <h3 id="coin-links-title">{t("coin.links")}</h3>
             <ul className="coin-chips">
@@ -211,7 +218,14 @@ function Info({ info }: { info: CoinInfo }) {
  * has no fundraising or tokenomics data, so those say so. Markets that aren't
  * coins (HIP-3 stocks and the like) have no overview.
  */
-export function CoinOverview({ market }: { market?: Market }) {
+export function CoinOverview({
+  market,
+  show = DEFAULT_VIEW_PREFS.overview,
+}: {
+  market?: Market;
+  /** Which parts of the Info section show, as the tab's settings choose. */
+  show?: ViewPrefs["overview"];
+}) {
   const [section, setSection] = useState<Section>("info");
   const base = market && !market.listedBy ? market.base : undefined;
   const feed = useCoinInfo(base);
@@ -229,7 +243,7 @@ export function CoinOverview({ market }: { market?: Market }) {
           </div>
         );
       default:
-        return feed.data ? <Info info={feed.data} /> : <NoData />;
+        return feed.data ? <Info info={feed.data} show={show} /> : <NoData />;
     }
   })();
 

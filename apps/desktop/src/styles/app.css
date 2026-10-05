@@ -1384,26 +1384,86 @@ button.coin-chip:hover {
   container-type: inline-size;
 }
 
-/* The order book's header: the market, then its price grouping */
-.book-aside {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-/* The shared Select, made small enough for a panel header. Its list opens
-   leftwards from the panel's right edge, so it stays inside the panel. */
-.book-group {
-  font: 12px var(--pd-font-mono);
-}
-.book-group .pd-select-trigger {
-  gap: 4px;
-  height: 24px;
-  padding: 0 6px;
-  border-radius: 4px;
+/* Markets panel: the settings button's panel, one row per setting */
+.view-settings {
+  position: fixed;
+  z-index: 1000;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
   background: var(--pd-surface-raised);
-  font: inherit;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow:
+    0 16px 40px -10px color-mix(in srgb, var(--pd-bg) 85%, transparent),
+    0 2px 8px color-mix(in srgb, var(--pd-bg) 50%, transparent);
 }
-.book-group .pd-select-list {
-  right: 0;
+.view-settings-title {
+  margin: 0;
+  padding: 6px 10px 8px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.view-setting {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: var(--pd-text);
+  font-size: 13px;
+}
+.view-setting:hover {
+  background: var(--pd-surface);
+}
+.view-setting-name {
+  flex: 1;
+  min-width: 0;
+}
+.view-slider {
+  flex: none;
+  width: 96px;
+}
+.view-slider input:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.view-value {
+  flex: none;
+  width: 30px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  text-align: right;
+}
+.view-reset {
+  align-self: flex-start;
+  margin: 6px 4px 2px;
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.view-reset:hover {
+  color: var(--pd-text);
+}
+.view-reset:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+/* A dropdown in it opens leftwards from its trigger, which sits at the
+   panel's right edge, so the list stays inside the panel */
+.view-settings .pd-select-list {
   left: auto;
+  right: 0;
+  white-space: nowrap;
 }

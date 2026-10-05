@@ -30,7 +30,7 @@ import {
   t,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { LuFullscreen, LuMaximize2, LuMinimize2, LuSettings, LuShrink } from "react-icons/lu";
+import { LuFullscreen, LuMaximize2, LuMinimize2, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import {
   type Feed,
@@ -46,11 +46,13 @@ import {
   saveChartPrefs,
   toggled,
 } from "../../lib/chartPrefs";
+import { loadViewPrefs, saveViewPrefs, spanFraction, type ViewPrefs } from "../../lib/viewPrefs";
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
 import { LoadingMark } from "../Splash";
 import { CoinOverview } from "./CoinOverview";
 import { ScreenerPanel } from "./ScreenerPanel";
+import { ViewSettings } from "./ViewSettings";
 
 type MarketsTab = "chart" | "overview" | "depth" | "screener" | "watchlist";
 
@@ -133,6 +135,14 @@ export function MarketsPanel({
       saveChartPrefs(next);
       return next;
     });
+  // Each tab's own settings (the settings button), remembered the same way.
+  const [views, setViews] = useState(loadViewPrefs);
+  const updateViews = (change: (v: ViewPrefs) => ViewPrefs) =>
+    setViews((v) => {
+      const next = change(v);
+      saveViewPrefs(next);
+      return next;
+    });
   const chartRef = useRef<CandleChartHandle>(null);
   const standardChart = tab === "chart" && chartKind === "standard";
   const fundingChart = tab === "chart" && chartKind === "funding";
@@ -143,7 +153,7 @@ export function MarketsPanel({
     interval,
   );
   // The account's trading in this market, over the candles.
-  const fills = useAccountFills(venue, address, standardChart);
+  const fills = useAccountFills(venue, address, standardChart && views.chart.fills);
   const allFills = fills.status === "live" ? fills.data : undefined;
   const marketId = market?.id;
   const position = account?.positions.find((p) => p.market === marketId);
@@ -220,10 +230,7 @@ export function MarketsPanel({
         aside={
           <div className="pd-panel-tools">
             {fundingChart && resolutionPicker}
-            {/* Placeholder: panel settings aren't built yet, so it says so and does nothing. */}
-            <IconButton className="pd-kebab" label={t("panel.settings")} aria-disabled>
-              <LuSettings size={15} aria-hidden />
-            </IconButton>
+            <ViewSettings view={tab} prefs={views} onChange={updateViews} />
             <IconButton
               className="pd-kebab"
               label={t(expanded === "wide" ? "panel.collapse" : "panel.expand")}
@@ -342,10 +349,13 @@ export function MarketsPanel({
                       priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}
                       market={market}
                       onNeedOlder={loadOlder}
-                      position={position}
-                      orders={orders}
-                      fills={marketFills}
-                      onMoveExit={moveExit}
+                      position={views.chart.levels ? position : undefined}
+                      orders={views.chart.levels ? orders : undefined}
+                      fills={views.chart.fills ? marketFills : undefined}
+                      onMoveExit={views.chart.levels ? moveExit : undefined}
+                      grid={views.chart.grid}
+                      logScale={views.chart.logScale}
+                      countdown={views.chart.countdown}
                       title={[market?.symbol, interval, venueName, market?.listedBy]
                         .filter(Boolean)
                         .join(" · ")}
@@ -357,7 +367,7 @@ export function MarketsPanel({
           )}
         </div>
       ) : tab === "overview" ? (
-        <CoinOverview market={market} />
+        <CoinOverview market={market} show={views.overview} />
       ) : tab === "depth" ? (
         <div className="app-fill">
           <FeedView
@@ -367,9 +377,20 @@ export function MarketsPanel({
             live={(data) =>
               // Expanded, there's room for the design's full depth view.
               expanded ? (
-                <DepthView book={data} venue={venueName} base={market?.base} />
+                <DepthView
+                  book={data}
+                  venue={venueName}
+                  base={market?.base}
+                  span={spanFraction(views.depth.span)}
+                  display={views.depth}
+                />
               ) : (
-                <DepthChart book={data} venue={venueName} />
+                <DepthChart
+                  book={data}
+                  venue={venueName}
+                  span={spanFraction(views.depth.span)}
+                  display={views.depth}
+                />
               )
             }
           />
@@ -384,6 +405,7 @@ export function MarketsPanel({
           starred={starred}
           onToggleStar={onToggleStar}
           watchlistOnly={tab === "watchlist"}
+          display={tab === "watchlist" ? views.watchlist : views.screener}
           expanded={expanded !== undefined}
         />
       )}

@@ -1,5 +1,13 @@
 import type { Market, VenueId } from "@pewterdesk/core";
-import { dateFormat, EmptyState, FundingHeatmap, Screener, SignalsFeed, t } from "@pewterdesk/ui";
+import {
+  dateFormat,
+  EmptyState,
+  FundingHeatmap,
+  Screener,
+  type ScreenerDisplay,
+  SignalsFeed,
+  t,
+} from "@pewterdesk/ui";
 import { useFundingHeatmap } from "../../hooks/useFundingHeatmap";
 import { useScreenerData } from "../../hooks/useScreenerData";
 import { useReportError } from "../FeedView";
@@ -24,6 +32,8 @@ interface ScreenerPanelProps {
   watchlistOnly?: boolean;
   /** Expanded: the full table with the funding heatmap and signals beside it. */
   expanded: boolean;
+  /** The tab's own settings. */
+  display?: ScreenerDisplay;
 }
 
 /** The Screener and Watchlist tabs: the compact table, or the full screen when expanded. */
@@ -37,6 +47,7 @@ export function ScreenerPanel({
   onToggleStar,
   watchlistOnly = false,
   expanded,
+  display,
 }: ScreenerPanelProps) {
   const data = useScreenerData(venue, markets, true);
   const heatmap = useFundingHeatmap(venue, data.rows, expanded);
@@ -56,6 +67,7 @@ export function ScreenerPanel({
       variant={expanded ? "full" : "compact"}
       watchlistOnly={watchlistOnly}
       loading={loading}
+      display={display}
       meta={
         data.updatedAt && (
           <span className="pd-muted pd-num">

@@ -25,7 +25,12 @@ export {
 export { type AlertDraft, AlertsPopover, firedAlertText } from "./components/trading/AlertsPopover";
 export { CandleChart, type CandleChartHandle } from "./components/trading/CandleChart";
 export { ChartToolbar } from "./components/trading/ChartToolbar";
-export { BAND, DepthChart } from "./components/trading/DepthChart";
+export {
+  BAND,
+  DEFAULT_DEPTH_DISPLAY,
+  DepthChart,
+  type DepthDisplay,
+} from "./components/trading/DepthChart";
 export { DepthView } from "./components/trading/DepthView";
 export { FundingChart } from "./components/trading/FundingChart";
 export {
@@ -60,7 +65,11 @@ export {
 } from "./components/trading/OrderBookView";
 export { OrderTicket } from "./components/trading/OrderTicket";
 export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
-export { PnlShareDialog } from "./components/trading/PnlShareDialog";
+export {
+  PnlShareDialog,
+  SHARE_TARGETS,
+  type ShareTarget,
+} from "./components/trading/PnlShareDialog";
 export { PositionDrawer } from "./components/trading/PositionDrawer";
 export {
   ClosedTradesTable,
@@ -75,7 +84,11 @@ export {
   QuickTrade,
   type QuickTradePosition,
 } from "./components/trading/QuickTrade";
-export { Screener } from "./components/trading/Screener";
+export {
+  DEFAULT_SCREENER_DISPLAY,
+  Screener,
+  type ScreenerDisplay,
+} from "./components/trading/Screener";
 export { SignalsFeed } from "./components/trading/SignalsFeed";
 export {
   ChartSkeleton,
