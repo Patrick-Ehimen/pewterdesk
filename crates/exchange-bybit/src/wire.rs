@@ -5,8 +5,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use pewterdesk_core::{
-    BookLevel, Candle, CandleInterval, Decimal, FundingRate, Market, MarketStats, MarketSummary,
-    OrderBook, Side, Trade, VenueError, VenueId,
+    Announcement, AnnouncementKind, BookLevel, Candle, CandleInterval, Decimal, FundingRate,
+    Market, MarketStats, MarketSummary, OrderBook, Side, Trade, VenueError, VenueId,
 };
 use rust_decimal::prelude::ToPrimitive;
 use serde::Deserialize;
@@ -130,6 +130,8 @@ pub struct Meta {
     pub funding_secs: HashMap<String, u32>,
     /// Each live market's price tick and size step, which orders must keep to.
     pub steps: HashMap<String, (Decimal, Decimal)>,
+    /// Each live market's highest leverage, which `set_leverage` keeps under.
+    pub max_leverage: HashMap<String, Decimal>,
 }
 
 impl Meta {
@@ -146,12 +148,20 @@ impl Meta {
                     (i.symbol.clone(), (tick, step))
                 })
                 .collect(),
+            max_leverage: live()
+                .map(|i| (i.symbol.clone(), decimal(&i.leverage_filter.max_leverage)))
+                .collect(),
         }
     }
 
     /// `market`'s price tick and size step, if it's a live perpetual.
     pub fn steps(&self, market: &str) -> Option<(Decimal, Decimal)> {
         self.steps.get(market).copied()
+    }
+
+    /// `market`'s highest leverage, if it's a live perpetual.
+    pub fn max_leverage(&self, market: &str) -> Option<Decimal> {
+        self.max_leverage.get(market).copied()
     }
 
     pub fn is_live(&self, market: &str) -> bool {
@@ -161,6 +171,67 @@ impl Meta {
     pub fn funding(&self, market: &str) -> u32 {
         self.funding_secs.get(market).copied().unwrap_or(8 * 3600)
     }
+}
+
+/// A row of `GET /v5/announcements/index`.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WireAnnouncement {
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(rename = "type", default)]
+    pub kind: WireAnnouncementType,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub publish_time: u64,
+    #[serde(default)]
+    pub start_date_timestamp: u64,
+}
+
+#[derive(Default, Deserialize)]
+pub struct WireAnnouncementType {
+    #[serde(default)]
+    pub key: String,
+}
+
+/// How far `starts_at` must be from the publish time to be worth saying:
+/// Bybit stamps most announcements with the day they were published.
+const STARTS_APART_MS: u64 = 60_000;
+
+/// An announcement in the domain's shape; `None` for one without a title.
+/// Its link is left behind on purpose: the UI shows text, and opens nothing.
+pub fn announcement(a: WireAnnouncement) -> Option<Announcement> {
+    let title = a.title.trim().to_owned();
+    if title.is_empty() {
+        return None;
+    }
+    let kind = match a.kind.key.as_str() {
+        "new_crypto" => AnnouncementKind::Listing,
+        "delistings" => AnnouncementKind::Delisting,
+        "maintenance_updates" => AnnouncementKind::Maintenance,
+        "latest_bybit_news" => AnnouncementKind::News,
+        // Campaigns, Earn, Web3 and whatever Bybit adds next: promotional.
+        _ => AnnouncementKind::Campaign,
+    };
+    let description = a.description.trim();
+    Some(Announcement {
+        venue: VenueId::Bybit,
+        kind,
+        // Bybit often repeats the title as the description.
+        description: if description == title {
+            String::new()
+        } else {
+            description.to_owned()
+        },
+        title,
+        tags: a.tags,
+        time: a.publish_time,
+        starts_at: (a.start_date_timestamp > a.publish_time.saturating_add(STARTS_APART_MS))
+            .then_some(a.start_date_timestamp),
+    })
 }
 
 pub fn validate_market(market: &str) -> Result<(), VenueError> {
@@ -655,6 +726,7 @@ mod tests {
         let meta = Meta {
             funding_secs: HashMap::from([("A".into(), 3600), ("B".into(), 28_800)]),
             steps: HashMap::new(),
+            max_leverage: HashMap::new(),
         };
         let t = |symbol: &str, turnover: &str| Ticker {
             symbol: symbol.into(),
@@ -695,5 +767,29 @@ mod tests {
         assert!(validate_market("").is_err());
         assert!(validate_market("BTC/USDT").is_err());
         assert!(validate_market("BTC-26DEC26").is_err());
+    }
+
+    #[test]
+    fn maps_announcements() {
+        let rows: Vec<WireAnnouncement> = serde_json::from_value(serde_json::json!([
+            { "title": " New Listing: MONUSDT Perpetual ", "description": "Up to 25x.",
+              "type": { "key": "new_crypto", "title": "New Listings" },
+              "tags": ["Derivatives"], "url": "https://announcements.bybit.com/x",
+              "publishTime": 1_790_676_068_000u64, "startDateTimestamp": 1_790_690_000_000u64 },
+            { "title": "System upgrade", "description": "System upgrade",
+              "type": { "key": "maintenance_updates" }, "tags": [],
+              "publishTime": 1_790_676_068_000u64, "startDateTimestamp": 1_790_553_600_000u64 },
+            { "title": "Win prizes", "type": { "key": "something_new" } },
+            { "title": "  ", "type": { "key": "delistings" } }
+        ]))
+        .unwrap();
+        let out: Vec<_> = rows.into_iter().filter_map(announcement).collect();
+        assert_eq!(out.len(), 3);
+        assert_eq!(out[0].kind, AnnouncementKind::Listing);
+        assert_eq!(out[0].title, "New Listing: MONUSDT Perpetual");
+        assert_eq!(out[0].starts_at, Some(1_790_690_000_000));
+        assert_eq!(out[1].kind, AnnouncementKind::Maintenance);
+        assert_eq!((out[1].description.as_str(), out[1].starts_at), ("", None));
+        assert_eq!(out[2].kind, AnnouncementKind::Campaign);
     }
 }

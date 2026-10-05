@@ -275,7 +275,7 @@ export function OpenOrdersPanel({
       {rows.length === 0 ? (
         <EmptyState>{t("orders.empty")}</EmptyState>
       ) : segment === "regular" ? (
-        <table className="pd-table">
+        <table className="pd-table pd-positions">
           <thead>
             <tr>
               <th>{t("col.market")}</th>
@@ -380,7 +380,7 @@ export function OpenOrdersPanel({
           </tbody>
         </table>
       ) : (
-        <table className="pd-table">
+        <table className="pd-table pd-positions">
           <thead>
             <tr>
               <th>{t("col.market")}</th>

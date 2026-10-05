@@ -22,6 +22,13 @@ export function decimalsOf(value: Decimal): number {
   return dot === -1 ? 0 : value.length - dot - 1;
 }
 
+/** `value` on the tick grid, as text with the tick's decimals. */
+export function onTick(value: number, tick: Decimal): string {
+  const step = Number(tick);
+  const snapped = step > 0 ? Math.round(value / step) * step : value;
+  return snapped.toFixed(decimalsOf(tick));
+}
+
 /** Groups thousands and pads to `decimals` places (default: as the venue sent it). */
 export function formatNumber(value: Decimal | number, decimals?: number): string {
   const n = typeof value === "number" ? value : Number(value);

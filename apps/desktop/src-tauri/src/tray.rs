@@ -124,7 +124,7 @@ fn colour_title<R: Runtime>(tray: &tauri::tray::TrayIcon<R>, parts: Vec<TitlePar
 /// app's full-screen one) and sits at the menu bar's own level. Mission
 /// Control leaves it be, and ⌘` skips it.
 #[cfg(target_os = "macos")]
-fn float_over_everything<R: Runtime>(panel: &WebviewWindow<R>) {
+pub(crate) fn float_over_everything<R: Runtime>(panel: &WebviewWindow<R>) {
     use objc2_app_kit::{NSStatusWindowLevel, NSWindow, NSWindowCollectionBehavior};
 
     let Ok(ptr) = panel.ns_window() else {

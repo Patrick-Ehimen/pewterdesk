@@ -2,6 +2,7 @@ import { logo, venueLogos } from "@pewterdesk/assets";
 import type {
   AccountSnapshot,
   ClosedTrade,
+  MarginMode,
   Market,
   Order,
   OrderAmend,
@@ -14,8 +15,10 @@ import type {
 import {
   AccountSummary,
   AlertsPopover,
+  BOOK_GROUPS,
   BOOK_SIDES,
   BOOK_UNITS,
+  type BookGroup,
   type BookSides,
   BookSidesPicker,
   type BookUnit,
@@ -24,8 +27,10 @@ import {
   dateFormat,
   decimalsOf,
   FundingHistoryTable,
+  firedAlertText,
   formatNumber,
   formatSigned,
+  groupStep,
   type IconLoader,
   MarketPicker,
   MarketStatsBar,
@@ -35,22 +40,28 @@ import {
   OrderBookSkeleton,
   OrderBookView,
   OrderTicket,
+  orderText,
   PnlCard,
   PnlShareDialog,
+  PositionDrawer,
   PositionsTable,
   QuickTrade,
   type RowMode,
+  Select,
   type ShareCard,
   SummarySkeleton,
   type SymbolFor,
   TableSkeleton,
   Tabs,
+  Toasts,
   TokenIcon,
   TokenIconProvider,
   TradeHistoryTable,
   TradesSkeleton,
   TradesView,
   t,
+  ticketOrder,
+  toast,
 } from "@pewterdesk/ui";
 import {
   type ReactNode,
@@ -74,6 +85,7 @@ import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
+import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
@@ -91,14 +103,17 @@ import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, useAppearance } from "./hooks/useAppearance";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
+import { usePositionDetail } from "./hooks/usePositionDetail";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
+import { useTradeSettings } from "./hooks/useTradeSettings";
 import { useTraySync } from "./hooks/useTraySync";
 import {
   type Feed,
   useAccount,
   useAccountFills,
   useAccountFunding,
+  useAnnouncements,
   useClosedTrades,
   useMarketStats,
   useMarketSummaries,
@@ -116,10 +131,14 @@ import {
   isDemoAccount,
   subscribeAccounts,
 } from "./lib/account";
+import { accountEvents } from "./lib/accountEvents";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
+import { liquidationDistance, positionKey, RISK_WITHIN } from "./lib/float";
 import { peekSavedIcon, withIconCache } from "./lib/iconCache";
 import { firstIcon, iconSources } from "./lib/marketIcons";
+import { desktopNotify, notificationsOn, saveNotifications } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
+import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
@@ -177,6 +196,7 @@ function ActivityPanel({
   onProtect,
   onAmend,
   onShare,
+  onSelectPosition,
 }: {
   venue: VenueId;
   account: Feed<AccountSnapshot>;
@@ -194,6 +214,8 @@ function ActivityPanel({
   onAmend?: (order: Order, amend: OrderAmend) => Promise<void>;
   /** Opens the P&L share card for a position or a closed trade. */
   onShare: (from: { position: Position } | { closed: ClosedTrade }) => void;
+  /** Brings a position's market on screen, on the chart. */
+  onSelectPosition: (position: Position) => void;
   /** Sets a position's TP, SL and trailing stop; unset where the account can't trade. */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
@@ -282,6 +304,7 @@ function ActivityPanel({
                   tickFor={tickFor}
                   onProtect={onProtect}
                   onShare={(p) => onShare({ position: p })}
+                  onSelect={onSelectPosition}
                 />
               ) : (
                 <OpenOrdersPanel
@@ -310,11 +333,14 @@ function OrderBookPanel({
   venue,
   book,
   market,
+  step,
   marketsLoading,
 }: {
   venue: VenueId;
   book: Feed<OrderBook>;
   market?: Market;
+  /** Merges the book's price levels into steps of this size; unset shows them as sent. */
+  step?: string;
   /** No market can be picked until the list arrives; show the skeleton meanwhile. */
   marketsLoading: boolean;
 }) {
@@ -364,6 +390,7 @@ function OrderBookPanel({
               <div className="book-stale-wrap" data-stale={stale || undefined}>
                 <OrderBookView
                   book={data}
+                  step={step}
                   base={market?.base}
                   quote={market?.quote}
                   mode={bookMode}
@@ -401,6 +428,12 @@ function OrderBookPanel({
   );
 }
 
+/** Says it in the app (a toast) and, when the app isn't in front, on the desktop. */
+function announce(input: Parameters<typeof toast>[0]) {
+  toast(input);
+  void desktopNotify(input.title, input.body);
+}
+
 export function App() {
   // The venue and market on screen, so a restart opens where you left off.
   // Each venue remembers its own last market.
@@ -412,6 +445,8 @@ export function App() {
     if (selectedId) saveMarket(selectedId, venue);
   }, [selectedId, venue]);
   /** Puts `marketId` on `next` on screen (or that venue's last market). */
+  // Bumped to bring the Markets panel to the chart (a position was clicked).
+  const [chartRequest, setChartRequest] = useState(0);
   const showMarket = (next: VenueId, marketId?: string) => {
     if (next !== venue) {
       setVenue(next);
@@ -430,12 +465,23 @@ export function App() {
   const trading = canTrade(activeOnVenue) ? activeOnVenue : undefined;
   const placeOrder = trading
     ? async (request: OrderRequest) => {
-        await venueClient.placeOrder(trading.venue, trading.id, request);
+        // Every way of placing one (ticket, quick trade, the drawer) says how
+        // it went here, once.
+        const text = orderText(request, baseFor(request.market));
+        try {
+          await venueClient.placeOrder(trading.venue, trading.id, request);
+          toast({ title: t("toast.orderPlaced"), body: text });
+        } catch (err) {
+          const why = err instanceof Error ? err.message : t("ticket.failed");
+          toast({ title: t("toast.orderRejected"), body: `${text} · ${why}`, tone: "warn" });
+          throw err;
+        }
       }
     : undefined;
   const cancelOrder = trading
     ? async (order: Order) => {
         await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+        toast({ title: t("toast.orderCancelled"), body: orderLine(order) });
       }
     : undefined;
   // The P&L share card: built from a position (live) or a closed trade.
@@ -498,13 +544,20 @@ export function App() {
   const amend = trading
     ? async (order: Order, change: OrderAmend) => {
         await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+        toast({ title: t("toast.orderChanged"), body: symbolFor(order.market) });
       }
     : undefined;
   const protect = trading
     ? async (position: Position, protection: PositionProtection) => {
         await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+        toast({ title: t("toast.protectionSaved"), body: symbolFor(position.market) });
       }
     : undefined;
+  /** "Buy 120 BTC @ 80,000": an open order in a line. */
+  const orderLine = (order: Order) =>
+    `${t(order.side === "buy" ? "side.buy" : "side.sell")} ${formatNumber(order.size)} ${baseFor(order.market)}${
+      order.price ? ` @ ${formatNumber(order.price)}` : ""
+    }`;
   const appearance = useAppearance();
   const themeTransition = useThemeTransition(appearance.setTheme);
   // First-run setup, until it's done; it also picks which venues show.
@@ -626,12 +679,47 @@ export function App() {
     saveQuickTrade(next);
   };
   const [quickQty, setQuickQty] = useState("");
+  // How coarse the order book's price levels show, as a multiple of the tick.
+  const [bookGroup, setBookGroup] = useStoredChoice<BookGroup>("pd.book.group", BOOK_GROUPS, "1");
+  // The ticket's confirmation: on by default; turning it back on in Settings
+  // also forgets "don't confirm orders under…".
+  const [notifications, setNotifications] = useState(notificationsOn);
+  const [orderConfirm, setOrderConfirm] = useState(loadOrderConfirm);
+  const updateOrderConfirm = (next: OrderConfirmPrefs) => {
+    setOrderConfirm(next);
+    saveOrderConfirm(next);
+  };
+  // One click, one market order of the bar's quantity: built like the
+  // ticket's (size on the market's step, the venue's slippage bound).
+  const quickOrder =
+    placeOrder && selected
+      ? async (side: "buy" | "sell") => {
+          const built = ticketOrder({
+            market: selected,
+            type: "market",
+            side,
+            sizeBase: Number(quickQty) || 0,
+            limitPrice: "",
+            trigger: "",
+            reduceOnly: false,
+            tpsl: false,
+            maxSlippage: venueInfo.maxSlippage,
+          });
+          if (!("request" in built)) {
+            toast({ title: t("quick.title"), body: t("ticket.needSize"), tone: "warn" });
+            // Not placed: the bar keeps what's typed.
+            throw new Error(t("ticket.needSize"));
+          }
+          await placeOrder(built.request);
+        }
+      : undefined;
   // Computed once: a fresh object each render would keep resetting the bar.
   const [quickDefault] = useState(defaultQuickTradePosition);
   const bookData = book.status === "live" || book.status === "closed" ? book.data : undefined;
   const bestBid = bookData?.bids[0]?.price;
   const bestAsk = bookData?.asks[0]?.price;
   const stats = useMarketStats(venue, selected?.id);
+  const statsData = stats.status === "live" || stats.status === "closed" ? stats.data : undefined;
   // The bottom bar's status, from what's actually arriving: offline when the
   // network or a feed goes, connecting while the venue has gone quiet.
   const connection = useConnection(
@@ -640,6 +728,132 @@ export function App() {
     markets.status === "error" || book.status === "error" || book.status === "closed",
   );
   const account = useAccount(venue, address);
+  // The position open in the drawer, followed live in the account; it goes
+  // when the position does (closed), or with a switch of venue or account.
+  const [drawerFor, setDrawerFor] = useState<{ market: string; side: Position["side"] }>();
+  const drawerPosition =
+    drawerFor && (account.status === "live" || account.status === "closed")
+      ? account.data.positions.find(
+          (p) => p.market === drawerFor.market && p.side === drawerFor.side,
+        )
+      : undefined;
+  const drawerDetail = usePositionDetail(venue, address, drawerPosition);
+  const tradeSettings = useTradeSettings(venue, address, selected?.id, trading);
+  const { setLeverage: applyLeverage, setMarginMode: applyMarginMode } = tradeSettings;
+  const changeLeverage =
+    applyLeverage &&
+    (async (leverage: number) => {
+      await applyLeverage(leverage);
+      toast({
+        title: t("toast.leverageSet"),
+        body: t("toast.leverageBody", { symbol: selected?.symbol ?? "", leverage }),
+      });
+    });
+  const changeMarginMode =
+    applyMarginMode &&
+    (async (mode: MarginMode) => {
+      await applyMarginMode(mode);
+      toast({
+        title: t("toast.marginSet"),
+        body: t(mode === "isolated" ? "ticket.isolated" : "ticket.cross"),
+      });
+    });
+
+  // What happens to the account between snapshots (fills, positions opened
+  // and closed), as toasts. The first snapshot of an account is the baseline.
+  const lastSnapshot = useRef<{ key: string; data: AccountSnapshot } | undefined>(undefined);
+  const liveAccount =
+    account.status === "live" || account.status === "closed" ? account.data : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per snapshot; the lookups it reads are stable enough
+  useEffect(() => {
+    if (!liveAccount || !address) return;
+    const key = `${venue}:${address}`;
+    const prev = lastSnapshot.current;
+    lastSnapshot.current = { key, data: liveAccount };
+    if (!prev || prev.key !== key) return;
+    for (const event of accountEvents(prev.data, liveAccount)) {
+      if (event.kind === "partialFill") {
+        const o = event.order;
+        announce({
+          title: t("toast.partiallyFilled"),
+          tone: o.side,
+          body: t("toast.partialBody", {
+            side: t(o.side === "buy" ? "side.buy" : "side.sell"),
+            filled: formatNumber(o.filledSize),
+            size: formatNumber(o.size),
+            base: baseFor(o.market),
+            price: o.price ? formatNumber(o.price) : "-",
+            resting: formatNumber(Number(o.size) - Number(o.filledSize), decimalsOf(o.size)),
+          }),
+        });
+        continue;
+      }
+      const p = event.position;
+      const side = t(p.side === "long" ? "side.long" : "side.short");
+      const tone = p.side === "long" ? "buy" : "sell";
+      if (event.kind === "positionResized") {
+        const grew = Number(p.size) > Number(event.from);
+        announce({
+          title: t(grew ? "toast.positionIncreased" : "toast.positionReduced"),
+          tone,
+          body: t("toast.resizeBody", {
+            side,
+            from: formatNumber(event.from),
+            to: formatNumber(p.size),
+            base: baseFor(p.market),
+          }),
+        });
+      } else {
+        const opened = event.kind === "positionOpened";
+        announce({
+          title: t(opened ? "toast.positionOpened" : "toast.positionClosed"),
+          tone: opened ? tone : "neutral",
+          body: t("toast.positionBody", {
+            side,
+            size: formatNumber(p.size),
+            base: baseFor(p.market),
+            price: formatNumber(opened ? p.entryPrice : p.markPrice),
+          }),
+        });
+      }
+    }
+  }, [liveAccount]);
+
+  // A market alert that fires says so, wherever you are in the app.
+  const newestFired = alerts.fired[0];
+  const lastFired = useRef(newestFired?.id);
+  useEffect(() => {
+    if (!newestFired || newestFired.id === lastFired.current) return;
+    const until = alerts.fired.findIndex((f) => f.id === lastFired.current);
+    lastFired.current = newestFired.id;
+    for (const f of alerts.fired.slice(0, until === -1 ? 1 : until).reverse()) {
+      announce({ title: t("toast.alert"), body: firedAlertText(f) });
+    }
+  }, [newestFired, alerts.fired]);
+
+  // A position close to its liquidation price: a toast and a desktop
+  // notification, once, and again only after it has moved back out of range.
+  const warned = useRef(new Set<string>());
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs per snapshot; the lookups it reads are stable enough
+  useEffect(() => {
+    const positions = liveAccount?.positions ?? [];
+    const near = new Set<string>();
+    for (const p of positions) {
+      const distance = liquidationDistance(p);
+      if (distance === undefined || distance > RISK_WITHIN) continue;
+      const key = positionKey(p);
+      near.add(key);
+      if (warned.current.has(key)) continue;
+      announce({
+        title: t("notify.liqTitle", { symbol: symbolFor(p.market) }),
+        body: t("notify.liqBody", { pct: formatNumber(distance * 100, 2) }),
+        tone: "warn",
+      });
+    }
+    warned.current = near;
+  }, [liveAccount]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a switch of venue or account closes it
+  useEffect(() => setDrawerFor(undefined), [venue, address]);
   const accountData =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
   // The bottom bar: the account's floating PnL, and BTC, ETH and SOL's
@@ -655,6 +869,8 @@ export function App() {
   const pnlTrend =
     unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
   const barSummaries = useMarketSummaries(venue, true);
+  // Read only while the News page is open.
+  const announcements = useAnnouncements(venue, page === "news");
   const barPrices =
     barSummaries.status === "live" || barSummaries.status === "closed"
       ? barSummaries.data
@@ -727,6 +943,10 @@ export function App() {
             onToggleStar={(m) => watchlist.toggle(m.id)}
             expanded={expanded?.id === id ? expanded.mode : undefined}
             onExpand={(mode) => setExpanded(mode ? { id, mode } : undefined)}
+            address={address}
+            account={accountData}
+            onProtect={protect}
+            showChart={chartRequest}
           />
         );
       case "orderBook":
@@ -735,6 +955,9 @@ export function App() {
             venue={venue}
             book={book}
             market={selected}
+            step={
+              selected && bookGroup !== "1" ? groupStep(selected.tickSize, bookGroup) : undefined
+            }
             marketsLoading={markets.status === "loading"}
           />
         );
@@ -767,6 +990,11 @@ export function App() {
             onProtect={protect}
             onAmend={amend}
             onShare={openShare}
+            onSelectPosition={(p) => {
+              showMarket(venue, p.market);
+              setChartRequest((n) => n + 1);
+              setDrawerFor({ market: p.market, side: p.side });
+            }}
           />
         );
       case "trade":
@@ -788,6 +1016,13 @@ export function App() {
               accountBadge={
                 activeOnVenue && isDemoAccount(activeOnVenue) ? t("accounts.demo") : undefined
               }
+              settings={tradeSettings.settings}
+              onLeverage={changeLeverage}
+              onMarginMode={changeMarginMode}
+              confirmOrders={orderConfirm.enabled}
+              confirmSkipUnder={orderConfirm.skipUnder}
+              onConfirmSkipUnder={(skipUnder) => updateOrderConfirm({ enabled: true, skipUnder })}
+              fallbackPrice={statsData ? Number(statsData.markPrice) || undefined : undefined}
             />
           </div>
         );
@@ -797,7 +1032,25 @@ export function App() {
   const renderAside = (kind: PanelKind): ReactNode => {
     switch (kind) {
       case "orderBook":
-        return selected?.symbol;
+        // The market, and how coarse its price levels show: steps of the
+        // market's tick (0.1, 1, 10, 50, 100 where the tick is 0.1).
+        return (
+          <span className="book-aside">
+            {selected?.symbol}
+            {selected && (
+              <Select<BookGroup>
+                className="book-group"
+                label={t("book.group")}
+                value={bookGroup}
+                options={BOOK_GROUPS.map((g) => ({
+                  value: g,
+                  label: groupStep(selected.tickSize, g),
+                }))}
+                onChange={setBookGroup}
+              />
+            )}
+          </span>
+        );
       case "account":
         return venueInfo.label;
       default:
@@ -953,12 +1206,37 @@ export function App() {
             description="journal.soon"
           />
         ) : page === "news" ? (
-          <ComingSoonPage title="nav.news" subtitle="news.subtitle" description="news.soon" />
+          <NewsPage
+            venue={venue}
+            venueLabel={venueInfo.label}
+            news={announcements}
+            markets={marketList}
+            summaries={
+              barSummaries.status === "live" || barSummaries.status === "closed"
+                ? barSummaries.data
+                : undefined
+            }
+            positions={liveAccount?.positions ?? []}
+            onTrade={(id) => {
+              showMarket(venue, id);
+              setPage("trade");
+            }}
+          />
         ) : page === "settings" ? (
           <SettingsPage
             onClose={() => goTo("trade")}
             soundOn={sound === "on"}
             onSound={(on) => setSound(on ? "on" : "off")}
+            confirmOrders={orderConfirm.enabled}
+            onConfirmOrders={(enabled) => updateOrderConfirm({ enabled })}
+            notifications={notifications}
+            onNotifications={(on) => {
+              setNotifications(on);
+              saveNotifications(on);
+            }}
+            onTestNotification={() =>
+              void desktopNotify(t("notify.testTitle"), t("notify.testBody"), true)
+            }
             theme={appearance.theme}
             onTheme={themeTransition.switchTheme}
             marketColors={appearance.market}
@@ -1112,10 +1390,16 @@ export function App() {
           />
         </StatusBar>
 
-        {/* Orders can't be placed yet, so no onLong/onShort: the buttons show why. */}
+        {/* Market orders, where the account can trade; elsewhere the buttons show why. */}
         {quickTrade.open && page === "trade" && (
           <QuickTrade
             base={selected?.base}
+            quote={selected?.quote}
+            onLong={quickOrder && (() => quickOrder("buy"))}
+            onShort={quickOrder && (() => quickOrder("sell"))}
+            unavailableReason={
+              venue === "bybit" && activeOnVenue && !trading ? t("ticket.demoOnly") : undefined
+            }
             bid={bestBid === undefined ? undefined : Number(bestBid)}
             ask={bestAsk === undefined ? undefined : Number(bestAsk)}
             decimals={decimalsOf(bestBid ?? bestAsk ?? "0")}
@@ -1145,6 +1429,26 @@ export function App() {
           />
         )}
 
+        {drawerPosition && (
+          <PositionDrawer
+            key={`${drawerPosition.market}:${drawerPosition.side}`}
+            position={drawerPosition}
+            symbol={symbolFor(drawerPosition.market)}
+            base={baseFor(drawerPosition.market)}
+            quote={quoteFor(drawerPosition.market)}
+            tick={tickFor(drawerPosition.market)}
+            fills={drawerDetail.fills?.fills}
+            openedAt={drawerDetail.fills?.openedAt}
+            funding={drawerDetail.funding}
+            pnlHistory={drawerDetail.pnl}
+            maxSlippage={venueInfo.maxSlippage}
+            onProtect={protect && ((protection) => protect(drawerPosition, protection))}
+            onPlace={placeOrder}
+            onShare={() => openShare({ position: drawerPosition })}
+            onClose={() => setDrawerFor(undefined)}
+          />
+        )}
+
         {shareCard && (
           <PnlShareDialog
             card={shareCard}
@@ -1163,6 +1467,8 @@ export function App() {
         />
 
         {/* Covers the app while a theme switch happens underneath. */}
+        <Toasts />
+
         {themeTransition.overlay}
       </div>
     </TokenIconProvider>

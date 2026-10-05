@@ -125,16 +125,25 @@ discover it on their own. The reasoning behind the rules is in
   (HMAC over exactly the bytes sent). Demo accounts (ids `demo:{uid}`, keys
   under `bybit:demo:{uid}`) use Bybit's demo host, `api-demo.bybit.com`.
 - The `ExchangeAdapter` trait and the Tauri commands that expose it
-  (`place_order`, `cancel_order`, `amend_order`, `set_position_protection` in
-  `venues.rs`). Together they are the entire signing surface: place, cancel
-  and amend orders (an open order's price, size or attached TP/SL - never its
-  market, side or kind), and set a position's take-profit, stop-loss and
-  trailing stop (protective, reduce-only, closing the whole position) -
-  nothing else. Never add withdraw,
+  (`place_order`, `cancel_order`, `amend_order`, `set_position_protection`,
+  `set_leverage`, `set_margin_mode` in `venues.rs`). Together they are the
+  entire signing surface: place, cancel and amend orders (an open order's
+  price, size or attached TP/SL - never its market, side or kind), set a
+  position's take-profit, stop-loss and trailing stop (protective,
+  reduce-only, closing the whole position), and set the leverage (1 to the
+  market's maximum) and margin mode (cross or isolated; account-wide on
+  Bybit) - nothing else. Never add withdraw,
   transfer, key approval, or anything that signs caller-supplied bytes or
   typed data. The commands build the account's keychain reference themselves
   (`trading_account`) and, for now, accept Bybit demo accounts only - lifting
   that gate is a security-relevant change.
+- `apps/desktop/src-tauri/src/float.rs` and `apps/desktop/src/float/` - the
+  floating window: a second window (the same frontend at `#float`) that stays
+  over other apps and can reach the trading commands above. It adds none: its
+  own commands only show, hide, move and size it, and it holds no key. Its
+  order buttons need a 0.4s hold, and it is hidden from screen sharing by
+  default. Giving it anything the main window can't do is a security-relevant
+  change.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
   wallet, Aster API wallet with withdraw off), not the
   user's main wallet key.
@@ -175,14 +184,20 @@ commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `styles/`. `packages/ui` holds the shared presentational components, fed by
 props. The header's page menu switches between
 Trade (the workspace), Portfolio (the connected account's equity and exposure),
-Settings, and Journal and News, which are placeholders: Journal until it's
-built on the fill history (`fills`), News until news sources exist.
+Settings, News (the venue's own announcements, read by its adapter's
+`announcements` from the venue's public API - Bybit only so far; text only,
+no links reach the UI), and Journal, a placeholder until it's built on the
+fill history (`fills`).
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up, plus
 the menu-bar (tray) item and macOS menu bar (`src-tauri/src/tray.rs`,
 `menubar.rs`); closing the window keeps the app running in the tray on macOS
-and Windows. `.claude/prd-rust-desktop-features.md` has the rest of the
+and Windows. Fills, position changes, market alerts and liquidation warnings
+also show as desktop notifications while the app isn't in front (`notify.rs`,
+via `tauri-plugin-notification`, called from Rust only). The floating window (`float.rs`, `src/float/`) opens from the
+tray panel, the Window menu, the header, or Control+Option+Space (a global
+shortcut, via `tauri-plugin-global-shortcut`). `.claude/prd-rust-desktop-features.md` has the rest of the
 Rust-side backlog (notifications, deep links, local persistence), not started.
 
 ## Interface strings

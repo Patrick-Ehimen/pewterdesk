@@ -6,8 +6,8 @@
 //! in USDT or USDC, so positions and orders are read for both.
 
 use pewterdesk_core::{
-    AccountSnapshot, ClosedTrade, Decimal, Fill, FillEffect, FundingPayment, Order, OrderCategory,
-    OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, VenueId,
+    AccountSnapshot, ClosedTrade, Decimal, Fill, FillEffect, FundingPayment, MarginMode, Order,
+    OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, VenueId,
 };
 use serde::Deserialize;
 
@@ -21,6 +21,48 @@ pub(crate) struct List<T> {
     pub list: Vec<T>,
 }
 
+/// `GET /v5/account/info`: only the margin mode is read.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct AccountInfo {
+    #[serde(default)]
+    pub margin_mode: String,
+}
+
+impl AccountInfo {
+    /// Portfolio margin pools collateral like cross does, so it reads as cross.
+    pub(crate) fn mode(&self) -> MarginMode {
+        if self.margin_mode == "ISOLATED_MARGIN" {
+            MarginMode::Isolated
+        } else {
+            MarginMode::Cross
+        }
+    }
+}
+
+/// A row of `GET /v5/position/list` for one market: its leverage, which
+/// Bybit lists even with no position open.
+#[derive(Deserialize)]
+pub(crate) struct WireLeverage {
+    #[serde(default)]
+    pub leverage: String,
+}
+
+/// The result of `POST /v5/account/set-margin-mode`: why not, if refused.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MarginModeResult {
+    #[serde(default)]
+    pub reasons: Vec<MarginModeReason>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MarginModeReason {
+    #[serde(default)]
+    pub reason_msg: String,
+}
+
 /// One account's row of `GET /v5/account/wallet-balance`.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,9 +70,52 @@ pub(crate) struct Wallet {
     /// In USD, across every coin, including unrealized PnL.
     #[serde(default)]
     total_equity: String,
-    /// In USD: what can still back new positions.
+    /// In USD: what can still back new positions. Empty when the account
+    /// is in isolated margin mode, where Bybit has no account-wide figure.
     #[serde(default)]
     total_available_balance: String,
+    #[serde(default)]
+    coin: Vec<WalletCoin>,
+}
+
+/// One coin of the wallet: enough to work out what's free in it.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WalletCoin {
+    #[serde(default)]
+    coin: String,
+    #[serde(default)]
+    wallet_balance: String,
+    /// Margin held by open positions and by resting orders.
+    #[serde(default, rename = "totalPositionIM")]
+    total_position_im: String,
+    #[serde(default, rename = "totalOrderIM")]
+    total_order_im: String,
+    #[serde(default)]
+    locked: String,
+}
+
+impl Wallet {
+    /// What can still back new positions. The account-wide figure where
+    /// Bybit gives one; otherwise (isolated margin mode) what's free in the
+    /// settle coins, which are what linear contracts margin in there.
+    fn available(&self) -> Decimal {
+        if let Some(total) = opt_decimal(&self.total_available_balance) {
+            return total;
+        }
+        let free: rust_decimal::Decimal = self
+            .coin
+            .iter()
+            .filter(|c| SETTLE_COINS.contains(&c.coin.as_str()))
+            .map(|c| {
+                decimal(&c.wallet_balance).0
+                    - decimal(&c.total_position_im).0
+                    - decimal(&c.total_order_im).0
+                    - decimal(&c.locked).0
+            })
+            .sum();
+        Decimal(free.max(rust_decimal::Decimal::ZERO))
+    }
 }
 
 /// A row of `GET /v5/position/list`. Closed positions can still be listed,
@@ -138,6 +223,8 @@ fn position(p: WirePosition) -> Option<Position> {
         stop_loss: set(&p.stop_loss),
         trailing_stop: set(&p.trailing_stop),
         leverage: set(&p.leverage),
+        // Account-wide on a unified account; `snapshot` fills it in.
+        margin_mode: None,
     })
 }
 
@@ -373,22 +460,22 @@ pub(crate) fn snapshot(
     wallet: Option<Wallet>,
     positions: Vec<WirePosition>,
     orders: Vec<WireOrder>,
+    margin_mode: Option<MarginMode>,
     time: u64,
 ) -> AccountSnapshot {
     let (equity, available) = wallet
-        .map(|w| {
-            (
-                decimal(&w.total_equity),
-                decimal(&w.total_available_balance),
-            )
-        })
+        .map(|w| (decimal(&w.total_equity), w.available()))
         .unwrap_or((Decimal::default(), Decimal::default()));
     AccountSnapshot {
         venue: VenueId::Bybit,
         address: uid.to_owned(),
         equity,
         available_margin: available,
-        positions: positions.into_iter().filter_map(position).collect(),
+        positions: positions
+            .into_iter()
+            .filter_map(position)
+            .map(|p| Position { margin_mode, ..p })
+            .collect(),
         open_orders: orders.into_iter().filter_map(order).collect(),
         time,
     }
@@ -444,8 +531,13 @@ mod tests {
             wallet.list.into_iter().next(),
             positions.list,
             orders.list,
+            Some(MarginMode::Isolated),
             5,
         );
+        assert!(s
+            .positions
+            .iter()
+            .all(|p| p.margin_mode == Some(MarginMode::Isolated)));
         assert_eq!(s.address, "24617703");
         assert_eq!((s.equity, s.available_margin), (d("1520.37"), d("1201.5")));
 
@@ -570,7 +662,31 @@ mod tests {
 
     #[test]
     fn an_empty_account_is_zero() {
-        let s = snapshot("1", None, vec![], vec![], 0);
+        let s = snapshot("1", None, vec![], vec![], None, 0);
         assert!(s.equity.0.is_zero() && s.positions.is_empty() && s.open_orders.is_empty());
+    }
+
+    #[test]
+    fn isolated_margin_reads_available_from_the_settle_coins() {
+        // In isolated margin mode the account-wide figure comes back empty.
+        let wallet: Wallet = serde_json::from_value(json!({
+            "totalEquity": "5000", "totalAvailableBalance": "",
+            "coin": [
+                { "coin": "USDT", "walletBalance": "3000", "totalPositionIM": "650.5",
+                  "totalOrderIM": "49.5", "locked": "0" },
+                { "coin": "USDC", "walletBalance": "100", "totalPositionIM": "",
+                  "totalOrderIM": "", "locked": "" },
+                { "coin": "BTC", "walletBalance": "1", "totalPositionIM": "0",
+                  "totalOrderIM": "0", "locked": "0" }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(wallet.available(), d("2400"));
+
+        let cross: Wallet = serde_json::from_value(json!({
+            "totalEquity": "5000", "totalAvailableBalance": "1201.5", "coin": []
+        }))
+        .unwrap();
+        assert_eq!(cross.available(), d("1201.5"));
     }
 }

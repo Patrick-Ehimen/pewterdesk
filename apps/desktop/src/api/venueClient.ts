@@ -1,11 +1,13 @@
 import type {
   AccountSnapshot,
+  Announcement,
   Candle,
   CandleInterval,
   ClosedTrade,
   Fill,
   FundingPayment,
   FundingRate,
+  MarginMode,
   Market,
   MarketHistory,
   MarketStats,
@@ -16,6 +18,7 @@ import type {
   OrderRequest,
   PositionProtection,
   Trade,
+  TradeSettings,
   VenueError,
   VenueId,
 } from "@pewterdesk/core";
@@ -171,6 +174,19 @@ export const venueClient = {
     market: string,
     protection: PositionProtection,
   ) => call<void>("set_position_protection", { venue, account, market, protection }),
+
+  /** The venue's latest announcements, newest first. */
+  announcements: (venue: VenueId) => call<Announcement[]>("announcements", { venue }),
+
+  /** The account's margin mode and its leverage on `market`. */
+  tradeSettings: (venue: VenueId, address: string, market: string) =>
+    call<TradeSettings>("trade_settings", { venue, address, market }),
+
+  setLeverage: (venue: VenueId, account: string, market: string, leverage: string) =>
+    call<void>("set_leverage", { venue, account, market, leverage }),
+
+  setMarginMode: (venue: VenueId, account: string, market: string, mode: MarginMode) =>
+    call<void>("set_margin_mode", { venue, account, market, mode }),
 
   subscribeOrderBook: (venue: VenueId, market: string, handlers: StreamHandlers<OrderBook>) =>
     subscribe("subscribe_order_book", { venue, market }, handlers),

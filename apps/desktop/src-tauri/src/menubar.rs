@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, Manager, Runtime};
 use crate::about::{self, AboutLink};
 
 const VIEW_RELOAD: &str = "view:reload";
+const WINDOW_FLOAT: &str = "window:float";
 const HELP_REPOSITORY: &str = "help:repository";
 const HELP_ISSUES: &str = "help:issues";
 
@@ -79,6 +80,8 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
             &PredefinedMenuItem::minimize(h, None)?,
             &PredefinedMenuItem::maximize(h, None)?,
             &sep()?,
+            &MenuItem::with_id(h, WINDOW_FLOAT, "Floating Window", true, None::<&str>)?,
+            &sep()?,
             &PredefinedMenuItem::close_window(h, None)?,
         ],
     )?;
@@ -118,6 +121,7 @@ pub fn on_menu<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 let _ = main.reload();
             }
         }
+        WINDOW_FLOAT => crate::float::toggle(app),
         HELP_REPOSITORY => {
             let _ = about::open(AboutLink::Repository);
         }

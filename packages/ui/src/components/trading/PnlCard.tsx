@@ -10,6 +10,7 @@ import {
 } from "react";
 import { LuX } from "react-icons/lu";
 import { t } from "../../i18n";
+import { lockTextSelection } from "../../lib/dragSelect";
 import { formatNumber, formatSigned } from "../../lib/format";
 
 export interface CardPosition {
@@ -89,11 +90,16 @@ export function PnlCard({
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-clamped whenever the size changes
   useLayoutEffect(() => setPos((p) => clamp(p, cardRef.current)), [size]);
 
+  // Dragging over the page would otherwise select its text.
+  const unlock = useRef<() => void>(undefined);
+  useEffect(() => () => unlock.current?.(), []);
+
   // The grip: the card grows with the pointer's travel, in proportion to its width.
   const onGripDown = (e: PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    unlock.current = lockTextSelection();
     resizing.current = { x: e.clientX, width: cardRef.current?.offsetWidth ?? 1, scale: size };
   };
   const onGripMove = (e: PointerEvent<HTMLElement>) => {
@@ -103,6 +109,7 @@ export function PnlCard({
   const onGripUp = (e: PointerEvent<HTMLElement>) => {
     if (!resizing.current) return;
     resizing.current = null;
+    unlock.current?.();
     e.currentTarget.releasePointerCapture(e.pointerId);
     onResize?.(size);
   };
@@ -121,6 +128,7 @@ export function PnlCard({
   const onDown = (e: PointerEvent<HTMLElement>) => {
     if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    unlock.current = lockTextSelection();
     drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
   };
   const onDrag = (e: PointerEvent<HTMLElement>) => {
@@ -130,6 +138,7 @@ export function PnlCard({
   const onUp = (e: PointerEvent<HTMLElement>) => {
     if (!drag.current) return;
     drag.current = null;
+    unlock.current?.();
     e.currentTarget.releasePointerCapture(e.pointerId);
     onMove(pos);
   };

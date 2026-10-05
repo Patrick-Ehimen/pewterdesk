@@ -13,12 +13,14 @@ import {
   LuKeyRound,
   LuLayoutGrid,
   LuPalette,
+  LuPictureInPicture2,
   LuSettings,
   LuVolume2,
   LuVolumeX,
   LuWallet,
   LuZap,
 } from "react-icons/lu";
+import { appClient } from "../../api/appClient";
 import type { Theme } from "../../hooks/useAppearance";
 import type { VenueAccount } from "../../lib/account";
 import { switchLanguage } from "../../lib/language";
@@ -98,6 +100,9 @@ export function HeaderActions({
         onClick={onToggleQuickTrade}
       >
         <LuZap size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      <IconButton label={t("float.open")} onClick={() => void appClient.toggleFloat()}>
+        <LuPictureInPicture2 size={ICON_SIZE} aria-hidden />
       </IconButton>
       <IconButton
         label={t(editing ? "action.doneLayout" : "action.editLayout")}

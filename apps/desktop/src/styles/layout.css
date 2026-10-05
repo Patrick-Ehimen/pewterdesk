@@ -103,6 +103,11 @@
   border-color: var(--pd-border-strong);
   box-shadow: 0 18px 48px -18px color-mix(in srgb, var(--pd-bg) 90%, transparent);
 }
+/* Its resize handles stay behind at the panel's own corner, under the
+   lifted frame's content: gone while it's expanded. */
+.ws-panel[data-expanded] > .react-resizable-handle {
+  display: none;
+}
 .ws-panel[data-covered] {
   visibility: hidden;
 }

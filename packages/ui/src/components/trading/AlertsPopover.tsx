@@ -94,6 +94,14 @@ const valueText = (kind: AlertKind, n: number) =>
 const inputText = (kind: AlertKind, n: number) =>
   kind === "price" ? String(Number(n.toPrecision(6))) : n.toFixed(kind === "funding" ? 4 : 2);
 
+/** A fired alert in a line: "HYPE fell below 36.50". */
+export function firedAlertText(f: FiredAlert) {
+  return t(`alerts.fired.${f.kind}.${f.condition}`, {
+    market: f.symbol,
+    value: valueText(f.kind, f.value),
+  });
+}
+
 /** "HYPE falls below 36.50", "BTC funding above 0.0100%". */
 function describe(a: Pick<MarketAlert, "kind" | "condition" | "symbol" | "value">) {
   return t(`alerts.desc.${a.kind}.${a.condition}`, {

@@ -29,10 +29,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, ExchangeAdapter, Fill,
-    FundingPayment, FundingRate, KeySource, Market, MarketHistory, MarketStats, MarketSummary,
-    Order, OrderAmend, OrderBook, OrderRequest, OrderType, PositionProtection, Trade,
-    TradingAccount, VenueError, VenueId,
+    AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
+    ExchangeAdapter, Fill, FundingPayment, FundingRate, KeySource, MarginMode, Market,
+    MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook, OrderRequest,
+    OrderType, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use tokio::sync::mpsc;
@@ -43,10 +43,14 @@ use wire::{Book, Meta, Page, Ticker};
 use ws::Handled;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
-/// Levels per side sent to the UI.
-const BOOK_DEPTH: usize = 20;
-/// The stream depth the book is kept from (Bybit offers 1, 50, 200, 500).
-const BOOK_STREAM_DEPTH: u32 = 50;
+/// Levels per side sent to the UI: the whole stream, so the book can be
+/// grouped into coarser price steps and still fill its panel.
+const BOOK_DEPTH: usize = 1000;
+/// The stream depth the book is kept from (Bybit offers 1, 50, 200, 1000
+/// for linear contracts; 1000 pushes about every 200ms).
+const BOOK_STREAM_DEPTH: u32 = 1000;
+/// Announcements read for the News page.
+const ANNOUNCEMENTS: u32 = 100;
 /// Trades the tape starts with.
 const TRADE_HISTORY: u32 = 100;
 /// Candles of history sent before live updates.
@@ -580,11 +584,19 @@ async fn fetch_account(
             .await?;
         orders.extend(page.list);
     }
+    // Account-wide on a unified account, so it's the same for each position.
+    // A failed read leaves it unsaid rather than failing the snapshot.
+    let margin_mode = rest
+        .signed_get::<account::AccountInfo>("/v5/account/info", &[], &creds)
+        .await
+        .ok()
+        .map(|info| info.mode());
     Ok(account::snapshot(
         uid,
         wallet.list.into_iter().next(),
         positions,
         orders,
+        margin_mode,
         now_ms(),
     ))
 }
@@ -1203,6 +1215,118 @@ impl ExchangeAdapter for BybitAdapter {
             // Bybit answers a request that changes nothing with an error.
             Err(VenueError::InvalidRequest(m)) if m.contains("not modified") => Ok(()),
             other => other.map(|_| ()),
+        }
+    }
+
+    /// Bybit's latest announcements (listings, delistings, maintenance,
+    /// news), newest first. Public: no key, and from Bybit's own API host.
+    async fn announcements(&self) -> Result<Vec<Announcement>, VenueError> {
+        let page: Page<wire::WireAnnouncement> = self
+            .rest
+            .get(
+                "/v5/announcements/index",
+                &[
+                    ("locale", "en-US".to_owned()),
+                    ("limit", ANNOUNCEMENTS.to_string()),
+                ],
+            )
+            .await?;
+        let mut out: Vec<Announcement> = page
+            .list
+            .into_iter()
+            .filter_map(wire::announcement)
+            .collect();
+        out.sort_by_key(|a| std::cmp::Reverse(a.time));
+        Ok(out)
+    }
+
+    /// The account's margin mode (account-wide on a unified account) and its
+    /// leverage on `market`, which Bybit keeps per market even when flat.
+    async fn trade_settings(
+        &self,
+        address: &str,
+        market: &str,
+    ) -> Result<TradeSettings, VenueError> {
+        let meta = self.live_market(market).await?;
+        let max_leverage = meta.max_leverage(market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} has no leverage limit"))
+        })?;
+        let (rest, creds) = self.reader(address).await?;
+        let info: account::AccountInfo = rest.signed_get("/v5/account/info", &[], &creds).await?;
+        let page: account::List<account::WireLeverage> = rest
+            .signed_get_values(
+                "/v5/position/list",
+                &[("category", "linear".into()), ("symbol", market.to_owned())],
+                &creds,
+            )
+            .await?;
+        let leverage = page
+            .list
+            .first()
+            .map(|p| wire::decimal(&p.leverage))
+            .filter(|l| l.0 > rust_decimal::Decimal::ZERO)
+            .ok_or_else(|| VenueError::InvalidRequest(format!("no leverage for {market}")))?;
+        Ok(TradeSettings {
+            margin_mode: info.mode(),
+            margin_mode_account_wide: true,
+            leverage,
+            max_leverage,
+        })
+    }
+
+    /// Checked against the live market's maximum before it's signed.
+    async fn set_leverage(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        leverage: Decimal,
+    ) -> Result<(), VenueError> {
+        let rest = self.rest_for(&account.address)?;
+        let meta = self.live_market(market).await?;
+        let max = meta.max_leverage(market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} has no leverage limit"))
+        })?;
+        let body = orders::leverage(market, leverage, max)?;
+        let creds = self.trading_creds(account).await?;
+        match rest
+            .signed_post::<serde_json::Value, _>("/v5/position/set-leverage", &body, &creds)
+            .await
+        {
+            // Bybit answers a request that changes nothing with an error.
+            Err(VenueError::InvalidRequest(m)) if m.contains("not modified") => Ok(()),
+            other => other.map(|_| ()),
+        }
+    }
+
+    /// Account-wide on a unified account: `market` is only checked, not sent.
+    async fn set_margin_mode(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        mode: MarginMode,
+    ) -> Result<(), VenueError> {
+        let rest = self.rest_for(&account.address)?;
+        self.live_market(market).await?;
+        let body = orders::margin_mode(mode);
+        let creds = self.trading_creds(account).await?;
+        let result: account::MarginModeResult = rest
+            .signed_post("/v5/account/set-margin-mode", &body, &creds)
+            .await?;
+        if result.reasons.is_empty() {
+            Ok(())
+        } else {
+            let why = result
+                .reasons
+                .iter()
+                .map(|r| r.reason_msg.as_str())
+                .filter(|m| !m.is_empty())
+                .collect::<Vec<_>>()
+                .join("; ");
+            Err(VenueError::InvalidRequest(if why.is_empty() {
+                "Bybit didn't change the margin mode".into()
+            } else {
+                why
+            }))
         }
     }
 }

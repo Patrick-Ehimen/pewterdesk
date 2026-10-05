@@ -556,6 +556,9 @@ pub struct Position {
     /// The position's leverage, where the venue reports it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub leverage: Option<Decimal>,
+    /// Cross or isolated, where the venue reports it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub margin_mode: Option<MarginMode>,
 }
 
 /// A position that's been closed (in full or in part), with what it made.
@@ -595,6 +598,70 @@ pub enum ExitChange {
     Remove,
     /// Set it to this price (or, for a trailing stop, this distance).
     Set(Decimal),
+}
+
+/// What a venue's announcement is about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum AnnouncementKind {
+    /// A new market.
+    Listing,
+    /// A market being removed.
+    Delisting,
+    /// Downtime, upgrades and rule changes.
+    Maintenance,
+    /// Promotions and competitions.
+    Campaign,
+    /// Anything else the venue published.
+    News,
+}
+
+/// Something a venue published: a listing, a delisting, maintenance, news.
+/// Text only: the venue's link isn't carried, so nothing here can be opened.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE, optional_fields)]
+pub struct Announcement {
+    pub venue: VenueId,
+    pub kind: AnnouncementKind,
+    pub title: String,
+    pub description: String,
+    /// The venue's own labels, e.g. "Derivatives".
+    pub tags: Vec<String>,
+    /// When it was published, in milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+    /// When what it announces takes effect, where the venue says and it
+    /// differs from `time` (a listing's opening, a maintenance window).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(type = "number")]
+    pub starts_at: Option<u64>,
+}
+
+/// How a venue margins positions: one pool of collateral backing every
+/// position (cross), or each position backed only by its own (isolated).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "lowercase")]
+#[ts(export, export_to = TS_FILE)]
+pub enum MarginMode {
+    Cross,
+    Isolated,
+}
+
+/// An account's margin mode and its leverage on one market: what the next
+/// order on that market trades with.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct TradeSettings {
+    pub margin_mode: MarginMode,
+    /// Where the venue sets the margin mode for the whole account rather than
+    /// per market: changing it changes every market.
+    pub margin_mode_account_wide: bool,
+    pub leverage: Decimal,
+    /// The market's highest leverage.
+    pub max_leverage: Decimal,
 }
 
 /// Changes to a position's protective exits: each kept, removed or set, so

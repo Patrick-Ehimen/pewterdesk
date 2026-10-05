@@ -1,20 +1,33 @@
-import type { Candle, Market } from "@pewterdesk/core";
+import type { Candle, Decimal, Fill, Market, Order, Position } from "@pewterdesk/core";
 import {
   AreaSeries,
+  type AutoscaleInfo,
   BarSeries,
   BaselineSeries,
   CandlestickSeries,
   createChart,
+  createSeriesMarkers,
   HistogramSeries,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   LineSeries,
   LineStyle,
   type MouseEventParams,
+  type SeriesMarker,
   type SeriesType,
+  type Time,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { type Ref, useEffect, useImperativeHandle, useRef, useState } from "react";
+import {
+  type PointerEvent,
+  type Ref,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { LuX } from "react-icons/lu";
 import { type MessageKey, t as tr } from "../../i18n";
 import { type DrawnCandle, formatCountdown, joinedCandle, joinedCandles } from "../../lib/chart";
@@ -33,6 +46,14 @@ import {
   sma,
   vwap,
 } from "../../lib/indicators";
+import { toastError } from "../../lib/toasts";
+import {
+  type ChartLevel,
+  type ExitKind,
+  fillMarks,
+  pnlAt,
+  tradeLevels,
+} from "../../lib/tradeMarks";
 import { chartOptions, type Tokens, tokens, withAlpha } from "./chartTheme";
 import { TokenIcon } from "./TokenIcon";
 
@@ -47,6 +68,22 @@ const PRICE_PANE_STRETCH = 3;
 const SHOT_TITLE_PX = 32;
 /** From the last price's line to the top of the countdown under its label. */
 const COUNTDOWN_OFFSET_PX = 10;
+/** Closest two trade labels may sit, centre to centre, before the lower one moves down. */
+const LEVEL_LABEL_GAP_PX = 20;
+/** How far from a movable line, in px, the pointer can grab it. */
+const GRAB_PX = 5;
+/** How long a moved TP or SL waits for the account to show it before letting go. */
+const SETTLE_MS = 10_000;
+
+/** A TP or SL being dragged, being saved, or saved and awaiting the account. */
+interface ExitDrag {
+  id: string;
+  kind: ExitKind;
+  /** Where it was before the drag. */
+  from: number;
+  price: number;
+  state: "dragging" | "saving" | "saved";
+}
 
 type Any = ISeriesApi<SeriesType>;
 type LinePoint = { time: UTCTimestamp; value?: number };
@@ -403,6 +440,57 @@ function Legend({
   );
 }
 
+/** A trade level's line color: the side for the position, brass for orders. */
+function levelColor(level: ChartLevel, t: Tokens): string {
+  switch (level.kind) {
+    case "position":
+      return level.side === "short" ? t.sell : t.buy;
+    case "takeProfit":
+      return t.buy;
+    case "stopLoss":
+      return t.sell;
+    case "liquidation":
+      return t.warning;
+    default:
+      return t.brass;
+  }
+}
+
+const SIDE_KEY: Record<string, MessageKey> = {
+  long: "side.long",
+  short: "side.short",
+  buy: "side.buy",
+  sell: "side.sell",
+};
+
+/** What a level's tag on the chart says, after the design's "LONG 250 @ 37.912 · +121.50". */
+function levelLabel(level: ChartLevel, decimals: number): string {
+  const price = formatNumber(level.price, decimals);
+  const pnl = level.pnl === undefined ? "-" : formatSigned(level.pnl);
+  const side = level.side ? tr(SIDE_KEY[level.side] as MessageKey) : "";
+  const size = level.size === undefined ? "" : formatNumber(level.size);
+  switch (level.kind) {
+    case "position":
+      return tr("chart.trade.position", { side, size, price, pnl });
+    case "takeProfit":
+      return tr("chart.trade.takeProfit", { price, pnl });
+    case "stopLoss":
+      return tr("chart.trade.stopLoss", { price, pnl });
+    case "liquidation":
+      return tr("chart.trade.liquidation", {
+        price,
+        distance: level.distance === undefined ? "-" : `${formatSigned(level.distance * 100, 1)}%`,
+      });
+    default:
+      return tr("chart.trade.order", {
+        side,
+        size,
+        price,
+        type: tr(`orderType.${level.orderType ?? "limit"}` as MessageKey),
+      });
+  }
+}
+
 /** What a parent can ask of the chart. */
 export interface CandleChartHandle {
   /** The chart as an image, with the title strip above it. */
@@ -433,10 +521,27 @@ interface CandleChartProps {
    * closes, under the last price on the price scale. None without it.
    */
   intervalMs?: number;
+  /**
+   * The account's position in this market, drawn as its entry, take-profit,
+   * stop-loss and liquidation lines.
+   */
+  position?: Position;
+  /** The account's open orders in this market, a line at each one's price. */
+  orders?: readonly Order[];
+  /** The account's fills in this market, as entry and exit marks on their candles. */
+  fills?: readonly Fill[];
+  /**
+   * Moves the position's TP or SL to a price dragged to; with it, their lines
+   * can be grabbed. Resolves to the price set (on the tick), or undefined if
+   * nothing changed; rejects with the message to show.
+   */
+  onMoveExit?: (kind: ExitKind, price: number) => Promise<Decimal | undefined>;
   ref?: Ref<CandleChartHandle>;
 }
 
 const DEFAULT_INDICATORS: readonly IndicatorId[] = ["volume"];
+const NO_ORDERS: readonly Order[] = [];
+const NO_FILLS: readonly Fill[] = [];
 
 /**
  * The price chart, drawn by lightweight-charts: candles, bars, Heikin-Ashi,
@@ -455,10 +560,15 @@ export function CandleChart({
   indicators = DEFAULT_INDICATORS,
   onRemoveIndicator,
   intervalMs,
+  position,
+  orders = NO_ORDERS,
+  fills = NO_FILLS,
+  onMoveExit,
   ref,
 }: CandleChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const countdownRef = useRef<HTMLDivElement>(null);
+  const levelsRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi>(null);
   const drawnRef = useRef<Drawn>(null);
   const tokensRef = useRef<Tokens>(null);
@@ -657,6 +767,210 @@ export function CandleChart({
     };
   }, [intervalMs, chartType, styleVersion]);
 
+  const levels = useMemo(() => tradeLevels(position, orders), [position, orders]);
+  const [drag, setDrag] = useState<ExitDrag>();
+  // A TP or SL being moved is drawn where it's going, PnL and all.
+  const drawnLevels = drag
+    ? levels.map((l) =>
+        l.id === drag.id
+          ? {
+              ...l,
+              price: drag.price,
+              pnl: position ? pnlAt(position, drag.price, Number(position.size)) : l.pnl,
+            }
+          : l,
+      )
+    : levels;
+  // Lines change only when a price does, not with every PnL tick.
+  const linesKey = drawnLevels.map((l) => `${l.kind}:${l.side}:${l.price}`).join(",");
+
+  // A saved move holds its line until the account shows the new price (or
+  // gives up after a while), so it doesn't jump back in between.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `linesKey` stands for `levels`, which change with every PnL tick
+  useEffect(() => {
+    if (drag?.state !== "saved") return;
+    if (levels.find((l) => l.id === drag.id)?.price !== drag.from) {
+      setDrag(undefined);
+      return;
+    }
+    const id = setTimeout(() => setDrag(undefined), SETTLE_MS);
+    return () => clearTimeout(id);
+  }, [drag, linesKey]);
+
+  // The levels' lines, on the main series (rebuilt with it). Their tags are
+  // HTML, positioned below.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `linesKey` stands for `drawnLevels`; the rest rebuild the series
+  useEffect(() => {
+    const main = drawnRef.current?.main;
+    const t = tokensRef.current;
+    if (!main || !t) return;
+    // Price lines don't count towards the price scale, so scrolled to candles
+    // that don't reach them, they'd fall off it: the scale takes them in.
+    // The liquidation price is left out, as it can be far enough away to
+    // flatten the candles.
+    const prices = drawnLevels.filter((l) => l.kind !== "liquidation").map((l) => l.price);
+    main.applyOptions({
+      autoscaleInfoProvider: (base: () => AutoscaleInfo | null) => {
+        const info = base();
+        if (!info?.priceRange || prices.length === 0) return info;
+        const { minValue, maxValue } = info.priceRange;
+        return {
+          ...info,
+          priceRange: {
+            minValue: Math.min(minValue, ...prices),
+            maxValue: Math.max(maxValue, ...prices),
+          },
+        };
+      },
+    });
+    const lines: IPriceLine[] = drawnLevels.map((level) =>
+      main.createPriceLine({
+        price: level.price,
+        color: levelColor(level, t),
+        lineStyle: LineStyle.Dashed,
+        lineWidth: 1,
+        axisLabelVisible: true,
+      }),
+    );
+    return () => {
+      // Gone already if the chart was removed first.
+      if (!chartRef.current) return;
+      for (const line of lines) main.removePriceLine(line);
+    };
+  }, [linesKey, chartType, indicatorsKey, styleVersion]);
+
+  // Fills only move to other candles when the candles loaded do.
+  const firstOpen = candles[0]?.openTime;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `candles` is read through its length and oldest candle
+  const marks = useMemo(
+    () => fillMarks(fills, candles, intervalMs),
+    [fills, candles.length, firstOpen, intervalMs],
+  );
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `chartType`/`indicatorsKey`/`styleVersion` rebuild the series
+  useEffect(() => {
+    const main = drawnRef.current?.main;
+    const t = tokensRef.current;
+    if (!main || !t || marks.length === 0) return;
+    const markers: SeriesMarker<Time>[] = marks.map((m) => ({
+      time: toTime(m.time),
+      position: m.side === "buy" ? "atPriceBottom" : "atPriceTop",
+      price: m.price,
+      shape: m.side === "buy" ? "arrowUp" : "arrowDown",
+      color: m.side === "buy" ? t.buy : t.sell,
+    }));
+    const plugin = createSeriesMarkers(main, markers);
+    return () => {
+      if (chartRef.current) plugin.detach();
+    };
+  }, [marks, chartType, indicatorsKey, styleVersion]);
+
+  // The level tags, kept on their lines as the price scale moves (every
+  // frame, like the countdown) and nudged apart where lines sit close.
+  useEffect(() => {
+    const box = levelsRef.current;
+    if (!box || !linesKey) return;
+    let frame = 0;
+    const follow = () => {
+      frame = requestAnimationFrame(follow);
+      const chart = chartRef.current;
+      const main = drawnRef.current?.main;
+      if (!chart || !main) return;
+      const paneHeight = chart.panes()[0]?.getHeight() ?? 0;
+      box.style.width = `${chart.timeScale().width()}px`;
+      const tags = [...box.children] as HTMLElement[];
+      const placed = tags
+        .map((el) => ({ el, y: main.priceToCoordinate(Number(el.dataset.price)) }))
+        .sort((a, b) => (a.y ?? 0) - (b.y ?? 0));
+      let prev = Number.NEGATIVE_INFINITY;
+      for (const { el, y } of placed) {
+        if (y === null || y < 0 || y > paneHeight) {
+          el.hidden = true;
+          continue;
+        }
+        const at = Math.max(y, prev + LEVEL_LABEL_GAP_PX);
+        prev = at;
+        el.style.transform = `translateY(${Math.round(at)}px) translateY(-50%)`;
+        el.hidden = false;
+      }
+    };
+    frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
+  }, [linesKey]);
+
+  /** The movable TP or SL under the pointer: its tag, or within a few px of its line. */
+  const grabbable = (e: PointerEvent<HTMLDivElement>): ChartLevel | undefined => {
+    const chart = chartRef.current;
+    const main = drawnRef.current?.main;
+    const host = hostRef.current;
+    if (!onMoveExit || !chart || !main || !host) return undefined;
+    const tag = (e.target as HTMLElement).closest<HTMLElement>("[data-movable]");
+    if (tag) return drawnLevels.find((l) => l.id === tag.dataset.id);
+    const rect = host.getBoundingClientRect();
+    // Not over the price scale, which drags to rescale.
+    if (e.clientX - rect.left > chart.timeScale().width()) return undefined;
+    const y = e.clientY - rect.top;
+    return drawnLevels.find((l) => {
+      const at = l.movable ? main.priceToCoordinate(l.price) : null;
+      return at !== null && Math.abs(at - y) <= GRAB_PX;
+    });
+  };
+
+  // Grabbed before the chart sees the press, so it doesn't pan as well.
+  const onGrab = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (drag && drag.state !== "saved")) return;
+    const level = grabbable(e);
+    if (!level || (level.kind !== "takeProfit" && level.kind !== "stopLoss")) return;
+    e.stopPropagation();
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
+    setDrag({
+      id: level.id,
+      kind: level.kind,
+      from: level.price,
+      price: level.price,
+      state: "dragging",
+    });
+  };
+
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (drag?.state === "dragging") {
+      const main = drawnRef.current?.main;
+      const host = hostRef.current;
+      const price =
+        main && host ? main.coordinateToPrice(e.clientY - host.getBoundingClientRect().top) : null;
+      if (price !== null && price > 0) setDrag({ ...drag, price });
+      return;
+    }
+    // The resize cursor over a line that can be grabbed. Set directly, as
+    // it changes with every move.
+    if (grabbable(e)) el.dataset.grab = "";
+    else delete el.dataset.grab;
+  };
+
+  const onRelease = (e: PointerEvent<HTMLDivElement>, cancelled: boolean) => {
+    if (drag?.state !== "dragging") return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    chartRef.current?.applyOptions({ handleScroll: true, handleScale: true });
+    if (cancelled || !onMoveExit || drag.price === drag.from) return setDrag(undefined);
+    const move = drag;
+    setDrag({ ...move, state: "saving" });
+    onMoveExit(move.kind, move.price).then(
+      (price) =>
+        setDrag(
+          price === undefined ? undefined : { ...move, price: Number(price), state: "saved" },
+        ),
+      (err: unknown) => {
+        setDrag(undefined);
+        toastError(tr("toast.exitNotMoved"), err);
+      },
+    );
+  };
+
   useImperativeHandle(
     ref,
     () => ({
@@ -705,9 +1019,35 @@ export function CandleChart({
       : [];
 
   return (
-    <div className="pd-candle-chart">
+    <div
+      className="pd-candle-chart"
+      data-dragging={drag?.state === "dragging" || undefined}
+      onPointerDownCapture={onGrab}
+      onPointerMove={onPointerMove}
+      onPointerUp={(e) => onRelease(e, false)}
+      onPointerCancel={(e) => onRelease(e, true)}
+    >
       <div ref={hostRef} className="pd-candle-host" />
       <div ref={countdownRef} className="pd-candle-countdown pd-num" hidden aria-hidden />
+      {drawnLevels.length > 0 && (
+        <div ref={levelsRef} className="pd-chart-levels" aria-hidden>
+          {drawnLevels.map((level) => (
+            <span
+              key={level.id}
+              className="pd-chart-level pd-num"
+              data-id={level.id}
+              data-kind={level.kind}
+              data-side={level.side}
+              data-price={level.price}
+              data-movable={(onMoveExit && level.movable) || undefined}
+              data-busy={(drag?.id === level.id && drag.state === "saving") || undefined}
+              hidden
+            >
+              {levelLabel(level, priceDecimals)}
+            </span>
+          ))}
+        </div>
+      )}
       {current && (
         <Legend
           title={title}

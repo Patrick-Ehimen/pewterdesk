@@ -6,11 +6,13 @@ import "./styles/layout.css";
 import "./styles/pages.css";
 import "./styles/settings.css";
 import "./styles/tray.css";
+import "./styles/float.css";
 import "./styles/wallet.css";
 import "./styles/onboarding.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";
 import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
+import { FloatWindow } from "./float/FloatWindow";
 import { applyStoredAppearance } from "./hooks/useAppearance";
 import { forgetWatchedAddress } from "./lib/account";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
@@ -69,4 +71,21 @@ async function start() {
   );
 }
 
-void (location.hash === "#tray" ? startTrayPanel() : start());
+/** The floating window: the same frontend again, in its own window at #float. */
+async function startFloatWindow() {
+  applyStoredAppearance();
+  const locale = storedLanguage();
+  await loadLocale(locale);
+  document.documentElement.lang = locale;
+  root.render(
+    <StrictMode>
+      <FloatWindow />
+    </StrictMode>,
+  );
+}
+
+void (location.hash === "#tray"
+  ? startTrayPanel()
+  : location.hash === "#float"
+    ? startFloatWindow()
+    : start());
