@@ -606,6 +606,52 @@ pub fn ticker(data: Value) -> Option<Ticker> {
     serde_json::from_value(data).ok()
 }
 
+/// One liquidation on the `allLiquidation` topic.
+#[derive(Deserialize)]
+pub struct WsLiquidation {
+    #[serde(rename = "T")]
+    pub time: u64,
+    #[serde(rename = "s")]
+    pub symbol: String,
+    /// The liquidated position's side: "Buy" a long, "Sell" a short.
+    #[serde(rename = "S")]
+    pub side: String,
+    #[serde(rename = "v")]
+    pub size: String,
+    #[serde(rename = "p")]
+    pub price: String,
+}
+
+pub fn liquidation(l: WsLiquidation) -> Option<pewterdesk_core::Liquidation> {
+    let side = match l.side.as_str() {
+        "Buy" => pewterdesk_core::PositionSide::Long,
+        "Sell" => pewterdesk_core::PositionSide::Short,
+        _ => return None,
+    };
+    Some(pewterdesk_core::Liquidation {
+        market: l.symbol,
+        side,
+        price: opt_decimal(&l.price)?,
+        size: opt_decimal(&l.size)?,
+        time: l.time,
+    })
+}
+
+/// A row of `GET /v5/market/open-interest`.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OpenInterestRow {
+    pub open_interest: String,
+    pub timestamp: String,
+}
+
+pub fn open_interest_point(row: &OpenInterestRow) -> Option<pewterdesk_core::OpenInterestPoint> {
+    Some(pewterdesk_core::OpenInterestPoint {
+        time: row.timestamp.parse().ok()?,
+        open_interest: opt_decimal(&row.open_interest)?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -845,5 +891,29 @@ mod tests {
         assert_eq!(out[1].kind, AnnouncementKind::Maintenance);
         assert_eq!((out[1].description.as_str(), out[1].starts_at), ("", None));
         assert_eq!(out[2].kind, AnnouncementKind::Campaign);
+    }
+
+    #[test]
+    fn maps_liquidations_and_open_interest() {
+        let rows: Vec<WsLiquidation> = serde_json::from_value(serde_json::json!([
+            { "T": 1739502303204u64, "s": "ROSEUSDT", "S": "Buy", "v": "20000", "p": "0.04499" },
+            { "T": 1, "s": "BTCUSDT", "S": "Sell", "v": "0.5", "p": "85000" },
+            { "T": 2, "s": "ETHUSDT", "S": "Both", "v": "1", "p": "3000" }
+        ]))
+        .unwrap();
+        let out: Vec<_> = rows.into_iter().filter_map(liquidation).collect();
+        assert_eq!(out.len(), 2);
+        assert_eq!(out[0].side, pewterdesk_core::PositionSide::Long);
+        assert_eq!(out[1].side, pewterdesk_core::PositionSide::Short);
+        assert_eq!(out[1].price.0.to_string(), "85000");
+        let row: OpenInterestRow = serde_json::from_value(
+            serde_json::json!({ "openInterest": "125.5", "timestamp": "1700000000000" }),
+        )
+        .unwrap();
+        let point = open_interest_point(&row).unwrap();
+        assert_eq!(
+            (point.time, point.open_interest.0.to_string()),
+            (1700000000000, "125.5".into())
+        );
     }
 }

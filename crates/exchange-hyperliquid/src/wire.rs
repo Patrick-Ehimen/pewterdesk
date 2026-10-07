@@ -641,6 +641,8 @@ pub fn account(
         address: address.to_owned(),
         equity: state.margin_summary.account_value,
         available_margin: state.withdrawable,
+        // Hyperliquid keeps no running total in this reply.
+        realized_pnl: None,
         positions: state
             .asset_positions
             .into_iter()

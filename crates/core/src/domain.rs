@@ -354,6 +354,36 @@ pub struct Trade {
     pub time: u64,
 }
 
+/// A position the venue closed by force: from its public liquidation feed.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct Liquidation {
+    /// `Market::id`.
+    pub market: String,
+    /// The side of the position that was liquidated.
+    pub side: PositionSide,
+    /// Where it was closed.
+    pub price: Decimal,
+    /// In base units.
+    pub size: Decimal,
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+}
+
+/// A market's open interest at one moment, from the venue's public history.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct OpenInterestPoint {
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+    /// In base units.
+    pub open_interest: Decimal,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = TS_FILE)]
@@ -726,6 +756,12 @@ pub struct AccountSnapshot {
     pub equity: Decimal,
     /// Collateral free to open new positions.
     pub available_margin: Decimal,
+    /// PnL realised over the account's whole life, after fees, in the quote
+    /// asset - where the venue keeps a running total. Add the positions'
+    /// unrealized PnL for the all-time figure.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub realized_pnl: Option<Decimal>,
     pub positions: Vec<Position>,
     pub open_orders: Vec<Order>,
     /// Milliseconds since the Unix epoch.

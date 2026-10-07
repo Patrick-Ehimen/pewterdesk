@@ -26,9 +26,9 @@ use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
-    Fill, FundingPayment, FundingRate, MarginMode, Market, MarketHistory, MarketStats,
-    MarketSummary, Order, OrderAmend, OrderBook, OrderRequest, PositionProtection, Trade,
-    TradeSettings, TradingAccount, VenueError, VenueId,
+    Fill, FundingPayment, FundingRate, Liquidation, MarginMode, Market, MarketHistory, MarketStats,
+    MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook, OrderRequest,
+    PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
 };
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
 use pewterdesk_exchange_bybit::{
@@ -290,6 +290,32 @@ pub async fn subscribe_market_history(
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_market_history().await?;
     Ok(venues.forward(rx, on_event, &webview))
+}
+
+/// Every market's liquidations as they happen. Returns the id to pass to `unsubscribe`.
+#[tauri::command]
+pub async fn subscribe_liquidations(
+    venues: State<'_, Venues>,
+    webview: Webview,
+    venue: VenueId,
+    on_event: Channel<StreamEvent<Vec<Liquidation>>>,
+) -> Result<u32, VenueError> {
+    let rx = venues.adapter(venue)?.subscribe_liquidations().await?;
+    Ok(venues.forward(rx, on_event, &webview))
+}
+
+/// A market's hourly open interest over the last `hours` hours, oldest first.
+#[tauri::command]
+pub async fn open_interest_history(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    hours: u32,
+) -> Result<Vec<OpenInterestPoint>, VenueError> {
+    venues
+        .adapter(venue)?
+        .open_interest_history(&market, hours)
+        .await
 }
 
 /// Older candles for a chart scrolled back past what it has.

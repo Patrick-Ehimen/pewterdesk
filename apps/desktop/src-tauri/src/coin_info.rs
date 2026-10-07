@@ -59,6 +59,109 @@ const MAX_TAGS: usize = 8;
 const MAX_EXPLORERS: usize = 8;
 /// Longest description kept, in characters.
 const MAX_DESCRIPTION: usize = 4000;
+/// Coins read per sector for the market heatmap: CoinGecko's largest by market cap.
+const SECTOR_COINS: usize = 60;
+/// How long a sector's coins are kept before they're fetched again.
+const SECTOR_FRESH_FOR: Duration = Duration::from_secs(5 * 60);
+/// Sector requests start at least this far apart: the heatmap asks for ten
+/// in a row. CoinGecko's keyless limit is a few a minute (a sixth request
+/// 4s apart was refused when this was written); a demo key allows 30.
+const SECTOR_SPACING: Duration = Duration::from_millis(7500);
+const SECTOR_SPACING_WITH_KEY: Duration = Duration::from_millis(2200);
+
+/// The sectors the market heatmap groups coins by. A fixed set, each one of
+/// CoinGecko's categories: the UI names a sector, never a category id.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CoinSector {
+    Layer1,
+    SmartContracts,
+    Ethereum,
+    ProofOfWork,
+    Defi,
+    Memes,
+    Solana,
+    Ai,
+    Layer2,
+    RealWorldAssets,
+}
+
+impl CoinSector {
+    /// CoinGecko's id for the category.
+    fn category(self) -> &'static str {
+        match self {
+            Self::Layer1 => "layer-1",
+            Self::SmartContracts => "smart-contract-platform",
+            Self::Ethereum => "ethereum-ecosystem",
+            Self::ProofOfWork => "proof-of-work-pow",
+            Self::Defi => "decentralized-finance-defi",
+            Self::Memes => "meme-token",
+            Self::Solana => "solana-ecosystem",
+            Self::Ai => "artificial-intelligence",
+            Self::Layer2 => "layer-2",
+            Self::RealWorldAssets => "real-world-assets-rwa",
+        }
+    }
+}
+
+/// One coin on the market heatmap, as the UI sees it. Figures are in USD;
+/// changes are fractions (0.05 is +5%), absent where CoinGecko has none.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CoinMarket {
+    /// The ticker, upper case.
+    pub symbol: String,
+    pub name: String,
+    pub market_cap: f64,
+    pub price: f64,
+    /// Traded over the last 24 hours.
+    pub volume: f64,
+    #[serde(rename = "change1h")]
+    pub change_1h: Option<f64>,
+    #[serde(rename = "change24h")]
+    pub change_24h: Option<f64>,
+    #[serde(rename = "change7d")]
+    pub change_7d: Option<f64>,
+}
+
+/// A row of `GET /coins/markets`.
+#[derive(Deserialize)]
+struct WireMarket {
+    #[serde(default)]
+    symbol: String,
+    #[serde(default)]
+    name: String,
+    market_cap: Option<f64>,
+    current_price: Option<f64>,
+    total_volume: Option<f64>,
+    price_change_percentage_1h_in_currency: Option<f64>,
+    price_change_percentage_24h_in_currency: Option<f64>,
+    price_change_percentage_7d_in_currency: Option<f64>,
+}
+
+/// A row as the heatmap takes it, or `None` for one it can't size or name:
+/// no market cap, or a ticker that isn't a short run of letters and digits.
+fn coin_market(wire: WireMarket) -> Option<CoinMarket> {
+    let symbol = wire.symbol.trim().to_uppercase();
+    let plain = !symbol.is_empty()
+        && symbol.len() <= 12
+        && symbol.bytes().all(|b| b.is_ascii_alphanumeric());
+    let market_cap = positive(wire.market_cap)?;
+    if !plain {
+        return None;
+    }
+    let fraction = |pct: Option<f64>| pct.filter(|p| p.is_finite()).map(|p| p / 100.0);
+    Some(CoinMarket {
+        symbol,
+        name: wire.name.trim().chars().take(40).collect(),
+        market_cap,
+        price: positive(wire.current_price).unwrap_or(0.0),
+        volume: positive(wire.total_volume).unwrap_or(0.0),
+        change_1h: fraction(wire.price_change_percentage_1h_in_currency),
+        change_24h: fraction(wire.price_change_percentage_24h_in_currency),
+        change_7d: fraction(wire.price_change_percentage_7d_in_currency),
+    })
+}
 
 /// What a link is, for the UI to label and give an icon.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -118,6 +221,9 @@ struct Found {
     image: String,
 }
 
+/// A sector's coins and when they were read.
+type SectorCoins = (Instant, Arc<Vec<CoinMarket>>);
+
 /// The caches: ticker to what CoinGecko has for it (or none), and id to details.
 pub struct CoinInfoState {
     http: reqwest::Client,
@@ -130,6 +236,10 @@ pub struct CoinInfoState {
     /// When the next logo lookup may start; see `LOGO_SPACING`.
     next_logo: tokio::sync::Mutex<Instant>,
     coins: Mutex<HashMap<String, (Instant, Arc<Coin>)>>,
+    /// Each sector's coins for the market heatmap, and when they were read.
+    sectors: Mutex<HashMap<CoinSector, SectorCoins>>,
+    /// When the next sector request may start; see `SECTOR_SPACING`.
+    next_sector: tokio::sync::Mutex<Instant>,
     /// The demo key, read from the keychain once per session (`None` until
     /// then): every keychain read can raise a macOS permission prompt, and
     /// this is a data key, not a trading one, so it needn't be re-read.
@@ -157,6 +267,8 @@ impl CoinInfoState {
             next_logo: tokio::sync::Mutex::new(Instant::now()),
             ids: Mutex::default(),
             coins: Mutex::default(),
+            sectors: Mutex::default(),
+            next_sector: tokio::sync::Mutex::new(Instant::now()),
             key: tokio::sync::Mutex::new(None),
         })
     }
@@ -189,6 +301,59 @@ impl CoinInfoState {
             )),
             status => Err(VenueError::Network(format!("CoinGecko returned {status}"))),
         }
+    }
+
+    /// A sector's largest coins by market cap, from memory while fresh.
+    /// Requests are spaced out, so asking for several sectors at once
+    /// queues them rather than tripping CoinGecko's rate limit.
+    async fn sector(
+        &self,
+        sector: CoinSector,
+        key: Option<&str>,
+    ) -> Result<Arc<Vec<CoinMarket>>, VenueError> {
+        let cached = |this: &Self| {
+            this.sectors
+                .lock()
+                .unwrap()
+                .get(&sector)
+                .filter(|(at, _)| at.elapsed() < SECTOR_FRESH_FOR)
+                .map(|(_, coins)| Arc::clone(coins))
+        };
+        if let Some(coins) = cached(self) {
+            return Ok(coins);
+        }
+        // One at a time: whoever waited here may find it fetched meanwhile.
+        let mut next = self.next_sector.lock().await;
+        if let Some(coins) = cached(self) {
+            return Ok(coins);
+        }
+        tokio::time::sleep_until((*next).into()).await;
+        *next = Instant::now()
+            + if key.is_some() {
+                SECTOR_SPACING_WITH_KEY
+            } else {
+                SECTOR_SPACING
+            };
+        let rows: Vec<WireMarket> = self
+            .get(
+                "/coins/markets",
+                &[
+                    ("vs_currency", "usd"),
+                    ("category", sector.category()),
+                    ("order", "market_cap_desc"),
+                    ("per_page", &SECTOR_COINS.to_string()),
+                    ("page", "1"),
+                    ("price_change_percentage", "1h,24h,7d"),
+                ],
+                key,
+            )
+            .await?;
+        let coins = Arc::new(rows.into_iter().filter_map(coin_market).collect::<Vec<_>>());
+        self.sectors
+            .lock()
+            .unwrap()
+            .insert(sector, (Instant::now(), Arc::clone(&coins)));
+        Ok(coins)
     }
 
     /// What CoinGecko has for `ticker`: the best-ranked coin with exactly
@@ -684,6 +849,22 @@ pub async fn coin_info(
     Ok(Some(state.coin(&id, key).await?.info.clone()))
 }
 
+/// A sector's largest coins by market cap, for the Maps page's market
+/// heatmap: market cap, price, 24h volume and the 1h, 24h and 7d changes.
+/// The UI names one of a fixed set of sectors; Rust maps it to CoinGecko's
+/// category and builds the request.
+#[tauri::command]
+pub async fn coin_markets(
+    state: State<'_, CoinInfoState>,
+    sector: CoinSector,
+) -> Result<Vec<CoinMarket>, VenueError> {
+    let key = state.stored_key().await;
+    let coins = state
+        .sector(sector, key.as_deref().map(|k| k.as_str()))
+        .await?;
+    Ok(coins.as_ref().clone())
+}
+
 /// A coin's logo from CoinGecko, as SVG markup, for a market's base coin
 /// (e.g. "MOG", or "1000000MOG": the multiplier is dropped). `None` when
 /// CoinGecko has none. The last place a logo is looked for: the UI asks
@@ -765,6 +946,36 @@ pub async fn clear_coingecko_key(state: State<'_, CoinInfoState>) -> Result<(), 
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn heatmap_coins_come_from_named_sectors_only() {
+        let parse = |s: &str| serde_json::from_str::<CoinSector>(s);
+        assert_eq!(parse("\"layer1\"").unwrap(), CoinSector::Layer1);
+        assert_eq!(
+            parse("\"realWorldAssets\"").unwrap().category(),
+            "real-world-assets-rwa"
+        );
+        assert!(parse("\"layer-1&x_cg_demo_api_key=1\"").is_err());
+        let rows: Vec<WireMarket> = serde_json::from_value(serde_json::json!([
+            { "symbol": "btc", "name": "Bitcoin", "current_price": 83045.0,
+              "market_cap": 1668716873526.0, "total_volume": 37969004192.0,
+              "price_change_percentage_1h_in_currency": -0.34,
+              "price_change_percentage_24h_in_currency": -4.08,
+              "price_change_percentage_7d_in_currency": null },
+            { "symbol": "<img src=x>", "name": "Bad", "market_cap": 5.0 },
+            { "symbol": "dead", "name": "No cap", "market_cap": 0.0 },
+            { "symbol": "nul", "name": "Null cap", "market_cap": null }
+        ]))
+        .unwrap();
+        let coins: Vec<CoinMarket> = rows.into_iter().filter_map(coin_market).collect();
+        assert_eq!(coins.len(), 1);
+        assert_eq!(
+            (coins[0].symbol.as_str(), coins[0].name.as_str()),
+            ("BTC", "Bitcoin")
+        );
+        assert!((coins[0].change_24h.unwrap() + 0.0408).abs() < 1e-9);
+        assert_eq!(coins[0].change_7d, None);
+    }
 
     #[test]
     fn tickers_lose_size_multipliers() {

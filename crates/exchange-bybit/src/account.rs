@@ -93,9 +93,24 @@ struct WalletCoin {
     total_order_im: String,
     #[serde(default)]
     locked: String,
+    /// Realised PnL over the account's life, in this coin.
+    #[serde(default)]
+    cum_realised_pnl: String,
 }
 
 impl Wallet {
+    /// Realised PnL over the account's life, in USD: the settle coins' running
+    /// totals, which is where linear contracts realise. None if Bybit sent none.
+    fn realized_pnl(&self) -> Option<Decimal> {
+        let totals: Vec<rust_decimal::Decimal> = self
+            .coin
+            .iter()
+            .filter(|c| SETTLE_COINS.contains(&c.coin.as_str()))
+            .filter_map(|c| opt_decimal(&c.cum_realised_pnl).map(|d| d.0))
+            .collect();
+        (!totals.is_empty()).then(|| Decimal(totals.into_iter().sum()))
+    }
+
     /// What can still back new positions. The account-wide figure where
     /// Bybit gives one; otherwise (isolated margin mode) what's free in the
     /// settle coins, which are what linear contracts margin in there.
@@ -463,14 +478,15 @@ pub(crate) fn snapshot(
     margin_mode: Option<MarginMode>,
     time: u64,
 ) -> AccountSnapshot {
-    let (equity, available) = wallet
-        .map(|w| (decimal(&w.total_equity), w.available()))
-        .unwrap_or((Decimal::default(), Decimal::default()));
+    let (equity, available, realized_pnl) = wallet
+        .map(|w| (decimal(&w.total_equity), w.available(), w.realized_pnl()))
+        .unwrap_or((Decimal::default(), Decimal::default(), None));
     AccountSnapshot {
         venue: VenueId::Bybit,
         address: uid.to_owned(),
         equity,
         available_margin: available,
+        realized_pnl,
         positions: positions
             .into_iter()
             .filter_map(position)
@@ -658,6 +674,22 @@ mod tests {
             (d("-0.42"), d("-0.5"))
         );
         assert_eq!((paid[0].rate, paid[0].time), (d("0.0001"), 1790870400000));
+    }
+
+    #[test]
+    fn realized_pnl_sums_the_settle_coins() {
+        let wallet: Wallet = serde_json::from_value(json!({
+            "totalEquity": "5000",
+            "coin": [
+                { "coin": "USDT", "cumRealisedPnl": "-120.5" },
+                { "coin": "USDC", "cumRealisedPnl": "20" },
+                { "coin": "BTC", "cumRealisedPnl": "0.3" }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(wallet.realized_pnl(), Some(d("-100.5")));
+        let none: Wallet = serde_json::from_value(json!({ "coin": [{ "coin": "USDT" }] })).unwrap();
+        assert_eq!(none.realized_pnl(), None);
     }
 
     #[test]

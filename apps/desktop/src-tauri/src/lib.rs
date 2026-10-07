@@ -8,6 +8,7 @@ mod float;
 mod keychain;
 mod menubar;
 mod notify;
+mod okx_liquidations;
 mod share;
 mod splash;
 mod tray;
@@ -45,6 +46,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(venues)
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
+        .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
@@ -123,6 +125,8 @@ pub fn run() {
             venues::subscribe_candles,
             venues::subscribe_market_summaries,
             venues::subscribe_market_history,
+            venues::subscribe_liquidations,
+            venues::open_interest_history,
             venues::funding_history,
             venues::candles,
             venues::market_icon,
@@ -150,6 +154,9 @@ pub fn run() {
             bybit_key::disconnect_bybit_key,
             coin_info::coin_info,
             coin_info::coin_logo,
+            coin_info::coin_markets,
+            okx_liquidations::okx_liquidation_markets,
+            okx_liquidations::okx_liquidations,
             coin_info::open_coin_link,
             coin_info::set_coingecko_key,
             coin_info::has_coingecko_key,

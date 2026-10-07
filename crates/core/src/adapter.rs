@@ -7,9 +7,9 @@ use ts_rs::TS;
 
 use crate::domain::{
     AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
-    Fill, FundingPayment, FundingRate, MarginMode, Market, MarketHistory, MarketStats,
-    MarketSummary, Order, OrderAmend, OrderBook, OrderRequest, PositionProtection, Trade,
-    TradeSettings, TradingAccount, VenueId,
+    Fill, FundingPayment, FundingRate, Liquidation, MarginMode, Market, MarketHistory, MarketStats,
+    MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook, OrderRequest,
+    PositionProtection, Trade, TradeSettings, TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
 
@@ -112,6 +112,23 @@ pub trait ExchangeAdapter: Send + Sync {
     /// Until the receiver is dropped.
     async fn subscribe_market_history(&self) -> Result<mpsc::Receiver<MarketHistory>, VenueError> {
         Err(VenueError::Unsupported("market history"))
+    }
+
+    /// Every market's liquidations as the venue reports them, a batch per
+    /// message as they happen (not snapshots: one dropped under load is
+    /// lost). Public data, no account needed. Until the receiver is dropped.
+    async fn subscribe_liquidations(&self) -> Result<mpsc::Receiver<Vec<Liquidation>>, VenueError> {
+        Err(VenueError::Unsupported("liquidations"))
+    }
+
+    /// `market`'s open interest an hour apart, over the last `hours` hours
+    /// (as far back as the venue serves), oldest first. Public data.
+    async fn open_interest_history(
+        &self,
+        _market: &str,
+        _hours: u32,
+    ) -> Result<Vec<OpenInterestPoint>, VenueError> {
+        Err(VenueError::Unsupported("open interest history"))
     }
 
     /// Up to `count` of `market`'s candles at `interval` that opened before

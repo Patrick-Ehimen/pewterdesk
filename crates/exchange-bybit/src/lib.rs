@@ -31,9 +31,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
-    ExchangeAdapter, Fill, FundingPayment, FundingRate, KeySource, MarginMode, Market,
-    MarketHistory, MarketStats, MarketSummary, Order, OrderAmend, OrderBook, OrderRequest,
-    OrderType, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
+    ExchangeAdapter, Fill, FundingPayment, FundingRate, KeySource, Liquidation, MarginMode, Market,
+    MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
+    OrderRequest, OrderType, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError,
+    VenueId,
 };
 use serde::de::DeserializeOwned;
 use tokio::sync::mpsc;
@@ -66,6 +67,11 @@ const HISTORY_HOURS: u32 = 7 * 24;
 const HISTORY_PACE: Duration = Duration::from_millis(300);
 /// Bybit returns at most this many funding payments per request.
 const FUNDING_PAGE: usize = 200;
+/// `allLiquidation` topics per connection. One topic Bybit doesn't serve fails
+/// its whole subscribe request, so batches stay small to lose little if so.
+const LIQUIDATION_TOPICS: usize = 50;
+/// The most hourly open-interest rows Bybit sends in one page.
+const OPEN_INTEREST_PAGE: u32 = 200;
 /// Pages fetched per `funding_history` call at most.
 const FUNDING_MAX_PAGES: usize = 10;
 /// The account is re-read this often: five signed requests, well inside
@@ -1053,6 +1059,83 @@ impl ExchangeAdapter for BybitAdapter {
             .into_iter()
             .filter(|c| c.open_time < before)
             .collect())
+    }
+
+    /// Every live market's `allLiquidation` topic, `LIQUIDATION_TOPICS` to a
+    /// connection, merged into one stream.
+    async fn subscribe_liquidations(&self) -> Result<mpsc::Receiver<Vec<Liquidation>>, VenueError> {
+        let meta = self.meta().await?;
+        let mut topics: Vec<String> = meta
+            .funding_secs
+            .keys()
+            .map(|m| format!("allLiquidation.{m}"))
+            .collect();
+        topics.sort();
+        let mut feeds = Vec::new();
+        for chunk in topics.chunks(LIQUIDATION_TOPICS) {
+            let feed = ws::subscribe(self.endpoints.ws, chunk.to_vec(), |push| {
+                let Ok(rows) = serde_json::from_value::<Vec<wire::WsLiquidation>>(push.data) else {
+                    return Handled::Ignore;
+                };
+                let batch: Vec<Liquidation> =
+                    rows.into_iter().filter_map(wire::liquidation).collect();
+                if batch.is_empty() {
+                    Handled::Ignore
+                } else {
+                    Handled::Emit(batch)
+                }
+            })
+            .await?;
+            feeds.push(feed);
+        }
+        let (tx, rx) = mpsc::channel(64);
+        for mut feed in feeds {
+            let tx = tx.clone();
+            // Each connection closes once nobody is listening, quiet or not.
+            tokio::spawn(async move {
+                loop {
+                    tokio::select! {
+                        _ = tx.closed() => return,
+                        batch = feed.recv() => match batch {
+                            Some(batch) => {
+                                if tx.send(batch).await.is_err() {
+                                    return;
+                                }
+                            }
+                            None => return,
+                        },
+                    }
+                }
+            });
+        }
+        Ok(rx)
+    }
+
+    /// One page of hourly rows (Bybit's most), oldest first.
+    async fn open_interest_history(
+        &self,
+        market: &str,
+        hours: u32,
+    ) -> Result<Vec<OpenInterestPoint>, VenueError> {
+        self.live_market(market).await?;
+        let page: Page<wire::OpenInterestRow> = self
+            .rest
+            .get(
+                "/v5/market/open-interest",
+                &[
+                    ("symbol", market.to_owned()),
+                    ("intervalTime", "1h".to_owned()),
+                    ("limit", hours.clamp(1, OPEN_INTEREST_PAGE).to_string()),
+                ],
+            )
+            .await?;
+        let mut points: Vec<OpenInterestPoint> = page
+            .list
+            .iter()
+            .filter_map(wire::open_interest_point)
+            .collect();
+        points.sort_by_key(|p| p.time);
+        Ok(points)
     }
 
     async fn funding_history(

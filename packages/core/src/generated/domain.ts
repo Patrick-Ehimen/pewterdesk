@@ -12,7 +12,13 @@ equity: Decimal,
 /**
  * Collateral free to open new positions.
  */
-availableMargin: Decimal, positions: Array<Position>, openOrders: Array<Order>, 
+availableMargin: Decimal, 
+/**
+ * PnL realised over the account's whole life, after fees, in the quote
+ * asset - where the venue keeps a running total. Add the positions'
+ * unrealized PnL for the all-time figure.
+ */
+realizedPnl?: Decimal, positions: Array<Position>, openOrders: Array<Order>, 
 /**
  * Milliseconds since the Unix epoch.
  */
@@ -203,6 +209,31 @@ time: number, };
 export type KeyError = { "kind": "notFound" } | { "kind": "backend", "detail": string };
 
 /**
+ * A position the venue closed by force: from its public liquidation feed.
+ */
+export type Liquidation = { 
+/**
+ * `Market::id`.
+ */
+market: string, 
+/**
+ * The side of the position that was liquidated.
+ */
+side: PositionSide, 
+/**
+ * Where it was closed.
+ */
+price: Decimal, 
+/**
+ * In base units.
+ */
+size: Decimal, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, };
+
+/**
  * How a venue margins positions: one pool of collateral backing every
  * position (cross), or each position backed only by its own (isolated).
  */
@@ -339,6 +370,19 @@ fundingRate: Decimal,
  * Length of one funding interval, in seconds, for annualising the rate.
  */
 fundingIntervalSecs: number, };
+
+/**
+ * A market's open interest at one moment, from the venue's public history.
+ */
+export type OpenInterestPoint = { 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, 
+/**
+ * In base units.
+ */
+openInterest: Decimal, };
 
 export type Order = { venue: VenueId, 
 /**
