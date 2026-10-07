@@ -66,6 +66,14 @@ export function Select<V extends string>({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [open]);
 
+  // Keeps the option the arrow keys are on (and the chosen one, on opening)
+  // in view when the list is long enough to scroll.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the list opens or the active option moves
+  useEffect(() => {
+    if (!open) return;
+    listRef.current?.querySelector("[data-active]")?.scrollIntoView?.({ block: "nearest" });
+  }, [open, active]);
+
   const onButtonKeyDown = (e: KeyboardEvent) => {
     if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
       e.preventDefault();

@@ -9,6 +9,7 @@ import {
   LuLandmark,
   LuNewspaper,
   LuNotebookPen,
+  LuOrbit,
   LuSettings,
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
@@ -56,6 +57,7 @@ const PAGE_ICONS = {
   venues: LuLandmark,
   journal: LuNotebookPen,
   news: LuNewspaper,
+  maps: LuOrbit,
   settings: LuSettings,
 } as const;
 
