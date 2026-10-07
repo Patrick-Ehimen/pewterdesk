@@ -128,8 +128,44 @@
   display: block;
   height: 32px;
 }
+/* The logo as drawn (AppLogo): its colors are the theme's own */
+.app-logo-art {
+  display: block;
+  width: auto;
+}
+.app-logo-pewter {
+  fill: var(--pd-pewter);
+}
+.app-logo-accent {
+  fill: var(--pd-brass);
+}
+.app-logo-text {
+  fill: var(--pd-text);
+}
 .app-page-menu {
   margin-right: 4px;
+}
+/* The pages list: a little clear of its button, each page's description in
+   small type on one line under its name (cut short rather than wrapping) */
+.app-page-list {
+  width: 280px;
+  min-width: 0;
+  margin-top: 6px;
+}
+.app-page-list .pd-menu-text {
+  flex: 1;
+  min-width: 0;
+}
+.app-page-list .pd-menu-text small {
+  overflow: hidden;
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The page under the pointer (or focused): its name in the accent */
+.app-page-list .pd-menu-item:hover .pd-menu-text,
+.app-page-list .pd-menu-item:focus-visible .pd-menu-text {
+  color: var(--pd-brass-text);
 }
 /* The market on screen, beside its watchlist star: logo, pair, quote badge.
    A button: it opens the market picker. */
@@ -1466,4 +1502,35 @@ button.coin-chip:hover {
   left: auto;
   right: 0;
   white-space: nowrap;
+}
+
+/* Maps page: the bubble map and the RSI heatmap, filling the window */
+.page.maps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 16px 20px 20px;
+}
+.maps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+.maps-head h1 {
+  margin: 0;
+  font-size: 22px;
+}
+.maps-filling {
+  margin-left: auto;
+  font-size: 12px;
+}
+.maps-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.maps-liqmap-title {
+  font-size: 16px;
 }

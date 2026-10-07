@@ -1,15 +1,16 @@
-import { logo, upcomingVenueLogos, venueLogos } from "@pewterdesk/assets";
+import { upcomingVenueLogos, venueLogos } from "@pewterdesk/assets";
 import type { VenueId } from "@pewterdesk/core";
 import { type MessageKey, shortAddress, t } from "@pewterdesk/ui";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { LuArrowRight, LuCheck, LuCircleCheck, LuCircleX, LuLoader, LuX } from "react-icons/lu";
 import { appClient } from "../../api/appClient";
-import { isLightTheme, THEMES, type Theme } from "../../hooks/useAppearance";
+import { THEMES, type Theme } from "../../hooks/useAppearance";
 import { useVenueProbe } from "../../hooks/useVenueProbe";
 import { connectedBybit, connectedWallet, subscribeAccounts } from "../../lib/account";
 import type { OnboardingState } from "../../lib/onboarding";
 import { VENUE_IDS, VENUES } from "../../lib/venues";
 import { tauriSecretStore } from "../../secrets/tauriSecretStore";
+import { AppLogo } from "../header/AppLogo";
 import { ThemeSwatch } from "../header/ThemeSwatch";
 import { ApiKeyBody } from "../wallet/ApiKeyDialog";
 import { ConnectWalletBody, type MethodId } from "../wallet/ConnectWalletDialog";
@@ -421,11 +422,7 @@ export function Onboarding({
   return (
     <div className="onb">
       <aside className="onb-side">
-        <img
-          className="onb-logo"
-          src={isLightTheme(theme) ? logo.horizontal.lightBg : logo.horizontal.darkBg}
-          alt="pewterdesk"
-        />
+        <AppLogo className="onb-logo" />
         <div className="onb-progress">
           <span>{t("onb.setup")}</span>
           <span className="pd-num">{progress}%</span>

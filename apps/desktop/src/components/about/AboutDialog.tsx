@@ -1,6 +1,7 @@
 import { t } from "@pewterdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { type AboutLink, type AppInfo, appClient } from "../../api/appClient";
+import { AppLogo } from "../header/AppLogo";
 
 /** Operating system names as their makers write them. */
 const OS_NAME: Record<string, string> = { macos: "macOS", windows: "Windows", linux: "Linux" };
@@ -10,8 +11,6 @@ const ARCH_NAME: Record<string, string> = { aarch64: "arm64", x86_64: "x64" };
 interface AboutDialogProps {
   open: boolean;
   onClose: () => void;
-  /** The wordmark for the current theme. */
-  logoSrc: string;
 }
 
 /**
@@ -19,7 +18,7 @@ interface AboutDialogProps {
  * where keys and data live, and links to the project. The design's update
  * card waits for an updater; this says so instead of pretending.
  */
-export function AboutDialog({ open, onClose, logoSrc }: AboutDialogProps) {
+export function AboutDialog({ open, onClose }: AboutDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [info, setInfo] = useState<AppInfo>();
   const [linkError, setLinkError] = useState(false);
@@ -76,7 +75,7 @@ export function AboutDialog({ open, onClose, logoSrc }: AboutDialogProps) {
       onKeyDown={(e) => e.key === "Escape" && onClose()}
     >
       <header className="about-head">
-        <img className="about-logo" src={logoSrc} alt="pewterdesk" />
+        <AppLogo className="about-logo" />
         <p className="about-build pd-num">{build}</p>
         <p className="pd-muted">{t("about.openSource")}</p>
       </header>

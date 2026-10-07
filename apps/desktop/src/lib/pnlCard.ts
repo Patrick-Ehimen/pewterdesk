@@ -9,6 +9,10 @@ export interface PnlCardState {
   position?: CardPosition;
   /** Its size as a multiple of the default; unset is 1. */
   scale?: number;
+  /** Figures in the quote asset (unset) or in BTC. */
+  unit?: "quote" | "btc";
+  /** Whether the PnL line shows under the figures. */
+  chart?: boolean;
 }
 
 const isPosition = (p: unknown): p is CardPosition =>
@@ -21,11 +25,13 @@ export function loadPnlCard(): PnlCardState {
   try {
     const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
     if (typeof saved !== "object" || saved === null) return { open: false };
-    const { open, position, scale } = saved as Record<string, unknown>;
+    const { open, position, scale, unit, chart } = saved as Record<string, unknown>;
     return {
       open: open === true,
       position: isPosition(position) ? position : undefined,
       scale: typeof scale === "number" && Number.isFinite(scale) ? scale : undefined,
+      unit: unit === "btc" ? "btc" : undefined,
+      chart: chart === true || undefined,
     };
   } catch {
     return { open: false };

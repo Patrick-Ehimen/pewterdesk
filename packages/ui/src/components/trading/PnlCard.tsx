@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import { LuX } from "react-icons/lu";
-import { t } from "../../i18n";
+import { LuChartLine, LuRotateCcw, LuX } from "react-icons/lu";
+import { dateFormat, t } from "../../i18n";
 import { lockTextSelection } from "../../lib/dragSelect";
 import { formatNumber, formatSigned } from "../../lib/format";
 
@@ -24,6 +24,44 @@ const KEY_STEP = 10;
 export const PNL_SCALE_MIN = 0.6;
 export const PNL_SCALE_MAX = 2;
 const SCALE_STEP = 0.1;
+
+/** How long a first click on reset waits for the second. */
+const RESET_ARM_MS = 3000;
+/** The line's drawing size; it stretches to the card's width. */
+const LINE_W = 300;
+const LINE_H = 64;
+
+/** The PnL line: an area from the samples, scaled to fit, with zero marked when it's crossed. */
+function PnlLine({ points, trend }: { points: readonly [number, number][]; trend?: string }) {
+  if (points.length < 2) return <p className="pd-pnl-line-empty">{t("pnl.lineEmpty")}</p>;
+  const t0 = points[0]?.[0] ?? 0;
+  const span = (points.at(-1)?.[0] ?? t0) - t0 || 1;
+  const values = points.map((p) => p[1]);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 0);
+  const range = max - min || 1;
+  const x = (time: number) => ((time - t0) / span) * LINE_W;
+  const y = (v: number) => LINE_H - 3 - ((v - min) / range) * (LINE_H - 6);
+  const line = points.map((p, i) => `${i ? "L" : "M"}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`);
+  return (
+    <svg
+      className="pd-pnl-line"
+      data-trend={trend}
+      viewBox={`0 0 ${LINE_W} ${LINE_H}`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <path
+        className="pd-pnl-line-area"
+        d={`${line.join(" ")} L${LINE_W},${LINE_H} L0,${LINE_H} Z`}
+      />
+      {min < 0 && max > 0 && (
+        <line className="pd-pnl-line-zero" x1={0} x2={LINE_W} y1={y(0)} y2={y(0)} />
+      )}
+      <path className="pd-pnl-line-edge" d={line.join(" ")} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
 
 const clampScale = (s: number) =>
   Math.round(Math.min(PNL_SCALE_MAX, Math.max(PNL_SCALE_MIN, s)) * 100) / 100;
@@ -59,6 +97,15 @@ export function PnlCard({
   scale = 1,
   onResize,
   onClose,
+  unit = "quote",
+  onUnit,
+  btcPrice,
+  history,
+  showChart = false,
+  onToggleChart,
+  onReset,
+  since,
+  breakdown,
 }: {
   venue: string;
   venueLogo?: string;
@@ -76,6 +123,24 @@ export function PnlCard({
   scale?: number;
   onResize?: (scale: number) => void;
   onClose: () => void;
+  /** Figures in the quote asset or in BTC (at `btcPrice`). */
+  unit?: "quote" | "btc";
+  onUnit?: (unit: "quote" | "btc") => void;
+  /** BTC's price in the quote asset; without it, figures stay in the quote. */
+  btcPrice?: number;
+  /** The PnL over time, oldest first, in the quote asset. */
+  history?: readonly [number, number][];
+  showChart?: boolean;
+  onToggleChart?: () => void;
+  /** Starts the PnL over from zero; asked for with two clicks. */
+  onReset?: () => void;
+  /** When it was last reset: the PnL is since then. Unset: all time. */
+  since?: number;
+  /**
+   * What the figure is made of: realised over the account's life (fees and
+   * funding included) and open positions' PnL, in the quote asset.
+   */
+  breakdown?: { realized?: number; open: number };
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const [pos, setPos] = useState(position);
@@ -166,7 +231,21 @@ export function PnlCard({
     onMove(next);
   };
 
+  // Reset takes two clicks: the first arms it for a few seconds.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const id = setTimeout(() => setArmed(false), RESET_ARM_MS);
+    return () => clearTimeout(id);
+  }, [armed]);
+
+  const inBtc = unit === "btc" && btcPrice !== undefined && btcPrice > 0;
+  const shownIn = inBtc ? "BTC" : quote;
+  const convert = (v: number) => (inBtc ? v / (btcPrice ?? 1) : v);
+  const decimals = inBtc ? 6 : 2;
+  const line = history?.map(([time, v]) => [time, convert(v)] as [number, number]);
   const trend = pnl === undefined || pnl === 0 ? undefined : pnl > 0 ? "up" : "down";
+  const resetLabel = t(armed ? "pnl.resetConfirm" : "pnl.reset");
   const logo = venueLogo && <img src={venueLogo} alt="" width={28} height={28} />;
 
   return (
@@ -185,6 +264,51 @@ export function PnlCard({
       <button type="button" className="pd-pnl-close" aria-label={t("pnl.close")} onClick={onClose}>
         <LuX size={14} aria-hidden />
       </button>
+      {connected && (
+        <div className="pd-pnl-tools">
+          {onUnit && (
+            <button
+              type="button"
+              className="pd-pnl-tool pd-pnl-unit"
+              disabled={btcPrice === undefined}
+              aria-label={t("pnl.unit", { unit: inBtc ? quote : "BTC" })}
+              title={t("pnl.unit", { unit: inBtc ? quote : "BTC" })}
+              onClick={() => onUnit(inBtc ? "quote" : "btc")}
+            >
+              {shownIn}
+            </button>
+          )}
+          {onToggleChart && (
+            <button
+              type="button"
+              className="pd-pnl-tool"
+              aria-label={t("pnl.chart")}
+              title={t("pnl.chart")}
+              aria-pressed={showChart}
+              onClick={onToggleChart}
+            >
+              <LuChartLine size={14} aria-hidden />
+            </button>
+          )}
+          {onReset && (
+            <button
+              type="button"
+              className="pd-pnl-tool"
+              data-armed={armed || undefined}
+              aria-label={resetLabel}
+              title={resetLabel}
+              onClick={() => {
+                if (!armed) return setArmed(true);
+                setArmed(false);
+                onReset();
+              }}
+            >
+              <LuRotateCcw size={14} aria-hidden />
+            </button>
+          )}
+          {armed && <span className="pd-pnl-armed">{t("pnl.resetConfirm")}</span>}
+        </div>
+      )}
       <span
         className="pd-pnl-grip"
         title={t("pnl.resize")}
@@ -197,22 +321,37 @@ export function PnlCard({
         <div className="pd-pnl-col">
           <strong className="pd-pnl-value pd-num">
             {logo}
-            {connected && balance !== undefined ? formatNumber(balance, 2) : "-"}
+            {connected && balance !== undefined ? formatNumber(convert(balance), decimals) : "-"}
           </strong>
           <span className="pd-pnl-label">
-            {t("pnl.balance")} · {quote}
+            {t("pnl.balance")} · {shownIn}
           </span>
         </div>
         <div className="pd-pnl-col">
           <strong className="pd-pnl-value pd-num" data-trend={trend}>
             {logo}
-            {connected && pnl !== undefined ? formatSigned(pnl, 2) : "-"}
+            {connected && pnl !== undefined ? formatSigned(convert(pnl), decimals) : "-"}
           </strong>
           <span className="pd-pnl-label">
-            {t("pnl.pnl")} · {quote}
+            {since
+              ? t("pnl.since", { date: dateFormat({ dateStyle: "medium" }).format(since) })
+              : t("pnl.allTime")}{" "}
+            · {shownIn}
           </span>
         </div>
       </div>
+      {connected && breakdown && (
+        <p className="pd-pnl-breakdown pd-num">
+          {!since && breakdown.realized !== undefined && (
+            <>
+              {t("pnl.closed")} {formatSigned(convert(breakdown.realized), decimals)}
+              {" · "}
+            </>
+          )}
+          {t("pnl.open")} {formatSigned(convert(breakdown.open), decimals)}
+        </p>
+      )}
+      {connected && showChart && line && <PnlLine points={line} trend={trend} />}
       {connected ? (
         <p className="pd-pnl-venue">{venue}</p>
       ) : (

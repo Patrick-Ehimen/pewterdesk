@@ -114,11 +114,19 @@ discover it on their own. The reasoning behind the rules is in
   tab, from CoinGecko (`api.coingecko.com` only), and a coin's logo as a last
   resort when no venue has one (`coin_logo`; the image from
   `coin-images.coingecko.com` only, a raster image within a size cap, never
-  for a stock, ETF, commodity or forex market). Its optional demo API key
+  for a stock, ETF, commodity or forex market), and the Maps page's market
+  heatmap (`coin_markets`: the largest coins of one of a fixed set of
+  sectors - the UI names the sector, Rust maps it to CoinGecko's category
+  and builds the request, spaced and cached). Its optional demo API key
   lives in the keychain (`coingecko:demo`) and is never returned. Coin links
   reach JS as labels and indexes and open only via `open_coin_link`, which
   opens a URL Rust itself fetched, filtered by `safe_url` (it goes through
   the OS shell on Windows) - never a URL from the UI.
+- `apps/desktop/src-tauri/src/okx_liquidations.rs` - OKX's public
+  liquidation history, for the Maps page. OKX is a data source here, not a
+  venue: no key, nothing signed, two read-only GETs on `www.okx.com` only
+  (no redirects followed). The UI names a market only from the list the
+  module itself returned; anything else is refused before a request is built.
 - Signing code in each `crates/exchange-<venue>` - what turns a key into a
   signed venue action. The highest-stakes code in the repo. Hold keys only as
   `Zeroizing` and only for the signing call. So far only Bybit's:
@@ -199,8 +207,13 @@ props. The header's page menu switches between
 Trade (the workspace), Portfolio (the connected account's equity and exposure),
 Settings, News (the venue's own announcements, read by its adapter's
 `announcements` from the venue's public API - Bybit only so far; text only,
-no links reach the UI), and Journal, a placeholder until it's built on the
-fill history (`fills`).
+no links reach the UI), Maps (an RSI heatmap of every market from its own
+candles, a market heatmap of coins by sector from CoinGecko, liquidations
+from Bybit's public live feed and OKX's public history whichever venue is
+on screen, and an estimated liquidation heatmap from hourly open interest
+(from volume where a venue publishes no open-interest history) -
+`components/maps/` in `packages/ui`), and Journal, a
+placeholder until it's built on the fill history (`fills`).
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up, plus

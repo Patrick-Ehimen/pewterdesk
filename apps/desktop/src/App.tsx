@@ -73,6 +73,7 @@ import { AboutDialog } from "./components/about/AboutDialog";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
 import { FeedView } from "./components/FeedView";
+import { AppLogo } from "./components/header/AppLogo";
 import { HeaderActions } from "./components/header/HeaderActions";
 import { VenueSwitcher } from "./components/header/VenueSwitcher";
 import { LayoutBar } from "./components/layout/LayoutBar";
@@ -80,6 +81,7 @@ import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
+import { MapsPage } from "./components/pages/MapsPage";
 import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
@@ -134,9 +136,18 @@ import { loadIcon } from "./lib/loadIcon";
 import { desktopNotify, notificationsOn, saveNotifications } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
-import type { Page } from "./lib/pages";
+import { PAGES, type Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
+import {
+  allTimePnl,
+  EMPTY_HISTORY,
+  loadPnlHistory,
+  type PnlHistory,
+  recordPnl,
+  resetPnl,
+  savePnlHistory,
+} from "./lib/pnlHistory";
 import {
   defaultQuickTradePosition,
   loadQuickTrade,
@@ -596,7 +607,8 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
-  const [page, setPage] = useState<Page>("trade");
+  // Remembered, so a reload comes back to the page that was open.
+  const [page, setPage] = useStoredChoice<Page>("pd.page", PAGES, "trade");
   // Market alerts, checked while the app runs; the popover is the header's bell.
   const [alertsOpen, setAlertsOpen] = useState(false);
   const alerts = useAlerts(alertsOpen);
@@ -610,6 +622,7 @@ export function App() {
   // A market picked from the tray panel goes on screen, switching venue if need be.
   const showFromTray = useRef(showMarket);
   showFromTray.current = showMarket;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `setPage` is a state setter, the same every render
   useEffect(
     () =>
       appClient.onTraySelectMarket(({ venue, marketId, chart }) => {
@@ -897,6 +910,42 @@ export function App() {
   const [pnlDefault] = useState(defaultPnlPosition);
   const balance = accountData ? Number(accountData.equity) : undefined;
   const unrealized = accountData?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  // The floating card's PnL: all time (realised over the account's life plus
+  // what's open), from its last reset, sampled for its line.
+  const pnlAccount = address ? `${venue}:${address}` : undefined;
+  // Tagged with its account, so a sample can't land in the previous one's history.
+  const [pnlStore, setPnlStore] = useState<{ account?: string; history: PnlHistory }>({
+    history: EMPTY_HISTORY,
+  });
+  const pnlHistory = pnlStore.account === pnlAccount ? pnlStore.history : EMPTY_HISTORY;
+  useEffect(() => {
+    setPnlStore({
+      account: pnlAccount,
+      history: pnlAccount ? loadPnlHistory(pnlAccount) : EMPTY_HISTORY,
+    });
+  }, [pnlAccount]);
+  const allTime =
+    accountData && unrealized !== undefined
+      ? allTimePnl(
+          accountData.realizedPnl === undefined ? undefined : Number(accountData.realizedPnl),
+          unrealized,
+        )
+      : undefined;
+  useEffect(() => {
+    if (!pnlAccount || allTime === undefined || !accountData) return;
+    setPnlStore((s) => {
+      if (s.account !== pnlAccount) return s;
+      const history = recordPnl(s.history, accountData.time || Date.now(), allTime);
+      savePnlHistory(pnlAccount, history);
+      return { account: pnlAccount, history };
+    });
+  }, [pnlAccount, allTime, accountData]);
+  const resetCardPnl = () => {
+    if (!pnlAccount || allTime === undefined) return;
+    const next = resetPnl(Date.now(), allTime);
+    savePnlHistory(pnlAccount, next);
+    setPnlStore({ account: pnlAccount, history: next });
+  };
   const pnlTrend =
     unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
   const barSummaries = useMarketSummaries(venue, true);
@@ -906,6 +955,9 @@ export function App() {
     barSummaries.status === "live" || barSummaries.status === "closed"
       ? barSummaries.data
       : undefined;
+  // BTC's price on this venue (the first of its majors), for the card's BTC figures.
+  const btcMark = barPrices?.find((s) => s.market === venueInfo.majors[0])?.markPrice;
+  const btcPrice = btcMark ? Number(btcMark) : undefined;
   // The menu-bar (tray) item: price and PnL, even with the window closed.
   useTraySync({
     market: selected,
@@ -1091,19 +1143,14 @@ export function App() {
             title={t("header.home")}
             onClick={() => goTo("trade")}
           >
-            <img
-              className="app-logo"
-              src={
-                isLightTheme(appearance.theme) ? logo.horizontal.lightBg : logo.horizontal.darkBg
-              }
-              alt="pewterdesk"
-            />
+            <AppLogo className="app-logo" />
           </button>
           <OptionsMenu
             label={t("nav.menu")}
             heading={t("nav.menu")}
             triggerText={pageLabel(page)}
             className="app-page-menu"
+            menuClassName="app-page-list"
             options={pageOptions()}
             value={page}
             onChange={goTo}
@@ -1232,6 +1279,17 @@ export function App() {
             positions={liveAccount?.positions ?? []}
             onTrade={(id) => {
               showMarket(venue, id);
+              setPage("trade");
+            }}
+          />
+        ) : page === "maps" ? (
+          <MapsPage
+            venue={venue}
+            venueLabel={venueInfo.label}
+            markets={marketList}
+            selected={selected?.id}
+            onTrade={(m) => {
+              showMarket(venue, m.id);
               setPage("trade");
             }}
           />
@@ -1434,8 +1492,29 @@ export function App() {
             venueLogo={venueLogos[venue]}
             quote={selected?.quote ?? "USDC"}
             balance={balance}
-            pnl={unrealized}
+            pnl={allTime === undefined ? undefined : allTime - pnlHistory.baseline}
             connected={accountData !== undefined}
+            unit={pnlCard.unit ?? "quote"}
+            onUnit={(unit) =>
+              updatePnlCard({ ...pnlCard, unit: unit === "btc" ? "btc" : undefined })
+            }
+            btcPrice={btcPrice}
+            history={pnlHistory.points}
+            showChart={pnlCard.chart ?? false}
+            onToggleChart={() => updatePnlCard({ ...pnlCard, chart: !pnlCard.chart || undefined })}
+            onReset={resetCardPnl}
+            since={pnlHistory.resetAt}
+            breakdown={
+              unrealized === undefined
+                ? undefined
+                : {
+                    realized:
+                      accountData?.realizedPnl === undefined
+                        ? undefined
+                        : Number(accountData.realizedPnl),
+                    open: unrealized,
+                  }
+            }
             connectText={t(venueInfo.auth === "apiKey" ? "pnl.connectApiKey" : "pnl.connect")}
             onConnect={() => openConnect()}
             position={pnlCard.position ?? pnlDefault}
@@ -1476,13 +1555,7 @@ export function App() {
           />
         )}
 
-        <AboutDialog
-          open={aboutOpen}
-          onClose={() => setAboutOpen(false)}
-          logoSrc={
-            isLightTheme(appearance.theme) ? logo.horizontal.lightBg : logo.horizontal.darkBg
-          }
-        />
+        <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
 
         {/* Covers the app while a theme switch happens underneath. */}
         <Toasts />

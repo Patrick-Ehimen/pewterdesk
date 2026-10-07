@@ -14,6 +14,10 @@ export default defineConfig({
   },
   build: {
     target: "es2022",
+    // The bundled token logos stay files, however small: `bundledLogo`
+    // fetches them, and the CSP's connect-src allows 'self' but not data:,
+    // so an inlined one would fail to load in the built app.
+    assetsInlineLimit: (file) => (file.includes("/assets/tokens/") ? false : undefined),
     // Two pages: the app, and the launch splash window's own tiny page.
     rollupOptions: {
       input: { main: "index.html", splash: "splash.html" },

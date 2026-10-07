@@ -7,11 +7,13 @@ import type {
   Fill,
   FundingPayment,
   FundingRate,
+  Liquidation,
   MarginMode,
   Market,
   MarketHistory,
   MarketStats,
   MarketSummary,
+  OpenInterestPoint,
   Order,
   OrderAmend,
   OrderBook,
@@ -22,7 +24,7 @@ import type {
   VenueError,
   VenueId,
 } from "@pewterdesk/core";
-import { t } from "@pewterdesk/ui";
+import { type HeatCoin, type HeatSector, t } from "@pewterdesk/ui";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { trackFeed } from "../lib/feedActivity";
@@ -219,6 +221,14 @@ export const venueClient = {
   subscribeMarketHistory: (venue: VenueId, handlers: StreamHandlers<MarketHistory>) =>
     subscribe("subscribe_market_history", { venue }, handlers),
 
+  /** Every market's liquidations as they happen, in batches. */
+  subscribeLiquidations: (venue: VenueId, handlers: StreamHandlers<Liquidation[]>) =>
+    subscribe("subscribe_liquidations", { venue }, handlers),
+
+  /** A market's hourly open interest over the last `hours` hours, oldest first. */
+  openInterestHistory: (venue: VenueId, market: string, hours: number) =>
+    call<OpenInterestPoint[]>("open_interest_history", { venue, market, hours }),
+
   fundingHistory: (venue: VenueId, market: string, startTime: number) =>
     call<FundingRate[]>("funding_history", { venue, market, startTime }),
 
@@ -390,6 +400,26 @@ export interface CoinInfo {
  * Rust, by index into what it fetched; the optional demo key goes to the
  * keychain and never comes back.
  */
+/** One liquidation on OKX, from its public history. */
+export interface OkxLiquidation {
+  /** The swap's base coin, e.g. "BTC". */
+  base: string;
+  side: "long" | "short";
+  price: number;
+  /** In base units. */
+  size: number;
+  time: number;
+}
+
+/** OKX's public liquidation history: a data source for the Maps page, not a venue. */
+export const okxClient = {
+  /** The swaps whose liquidations can be read, e.g. "BTC-USDT". */
+  markets: () => call<string[]>("okx_liquidation_markets", {}),
+  /** A swap's liquidations since `since` (ms; at most a day back), newest first. */
+  liquidations: (market: string, since: number) =>
+    call<OkxLiquidation[]>("okx_liquidations", { market, since }),
+};
+
 export const coinClient = {
   /** The overview for a market's base coin, or null if CoinGecko doesn't list it. */
   info: (base: string) => call<CoinInfo | null>("coin_info", { base }),
@@ -400,6 +430,9 @@ export const coinClient = {
    */
   logo: async (base: string): Promise<string | undefined> =>
     (await call<string | null>("coin_logo", { base })) ?? undefined,
+
+  /** A sector's largest coins by market cap, for the market heatmap. */
+  markets: (sector: HeatSector) => call<HeatCoin[]>("coin_markets", { sector }),
 
   open: (id: string, index: number) => call<void>("open_coin_link", { id, index }),
 
