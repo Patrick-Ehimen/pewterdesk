@@ -256,6 +256,15 @@ pub fn key_account(id: &str) -> Result<String, VenueError> {
 
 /// Bybit's auth failures, said plainly. Other codes keep the venue's message.
 pub(crate) fn auth_error(code: i64, message: String) -> VenueError {
+    // Bybit words these in its own shorthand ("ab not enough for new
+    // order", ab being available balance): say them plainly instead.
+    if matches!(code, 110004 | 110007 | 110012 | 110045 | 110052)
+        || message.starts_with("ab not enough")
+    {
+        return VenueError::Rejected(
+            "not enough available balance for this order; lower the size, raise the leverage or add funds".into(),
+        );
+    }
     VenueError::InvalidRequest(match code {
         10002 => "the request reached Bybit too late (a slow connection or this computer's clock); try again".into(),
         10003 => "Bybit doesn't recognise that API key".into(),
@@ -322,6 +331,26 @@ mod tests {
     fn debug_hides_the_key_and_secret() {
         let shown = format!("{:?}", creds());
         assert!(!shown.contains(KEY) && !shown.contains(SECRET), "{shown}");
+    }
+
+    #[test]
+    fn says_a_short_balance_plainly() {
+        for (code, message) in [
+            (110007, "ab not enough for new order"),
+            (110012, "Insufficient available balance"),
+            (999, "ab not enough for new order"),
+        ] {
+            let VenueError::Rejected(why) = auth_error(code, message.into()) else {
+                panic!("{code} should be a rejection");
+            };
+            assert!(why.starts_with("not enough available balance"), "{why}");
+            assert!(!why.contains("ab not"));
+        }
+        // Anything else keeps Bybit's own words.
+        assert_eq!(
+            auth_error(110001, "order not exists".into()),
+            VenueError::InvalidRequest("order not exists".into())
+        );
     }
 
     #[test]
