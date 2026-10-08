@@ -53,11 +53,17 @@ export const isDemoAccount = (account: { venue: VenueId; id: string }) =>
   account.venue === "bybit" && account.id.startsWith("demo:");
 
 /**
- * Whether orders can be placed for an account: Bybit demo accounts only, for
- * now (Rust refuses the rest too; this just keeps the UI from offering it).
+ * Whether orders can be placed for an account: a Bybit demo account, or a
+ * live one with live trading turned on (`liveUids`, see `lib/liveTrading`).
+ * Rust refuses the rest too; this just keeps the UI from offering it.
  */
-export const canTrade = (account: { venue: VenueId; id: string } | undefined) =>
-  account !== undefined && isDemoAccount(account);
+export const canTrade = (
+  account: { venue: VenueId; id: string } | undefined,
+  liveUids: readonly string[],
+) =>
+  account !== undefined &&
+  account.venue === "bybit" &&
+  (isDemoAccount(account) || liveUids.includes(account.id));
 
 const isVenue = (v: unknown): v is VenueId => v === "hyperliquid" || v === "aster" || v === "bybit";
 

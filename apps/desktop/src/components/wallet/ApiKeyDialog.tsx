@@ -1,6 +1,6 @@
 import { venueLogos } from "@pewterdesk/assets";
 import type { VenueId } from "@pewterdesk/core";
-import { dateFormat, type MessageKey, t } from "@pewterdesk/ui";
+import { dateFormat, type MessageKey, Switch, t } from "@pewterdesk/ui";
 import { type FormEvent, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   LuChevronLeft,
@@ -20,6 +20,12 @@ import {
   subscribeAccounts,
   venueAccounts,
 } from "../../lib/account";
+import {
+  liveTradingUids,
+  refreshLiveTrading,
+  setLiveTrading,
+  subscribeLiveTrading,
+} from "../../lib/liveTrading";
 import { VENUES } from "../../lib/venues";
 import { AccountList } from "./AccountList";
 
@@ -116,6 +122,83 @@ function KeyForm({ venue }: { venue: VenueId }) {
   );
 }
 
+/**
+ * Live trading for a live account: off until it's turned on here, after a
+ * warning that orders use real funds. Rust keeps the switch and checks the
+ * key with Bybit again before it turns on.
+ */
+function LiveTrading({ uid }: { uid: string }) {
+  const on = useSyncExternalStore(subscribeLiveTrading, liveTradingUids).includes(uid);
+  // The warning shows before it's turned on; nothing changes until it's accepted.
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  const change = async (next: boolean) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await setLiveTrading(uid, next);
+      setAsking(false);
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="apikey-live" data-on={on || undefined}>
+      <div className="apikey-live-head">
+        <span>
+          <strong>{t("live.title")}</strong>
+          <small>{t(on ? "live.onHint" : "live.offHint")}</small>
+        </span>
+        <Switch
+          checked={on}
+          label={t("live.title")}
+          // Turning it on asks first; turning it off just does.
+          onChange={(next) => {
+            if (busy) return;
+            if (next) setAsking(true);
+            else void change(false);
+          }}
+        />
+      </div>
+      {asking && !on && (
+        <div className="apikey-live-ask" role="alert">
+          <p>
+            <LuTriangleAlert size={14} aria-hidden /> {t("live.warning")}
+          </p>
+          <div className="wallet-actions">
+            <button
+              type="button"
+              className="wallet-danger"
+              disabled={busy}
+              onClick={() => void change(true)}
+            >
+              {busy ? t("live.checking") : t("live.confirm")}
+            </button>
+            <button
+              type="button"
+              className="wallet-secondary"
+              disabled={busy}
+              onClick={() => setAsking(false)}
+            >
+              {t("live.cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <p className="wallet-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** The connected account: what Bybit says the key may do, and disconnect. */
 function Connected({ uid }: { uid: string }) {
   const [info, setInfo] = useState<BybitKeyInfo | null>();
@@ -139,6 +222,8 @@ function Connected({ uid }: { uid: string }) {
     try {
       await bybitKeyClient.disconnect(uid);
       removeAccount("bybit", uid);
+      // Rust turned live trading off with the key; the page's copy follows.
+      void refreshLiveTrading();
     } catch (err) {
       setError(message(err));
       setBusy(false);
@@ -194,6 +279,7 @@ function Connected({ uid }: { uid: string }) {
           {error}
         </p>
       )}
+      {!uid.startsWith("demo:") && <LiveTrading uid={uid} />}
       <div className="wallet-actions">
         <button type="button" className="wallet-danger" disabled={busy} onClick={disconnect}>
           {t("wallet.disconnect")}

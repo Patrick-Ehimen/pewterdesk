@@ -6,6 +6,7 @@ mod bybit_key;
 mod coin_info;
 mod float;
 mod keychain;
+mod live_trading;
 mod menubar;
 mod news_feeds;
 mod notify;
@@ -52,6 +53,13 @@ pub fn run() {
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
+            // Which live accounts may trade, kept in the app's config folder.
+            let kept = app
+                .path()
+                .app_config_dir()
+                .ok()
+                .map(|dir| dir.join(live_trading::FILE));
+            app.manage(live_trading::LiveTrading::load(kept));
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
@@ -157,6 +165,8 @@ pub fn run() {
             bybit_key::connect_bybit_key,
             bybit_key::bybit_key_status,
             bybit_key::disconnect_bybit_key,
+            live_trading::live_trading_accounts,
+            live_trading::set_live_trading,
             coin_info::coin_info,
             coin_info::coin_logo,
             coin_info::coin_markets,

@@ -147,6 +147,7 @@ import {
   slippageBps,
 } from "./lib/float";
 import { peekSavedIcon } from "./lib/iconCache";
+import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "./lib/liveTrading";
 import { loadIcon } from "./lib/loadIcon";
 import {
   clearNotes,
@@ -479,7 +480,14 @@ export function App() {
   const activeOnVenue = activeAccount(accounts, venue);
   const address = activeOnVenue?.id;
   // Orders go only where Rust allows them: Bybit demo accounts, for now.
-  const trading = canTrade(activeOnVenue) ? activeOnVenue : undefined;
+  const liveUids = useSyncExternalStore(subscribeLiveTrading, liveTradingUids);
+  // Rust keeps the list; the page's copy is refreshed once it's up.
+  useEffect(() => {
+    void refreshLiveTrading();
+  }, []);
+  const trading = canTrade(activeOnVenue, liveUids) ? activeOnVenue : undefined;
+  /** A live account that's trading: real funds, which the ticket says. */
+  const tradingLive = trading !== undefined && !isDemoAccount(trading);
   const placeOrder = trading
     ? async (request: OrderRequest) => {
         // Every way of placing one (ticket, quick trade, the drawer) says how
@@ -1175,8 +1183,8 @@ export function App() {
           />
         );
       case "trade":
-        // Orders go to Bybit demo accounts only, for now; elsewhere there's no
-        // onSubmit, and the button says why.
+        // Orders go to Bybit accounts (a live one once live trading is on);
+        // elsewhere there's no onSubmit, and the button says why.
         return (
           <div className="app-scroll">
             <OrderTicket
@@ -1188,11 +1196,16 @@ export function App() {
               onConnect={() => openConnect()}
               onSubmit={placeOrder}
               unavailableReason={
-                venue === "bybit" && activeOnVenue && !trading ? t("ticket.demoOnly") : undefined
+                venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined
               }
               accountBadge={
-                activeOnVenue && isDemoAccount(activeOnVenue) ? t("accounts.demo") : undefined
+                tradingLive
+                  ? t("apiKey.live")
+                  : activeOnVenue && isDemoAccount(activeOnVenue)
+                    ? t("accounts.demo")
+                    : undefined
               }
+              accountBadgeTone={tradingLive ? "live" : undefined}
               settings={tradeSettings.settings}
               onLeverage={changeLeverage}
               onMarginMode={changeMarginMode}
@@ -1602,7 +1615,7 @@ export function App() {
             onLong={quickOrder && (() => quickOrder("buy"))}
             onShort={quickOrder && (() => quickOrder("sell"))}
             unavailableReason={
-              venue === "bybit" && activeOnVenue && !trading ? t("ticket.demoOnly") : undefined
+              venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined
             }
             bid={bestBid === undefined ? undefined : Number(bestBid)}
             ask={bestAsk === undefined ? undefined : Number(bestAsk)}

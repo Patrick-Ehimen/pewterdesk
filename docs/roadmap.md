@@ -5,17 +5,13 @@ October 5, 2026). Roughly in priority order within each section.
 
 ## 1. Trading on more than demo
 
-The biggest gap: Bybit demo accounts are still the only place an order can
-be placed.
+Bybit is the only venue an order can be placed on.
 
-- **Live Bybit accounts.** The trading commands accept demo accounts only
-  (`trading_account` in `apps/desktop/src-tauri/src/venues.rs`). A plan for
-  the switch exists; open decisions:
-  - whether margin mode stays demo-only at first
-  - whether to cap order size at first
-  - who runs the demo checklist before the gate is lifted
-
-  Lifting the gate is a security-relevant change (see `CLAUDE.md`).
+- **Live Bybit accounts.** Built on the `feat/bybit-live-trading` branch:
+  off by default, turned on per account after a warning, enforced in Rust
+  (`live_trading.rs`), with no size cap and leverage and margin mode
+  allowed. Not yet tried with a real live key; do that with a small order
+  before merging.
 - **Hyperliquid orders.** The adapter is read-only; there is no signing code
   yet. This is the highest-stakes code in the repo and gets its own review
   against `.claude/commands/security-review.md`.

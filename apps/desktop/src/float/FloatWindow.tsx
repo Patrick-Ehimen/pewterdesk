@@ -53,6 +53,7 @@ import {
   slippageBps,
 } from "../lib/float";
 import { peekSavedIcon } from "../lib/iconCache";
+import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "../lib/liveTrading";
 import { loadIcon } from "../lib/loadIcon";
 import { loadMarket } from "../lib/selectedMarket";
 import { playSound, type SoundKind } from "../lib/sound";
@@ -210,7 +211,11 @@ function FloatWidget() {
   const info = VENUES[venue];
   const accounts = useSyncExternalStore(subscribeAccounts, accountsState);
   const active = activeAccount(accounts, venue);
-  const trading = canTrade(active) ? active : undefined;
+  const liveUids = useSyncExternalStore(subscribeLiveTrading, liveTradingUids);
+  useEffect(() => {
+    void refreshLiveTrading();
+  }, []);
+  const trading = canTrade(active, liveUids) ? active : undefined;
   const account = useAccount(venue, active?.id);
   const snapshot =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
@@ -517,7 +522,7 @@ function FloatWidget() {
     ? t("float.connect")
     : !trading
       ? venue === "bybit"
-        ? t("ticket.demoOnly")
+        ? t("ticket.liveOff")
         : t("quick.unavailable")
       : undefined;
   const sizeLabel =

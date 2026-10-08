@@ -28,6 +28,7 @@ use tauri::State;
 use zeroize::Zeroizing;
 
 use crate::keychain::{self, KeychainKeySource};
+use crate::live_trading::LiveTrading;
 use crate::venues::Venues;
 
 /// A connected Bybit key, as the UI shows it. No key material.
@@ -158,10 +159,38 @@ pub async fn bybit_key_status(
     }))
 }
 
-/// Deletes the stored key. The key itself stays live on Bybit until the user
-/// deletes it there.
+/// Checks that the key stored for live account `uid` is still that
+/// account's and still trade-only, by asking Bybit now. Any other answer,
+/// no answer included, is an error: this is asked before live trading is
+/// turned on, and it fails closed.
+pub(crate) async fn verify_trade_only(venues: &Venues, uid: &str) -> Result<(), VenueError> {
+    let creds = match KeychainKeySource.key(&key_account(uid)?).await {
+        Ok(stored) => ApiCredentials::from_stored(&stored)?,
+        Err(KeyError::NotFound) => {
+            return Err(VenueError::InvalidRequest(
+                "no API key is stored for this account".into(),
+            ))
+        }
+        Err(e) => return Err(VenueError::Key(e)),
+    };
+    let info = venues.bybit().api_key_info(&creds, false).await?;
+    let key = check_trade_only(&info)?;
+    if key.uid.to_string() != uid {
+        return Err(VenueError::InvalidRequest(
+            "the stored key belongs to a different Bybit account".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Deletes the stored key, and turns live trading off for the account. The
+/// key itself stays live on Bybit until the user deletes it there.
 #[tauri::command]
-pub async fn disconnect_bybit_key(uid: String) -> Result<(), VenueError> {
+pub async fn disconnect_bybit_key(
+    live: State<'_, LiveTrading>,
+    uid: String,
+) -> Result<(), VenueError> {
+    live.forget(&uid);
     keychain::delete_key(key_account(&uid)?)
         .await
         .map_err(|e| VenueError::Key(e.into()))
