@@ -180,13 +180,31 @@ pub async fn fills(
     venues.adapter(venue)?.fills(&address).await
 }
 
+/// The account's closed positions: the venue's recent ones, or with `since`
+/// (ms since the epoch) those from then on, no further back than
+/// `CLOSED_HISTORY_MS`.
 #[tauri::command]
 pub async fn closed_trades(
     venues: State<'_, Venues>,
     venue: VenueId,
     address: String,
+    since: Option<u64>,
 ) -> Result<Vec<ClosedTrade>, VenueError> {
-    venues.adapter(venue)?.closed_trades(&address).await
+    /// How far back a caller may ask: half a year.
+    const CLOSED_HISTORY_MS: u64 = 183 * 24 * 3_600_000;
+    let adapter = venues.adapter(venue)?;
+    match since {
+        None => adapter.closed_trades(&address).await,
+        Some(since) => {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_millis() as u64);
+            let floor = now.saturating_sub(CLOSED_HISTORY_MS);
+            adapter
+                .closed_trades_since(&address, since.max(floor))
+                .await
+        }
+    }
 }
 
 #[tauri::command]

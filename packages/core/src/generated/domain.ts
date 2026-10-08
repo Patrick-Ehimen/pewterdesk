@@ -108,7 +108,12 @@ entryValue: Decimal, leverage?: Decimal,
 /**
  * When it closed; milliseconds since the Unix epoch.
  */
-time: number, };
+time: number, 
+/**
+ * When what was closed had been opened (the average over the fills
+ * that opened it), where the venue's history reaches back that far.
+ */
+openedAt?: number, };
 
 /**
  * A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes

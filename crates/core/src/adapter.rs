@@ -189,6 +189,18 @@ pub trait ExchangeAdapter: Send + Sync {
         Err(VenueError::Unsupported("closed trades"))
     }
 
+    /// The account's closed positions since `start_time` (milliseconds since
+    /// the Unix epoch), newest first, for a history longer than
+    /// `closed_trades` gives. A venue that can't go further back returns
+    /// what `closed_trades` does.
+    async fn closed_trades_since(
+        &self,
+        address: &str,
+        _start_time: u64,
+    ) -> Result<Vec<ClosedTrade>, VenueError> {
+        self.closed_trades(address).await
+    }
+
     /// The account's recent orders in any state (filled, cancelled,
     /// rejected, still open), newest first, as many as the venue keeps.
     async fn order_history(&self, _address: &str) -> Result<Vec<Order>, VenueError> {

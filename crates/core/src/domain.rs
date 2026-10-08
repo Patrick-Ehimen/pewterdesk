@@ -642,6 +642,11 @@ pub struct ClosedTrade {
     /// When it closed; milliseconds since the Unix epoch.
     #[ts(type = "number")]
     pub time: u64,
+    /// When what was closed had been opened (the average over the fills
+    /// that opened it), where the venue's history reaches back that far.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "number")]
+    pub opened_at: Option<u64>,
 }
 
 /// What to do with one of a position's exits.

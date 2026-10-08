@@ -5,6 +5,8 @@
 //! every coin, which is what the account panels show. Linear contracts settle
 //! in USDT or USDC, so positions and orders are read for both.
 
+use std::collections::HashMap;
+
 use pewterdesk_core::{
     AccountSnapshot, ClosedTrade, Decimal, Fill, FillEffect, FundingPayment, MarginMode, Order,
     OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, VenueId,
@@ -385,11 +387,60 @@ pub(crate) fn fill(e: WireExecution) -> Option<Fill> {
     })
 }
 
+/// The account's fills, from its executions. Funding settlements are left
+/// out: Bybit lists them among the executions, but they're payments, not
+/// trades, and the funding history has them.
+///
+/// Bybit gives a fill's PnL (`execPnl`) only on newer accounts. Where it's
+/// missing on a fill that closed part of a position, it's worked out from
+/// `closed`, the account's closed positions: the entry price of the one
+/// that fill's order closed, against the price it filled at. Before fees,
+/// like `execPnl`; the fee has its own column.
+pub(crate) fn fills(executions: Vec<WireExecution>, closed: &[WireClosed]) -> Vec<Fill> {
+    executions
+        .into_iter()
+        .filter(|e| e.exec_type != "Funding")
+        .filter_map(|e| {
+            let entry = closed
+                .iter()
+                .find(|c| !e.order_id.is_empty() && c.order_id == e.order_id)
+                .map(|c| decimal(&c.avg_entry_price));
+            let closed_size = decimal(&e.closed_size);
+            let known = !decimal(&e.exec_pnl).0.is_zero();
+            let mut fill = fill(e)?;
+            if let (false, Some(entry)) = (known, entry) {
+                if !closed_size.0.is_zero() && !entry.0.is_zero() {
+                    // Selling closes a long: it made what it sold above the entry.
+                    let per_unit = match fill.side {
+                        Side::Sell => fill.price.0 - entry.0,
+                        Side::Buy => entry.0 - fill.price.0,
+                    };
+                    fill.closed_pnl = pewterdesk_core::Decimal(per_unit * closed_size.0);
+                }
+            }
+            Some(fill)
+        })
+        .collect()
+}
+
+/// Whether any fill closed part of a position without saying what it made:
+/// then the closed positions are worth asking for (`fills`).
+pub(crate) fn lacks_pnl(executions: &[WireExecution]) -> bool {
+    executions.iter().any(|e| {
+        e.exec_type == "Trade"
+            && !decimal(&e.closed_size).0.is_zero()
+            && decimal(&e.exec_pnl).0.is_zero()
+    })
+}
+
 /// A row of `GET /v5/position/closed-pnl`: a position closed, in full or part.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WireClosed {
     symbol: String,
+    /// The order that closed it: what ties it to that order's fills.
+    #[serde(default)]
+    order_id: String,
     /// The side of the order that closed it: "Sell" closed a long.
     side: String,
     #[serde(default)]
@@ -406,6 +457,20 @@ pub(crate) struct WireClosed {
     leverage: String,
     #[serde(default)]
     updated_time: String,
+}
+
+impl WireClosed {
+    /// When it closed, in ms; `None` if Bybit didn't say.
+    pub(crate) fn time(&self) -> Option<u64> {
+        self.updated_time.parse().ok().filter(|t| *t > 0)
+    }
+}
+
+impl WireExecution {
+    /// When it filled, in ms; `None` if Bybit didn't say.
+    pub(crate) fn time(&self) -> Option<u64> {
+        self.exec_time.parse().ok().filter(|t| *t > 0)
+    }
 }
 
 pub(crate) fn closed(c: WireClosed) -> Option<ClosedTrade> {
@@ -425,7 +490,91 @@ pub(crate) fn closed(c: WireClosed) -> Option<ClosedTrade> {
         entry_value: decimal(&c.cum_entry_value),
         leverage: set(&c.leverage),
         time: c.updated_time.parse().unwrap_or(0),
+        opened_at: None,
     })
+}
+
+/// The closed positions `rows`, each with when it was opened where
+/// `opened` (see [`open_times`]) knows the order that closed it.
+pub(crate) fn closed_with_opens(
+    rows: Vec<WireClosed>,
+    opened: &HashMap<String, u64>,
+) -> Vec<ClosedTrade> {
+    rows.into_iter()
+        .filter_map(|c| {
+            let opened_at = opened.get(&c.order_id).copied();
+            closed(c).map(|mut trade| {
+                // An opening after the close would be a mismatch, not a hold.
+                trade.opened_at = opened_at.filter(|at| *at <= trade.time);
+                trade
+            })
+        })
+        .collect()
+}
+
+/// When the position each closing order closed had been opened, by that
+/// order's id, worked out from the account's fills: every fill that opens
+/// adds a lot at its time, and a fill that closes takes from the oldest
+/// lots first, so what an order closed is as old as the lots it took (their
+/// average, by size). An order that closed more than the fills on hand
+/// opened - a position older than they reach back - isn't in the answer.
+pub(crate) fn open_times(executions: &[WireExecution]) -> HashMap<String, u64> {
+    use rust_decimal::prelude::ToPrimitive;
+    use std::collections::VecDeque;
+
+    let mut fills: Vec<&WireExecution> = executions
+        .iter()
+        .filter(|e| e.exec_type == "Trade" && !e.order_id.is_empty())
+        .collect();
+    fills.sort_by_key(|e| e.exec_time.parse::<u64>().unwrap_or(0));
+
+    // Per market: the open lots (when, how much), oldest first.
+    let mut lots: HashMap<&str, VecDeque<(u64, f64)>> = HashMap::new();
+    // Per closing order: size closed, that size times its lots' times, and
+    // whether every bit of it had a lot to come from.
+    let mut closes: HashMap<&str, (f64, f64, bool)> = HashMap::new();
+    for fill in fills {
+        let time = fill.exec_time.parse::<u64>().unwrap_or(0);
+        let qty = decimal(&fill.exec_qty).0.to_f64().unwrap_or(0.0);
+        let closing = decimal(&fill.closed_size)
+            .0
+            .to_f64()
+            .unwrap_or(0.0)
+            .min(qty);
+        let open = lots.entry(fill.symbol.as_str()).or_default();
+        if closing > 0.0 {
+            let entry = closes
+                .entry(fill.order_id.as_str())
+                .or_insert((0.0, 0.0, true));
+            let mut left = closing;
+            while left > 1e-12 {
+                let Some((opened, size)) = open.front_mut() else {
+                    entry.2 = false;
+                    break;
+                };
+                let take = left.min(*size);
+                entry.0 += take;
+                entry.1 += take * *opened as f64;
+                *size -= take;
+                left -= take;
+                if *size <= 1e-12 {
+                    open.pop_front();
+                }
+            }
+            // The position is flat: anything left over was never this one's.
+            if qty - closing > 1e-12 {
+                open.clear();
+            }
+        }
+        if qty - closing > 1e-12 {
+            open.push_back((time, qty - closing));
+        }
+    }
+    closes
+        .into_iter()
+        .filter(|(_, (size, _, whole))| *whole && *size > 0.0)
+        .map(|(order, (size, weighted, _))| (order.to_owned(), (weighted / size) as u64))
+        .collect()
 }
 
 /// A `SETTLEMENT` row of `GET /v5/account/transaction-log`: a funding payment.
@@ -595,6 +744,119 @@ mod tests {
         );
         assert!(stop.reduce_only && stop.status == OrderStatus::Open);
         assert_eq!(stop.created_at, 1790880001000);
+    }
+
+    #[test]
+    fn works_out_a_closing_fills_pnl_where_bybit_gives_none() {
+        let executions = |pnl: &str| -> Vec<WireExecution> {
+            serde_json::from_value::<List<WireExecution>>(json!({ "list": [
+                // Closing a long of 130 SOL in two fills of one order.
+                { "symbol": "SOLUSDT", "orderId": "close", "execId": "e1", "side": "Sell",
+                  "execPrice": "113.98", "execQty": "100", "closedSize": "100",
+                  "execPnl": pnl, "execType": "Trade" },
+                { "symbol": "SOLUSDT", "orderId": "close", "execId": "e2", "side": "Sell",
+                  "execPrice": "113.90", "execQty": "30", "closedSize": "30", "execType": "Trade" },
+                // Covering a short.
+                { "symbol": "ETHUSDT", "orderId": "cover", "execId": "e3", "side": "Buy",
+                  "execPrice": "2500", "execQty": "1", "closedSize": "1", "execType": "Trade" },
+                // Opening: nothing closed, nothing made.
+                { "symbol": "SOLUSDT", "orderId": "open", "execId": "e4", "side": "Buy",
+                  "execPrice": "114.876", "execQty": "130", "closedSize": "0", "execType": "Trade" },
+                // A funding settlement, which isn't a trade.
+                { "symbol": "SOLUSDT", "orderId": "", "execId": "e5", "side": "Buy",
+                  "execPrice": "114.876", "execQty": "130", "execFee": "-0.61871064",
+                  "closedSize": "0", "execType": "Funding" }
+            ]}))
+            .unwrap()
+            .list
+        };
+        let closed: Vec<WireClosed> = serde_json::from_value::<List<WireClosed>>(json!({ "list": [
+            { "symbol": "SOLUSDT", "orderId": "close", "side": "Sell", "closedSize": "130",
+              "avgEntryPrice": "114.876", "avgExitPrice": "113.96", "closedPnl": "-135.5" },
+            { "symbol": "ETHUSDT", "orderId": "cover", "side": "Buy", "closedSize": "1",
+              "avgEntryPrice": "2566.58", "avgExitPrice": "2500", "closedPnl": "63.9" }
+        ]}))
+        .unwrap()
+        .list;
+
+        assert!(lacks_pnl(&executions("")));
+        let made: Vec<(String, Decimal)> = fills(executions(""), &closed)
+            .into_iter()
+            .map(|f| (f.id, f.closed_pnl))
+            .collect();
+        assert_eq!(
+            made,
+            [
+                // (113.98 - 114.876) x 100, and (113.90 - 114.876) x 30.
+                ("e1".to_owned(), d("-89.600")),
+                ("e2".to_owned(), d("-29.280")),
+                // A short covered below its entry made the difference.
+                ("e3".to_owned(), d("66.58")),
+                ("e4".to_owned(), d("0")),
+            ],
+            "the funding row is left out"
+        );
+        // What Bybit does give is kept as it is.
+        assert_eq!(fills(executions("-88"), &closed)[0].closed_pnl, d("-88"));
+        // Without the closed positions, the fills still come, less the figure.
+        assert_eq!(fills(executions(""), &[])[0].closed_pnl, d("0"));
+    }
+
+    #[test]
+    fn dates_a_close_by_the_fills_that_opened_it() {
+        let fill = |order: &str, side: &str, qty: &str, closed: &str, time: u64| {
+            json!({ "symbol": "SOLUSDT", "orderId": order, "execId": format!("{order}-{time}"),
+                    "side": side, "execPrice": "100", "execQty": qty, "closedSize": closed,
+                    "execTime": time.to_string(), "execType": "Trade" })
+        };
+        let executions: Vec<WireExecution> = serde_json::from_value::<List<WireExecution>>(json!({
+            // Given newest first, as Bybit does; they're put in order.
+            "list": [
+                // Closes the last 30, and opens 10 the other way.
+                fill("flip", "Sell", "40", "30", 9_000),
+                // Takes the 100 opened at 1,000 and 20 of those opened at 3,000.
+                fill("out", "Sell", "120", "120", 5_000),
+                fill("in2", "Buy", "50", "0", 3_000),
+                fill("in1", "Buy", "100", "0", 1_000),
+                // Closed something opened before these fills begin.
+                fill("old", "Buy", "5", "5", 500),
+                // Another market keeps its own lots.
+                json!({ "symbol": "ETHUSDT", "orderId": "eth-in", "execId": "x1", "side": "Sell",
+                        "execPrice": "1", "execQty": "1", "closedSize": "0",
+                        "execTime": "2000", "execType": "Trade" }),
+                json!({ "symbol": "ETHUSDT", "orderId": "eth-out", "execId": "x2", "side": "Buy",
+                        "execPrice": "1", "execQty": "1", "closedSize": "1",
+                        "execTime": "8000", "execType": "Trade" }),
+                // Funding isn't a fill.
+                json!({ "symbol": "SOLUSDT", "orderId": "", "execId": "f", "side": "Buy",
+                        "execPrice": "1", "execQty": "130", "closedSize": "0",
+                        "execTime": "4000", "execType": "Funding" })
+            ]
+        }))
+        .unwrap()
+        .list;
+        let opened = open_times(&executions);
+        // (100 x 1,000 + 20 x 3,000) / 120.
+        assert_eq!(opened.get("out"), Some(&1_333));
+        // The 30 left were all opened at 3,000.
+        assert_eq!(opened.get("flip"), Some(&3_000));
+        assert_eq!(opened.get("eth-out"), Some(&2_000));
+        // Nothing on hand opened it.
+        assert_eq!(opened.get("old"), None);
+        assert_eq!(opened.len(), 3);
+
+        let rows: Vec<WireClosed> = serde_json::from_value::<List<WireClosed>>(json!({ "list": [
+            { "symbol": "SOLUSDT", "orderId": "out", "side": "Sell", "closedSize": "120",
+              "avgEntryPrice": "100", "avgExitPrice": "101", "closedPnl": "120",
+              "updatedTime": "5000" },
+            { "symbol": "SOLUSDT", "orderId": "old", "side": "Buy", "closedSize": "5",
+              "avgEntryPrice": "100", "avgExitPrice": "99", "closedPnl": "5", "updatedTime": "500" }
+        ]}))
+        .unwrap()
+        .list;
+        let trades = closed_with_opens(rows, &opened);
+        assert_eq!(trades[0].opened_at, Some(1_333));
+        assert_eq!(trades[1].opened_at, None);
     }
 
     #[test]

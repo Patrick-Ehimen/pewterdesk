@@ -334,6 +334,26 @@ export function useClosedTrades(venue: VenueId, address: string | undefined, ena
   );
 }
 
+/** A longer history is many requests: it's re-read this often, not every 30 seconds. */
+const CLOSED_HISTORY_REFRESH_MS = 5 * 60_000;
+
+/**
+ * The connected account's closed positions over the last `spanMs`, newest
+ * first, while `enabled`: the Portfolio page's history.
+ */
+export function useClosedHistory(
+  venue: VenueId,
+  address: string | undefined,
+  spanMs: number,
+  enabled: boolean,
+) {
+  return usePolled<ClosedTrade[]>(
+    enabled && address ? `history:${venue}:${address}` : undefined,
+    () => venueClient.closedTrades(venue, address ?? "", Date.now() - spanMs),
+    CLOSED_HISTORY_REFRESH_MS,
+  );
+}
+
 /** The connected account's recent orders in any state, while `enabled`. */
 export function useOrderHistory(venue: VenueId, address: string | undefined, enabled: boolean) {
   return usePolled<Order[]>(enabled && address ? `${venue}:${address}` : undefined, () =>

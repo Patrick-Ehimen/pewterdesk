@@ -239,8 +239,8 @@ export const venueClient = {
   /** The account's recent fills, newest first. */
   fills: (venue: VenueId, address: string) => call<Fill[]>("fills", { venue, address }),
 
-  closedTrades: (venue: VenueId, address: string) =>
-    call<ClosedTrade[]>("closed_trades", { venue, address }),
+  closedTrades: (venue: VenueId, address: string, since?: number) =>
+    call<ClosedTrade[]>("closed_trades", { venue, address, since }),
 
   /** Funding paid or received since `startTime` (ms), newest first. */
   fundingPayments: (venue: VenueId, address: string, startTime: number) =>

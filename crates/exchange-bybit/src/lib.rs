@@ -1260,7 +1260,22 @@ impl ExchangeAdapter for BybitAdapter {
                 &creds,
             )
             .await?;
-        Ok(page.list.into_iter().filter_map(account::fill).collect())
+        // Where Bybit didn't say what a closing fill made, the closed
+        // positions give the entry price to work it out from. Without them
+        // the fills still show, less that figure.
+        let closed: Vec<account::WireClosed> = if account::lacks_pnl(&page.list) {
+            rest.signed_get::<account::List<account::WireClosed>>(
+                "/v5/position/closed-pnl",
+                &[("category", "linear"), ("limit", "100")],
+                &creds,
+            )
+            .await
+            .map(|page| page.list)
+            .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+        Ok(account::fills(page.list, &closed))
     }
 
     /// Funding settled on the account's positions since `start_time`, newest
@@ -1313,6 +1328,95 @@ impl ExchangeAdapter for BybitAdapter {
             )
             .await?;
         Ok(page.list.into_iter().filter_map(account::closed).collect())
+    }
+
+    /// The account's closed positions since `start_time`, newest first.
+    /// Bybit serves at most seven days and 100 rows per request, so this
+    /// walks back a week at a time, and within a busy week from the oldest
+    /// row it was given. Bounded: `CLOSED_REQUESTS` requests at most.
+    async fn closed_trades_since(
+        &self,
+        address: &str,
+        start_time: u64,
+    ) -> Result<Vec<ClosedTrade>, VenueError> {
+        const WEEK: u64 = 7 * 24 * 3_600_000;
+        const PAGE: usize = 100;
+        /// Six months of quiet weeks, or a few thousand closes.
+        const CLOSED_REQUESTS: usize = 40;
+        /// Fills are read from this much before `start_time`, to date the
+        /// positions that were already open then.
+        const LEAD: u64 = 2 * WEEK;
+        /// The fills are several times as many as the closes.
+        const FILL_REQUESTS: usize = 80;
+        let (rest, creds) = self.reader(address).await?;
+
+        // One list, a week at a time and, within a busy week, on from the
+        // oldest row it was given.
+        let mut rows: Vec<account::WireClosed> = Vec::new();
+        let mut end = now_ms();
+        for _ in 0..CLOSED_REQUESTS {
+            if end <= start_time {
+                break;
+            }
+            let start = start_time.max(end.saturating_sub(WEEK - 1));
+            let page: account::List<account::WireClosed> = rest
+                .signed_get_values(
+                    "/v5/position/closed-pnl",
+                    &[
+                        ("category", "linear".into()),
+                        ("startTime", start.to_string()),
+                        ("endTime", end.to_string()),
+                        ("limit", PAGE.to_string()),
+                    ],
+                    &creds,
+                )
+                .await?;
+            let full = page.list.len() >= PAGE;
+            let oldest = page.list.iter().filter_map(|c| c.time()).min();
+            rows.extend(page.list);
+            end = match oldest {
+                Some(oldest) if full && oldest < end => oldest - 1,
+                _ => start.saturating_sub(1),
+            };
+        }
+
+        // The fills over the same stretch and a little before, to say when
+        // each of those positions was opened. Without them (a refusal, a
+        // rate limit) the closes still come, less that.
+        let mut fills: Vec<account::WireExecution> = Vec::new();
+        let fills_from = start_time.saturating_sub(LEAD);
+        let mut end = now_ms();
+        for _ in 0..FILL_REQUESTS {
+            if rows.is_empty() || end <= fills_from {
+                break;
+            }
+            let start = fills_from.max(end.saturating_sub(WEEK - 1));
+            let page = rest
+                .signed_get_values::<account::List<account::WireExecution>>(
+                    "/v5/execution/list",
+                    &[
+                        ("category", "linear".into()),
+                        ("startTime", start.to_string()),
+                        ("endTime", end.to_string()),
+                        ("limit", PAGE.to_string()),
+                    ],
+                    &creds,
+                )
+                .await;
+            let Ok(page) = page else { break };
+            let full = page.list.len() >= PAGE;
+            let oldest = page.list.iter().filter_map(|e| e.time()).min();
+            fills.extend(page.list);
+            end = match oldest {
+                Some(oldest) if full && oldest < end => oldest - 1,
+                _ => start.saturating_sub(1),
+            };
+        }
+
+        let mut closed = account::closed_with_opens(rows, &account::open_times(&fills));
+        closed.sort_by_key(|c| std::cmp::Reverse(c.time));
+        closed.dedup_by(|a, b| a == b);
+        Ok(closed)
     }
 
     /// The account's recent orders in any state (up to 50 per settle coin,
