@@ -1,19 +1,38 @@
-import type { MarketSummary, VenueId } from "@pewterdesk/core";
+import type { MarketSummary, Position, VenueId } from "@pewterdesk/core";
 
 // Market alerts: what they watch, how close they are to firing, and whether
 // a new price crossed their line. Plain logic; the app stores and runs them.
 
 /**
- * What an alert watches: the mark price, the 24h change (in %), or the
- * current funding rate (in % per interval).
+ * What an alert watches. On the market: the mark price, the 24h change (in
+ * %), the funding rate (in % per interval), RSI(14) on hourly candles, 24h
+ * volume and open interest (both in the quote asset). On your own position
+ * in that market: its unrealized PnL (quote asset) and how far the mark is
+ * from its liquidation price (in %).
  */
-export type AlertKind = "price" | "move" | "funding";
-export const ALERT_KINDS: readonly AlertKind[] = ["price", "move", "funding"];
+export type AlertKind = "price" | "move" | "funding" | "rsi" | "volume" | "oi" | "pnl" | "liq";
+export const ALERT_KINDS: readonly AlertKind[] = [
+  "price",
+  "move",
+  "funding",
+  "rsi",
+  "volume",
+  "oi",
+  "pnl",
+  "liq",
+];
+/** Kinds that read your position, so need a connected account. */
+export const ACCOUNT_KINDS: ReadonlySet<AlertKind> = new Set(["pnl", "liq"]);
+/**
+ * How a kind's distance to its line is measured: as a share of the current
+ * value (price, volume, open interest), or in the kind's own units.
+ */
+const RELATIVE_KINDS: ReadonlySet<AlertKind> = new Set(["price", "volume", "oi"]);
 
 export type AlertCondition = "above" | "below";
 /** Once: switches itself off after firing. Every: fires again after a cooldown. */
 export type AlertRepeat = "once" | "every";
-/** Where a fired alert shows up. Only "app" is delivered so far. */
+/** Where a fired alert shows up. "menuBar" is the tray item's title, for a while. */
 export type AlertChannel = "app" | "desktop" | "sound" | "menuBar";
 
 /** An "every time" alert stays quiet this long after firing. */
@@ -28,7 +47,10 @@ export interface MarketAlert {
   /** `Market::symbol`, for display. */
   symbol: string;
   condition: AlertCondition;
-  /** A price for "price"; a percentage (5 = 5%) for "move" and "funding". */
+  /**
+   * In the kind's units: a price; a percentage (5 = 5%) for "move",
+   * "funding" and "liq"; an RSI reading; a quote amount for the rest.
+   */
   value: number;
   repeat: AlertRepeat;
   notify: AlertChannel[];
@@ -52,14 +74,49 @@ export interface FiredAlert {
   /** What the watched value was when it fired. */
   actual: number;
   time: number;
+  /** Where the alert was set to notify; unset on ones fired before this was kept. */
+  notify?: AlertChannel[];
 }
 
-/** What `kind` watches, from a market summary; undefined when it can't be read. */
-export function watchedValue(kind: AlertKind, summary: MarketSummary | undefined) {
+/** What a kind may need beyond the market's summary. */
+export interface AlertContext {
+  /** RSI(14) on the market's hourly candles. */
+  rsi?: number;
+  /** Your open position in the market, if any. */
+  position?: Position;
+}
+
+/**
+ * What `kind` watches, from the market's summary and `context`; undefined
+ * when it can't be read (no summary yet, no RSI yet, no position).
+ */
+export function watchedValue(
+  kind: AlertKind,
+  summary: MarketSummary | undefined,
+  context: AlertContext = {},
+) {
+  if (kind === "rsi") return Number.isFinite(context.rsi) ? context.rsi : undefined;
+  if (kind === "pnl") {
+    const pnl = Number(context.position?.unrealizedPnl);
+    return context.position && Number.isFinite(pnl) ? pnl : undefined;
+  }
+  if (kind === "liq") {
+    const p = context.position;
+    const mark = Number(p?.markPrice);
+    const liq = Number(p?.liquidationPrice);
+    if (!p || !(mark > 0) || !(liq > 0)) return undefined;
+    return (Math.abs(mark - liq) / mark) * 100;
+  }
   if (!summary) return undefined;
   const mark = Number(summary.markPrice);
   let value: number;
   switch (kind) {
+    case "volume":
+      value = Number(summary.dayVolume);
+      break;
+    case "oi":
+      value = Number(summary.openInterest) * mark;
+      break;
     case "price":
       value = mark;
       break;
@@ -78,8 +135,9 @@ export function watchedValue(kind: AlertKind, summary: MarketSummary | undefined
 
 /**
  * How far the watched value is from the alert's line: a fraction of the
- * price for "price" (0.05 = 5% away), percentage points for the others.
- * Zero or less means it's already on the far side.
+ * current value for price, volume and open interest (0.05 = 5% away), the
+ * kind's own units for the others (percentage points, RSI points, quote
+ * amount). Zero or less means it's already on the far side.
  */
 export function distanceToFire(
   alert: Pick<MarketAlert, "kind" | "condition" | "value">,
@@ -87,7 +145,7 @@ export function distanceToFire(
 ) {
   if (current === undefined) return undefined;
   const gap = alert.condition === "above" ? alert.value - current : current - alert.value;
-  if (alert.kind !== "price") return gap;
+  if (!RELATIVE_KINDS.has(alert.kind)) return gap;
   return current > 0 ? gap / current : undefined;
 }
 
@@ -107,6 +165,9 @@ export function crossed(
     : previous > alert.value && current <= alert.value;
 }
 
+/** Whether a kind's distance is a share of its current value (see `distanceToFire`). */
+export const isRelativeKind = (kind: AlertKind) => RELATIVE_KINDS.has(kind);
+
 /** Whether `alert` may fire at `now`: on, and out of its cooldown if it repeats. */
 export function canFire(alert: MarketAlert, now: number) {
   if (!alert.active) return false;
@@ -125,7 +186,9 @@ export function sortAlerts(
   const closeness = (a: MarketAlert) => {
     const d = distanceToFire(a, currentOf(a));
     if (d === undefined) return Number.POSITIVE_INFINITY;
-    return Math.abs(a.kind === "price" ? d : d / 100);
+    if (RELATIVE_KINDS.has(a.kind)) return Math.abs(d);
+    // A quote amount is compared with the size of its own line; points are out of 100.
+    return Math.abs(a.kind === "pnl" ? d / Math.max(Math.abs(a.value), 1) : d / 100);
   };
   return [...alerts].sort((a, b) => {
     if (a.active !== b.active) return a.active ? -1 : 1;

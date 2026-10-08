@@ -10,6 +10,7 @@ Bundled rather than loaded from a URL because the webview's CSP
 | `hyperliquid.svg` | `https://app.hyperliquid.xyz/coins/HYPE.svg`, as served |
 | `bybit.svg` | web3icons (`@web3icons/core` 4.0.57, `dist/svgs/exchanges/background/bybit.svg`, MIT, license below): the mark on its own tile, so its white parts read on a light UI; only the `class` attribute removed |
 | `gmx.svg`, `dydx.svg` | web3icons (`@web3icons/core` 4.0.57, `dist/svgs/tokens/background/GMX.svg` and `DYDX.svg`, MIT, license below), only the `class` attribute removed. Venues not supported yet, shown as coming soon in onboarding |
+| `binance.svg`, `okx.svg` | web3icons (`@web3icons/core` 4.0.57, `dist/svgs/exchanges/background/binance.svg` and `okx.svg`, MIT, license below), only the `class` attribute removed. Venues not supported yet, shown as coming soon |
 | `aster.svg` | The mark from `https://static.asterdexfx.com/cloud-futures/static/images/aster/logo.svg` (Aster's wordmark), cropped to the symbol |
 
 To add one, check the SVG has no `<script>`, event handlers, `<image>` or
@@ -17,7 +18,7 @@ external `href`s, and export it from `assets/index.ts` under its `VenueId`.
 
 ## License
 
-`bybit.svg`, `gmx.svg` and `dydx.svg` are from [web3icons](https://github.com/0xa3k5/web3icons), under
+`bybit.svg`, `binance.svg`, `okx.svg`, `gmx.svg` and `dydx.svg` are from [web3icons](https://github.com/0xa3k5/web3icons), under
 the MIT License:
 
 ```

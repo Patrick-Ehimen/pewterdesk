@@ -9,7 +9,20 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { LuActivity, LuBell, LuCheck, LuCoins, LuPercent, LuTrash2, LuX } from "react-icons/lu";
+import {
+  LuActivity,
+  LuBell,
+  LuChartColumn,
+  LuCheck,
+  LuCoins,
+  LuGauge,
+  LuLayers,
+  LuPercent,
+  LuShieldAlert,
+  LuTrash2,
+  LuWallet,
+  LuX,
+} from "react-icons/lu";
 import { dateFormat, type MessageKey, t } from "../../i18n";
 import {
   ALERT_KINDS,
@@ -22,7 +35,13 @@ import {
   type MarketAlert,
   sortAlerts,
 } from "../../lib/alerts";
-import { decimalsOf, formatNumber, formatPercent } from "../../lib/format";
+import {
+  decimalsOf,
+  formatCompact,
+  formatNumber,
+  formatPercent,
+  formatSigned,
+} from "../../lib/format";
 import { IconButton } from "../common/IconButton";
 import { Select } from "../common/Select";
 import { Switch } from "../common/Switch";
@@ -65,34 +84,47 @@ const ICON_SIZE = 17;
 const GAP = 8;
 
 /** Types in the design that need account data or feeds pewterdesk doesn't have yet. */
-const LATER_KINDS: readonly MessageKey[] = [
-  "alerts.type.liq",
-  "alerts.type.pnl",
-  "alerts.type.wallet",
-  "alerts.type.venue",
-];
+const LATER_KINDS: readonly MessageKey[] = ["alerts.type.wallet", "alerts.type.venue"];
 const CHANNELS: readonly AlertChannel[] = ["app", "desktop", "sound", "menuBar"];
-/** Delivered so far; the rest come with desktop notifications. */
-const LIVE_CHANNELS: ReadonlySet<AlertChannel> = new Set(["app"]);
+/** Delivered so far; the menu bar isn't yet. */
+const LIVE_CHANNELS: ReadonlySet<AlertChannel> = new Set(["app", "desktop", "sound", "menuBar"]);
 
 const KIND_ICON: Record<AlertKind, ReactNode> = {
   price: <LuActivity size={15} aria-hidden />,
   move: <LuPercent size={15} aria-hidden />,
   funding: <LuCoins size={15} aria-hidden />,
+  rsi: <LuGauge size={15} aria-hidden />,
+  volume: <LuChartColumn size={15} aria-hidden />,
+  oi: <LuLayers size={15} aria-hidden />,
+  pnl: <LuWallet size={15} aria-hidden />,
+  liq: <LuShieldAlert size={15} aria-hidden />,
 };
+/** Kinds whose value is a percentage. */
+const PERCENT_KINDS: ReadonlySet<AlertKind> = new Set(["move", "funding", "liq"]);
+/** Kinds whose value is an amount of the quote asset. */
+const AMOUNT_KINDS: ReadonlySet<AlertKind> = new Set(["volume", "oi"]);
 
 const CLOCK: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
 
 /** A price to enough places to read, whatever the market's scale. */
 const priceText = (n: number) => formatNumber(n, Math.min(Math.max(decimalsOf(String(n)), 2), 6));
-/** A "move" or "funding" value, already in %. */
+/** A "move", "funding" or "liq" value, already in %. */
 const pctText = (kind: AlertKind, n: number) => `${formatNumber(n, kind === "funding" ? 4 : 2)}%`;
-const valueText = (kind: AlertKind, n: number) =>
-  kind === "price" ? priceText(n) : pctText(kind, n);
+/** A value in its kind's units: a price, a percentage, an RSI reading, an amount. */
+function valueText(kind: AlertKind, n: number) {
+  if (kind === "price") return priceText(n);
+  if (PERCENT_KINDS.has(kind)) return pctText(kind, n);
+  if (kind === "rsi") return formatNumber(n, 1);
+  if (kind === "pnl") return formatSigned(n, 2);
+  return `$${formatCompact(n)}`;
+}
 
 /** The watched value as typed into the form (and suggested as its placeholder). */
-const inputText = (kind: AlertKind, n: number) =>
-  kind === "price" ? String(Number(n.toPrecision(6))) : n.toFixed(kind === "funding" ? 4 : 2);
+function inputText(kind: AlertKind, n: number) {
+  if (kind === "price") return String(Number(n.toPrecision(6)));
+  if (AMOUNT_KINDS.has(kind)) return String(Math.round(n));
+  return n.toFixed(kind === "funding" ? 4 : kind === "rsi" ? 1 : 2);
+}
 
 /** A fired alert in a line: "HYPE fell below 36.50". */
 export function firedAlertText(f: FiredAlert) {
@@ -114,7 +146,14 @@ function describe(a: Pick<MarketAlert, "kind" | "condition" | "symbol" | "value"
 function distanceText(kind: AlertKind, distance: number | undefined) {
   if (distance === undefined) return "-";
   if (distance <= 0) return t("alerts.status.now");
-  const amount = kind === "price" ? formatPercent(distance) : pctText(kind, distance);
+  // A share of the current value for price, volume and open interest; the
+  // kind's own units for the rest.
+  const amount =
+    kind === "price" || AMOUNT_KINDS.has(kind)
+      ? formatPercent(distance)
+      : PERCENT_KINDS.has(kind)
+        ? pctText(kind, distance)
+        : formatNumber(distance, kind === "rsi" ? 1 : 2);
   return t("alerts.away", { distance: amount });
 }
 
@@ -415,7 +454,9 @@ function NewAlertForm({
     target !== undefined &&
     input.trim() !== "" &&
     Number.isFinite(value) &&
-    (kind !== "price" || value > 0) &&
+    // Everything but a change, a funding rate or a PnL is above zero; RSI tops out at 100.
+    (kind === "move" || kind === "funding" || kind === "pnl" || value > 0) &&
+    (kind !== "rsi" || value < 100) &&
     notify.size > 0;
   const distance = valid ? distanceToFire({ kind, condition, value }, current) : undefined;
 
@@ -509,7 +550,9 @@ function NewAlertForm({
             onChange={(e) => setInput(e.target.value)}
             aria-invalid={(input.trim() !== "" && !Number.isFinite(value)) || undefined}
           />
-          <span>{kind === "price" ? (target?.quote ?? "") : "%"}</span>
+          <span>
+            {PERCENT_KINDS.has(kind) ? "%" : kind === "rsi" ? "RSI" : (target?.quote ?? "")}
+          </span>
         </span>
         {current !== undefined && (
           <span className="pd-alerts-now pd-num">

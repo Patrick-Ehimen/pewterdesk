@@ -1045,8 +1045,9 @@ input {
   box-shadow: 0 0 0 1px var(--pd-border);
 }
 
-/* Synthwave '84's signature: a soft neon glow on the accent and the mid price */
-[data-theme="synthwave"] .pd-book-mid,
+/* Synthwave '84's signature: a soft neon glow on the accent. Not on the
+   order book's mid price: a glow behind digits reads as blur, and that's a
+   number to read at a glance. */
 [data-theme="synthwave"] .pd-icon-button:hover,
 [data-theme="synthwave"] .pd-icon-button[aria-pressed="true"] {
   text-shadow: 0 0 10px currentColor;
@@ -6248,6 +6249,12 @@ button.pd-drawer-exit:hover {
   position: absolute;
   inset: 0;
 }
+.pd-liq-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
 .pd-liq-cell {
   position: absolute;
   display: flex;
@@ -6745,4 +6752,375 @@ button.pd-drawer-exit:hover {
   padding: 8px;
   color: var(--pd-pewter);
   font-size: 12.5px;
+}
+
+/* The notification centre: the header's inbox and its panel */
+.pd-notes {
+  position: fixed;
+  z-index: 1000;
+  width: min(440px, calc(100vw - 16px));
+  max-height: min(640px, calc(100vh - 90px));
+  display: flex;
+  flex-direction: column;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow:
+    0 20px 48px -12px color-mix(in srgb, var(--pd-bg) 85%, transparent),
+    0 2px 8px color-mix(in srgb, var(--pd-bg) 50%, transparent);
+}
+.pd-notes-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px 8px 16px;
+}
+.pd-notes-title {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+.pd-notes-action {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.pd-notes-action:hover:not(:disabled) {
+  background: var(--pd-surface-raised);
+}
+.pd-notes-action:disabled {
+  color: var(--pd-pewter-dim);
+  cursor: default;
+}
+.pd-notes-dnd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pd-notes-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 16px 10px;
+}
+.pd-notes-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 10px;
+  border-top: 1px solid var(--pd-border);
+}
+.pd-notes-day {
+  margin: 12px 8px 4px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-notes-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-notes-row {
+  --note-tone: var(--pd-pewter-dim);
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 6px;
+}
+.pd-notes-row:hover {
+  background: var(--pd-surface-raised);
+}
+.pd-notes-row[data-tone="buy"] {
+  --note-tone: var(--pd-buy);
+}
+.pd-notes-row[data-tone="sell"] {
+  --note-tone: var(--pd-sell);
+}
+.pd-notes-row[data-tone="warn"] {
+  --note-tone: var(--pd-warning);
+}
+.pd-notes-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border: 1.5px solid var(--note-tone);
+  border-radius: 50%;
+}
+.pd-notes-row[data-unread] .pd-notes-dot {
+  background: var(--note-tone);
+}
+.pd-notes-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+}
+.pd-notes-row:not([data-unread]) .pd-notes-text {
+  color: var(--pd-pewter);
+}
+.pd-notes-kind {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.pd-notes-body {
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.pd-notes-go {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pd-notes-go:hover {
+  text-decoration: underline;
+}
+.pd-notes-time {
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.pd-notes-empty {
+  margin: 0;
+  padding: 36px 20px;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Command palette */
+.pd-cmd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 14vh 16px 16px;
+  background: color-mix(in srgb, var(--pd-bg) 55%, transparent);
+}
+.pd-cmd {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100%);
+  max-height: min(560px, 76vh);
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  color: var(--pd-text);
+  overflow: hidden;
+}
+.pd-cmd-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--pd-border);
+  color: var(--pd-brass-text);
+}
+.pd-cmd-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: 16px var(--pd-font-mono);
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+/* Its own focus ring, rounded with the field, in place of the app's square outline. */
+.pd-cmd-input input:focus,
+.pd-cmd-input input:focus-visible {
+  outline: none;
+  border-color: var(--pd-brass);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pd-brass) 22%, transparent);
+}
+.pd-cmd-input input::placeholder {
+  color: var(--pd-pewter);
+  font-family: inherit;
+}
+.pd-cmd-input kbd {
+  padding: 3px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  color: var(--pd-pewter);
+  font: 11px var(--pd-font-mono);
+}
+.pd-cmd-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 14px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+}
+.pd-cmd-preview[data-tone="buy"] {
+  border-color: var(--pd-buy);
+}
+.pd-cmd-preview[data-tone="sell"] {
+  border-color: var(--pd-sell);
+}
+.pd-cmd-preview[data-armed] {
+  background: var(--pd-surface-raised);
+}
+.pd-cmd-badge {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.pd-cmd-preview[data-tone="buy"] .pd-cmd-badge {
+  color: var(--pd-buy);
+}
+.pd-cmd-preview[data-tone="sell"] .pd-cmd-badge {
+  color: var(--pd-sell);
+}
+.pd-cmd-preview-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.pd-cmd-preview-main strong {
+  font: 500 15px var(--pd-font-mono);
+}
+.pd-cmd-preview-detail {
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pd-cmd-preview-hint {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-cmd-preview[data-armed] .pd-cmd-preview-hint {
+  color: var(--pd-brass-text);
+  font-weight: 600;
+}
+.pd-cmd-list {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 8px 8px;
+  overflow-y: auto;
+}
+.pd-cmd-list h3 {
+  margin: 0;
+  padding: 12px 8px 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pd-cmd-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 8px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pd-cmd-row[data-active] {
+  border-left-color: var(--pd-brass);
+  background: var(--pd-surface-raised);
+}
+.pd-cmd-row:disabled {
+  color: var(--pd-pewter);
+  cursor: default;
+}
+.pd-cmd-icon {
+  display: inline-flex;
+  flex: none;
+  justify-content: center;
+  width: 18px;
+  color: var(--pd-pewter);
+}
+.pd-cmd-letter {
+  font: 12px var(--pd-font-mono);
+}
+.pd-cmd-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-cmd-mono {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.pd-cmd-meta {
+  flex: none;
+  color: var(--pd-pewter);
+  font: 12px var(--pd-font-mono);
+}
+.pd-cmd-empty {
+  margin: 0;
+  padding: 28px 16px;
+  color: var(--pd-pewter);
+  text-align: center;
+}
+.pd-cmd-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-cmd-foot > :first-child {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--pd-font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-cmd-foot > :last-child {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
 }

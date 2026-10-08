@@ -45,6 +45,32 @@ describe("alerts", () => {
     expect(watchedValue("price", undefined)).toBeUndefined();
   });
 
+  it("reads the newer kinds from the summary, RSI and your position", () => {
+    const s = { ...summary("100", "100"), dayVolume: "5000000", openInterest: "2000" };
+    expect(watchedValue("volume", s)).toBe(5_000_000);
+    expect(watchedValue("oi", s)).toBe(200_000);
+    expect(watchedValue("rsi", s, { rsi: 71.5 })).toBe(71.5);
+    expect(watchedValue("rsi", s)).toBeUndefined();
+    const position = {
+      markPrice: "100",
+      liquidationPrice: "92",
+      unrealizedPnl: "-12.5",
+    } as unknown as NonNullable<Parameters<typeof watchedValue>[2]>["position"];
+    expect(watchedValue("pnl", undefined, { position })).toBe(-12.5);
+    expect(watchedValue("liq", undefined, { position })).toBeCloseTo(8);
+    expect(watchedValue("pnl", s)).toBeUndefined();
+    expect(
+      watchedValue("liq", s, { position: { ...position, liquidationPrice: null } as never }),
+    ).toBeUndefined();
+  });
+
+  it("measures volume and open interest like price, the rest in their own units", () => {
+    expect(distanceToFire(alert({ kind: "volume", value: 110 }), 100)).toBeCloseTo(0.1);
+    expect(distanceToFire(alert({ kind: "rsi", value: 70 }), 64)).toBe(6);
+    expect(distanceToFire(alert({ kind: "pnl", condition: "below", value: -50 }), -20)).toBe(30);
+    expect(distanceToFire(alert({ kind: "liq", condition: "below", value: 5 }), 8)).toBe(3);
+  });
+
   it("measures price distance as a fraction, the rest in points", () => {
     expect(distanceToFire(alert({ value: 40 }), 38.398)).toBeCloseTo(0.0417, 3);
     expect(distanceToFire(alert({ condition: "below", value: 36.5 }), 38.398)).toBeCloseTo(

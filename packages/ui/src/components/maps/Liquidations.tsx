@@ -1,6 +1,6 @@
 import type { Market } from "@pewterdesk/core";
 import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 import { dateFormat, t } from "../../i18n";
 import { formatCompact, formatNumber } from "../../lib/format";
 import { HOUR_MS, type LiqEvent, liqByMarket, liqTotals, sourceOf } from "../../lib/liquidations";
@@ -55,6 +55,8 @@ interface LiquidationsProps {
   events: readonly LiqEvent[];
   /** The past day's history still being read: markets done of the total. */
   backfill?: { done: number; total: number };
+  /** Shown in the map while that history loads and there's nothing to draw yet. */
+  loader?: ReactNode;
   /** For names and logos, by `Market::id`. */
   markets: ReadonlyMap<string, Market>;
   window: LiqWindow;
@@ -75,6 +77,7 @@ interface LiquidationsProps {
 export function Liquidations({
   events,
   backfill,
+  loader,
   markets,
   window,
   onWindow,
@@ -91,6 +94,9 @@ export function Liquidations({
   }, []);
 
   const live = events.filter((e) => sourceOf(e) === "bybit");
+  // Still reading (a total of 0 is the moment before the markets are known).
+  const fetching =
+    backfill !== undefined && (backfill.total === 0 || backfill.done < backfill.total);
   const byMarket = liqByMarket(events, now, WINDOW_MS[window]);
   const top: Leaf[] = byMarket.slice(0, TREEMAP_MARKETS);
   const others = byMarket.slice(TREEMAP_MARKETS).reduce<Leaf>(
@@ -172,7 +178,13 @@ export function Liquidations({
           {error ? (
             <EmptyState>{error}</EmptyState>
           ) : leaves.length === 0 ? (
-            <EmptyState>{t("liq.waiting")}</EmptyState>
+            fetching && loader ? (
+              <div className="pd-liq-loading" role="status" aria-label={t("feed.loading")}>
+                {loader}
+              </div>
+            ) : (
+              <EmptyState>{t("liq.waiting")}</EmptyState>
+            )
           ) : (
             root.leaves().map((leaf) => {
               const d = leaf.data as Leaf;

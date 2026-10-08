@@ -8,8 +8,18 @@ export {
   ColumnHeader,
   Hint,
 } from "./components/common/ColumnHeader";
+export {
+  CommandPalette,
+  type PaletteItem,
+  type PalettePreview,
+  type PaletteSection,
+} from "./components/common/CommandPalette";
 export { IconButton } from "./components/common/IconButton";
 export { MarketSearch } from "./components/common/MarketSearch";
+export {
+  type CentreNote,
+  NotificationCentre,
+} from "./components/common/NotificationCentre";
 export { type MenuOption, OptionsMenu } from "./components/common/OptionsMenu";
 export { Select, type SelectOption } from "./components/common/Select";
 export { StarButton } from "./components/common/StarButton";
@@ -137,9 +147,12 @@ export {
   t,
 } from "./i18n";
 export {
+  ACCOUNT_KINDS,
   ALERT_COOLDOWN_MS,
+  ALERT_KINDS,
   type AlertChannel,
   type AlertCondition,
+  type AlertContext,
   type AlertKind,
   type AlertRepeat,
   canFire,
@@ -149,6 +162,7 @@ export {
   type MarketAlert,
   watchedValue,
 } from "./lib/alerts";
+export { roundToStep } from "./lib/calculator";
 export { formatCountdown, INTERVAL_MS } from "./lib/chart";
 export {
   avgFillTo,
@@ -193,6 +207,7 @@ export {
 } from "./lib/liquidations";
 export { RSI_CANDLES, RSI_FRAMES, type RsiFrame, rsiNowAndBefore } from "./lib/marketMaps";
 export {
+  closeOrder,
   intervalFor,
   type PnlPoint,
   type PositionFills,
