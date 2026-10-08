@@ -9,6 +9,7 @@ import {
   startPairing,
   type WalletSession,
 } from "../../lib/walletConnect";
+import { LogoMark } from "../header/AppLogo";
 
 type Step =
   | { kind: "idle" }
@@ -26,17 +27,31 @@ function messageOf(e: unknown): string {
   return t("error.failed");
 }
 
-/** The QR code as one SVG path of its dark modules, coloured by CSS. */
-function QrCode({ value }: { value: string }) {
-  const { size, path } = useMemo(() => {
-    const { modules } = createQr(value, { errorCorrectionLevel: "M" });
+/** The share of the code's width the logo's tile covers, in its centre. */
+const LOGO_SHARE = 0.22;
+
+/**
+ * The QR code as one SVG path of its dark modules, coloured by CSS, with
+ * the pewterdesk mark on a tile in its centre, both in the theme's own
+ * colours like the header's logo. The tile hides the modules
+ * under it, which the code's error correction (level Q, a quarter of it
+ * recoverable) makes up for: the tile is about a twentieth of the area.
+ */
+export function QrCode({ value }: { value: string }) {
+  const { size, path, tile } = useMemo(() => {
+    const { modules } = createQr(value, { errorCorrectionLevel: "Q" });
+    // A whole number of modules, the same parity as the code, so it sits dead centre.
+    let side = Math.round(modules.size * LOGO_SHARE);
+    if (side % 2 !== modules.size % 2) side += 1;
+    const from = (modules.size - side) / 2;
+    const under = (v: number) => v >= from && v < from + side;
     let d = "";
     for (let y = 0; y < modules.size; y++) {
       for (let x = 0; x < modules.size; x++) {
-        if (modules.get(y, x)) d += `M${x} ${y}h1v1h-1z`;
+        if (modules.get(y, x) && !(under(x) && under(y))) d += `M${x} ${y}h1v1h-1z`;
       }
     }
-    return { size: modules.size, path: d };
+    return { size: modules.size, path: d, tile: { from, side } };
   }, [value]);
   return (
     <svg
@@ -47,6 +62,22 @@ function QrCode({ value }: { value: string }) {
       shapeRendering="crispEdges"
     >
       <path d={path} fill="currentColor" />
+      {/* The code stays black on white; the tile and the mark take the theme. */}
+      <g shapeRendering="auto">
+        <rect
+          className="wallet-qr-tile"
+          x={tile.from + 0.4}
+          y={tile.from + 0.4}
+          width={tile.side - 0.8}
+          height={tile.side - 0.8}
+          rx={tile.side * 0.2}
+        />
+        <LogoMark
+          x={tile.from + tile.side * 0.14}
+          y={tile.from + tile.side * 0.14}
+          size={tile.side * 0.72}
+        />
+      </g>
     </svg>
   );
 }

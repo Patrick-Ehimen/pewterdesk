@@ -349,12 +349,18 @@
 
 /* WalletConnect QR: black on white, whatever the theme */
 .wallet-qr {
-  width: 184px;
-  height: 184px;
+  /* Room for the denser code its logo needs (more error correction). */
+  width: 208px;
+  height: 208px;
   padding: 8px;
   background: var(--pd-qr-light);
   border-radius: 14px;
   color: var(--pd-qr-dark);
+}
+
+/* The tile the logo sits on, in the code's centre: the theme's own surface */
+.wallet-qr-tile {
+  fill: var(--pd-surface);
 }
 
 /* Connected */
