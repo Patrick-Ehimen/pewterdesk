@@ -31,13 +31,16 @@ describe("connected accounts", () => {
     expect(isAccountId("hyperliquid", `demo:${A}`)).toBe(false);
   });
 
-  it("trades only on Bybit demo accounts, for now", () => {
+  it("trades on Bybit demo accounts, and on live ones turned on", () => {
     const demo = { venue: "bybit" as const, id: "demo:24617703" };
     const live = { venue: "bybit" as const, id: "24617703" };
-    expect(isDemoAccount(demo) && canTrade(demo)).toBe(true);
-    expect(isDemoAccount(live) || canTrade(live)).toBe(false);
-    expect(canTrade({ venue: "hyperliquid", id: A })).toBe(false);
-    expect(canTrade(undefined)).toBe(false);
+    expect(isDemoAccount(demo) && canTrade(demo, [])).toBe(true);
+    expect(isDemoAccount(live) || canTrade(live, [])).toBe(false);
+    expect(canTrade(live, ["24617703"])).toBe(true);
+    // On for another account isn't on for this one, nor for its demo twin's id.
+    expect(canTrade(live, ["24617704", "demo:24617703"])).toBe(false);
+    expect(canTrade({ venue: "hyperliquid", id: A }, [A])).toBe(false);
+    expect(canTrade(undefined, ["24617703"])).toBe(false);
   });
 
   it("adds accounts, making the newest active, without repeats", () => {

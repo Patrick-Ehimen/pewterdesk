@@ -710,3 +710,44 @@
   border-color: var(--pd-brass);
   background: var(--pd-surface-raised);
 }
+
+/* Live trading for a live Bybit account: the switch, and the warning before it turns on */
+.apikey-live {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.apikey-live[data-on] {
+  border-color: var(--pd-warning);
+}
+.apikey-live-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.apikey-live-head > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.apikey-live-head small {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.apikey-live-ask {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pd-border);
+}
+.apikey-live-ask p {
+  margin: 0 0 12px;
+  color: var(--pd-warning);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.apikey-live-ask svg {
+  vertical-align: -2px;
+}

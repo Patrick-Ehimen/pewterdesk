@@ -158,8 +158,17 @@ discover it on their own. The reasoning behind the rules is in
   Bybit) - nothing else. Never add withdraw,
   transfer, key approval, or anything that signs caller-supplied bytes or
   typed data. The commands build the account's keychain reference themselves
-  (`trading_account`) and, for now, accept Bybit demo accounts only - lifting
-  that gate is a security-relevant change.
+  (`trading_account`) and accept Bybit accounts only: a demo account as soon
+  as it's connected, a live one only once live trading is turned on for it.
+- `apps/desktop/src-tauri/src/live_trading.rs` - the per-account switch for
+  live Bybit trading, kept and enforced in Rust (UIDs in `live-trading.json`
+  in the app's config folder; no key material). Off by default. Turning it
+  on asks Bybit again what the stored key may do and refuses anything but
+  that account's own trade-only key, failing closed (offline included);
+  disconnecting a key turns it off. There is no order size cap. It guards
+  against a live order sent by mistake, not against the page itself.
+  Opening trading to another venue, or loosening this switch, is a
+  security-relevant change.
 - `apps/desktop/src-tauri/src/share.rs` - the P&L share card. Saving
   writes the page's PNG (checked) to Downloads under a name Rust picks.
   `open_share` opens a social site's post page: the page names one of a
@@ -234,6 +243,13 @@ via `tauri-plugin-notification`, called from Rust only). The floating window (`f
 tray panel, the Window menu, the header, or Control+Option+Space (a global
 shortcut, via `tauri-plugin-global-shortcut`). `.claude/prd-rust-desktop-features.md` has the rest of the
 Rust-side backlog (notifications, deep links, local persistence), not started.
+
+## Live trading
+
+Orders work on Bybit: demo accounts, and live accounts with live trading
+turned on in the account's details (the API key dialog; `lib/liveTrading.ts`
+mirrors Rust's list for the page). A trading live account shows a "Live"
+badge on the ticket. Hyperliquid and Aster still can't place orders.
 
 ## Command palette
 

@@ -355,6 +355,15 @@ export const bybitKeyClient = {
   status: (uid: string) => call<BybitKeyInfo | null>("bybit_key_status", { uid }),
 
   disconnect: (uid: string) => call<void>("disconnect_bybit_key", { uid }),
+
+  /** The live accounts (UIDs) that may trade. */
+  liveAccounts: () => call<string[]>("live_trading_accounts", {}),
+
+  /**
+   * Turns live trading on or off for a live account. Turning it on has Rust
+   * check the stored key with Bybit again, and refuses if it isn't trade-only.
+   */
+  setLive: (uid: string, on: boolean) => call<void>("set_live_trading", { uid, on }),
 };
 
 /** What a coin link is, for its label and icon. Mirrors `LinkKind` in `coin_info.rs`. */

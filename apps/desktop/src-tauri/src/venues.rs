@@ -11,8 +11,9 @@
 //!   (a position's TP, SL and trailing stop: protective, reduce-only), and
 //!   the trading parameters `set_leverage` and `set_margin_mode` (they move
 //!   no funds and open nothing), nothing else. They build the
-//!   account's key reference themselves and, for now, refuse everything but
-//!   Bybit demo accounts (`trading_account`).
+//!   account's key reference themselves and refuse everything but Bybit
+//!   accounts: demo ones, and live ones with live trading turned on
+//!   (`trading_account`, `live_trading`).
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter
@@ -42,6 +43,7 @@ use tauri::{State, Webview};
 use tokio::sync::mpsc;
 
 use crate::keychain::KeychainKeySource;
+use crate::live_trading::LiveTrading;
 
 /// One message on a subscription's channel. `closed` is final: the venue ended
 /// the stream (e.g. it rejected the market), and nothing more will arrive.
@@ -375,16 +377,21 @@ pub async fn subscribe_account(
 /// here from the account id, never taken from the UI, so a call can't pair
 /// an account with another's key.
 ///
-/// Orders are on for Bybit demo accounts only, for now: demo funds, on
-/// Bybit's demo host. Live accounts and other venues are refused here until
-/// the signing code has had its review; lifting that is this one match.
-fn trading_account(venue: VenueId, account: &str) -> Result<TradingAccount, VenueError> {
+/// Orders are on for Bybit accounts: a demo account (demo funds, on
+/// Bybit's demo host) as soon as it's connected, a live one only once live
+/// trading has been turned on for it (`live_trading`). Other venues are
+/// refused here until they have signing code; lifting that is this match.
+fn trading_account(
+    venue: VenueId,
+    account: &str,
+    live: &LiveTrading,
+) -> Result<TradingAccount, VenueError> {
     match venue {
         VenueId::Bybit => {
-            let (demo, _) = bybit_auth::parse_account(account)?;
-            if !demo {
-                return Err(VenueError::Unsupported(
-                    "orders on live Bybit accounts (only demo accounts can trade for now)",
+            let (demo, uid) = bybit_auth::parse_account(account)?;
+            if !demo && !live.is_on(uid) {
+                return Err(VenueError::Rejected(
+                    "live trading is off for this account; turn it on under Accounts".into(),
                 ));
             }
             Ok(TradingAccount {
@@ -403,23 +410,25 @@ fn trading_account(venue: VenueId, account: &str) -> Result<TradingAccount, Venu
 #[tauri::command]
 pub async fn place_order(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
 ) -> Result<Order, VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues.adapter(venue)?.place_order(&trading, &request).await
 }
 
 #[tauri::command]
 pub async fn cancel_order(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     market: String,
     order_id: String,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues
         .adapter(venue)?
         .cancel_order(&trading, &market, &order_id)
@@ -431,13 +440,14 @@ pub async fn cancel_order(
 #[tauri::command]
 pub async fn amend_order(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     market: String,
     order_id: String,
     amend: OrderAmend,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues
         .adapter(venue)?
         .amend_order(&trading, &market, &order_id, &amend)
@@ -450,12 +460,13 @@ pub async fn amend_order(
 #[tauri::command]
 pub async fn set_position_protection(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     market: String,
     protection: PositionProtection,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues
         .adapter(venue)?
         .set_position_protection(&trading, &market, &protection)
@@ -491,12 +502,13 @@ pub async fn trade_settings(
 #[tauri::command]
 pub async fn set_leverage(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     market: String,
     leverage: Decimal,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues
         .adapter(venue)?
         .set_leverage(&trading, &market, leverage)
@@ -508,12 +520,13 @@ pub async fn set_leverage(
 #[tauri::command]
 pub async fn set_margin_mode(
     venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
     venue: VenueId,
     account: String,
     market: String,
     mode: MarginMode,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account)?;
+    let trading = trading_account(venue, &account, &live)?;
     venues
         .adapter(venue)?
         .set_margin_mode(&trading, &market, mode)
@@ -556,19 +569,37 @@ mod tests {
     }
 
     #[test]
-    fn only_bybit_demo_accounts_can_trade() {
-        let demo = trading_account(VenueId::Bybit, "demo:24617703").unwrap();
+    fn a_live_account_trades_only_once_its_turned_on() {
+        let path = std::env::temp_dir()
+            .join(format!("pewterdesk-gate-{}", std::process::id()))
+            .join(crate::live_trading::FILE);
+        let live = LiveTrading::load(Some(path.clone()));
+        // Demo accounts need no switch.
+        let demo = trading_account(VenueId::Bybit, "demo:24617703", &live).unwrap();
         assert_eq!(demo.address, "demo:24617703");
         assert_eq!(demo.key, "bybit:demo:24617703");
+        assert!(trading_account(VenueId::Bybit, "demo:x", &live).is_err());
+        // A live one is refused until it's on, and only that account is let through.
         assert!(matches!(
-            trading_account(VenueId::Bybit, "24617703"),
-            Err(VenueError::Unsupported(_))
+            trading_account(VenueId::Bybit, "24617703", &live),
+            Err(VenueError::Rejected(_))
         ));
-        assert!(trading_account(VenueId::Bybit, "demo:x").is_err());
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, br#"["24617703"]"#).unwrap();
+        let on = LiveTrading::load(Some(path.clone()));
+        let account = trading_account(VenueId::Bybit, "24617703", &on).unwrap();
+        assert_eq!(account.address, "24617703");
+        assert_eq!(account.key, "bybit:24617703");
+        assert!(matches!(
+            trading_account(VenueId::Bybit, "24617704", &on),
+            Err(VenueError::Rejected(_))
+        ));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+        // No other venue can trade yet, whatever is switched on.
         let hl = format!("0x{}", "a".repeat(40));
         for venue in [VenueId::Hyperliquid, VenueId::Aster] {
             assert!(matches!(
-                trading_account(venue, &hl),
+                trading_account(venue, &hl, &on),
                 Err(VenueError::Unsupported(_))
             ));
         }
