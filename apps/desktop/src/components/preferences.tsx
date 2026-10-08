@@ -7,6 +7,7 @@ import {
   LuBriefcaseBusiness,
   LuChartCandlestick,
   LuLandmark,
+  LuLayoutGrid,
   LuNewspaper,
   LuNotebookPen,
   LuOrbit,
@@ -14,7 +15,7 @@ import {
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
-import type { Page } from "../lib/pages";
+import { MENU_PAGES, type Page } from "../lib/pages";
 import { ThemeSwatch } from "./header/ThemeSwatch";
 
 /** Each language in its own name, then in the current interface language. */
@@ -54,6 +55,7 @@ export const VIEW_KEYS = { book: "pd.view.book", trades: "pd.view.trades" } as c
 const PAGE_ICONS = {
   trade: LuChartCandlestick,
   portfolio: LuBriefcaseBusiness,
+  charts: LuLayoutGrid,
   venues: LuLandmark,
   journal: LuNotebookPen,
   news: LuNewspaper,
@@ -67,7 +69,7 @@ export const pageLabel = (page: Page) =>
 
 /** The header's page menu: each page with an icon and a line about it. */
 export const pageOptions = (): readonly MenuOption<Page>[] =>
-  (Object.keys(PAGE_ICONS) as Page[]).map((page) => {
+  MENU_PAGES.map((page) => {
     const Icon = PAGE_ICONS[page];
     return {
       value: page,

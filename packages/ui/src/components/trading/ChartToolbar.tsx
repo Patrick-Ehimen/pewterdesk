@@ -202,16 +202,25 @@ interface ChartToolbarProps {
   interval: CandleInterval;
   onInterval: (interval: CandleInterval) => void;
   /** Intervals with a button of their own; the rest are in the menu. */
-  favoriteIntervals: readonly CandleInterval[];
-  onToggleFavoriteInterval: (interval: CandleInterval) => void;
+  favoriteIntervals?: readonly CandleInterval[];
+  /** Offered as a star beside each interval in the menu; none without it. */
+  onToggleFavoriteInterval?: (interval: CandleInterval) => void;
   chartType: ChartType;
   onChartType: (type: ChartType) => void;
-  favoriteTypes: readonly ChartType[];
-  onToggleFavoriteType: (type: ChartType) => void;
+  favoriteTypes?: readonly ChartType[];
+  onToggleFavoriteType?: (type: ChartType) => void;
   indicators: readonly IndicatorId[];
   onToggleIndicator: (id: IndicatorId) => void;
-  /** Takes the screenshot; resolves to what happened, for the button's label. */
-  onScreenshot: () => Promise<"copied" | "saved" | "failed">;
+  /**
+   * Takes the screenshot; resolves to what happened, for the button's label.
+   * No button without it.
+   */
+  onScreenshot?: () => Promise<"copied" | "saved" | "failed">;
+  /**
+   * For a small chart (one of several): only the interval and type in use
+   * show as buttons, and the indicators button is its icon and count.
+   */
+  compact?: boolean;
 }
 
 /**
@@ -222,15 +231,16 @@ interface ChartToolbarProps {
 export function ChartToolbar({
   interval,
   onInterval,
-  favoriteIntervals,
+  favoriteIntervals = [],
   onToggleFavoriteInterval,
   chartType,
   onChartType,
-  favoriteTypes,
+  favoriteTypes = [],
   onToggleFavoriteType,
   indicators,
   onToggleIndicator,
   onScreenshot,
+  compact,
 }: ChartToolbarProps) {
   const intervalRef = useRef<HTMLButtonElement>(null);
   const typeRef = useRef<HTMLButtonElement>(null);
@@ -258,7 +268,12 @@ export function ChartToolbar({
   const matching = INDICATORS.filter((id) => t(INDICATOR_LABEL[id]).toLowerCase().includes(needle));
 
   return (
-    <div className="pd-chart-toolbar" role="toolbar" aria-label={t("chart.toolbar")}>
+    <div
+      className="pd-chart-toolbar"
+      role="toolbar"
+      aria-label={t("chart.toolbar")}
+      data-compact={compact || undefined}
+    >
       <div className="pd-chart-group" role="radiogroup" aria-label={t("chart.interval")}>
         {quickIntervals.map((i) => (
           // biome-ignore lint/a11y/useSemanticElements: toolbar-style radio, like the other segmented controls
@@ -302,11 +317,13 @@ export function ChartToolbar({
                 >
                   {intervalText(i)}
                 </button>
-                <FavoriteStar
-                  on={favoriteIntervals.includes(i)}
-                  name={intervalText(i)}
-                  onToggle={() => onToggleFavoriteInterval(i)}
-                />
+                {onToggleFavoriteInterval && (
+                  <FavoriteStar
+                    on={favoriteIntervals.includes(i)}
+                    name={intervalText(i)}
+                    onToggle={() => onToggleFavoriteInterval(i)}
+                  />
+                )}
               </div>
             ))}
           </section>
@@ -362,11 +379,13 @@ export function ChartToolbar({
               <TypeIcon type={type} />
               {t(TYPE_LABEL[type])}
             </button>
-            <FavoriteStar
-              on={favoriteTypes.includes(type)}
-              name={t(TYPE_LABEL[type])}
-              onToggle={() => onToggleFavoriteType(type)}
-            />
+            {onToggleFavoriteType && (
+              <FavoriteStar
+                on={favoriteTypes.includes(type)}
+                name={t(TYPE_LABEL[type])}
+                onToggle={() => onToggleFavoriteType(type)}
+              />
+            )}
           </div>
         )),
         "pd-chart-menu-types",
@@ -386,7 +405,11 @@ export function ChartToolbar({
         }}
       >
         <LuChartNoAxesCombined size={17} aria-hidden />
-        {t("chart.indicators")}
+        {compact ? (
+          <span className="pd-visually-hidden">{t("chart.indicators")}</span>
+        ) : (
+          t("chart.indicators")
+        )}
         {indicators.length > 0 && <span className="pd-chart-count">{indicators.length}</span>}
       </button>
       {indicatorMenu.render(
@@ -431,20 +454,22 @@ export function ChartToolbar({
 
       <div className="pd-chart-spacer" />
 
-      <button
-        type="button"
-        className="pd-chart-tool pd-chart-icon"
-        aria-label={t("chart.screenshot")}
-        title={shot ? t(`chart.shot.${shot}`) : t("chart.screenshot")}
-        data-state={shot}
-        onClick={() => void onScreenshot().then(setShot)}
-      >
-        {shot && shot !== "failed" ? (
-          <LuCheck size={17} aria-hidden />
-        ) : (
-          <LuCamera size={17} aria-hidden />
-        )}
-      </button>
+      {onScreenshot && (
+        <button
+          type="button"
+          className="pd-chart-tool pd-chart-icon"
+          aria-label={t("chart.screenshot")}
+          title={shot ? t(`chart.shot.${shot}`) : t("chart.screenshot")}
+          data-state={shot}
+          onClick={() => void onScreenshot().then(setShot)}
+        >
+          {shot && shot !== "failed" ? (
+            <LuCheck size={17} aria-hidden />
+          ) : (
+            <LuCamera size={17} aria-hidden />
+          )}
+        </button>
+      )}
       <span className="pd-visually-hidden" role="status">
         {shot ? t(`chart.shot.${shot}`) : ""}
       </span>

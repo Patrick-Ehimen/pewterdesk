@@ -50,6 +50,7 @@ import { PAGES, type Page } from "../lib/pages";
 const PAGE_LABEL: Record<Page, MessageKey> = {
   trade: "nav.trade",
   portfolio: "nav.portfolio",
+  charts: "nav.charts",
   venues: "nav.venues",
   journal: "nav.journal",
   news: "nav.news",
