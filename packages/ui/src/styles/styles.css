@@ -360,8 +360,8 @@ input {
 .pd-book-mid {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
-  font-size: 16px;
+  gap: 4px;
+  font-size: 19px;
   font-weight: 600;
   color: var(--pd-text);
   transition: color 200ms ease;
@@ -374,7 +374,29 @@ input {
   color: var(--pd-sell);
 }
 .pd-book-trend {
-  font-size: 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+/* The mark price beside the book's own: flagged, in the accent, and
+   explained on hover */
+/* Two classes, to win over the tooltip trigger's own "colour of the text
+   around it", which is declared later. */
+.pd-tip-trigger.pd-book-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pd-brass);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+.pd-book-mark span {
+  text-decoration: underline dashed;
+  text-underline-offset: 4px;
+}
+.pd-tip-trigger.pd-book-mark:hover,
+.pd-tip-trigger.pd-book-mark:focus-visible {
+  color: var(--pd-brass);
 }
 
 /* Bid/ask ratio: a split bar with the two shares either side of it */

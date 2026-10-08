@@ -4,6 +4,7 @@ import { LuTriangleAlert, LuX } from "react-icons/lu";
 import {
   bannerKind,
   type ErrorKind,
+  faults,
   getFeedErrors,
   retryNow,
   subscribeFeedErrors,
@@ -45,7 +46,7 @@ function useOnline() {
  * wrong; it clears by itself once data flows again.
  */
 export function ConnectionBanner({ venue, connection }: { venue: string; connection: Connection }) {
-  const messages = useSyncExternalStore(subscribeFeedErrors, getFeedErrors);
+  const messages = faults(useSyncExternalStore(subscribeFeedErrors, getFeedErrors));
   const online = useOnline();
   const kind = bannerKind(messages, online, connection === "offline");
   const [dismissed, setDismissed] = useState<ErrorKind>();
@@ -68,8 +69,11 @@ export function ConnectionBanner({ venue, connection }: { venue: string; connect
       <LuTriangleAlert className="app-banner-icon" size={15} aria-hidden />
       <p className="app-banner-text">
         <strong>{t(copy.title, { venue })}</strong>
-        {/* The venue's own words, for whoever wants them, on hover. */}
-        <span title={messages[0]}>{t(copy.body, { venue })}</span>
+        {/* A venue's refusal is said in its own words: "couldn't load" tells
+            nobody what to do about it. The rest keep theirs on hover. */}
+        <span title={messages[0]}>
+          {kind === "venue" && messages[0] ? messages[0] : t(copy.body, { venue })}
+        </span>
       </p>
       <button
         type="button"

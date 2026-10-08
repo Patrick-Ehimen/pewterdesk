@@ -21,7 +21,7 @@ export interface QuickTradePosition {
   y: number;
 }
 
-/** Room kept between the bar and the window's edge. */
+/** Room kept between the bar and the edge of what it's kept inside. */
 const EDGE = 8;
 /** Pixels moved per arrow-key press on the grip (Shift: ten times that). */
 const KEY_STEP = 10;
@@ -47,24 +47,43 @@ interface QuickTradeProps {
   /** Why orders can't be placed, where there's a better reason than "not yet". */
   unavailableReason?: string;
   position: QuickTradePosition;
+  /**
+   * What the bar is kept inside, e.g. the chart: it can't be dragged out of
+   * it, and follows it as it moves or resizes. Unset, or while it's not on
+   * screen, the bar is kept inside the window.
+   */
+  within?: () => Element | null;
   /** Called once a drag (or arrow-key move) ends, with where the bar landed. */
   onMove: (position: QuickTradePosition) => void;
   onClose: () => void;
 }
 
-/** Keeps the bar fully inside the window. */
-function clamp(p: QuickTradePosition, el: HTMLElement | null): QuickTradePosition {
+/**
+ * Keeps the bar fully inside `box` (viewport pixels), or the window where
+ * there's no box or the bar wouldn't fit in it.
+ */
+function clamp(
+  p: QuickTradePosition,
+  el: HTMLElement | null,
+  box?: DOMRect | null,
+): QuickTradePosition {
   const w = el?.offsetWidth ?? 0;
   const h = el?.offsetHeight ?? 0;
+  const fits = box && box.width >= w + 2 * EDGE && box.height >= h + 2 * EDGE;
+  const left = fits ? box.left : 0;
+  const top = fits ? box.top : 0;
+  const right = fits ? box.right : window.innerWidth;
+  const bottom = fits ? box.bottom : window.innerHeight;
   return {
-    x: Math.round(Math.min(Math.max(EDGE, p.x), Math.max(EDGE, window.innerWidth - w - EDGE))),
-    y: Math.round(Math.min(Math.max(EDGE, p.y), Math.max(EDGE, window.innerHeight - h - EDGE))),
+    x: Math.round(Math.min(Math.max(left + EDGE, p.x), Math.max(left + EDGE, right - w - EDGE))),
+    y: Math.round(Math.min(Math.max(top + EDGE, p.y), Math.max(top + EDGE, bottom - h - EDGE))),
   };
 }
 
 /**
  * A floating one-click bar: market long at the best ask, a quantity, market
- * short at the best bid. Drag it by the grip; it stays inside the window.
+ * short at the best bid. Drag it by the grip; it stays inside `within`
+ * (the chart), or the window.
  */
 export function QuickTrade({
   base,
@@ -78,6 +97,7 @@ export function QuickTrade({
   onShort,
   unavailableReason,
   position,
+  within,
   onMove,
   onClose,
 }: QuickTradeProps) {
@@ -113,12 +133,33 @@ export function QuickTrade({
     if (!drag.current) setPos(position);
   }, [position]);
 
-  // Pull back inside after the window shrinks, and once measured.
-  const reclamp = useCallback(() => setPos((p) => clamp(p, barRef.current)), []);
-  useLayoutEffect(reclamp, [reclamp]);
+  // `within` is rebuilt every render; the latest is what's asked.
+  const withinRef = useRef(within);
+  withinRef.current = within;
+  const box = () => withinRef.current?.()?.getBoundingClientRect();
+  // Pull back inside once measured, and whenever what it's inside moves:
+  // the window or the chart resizing, a panel scrolling, the layout changing.
+  const reclamp = useCallback(
+    () =>
+      setPos((p) => {
+        const next = clamp(p, barRef.current, withinRef.current?.()?.getBoundingClientRect());
+        return next.x === p.x && next.y === p.y ? p : next;
+      }),
+    [],
+  );
+  useLayoutEffect(reclamp);
   useEffect(() => {
     window.addEventListener("resize", reclamp);
-    return () => window.removeEventListener("resize", reclamp);
+    window.addEventListener("scroll", reclamp, true);
+    const observer = new ResizeObserver(reclamp);
+    observer.observe(document.body);
+    const inside = withinRef.current?.();
+    if (inside) observer.observe(inside);
+    return () => {
+      window.removeEventListener("resize", reclamp);
+      window.removeEventListener("scroll", reclamp, true);
+      observer.disconnect();
+    };
   }, [reclamp]);
 
   // Dragging over the page would otherwise select its text.
@@ -134,7 +175,7 @@ export function QuickTrade({
   const onGripMove = (e: PointerEvent<HTMLButtonElement>) => {
     const d = drag.current;
     if (!d) return;
-    setPos(clamp({ x: e.clientX - d.dx, y: e.clientY - d.dy }, barRef.current));
+    setPos(clamp({ x: e.clientX - d.dx, y: e.clientY - d.dy }, barRef.current, box()));
   };
   const onGripUp = (e: PointerEvent<HTMLButtonElement>) => {
     if (!drag.current) return;
@@ -154,7 +195,7 @@ export function QuickTrade({
     const move = delta[e.key];
     if (!move) return;
     e.preventDefault();
-    const next = clamp({ x: pos.x + move[0], y: pos.y + move[1] }, barRef.current);
+    const next = clamp({ x: pos.x + move[0], y: pos.y + move[1] }, barRef.current, box());
     setPos(next);
     onMove(next);
   };

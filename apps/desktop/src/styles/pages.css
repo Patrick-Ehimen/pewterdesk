@@ -83,6 +83,13 @@
 }
 .page-asset {
   font-size: 14px;
+  text-align: left;
+}
+/* The coin's logo, then its name */
+.page-asset-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
 }
 
 /* By venue */
@@ -788,4 +795,765 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* Portfolio: the balance, the realized PnL and how the trades went, side by
+   side, with the positions and their history under them */
+.pf-head {
+  align-items: center;
+}
+.pf-ranges {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 3px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.pf-range {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: 12.5px var(--pd-font-mono);
+  cursor: pointer;
+}
+.pf-range:hover {
+  color: var(--pd-text);
+}
+.pf-range[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-brass-text);
+}
+.pf-cal-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pf-cal-open:hover:not(:disabled) {
+  border-color: var(--pd-brass);
+  color: var(--pd-brass-text);
+}
+.pf-cal-open:disabled {
+  color: var(--pd-pewter);
+  cursor: default;
+}
+.pf-top {
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(0, 1.7fr) minmax(260px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.pf-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.pf-title {
+  margin: 0;
+  font-size: 15px;
+}
+.pf-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pf-label {
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pf-big {
+  font-size: 22px;
+  font-weight: 600;
+  text-align: left;
+}
+.pf-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pd-border);
+}
+.pf-title + .pf-stats {
+  padding-top: 0;
+  border-top: 0;
+}
+.pf-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pf-value {
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pf-curve-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pf-curve-total {
+  font-size: 18px;
+}
+.pf-chart-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 180px;
+  cursor: crosshair;
+}
+.pf-chart {
+  flex: 1;
+  width: 100%;
+  min-height: 180px;
+  border-radius: 6px;
+}
+.pf-chart-line {
+  fill: none;
+  stroke: var(--pd-buy);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+/* An area chart: filled under the line, fading towards the bottom */
+.pf-chart-area {
+  fill: url("#pf-fill");
+}
+.pf-chart-stop {
+  stop-color: var(--pd-buy);
+}
+.pf-chart[data-trend="down"] .pf-chart-line {
+  stroke: var(--pd-sell);
+}
+.pf-chart[data-trend="down"] .pf-chart-stop {
+  stop-color: var(--pd-sell);
+}
+.pf-chart-zero {
+  stroke: var(--pd-border-strong);
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+/* Under the pointer: a line down the chart, a dot on the curve, and what
+   the total was there */
+.pf-chart-cursor {
+  stroke: var(--pd-pewter);
+  stroke-dasharray: 3 3;
+  vector-effect: non-scaling-stroke;
+}
+.pf-chart-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 2px solid var(--pd-surface);
+  border-radius: 50%;
+  background: var(--pd-buy);
+  pointer-events: none;
+}
+.pf-chart-dot[data-trend="down"] {
+  background: var(--pd-sell);
+}
+.pf-chart-tip {
+  position: absolute;
+  top: 8px;
+  /* As wide as its longest row: the shared card's fixed width is narrower
+     than a date and time, which then ran out over the pointer's line. */
+  width: max-content;
+  min-width: 200px;
+  margin-left: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Past the middle it opens to the left, so it stays on the chart. */
+.pf-chart-tip[data-side="left"] {
+  margin-left: 0;
+  transform: translateX(calc(-100% - 16px));
+}
+.pf-note {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pf-buckets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--pd-border);
+  list-style: none;
+}
+.pf-buckets li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 12.5px var(--pd-font-mono);
+}
+.pf-count {
+  margin-left: auto;
+  font-weight: 500;
+}
+.pf-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pd-buy);
+}
+.pf-buckets [data-bucket="gain"] .pf-dot {
+  opacity: 0.75;
+}
+.pf-buckets [data-bucket="over200"] .pf-dot {
+  opacity: 0.9;
+}
+.pf-buckets [data-bucket="loss"] .pf-dot {
+  background: var(--pd-sell);
+  opacity: 0.7;
+}
+.pf-buckets [data-bucket="under50"] .pf-dot {
+  background: var(--pd-sell);
+}
+/* Up against down, as one bar */
+.pf-split {
+  display: flex;
+  gap: 3px;
+  height: 4px;
+  /* Shows through where neither side has anything yet. */
+  background: var(--pd-border);
+  border-radius: 2px;
+}
+.pf-split-part {
+  flex: 0 1 0;
+  min-width: 0;
+  border-radius: 2px;
+  background: var(--pd-buy);
+}
+.pf-split-part[data-side="down"] {
+  background: var(--pd-sell);
+}
+.pf-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pf-tab {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.pf-tab:hover {
+  color: var(--pd-text);
+}
+.pf-tab[aria-selected="true"] {
+  border-bottom-color: var(--pd-brass);
+  color: var(--pd-text);
+}
+.pf-tabs-note {
+  margin-left: auto;
+  padding-right: 8px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pf-table {
+  overflow-x: auto;
+}
+
+/* The middle panel's two views: realized PnL, and edge */
+.pf-views {
+  display: inline-flex;
+  gap: 18px;
+}
+.pf-view {
+  padding: 0 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pf-view:hover {
+  color: var(--pd-text);
+}
+.pf-view[aria-selected="true"] {
+  border-bottom-color: var(--pd-brass);
+  color: var(--pd-text);
+}
+/* Edge: what the trades add up to, where they did best and worst, and how
+   it trades after a loss */
+.pf-edge-lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  margin: 0;
+  font-size: 12.5px;
+}
+.pf-group {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pf-edge-groups {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+.pf-edge-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.pf-group-icon {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+/* A card is a button: hover for its numbers, click for every group. The
+   two-class selectors win over the tooltip trigger's own bare look. */
+.pf-edge-card,
+.pd-tip-trigger.pf-edge-card {
+  padding: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pf-edge-card-in {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+}
+.pf-edge-card-in[data-trend="pd-up"] {
+  background: color-mix(in srgb, var(--pd-buy) 9%, transparent);
+}
+.pf-edge-card-in[data-trend="pd-down"] {
+  background: color-mix(in srgb, var(--pd-sell) 9%, transparent);
+}
+.pf-edge-card:hover,
+.pf-edge-card:focus-visible {
+  border-color: var(--pd-border-strong);
+}
+.pf-tip-rows {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  margin: 0;
+}
+.pf-tip-rows dt {
+  color: var(--pd-pewter);
+}
+.pf-tip-rows dd {
+  margin: 0;
+  text-align: right;
+}
+.pf-edge-card,
+.pf-trio-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  font-size: 15px;
+  text-align: center;
+}
+/* With a group, the tint fills the whole card: its padding moves inside. */
+.pd-tip-trigger.pf-edge-card {
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+}
+.pf-trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.pf-trio-cell {
+  padding: 12px 6px;
+}
+.pf-bars-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 96px;
+}
+.pf-bars {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: 70px;
+}
+.pf-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  background: var(--pd-buy);
+  opacity: 0.75;
+}
+.pf-bar[data-side="down"] {
+  background: var(--pd-sell);
+}
+.pf-bar[data-empty] {
+  background: var(--pd-border);
+  opacity: 1;
+}
+.pf-bars-axis {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  color: var(--pd-pewter);
+  font: 11px var(--pd-font-mono);
+}
+.pf-bars-zero {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+/* Every hold-time and entry-size group, as bars from a middle line */
+.pf-break {
+  width: min(900px, calc(100vw - 32px));
+}
+.pf-break-close {
+  margin-left: auto;
+}
+.pf-break-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  padding: 18px 20px 6px;
+}
+.pf-break-col h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.pf-break-head {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pf-break-row {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+}
+.pf-break-name {
+  font: 13px var(--pd-font-mono);
+}
+.pf-break-track {
+  position: relative;
+  align-self: stretch;
+  /* The line the bars start from. */
+  background:
+    linear-gradient(var(--pd-border-strong), var(--pd-border-strong)) center / 1px 100% no-repeat;
+}
+.pf-break-bar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 2px;
+  background: var(--pd-buy);
+}
+.pf-break-bar[data-side="down"] {
+  background: var(--pd-sell);
+}
+.pf-break-value {
+  color: var(--pd-pewter);
+  text-align: right;
+}
+.pf-break-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  padding: 10px 20px 18px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .pf-break-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The PnL calendar */
+.pf-cal {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 10px;
+  color: var(--pd-text);
+  overflow-y: auto;
+}
+.pf-cal::backdrop {
+  background: color-mix(in srgb, var(--pd-bg) 60%, transparent);
+}
+.pf-cal-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pf-cal-head > h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.pf-cal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.pf-cal-nav > strong {
+  min-width: 96px;
+  font-weight: 500;
+  text-align: center;
+}
+.pf-cal-total {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 18px 6px;
+}
+.pf-cal-sum {
+  font-size: 18px;
+  text-align: left;
+}
+.pf-cal-sides {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+.pf-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 18px 16px;
+}
+.pf-cal-weekday {
+  padding: 6px 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  text-align: center;
+}
+.pf-cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 78px;
+  padding: 8px 6px;
+  /* Every day is boxed, traded or not, so the month reads as a grid. */
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  color: var(--pd-pewter);
+  font-size: 13px;
+}
+.pf-cal-date {
+  align-self: flex-start;
+  font-size: 11.5px;
+}
+.pf-cal-pnl {
+  margin-top: auto;
+  font-weight: 500;
+}
+.pf-cal-count {
+  margin-bottom: auto;
+  font-size: 11px;
+}
+.pf-cal-day[data-trend="up"] {
+  background: color-mix(in srgb, var(--pd-buy) 14%, transparent);
+  border-color: color-mix(in srgb, var(--pd-buy) 35%, transparent);
+}
+.pf-cal-day[data-trend="up"] .pf-cal-pnl {
+  color: var(--pd-buy);
+}
+.pf-cal-day[data-trend="down"] {
+  background: color-mix(in srgb, var(--pd-sell) 14%, transparent);
+  border-color: color-mix(in srgb, var(--pd-sell) 35%, transparent);
+}
+.pf-cal-day[data-trend="down"] .pf-cal-pnl {
+  color: var(--pd-sell);
+}
+/* Days still to come: the same box, fainter and dashed. */
+.pf-cal-day[data-future] {
+  border-style: dashed;
+  color: color-mix(in srgb, var(--pd-pewter) 55%, transparent);
+}
+.pf-cal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+.pf-chip {
+  padding: 5px 11px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+@media (max-width: 1100px) {
+  .pf-top {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pf-curve {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+}
+
+/* Multi-chart: a bar of choices over a grid of charts that fills the page */
+.mc {
+  overflow: hidden;
+}
+.mc-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.mc-bar h1 {
+  margin: 0 6px 0 0;
+  font-size: 15px;
+}
+.mc-seg {
+  display: inline-flex;
+  gap: 2px;
+}
+.mc-seg-option {
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: 12.5px var(--pd-font-mono);
+  cursor: pointer;
+}
+.mc-seg-option:hover {
+  color: var(--pd-text);
+}
+.mc-seg-option[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.mc-sync-label {
+  margin-left: 10px;
+  padding-left: 16px;
+  border-left: 1px solid var(--pd-border);
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.mc-chip {
+  padding: 4px 13px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.mc-chip:hover {
+  color: var(--pd-text);
+}
+.mc-chip[aria-checked="true"] {
+  border-color: var(--pd-brass);
+  color: var(--pd-brass-text);
+}
+/* The loading mark in place of the whole grid */
+.mc-loading {
+  flex: 1;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.mc-grid {
+  display: grid;
+  flex: 1;
+  gap: 10px;
+  min-height: 0;
+}
+.mc-cell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.mc-cell-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--pd-border);
+  font-size: 13px;
+}
+/* Each chart's own toolbar, tight enough for a third of the page */
+.mc-cell .pd-chart-toolbar {
+  flex: none;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.mc-price {
+  margin-left: 2px;
+}
+.mc-open {
+  margin-left: auto;
+}
+.mc-chart {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  /* Clips the chart to the cell's rounded bottom. */
+  overflow: hidden;
+  border-radius: 0 0 8px 8px;
 }

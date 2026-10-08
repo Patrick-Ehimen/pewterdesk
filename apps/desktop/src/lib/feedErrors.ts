@@ -61,6 +61,16 @@ export function errorKind(message: string): ErrorKind {
 }
 
 /**
+ * A refusal that's the account's own state, not a fault: a venue that shows
+ * nothing until the account has deposited. The panel says so where the data
+ * would be; a warning that retries forever would only alarm.
+ */
+export const isAccountState = (message: string) => /hasn't deposited/i.test(message);
+
+/** The failures the banner is about: every one that's a fault. */
+export const faults = (messages: readonly string[]) => messages.filter((m) => !isAccountState(m));
+
+/**
  * What the banner says, if anything: offline when the system has no
  * network, else the worst of the failed feeds, else unreachable when the
  * venue has gone quiet (`lost`) without any feed failing outright.
@@ -71,7 +81,7 @@ export function bannerKind(
   lost: boolean,
 ): ErrorKind | undefined {
   if (!online) return "offline";
-  const kinds = new Set(messages.map(errorKind));
+  const kinds = new Set(faults(messages).map(errorKind));
   const worst = PRIORITY.find((k) => kinds.has(k));
   return worst ?? (lost ? "unreachable" : undefined);
 }

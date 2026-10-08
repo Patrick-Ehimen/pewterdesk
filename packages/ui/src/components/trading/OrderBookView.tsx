@@ -1,9 +1,10 @@
 import type { BookLevel, OrderBook } from "@pewterdesk/core";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { LuFlag } from "react-icons/lu";
 import { t } from "../../i18n";
 import { decimalsOf, formatNumber, formatPercent, formatSigned } from "../../lib/format";
 import { type Column, ColumnHeader, Hint, unitHint } from "../common/ColumnHeader";
-import { FloatingTip, TipRows, useHoveredRow } from "../common/Tooltip";
+import { FloatingTip, TipRows, Tooltip, useHoveredRow } from "../common/Tooltip";
 
 /** How book and trade rows are laid out: one line in columns, or two stacked lines. */
 export type RowMode = "table" | "stacked";
@@ -354,6 +355,8 @@ interface OrderBookViewProps {
   onUnitChange?: (unit: BookUnit) => void;
   /** Merges price levels into steps of this size (see `groupStep`); unset shows them as sent. */
   step?: string;
+  /** The market's mark price, shown beside the book's own price. */
+  markPrice?: string;
 }
 
 /** Which of the book's sides show. */
@@ -487,6 +490,7 @@ export function OrderBookView({
   sides = "both",
   unit = "base",
   onUnitChange,
+  markPrice,
 }: OrderBookViewProps) {
   // Showing sides are the same flex size, so measuring one is enough.
   const [sideRef, rowsThatFit] = useRowsThatFit<HTMLDivElement>(ROW_HEIGHT[mode]);
@@ -538,13 +542,19 @@ export function OrderBookView({
       )}
       <div className="pd-book-spread">
         <span className="pd-book-mid" data-trend={trend}>
-          {midShown === undefined ? "-" : formatNumber(midShown, midDecimals)}
           {trend && (
             <span className="pd-book-trend" aria-hidden>
-              {trend === "up" ? "▲" : "▼"}
+              {trend === "up" ? "↑" : "↓"}
             </span>
           )}
+          {midShown === undefined ? "-" : formatNumber(midShown, midDecimals)}
         </span>
+        {markPrice !== undefined && Number(markPrice) > 0 && (
+          <Tooltip content={t("book.markHint")} className="pd-book-mark">
+            <LuFlag size={12} aria-hidden />
+            <span>{formatNumber(markPrice, midDecimals)}</span>
+          </Tooltip>
+        )}
       </div>
       {sides !== "asks" && (
         <div ref={sides === "bids" ? sideRef : undefined} className="pd-book-side" data-side="bid">

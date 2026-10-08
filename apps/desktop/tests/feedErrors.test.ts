@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   bannerKind,
   errorKind,
+  faults,
   getFeedErrors,
   reportFeedError,
   resetFeedErrors,
@@ -42,5 +43,15 @@ describe("feed errors", () => {
     expect(bannerKind([timeout], false, false)).toBe("offline");
     expect(bannerKind([], true, true)).toBe("unreachable");
     expect(bannerKind([], true, false)).toBeUndefined();
+  });
+
+  it("leaves an account that hasn't deposited out of the banner", () => {
+    const state =
+      "Invalid request: this account hasn't deposited on Aster yet; deposit first, then its balances and positions show";
+    expect(bannerKind([state], true, false)).toBeUndefined();
+    // A real fault beside it still shows, and is the one the banner quotes.
+    const fault = "Invalid request: Signature for this request is not valid.";
+    expect(bannerKind([state, fault], true, false)).toBe("venue");
+    expect(faults([state, fault])).toEqual([fault]);
   });
 });

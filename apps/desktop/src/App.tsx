@@ -84,6 +84,7 @@ import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
 import { MapsPage } from "./components/pages/MapsPage";
+import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
@@ -119,6 +120,7 @@ import {
   useAccountFills,
   useAccountFunding,
   useAnnouncements,
+  useClosedHistory,
   useClosedTrades,
   useMarketStats,
   useMarketSummaries,
@@ -164,6 +166,7 @@ import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onbo
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
 import { PAGES, type Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
+import { HISTORY_MS } from "./lib/performance";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
 import {
   allTimePnl,
@@ -362,12 +365,15 @@ function OrderBookPanel({
   book,
   market,
   marketsLoading,
+  markPrice,
 }: {
   venue: VenueId;
   book: Feed<OrderBook>;
   market?: Market;
   /** No market can be picked until the list arrives; show the skeleton meanwhile. */
   marketsLoading: boolean;
+  /** The market's mark price, for beside the book's own. */
+  markPrice?: string;
 }) {
   const [tab, setTab] = useState<BookTab>("book");
   // Table or stacked rows, for the book and the tape, are set in Settings;
@@ -421,6 +427,7 @@ function OrderBookPanel({
                   sides={bookSides}
                   unit={bookUnit}
                   onUnitChange={setBookUnit}
+                  markPrice={markPrice}
                 />
                 {stale && (
                   <div className="book-stale" role="alert">
@@ -837,6 +844,8 @@ export function App() {
     markets.status === "error" || book.status === "error" || book.status === "closed",
   );
   const account = useAccount(venue, address);
+  // The Portfolio page's history: read only while that page is open.
+  const closedHistory = useClosedHistory(venue, address, HISTORY_MS, page === "portfolio");
   // The position open in the drawer, followed live in the account; it goes
   // when the position does (closed), or with a switch of venue or account.
   const [drawerFor, setDrawerFor] = useState<{ market: string; side: Position["side"] }>();
@@ -1154,6 +1163,7 @@ export function App() {
             book={book}
             market={selected}
             marketsLoading={markets.status === "loading"}
+            markPrice={statsData?.markPrice}
           />
         );
       case "account":
@@ -1201,6 +1211,14 @@ export function App() {
               market={selected}
               book={bookData}
               account={accountData}
+              accountNotice={
+                address === undefined
+                  ? undefined
+                  : account.status === "error"
+                    ? // The venue's reason, without "Invalid request:" in front.
+                      account.message.replace(/^[^:]{1,24}: /, "")
+                    : t("feed.loading")
+              }
               fees={selected?.listedBy ? undefined : venueInfo.fees}
               maxSlippage={venueInfo.maxSlippage}
               onConnect={() => openConnect()}
@@ -1278,10 +1296,8 @@ export function App() {
           <VenueSwitcher
             venue={venue}
             venues={setup.venues}
-            onChange={(id) => {
-              showMarket(id);
-              goTo("trade");
-            }}
+            // The page stays as it is: Portfolio, News or Maps for the new venue.
+            onChange={(id) => showMarket(id)}
             onSeeAll={() => goTo("venues")}
           />
           <div className="app-spacer" />
@@ -1390,6 +1406,8 @@ export function App() {
         {page === "portfolio" ? (
           <PortfolioPage
             account={account}
+            closed={closedHistory}
+            onShare={(c) => openShare({ closed: c })}
             markets={marketList}
             venue={venueInfo.label}
             connectAuth={venueInfo.auth}
@@ -1424,6 +1442,21 @@ export function App() {
                 : undefined
             }
             positions={liveAccount?.positions ?? []}
+            onTrade={(id) => {
+              showMarket(venue, id);
+              setPage("trade");
+            }}
+          />
+        ) : page === "charts" ? (
+          <MultiChartPage
+            venue={venue}
+            markets={marketList}
+            majors={venueInfo.majors}
+            summaries={
+              barSummaries.status === "live" || barSummaries.status === "closed"
+                ? barSummaries.data
+                : undefined
+            }
             onTrade={(id) => {
               showMarket(venue, id);
               setPage("trade");
@@ -1633,6 +1666,8 @@ export function App() {
             qty={quickQty}
             onQty={setQuickQty}
             position={quickTrade.position ?? quickDefault}
+            // Over the chart, where it's used, not over the tables around it.
+            within={() => document.querySelector("[data-quick-trade-area]")}
             onMove={(position) => updateQuickTrade({ ...quickTrade, position })}
             onClose={() => updateQuickTrade({ ...quickTrade, open: false })}
           />

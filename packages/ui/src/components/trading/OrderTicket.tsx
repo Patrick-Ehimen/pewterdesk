@@ -66,6 +66,11 @@ interface OrderTicketProps {
   book?: OrderBook;
   /** The connected account; unset until a wallet is connected. */
   account?: AccountSnapshot;
+  /**
+   * Set when an account is connected but its data hasn't come (still
+   * loading, or the venue refused): what to say in place of "Connect".
+   */
+  accountNotice?: string;
   /** Taker and maker fees as fractions; unset where the ticket can't know them. */
   fees?: { taker: number; maker: number };
   /** A market order won't fill further than this from the best price, as a fraction. */
@@ -116,6 +121,7 @@ export function OrderTicket({
   accountBadge,
   accountBadgeTone,
   unavailableReason,
+  accountNotice,
   settings,
   onLeverage,
   onMarginMode,
@@ -749,6 +755,14 @@ export function OrderTicket({
           {reason && submitTip.open && (
             <FloatingTip getAnchor={() => submitRef.current}>{reasonText}</FloatingTip>
           )}
+        </>
+      ) : accountNotice ? (
+        // Connected already: offering "Connect" again would only mislead.
+        <>
+          <p className="pd-ticket-blocked">{accountNotice}</p>
+          <button type="button" className="pd-ticket-submit" data-connect aria-disabled>
+            {t("ticket.noData")}
+          </button>
         </>
       ) : (
         <button type="button" className="pd-ticket-submit" data-connect onClick={onConnect}>

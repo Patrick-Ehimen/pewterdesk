@@ -259,7 +259,8 @@ export function MarketsPanel({
         }
       />
       {tab === "chart" ? (
-        <div className="app-fill">
+        // The quick trade bar is kept inside this (see App).
+        <div className="app-fill" data-quick-trade-area>
           <Tabs
             variant="sub"
             label={t("chart.kind")}
