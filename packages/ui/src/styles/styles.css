@@ -4376,7 +4376,7 @@ fieldset.pd-alerts-chips {
   color: var(--pd-pewter);
 }
 
-/* The account the ticket trades, when it isn't a live one ("Demo") */
+/* The account the ticket trades: "Demo" (demo funds), or "Live" (real ones) */
 .pd-ticket-badge {
   display: inline-flex;
   align-items: center;
@@ -4389,6 +4389,10 @@ fieldset.pd-alerts-chips {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+.pd-ticket-badge[data-tone="live"] {
+  border-color: var(--pd-warning);
+  color: var(--pd-warning);
 }
 /* What happened to the last order sent */
 .pd-ticket-modes:has(.pd-ticket-badge) {
@@ -5691,6 +5695,21 @@ button.pd-drawer-exit:hover {
 }
 .pd-ticket-field[data-state="warn"] {
   border-color: var(--pd-warning);
+}
+/* What a TP or SL would come to, and the entry it's measured from */
+.pd-ticket-expect {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -2px 0 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-ticket-expect .pd-num {
+  white-space: nowrap;
+}
+.pd-ticket-entry {
+  margin: 0;
 }
 .pd-ticket-note {
   display: flex;

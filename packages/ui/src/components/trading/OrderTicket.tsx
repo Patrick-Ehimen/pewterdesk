@@ -9,7 +9,7 @@ import type {
 import { useEffect, useId, useRef, useState } from "react";
 import { LuArrowUpDown, LuChevronDown, LuTriangleAlert } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
-import { decimalsOf, formatNumber, onTick } from "../../lib/format";
+import { decimalsOf, formatNumber, formatSigned, onTick, trendClass } from "../../lib/format";
 import {
   hasLimitPrice,
   hasTrigger,
@@ -77,8 +77,10 @@ interface OrderTicketProps {
    * disabled, and says why.
    */
   onSubmit?: (request: OrderRequest) => Promise<void>;
-  /** A marker for the account the ticket trades, e.g. "Demo". */
+  /** A marker for the account the ticket trades, e.g. "Demo" or "Live". */
   accountBadge?: string;
+  /** "live" marks real funds, in the warning colour. */
+  accountBadgeTone?: "live";
   /** Why orders can't be placed, where there's a better reason than "not yet". */
   unavailableReason?: string;
   /** The account's margin mode and leverage on this market, where the venue reports them. */
@@ -112,6 +114,7 @@ export function OrderTicket({
   onConnect,
   onSubmit,
   accountBadge,
+  accountBadgeTone,
   unavailableReason,
   settings,
   onLeverage,
@@ -272,6 +275,30 @@ export function OrderTicket({
     return found.some((c) => c.level === "error") ? "error" : found.length > 0 ? "warn" : undefined;
   };
   const priceText = (v: number) => formatNumber(v, decimalsOf(market?.tickSize ?? "0"));
+  // What an exit would come to, from the price the order is expected to
+  // fill at: the PnL at that exit, and that as a return on the margin.
+  const exitAt = (exit: string) => {
+    const at = Number(exit);
+    if (!(at > 0) || !(fillPrice > 0) || !(sizeBase > 0)) return undefined;
+    const pnl = (at - fillPrice) * sizeBase * (side === "buy" ? 1 : -1);
+    return { pnl, roe: margin && margin > 0 ? (pnl / margin) * 100 : undefined };
+  };
+  const expected = (label: MessageKey, exit: string) => {
+    const result = exitAt(exit);
+    return (
+      <span className="pd-ticket-expect">
+        {t(label)}
+        {result ? (
+          <span className={`pd-num ${trendClass(result.pnl)}`}>
+            {formatSigned(result.pnl)} {quote}
+            {result.roe !== undefined && ` (${formatSigned(result.roe)}%)`}
+          </span>
+        ) : (
+          <span className="pd-num">-</span>
+        )}
+      </span>
+    );
+  };
   const sizeText = (v: number) => formatNumber(v, sizeDecimals);
   /** A check as a line under its field, with a one-click fix where there is one. */
   const note = (c: TicketCheck) => {
@@ -441,7 +468,11 @@ export function OrderTicket({
   return (
     <div className="pd-ticket">
       <div className="pd-ticket-modes">
-        {accountBadge && <span className="pd-ticket-badge">{accountBadge}</span>}
+        {accountBadge && (
+          <span className="pd-ticket-badge" data-tone={accountBadgeTone}>
+            {accountBadge}
+          </span>
+        )}
         {/* Changing either signs a venue action: only where the account can trade. */}
         <Tooltip
           content={onMarginMode ? t("ticket.changeMargin") : t("quick.unavailable")}
@@ -653,6 +684,11 @@ export function OrderTicket({
       </label>
       {tpsl && !reduceOnly && (
         <>
+          {/* The price the exits are measured from. */}
+          <p className="pd-ticket-expect pd-ticket-entry">
+            {t("ticket.expectedEntry")}
+            <span className="pd-num">{fillPrice > 0 ? priceText(fillPrice) : "-"}</span>
+          </p>
           <div className="pd-ticket-row">
             <NumberField
               label={t("ticket.tpPrice")}
@@ -667,6 +703,9 @@ export function OrderTicket({
               state={stateOf("sl")}
             />
           </div>
+          {/* A line each: side by side, the figure wraps under its label. */}
+          {expected("ticket.expectedProfit", tp)}
+          {expected("ticket.expectedLoss", sl)}
           {notesFor("tp")}
           {notesFor("sl")}
         </>
