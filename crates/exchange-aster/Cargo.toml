@@ -9,13 +9,17 @@ publish = false
 [dependencies]
 pewterdesk-core = { path = "../core" }
 async-trait = "0.1.92"
+k256 = { version = "0.13", default-features = false, features = ["ecdsa", "std"] }
+rand_core = { version = "0.6", features = ["getrandom"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "http2", "query"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "http2", "query", "form"] }
 rust_decimal = "1.43.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+sha3 = "0.10"
 tokio = { version = "1.53.1", features = ["macros", "rt", "sync", "time"] }
 tokio-tungstenite = { version = "0.29.0", features = ["rustls-tls-native-roots"] }
+zeroize = "1.9.0"
 
 [dev-dependencies]
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }

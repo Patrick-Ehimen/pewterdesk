@@ -20,6 +20,8 @@ pub const DEFAULT_FUNDING_HOURS: u32 = 8;
 /// The error body Aster returns with a 4xx.
 #[derive(Deserialize)]
 pub struct ApiError {
+    #[serde(default)]
+    pub code: i64,
     pub msg: String,
 }
 
