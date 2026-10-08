@@ -3148,13 +3148,17 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "futures-util",
+ "k256",
  "pewterdesk-core",
+ "rand_core 0.6.4",
  "reqwest",
  "rust_decimal",
  "serde",
  "serde_json",
+ "sha3",
  "tokio",
  "tokio-tungstenite",
+ "zeroize",
 ]
 
 [[package]]

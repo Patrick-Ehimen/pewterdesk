@@ -7,13 +7,15 @@
 //! stream is seeded over REST before going live, which also turns an unknown
 //! market into an error (the streams ignore one silently).
 //!
-//! Account data isn't available yet. Unlike Hyperliquid, Aster serves even an
-//! account's balances only to a request signed by an API wallet, so the
-//! account methods wait for the `KeySource`. That API wallet is the trade-only
-//! key only when created without withdraw permission: onboarding must check
-//! before storing it, and the adapter before signing - see
-//! docs/adr/0002-launch-venues.md.
+//! Account data is read with requests signed by the account's API wallet
+//! (agent), taken from the app's `KeySource` for the one call that signs:
+//! Aster serves even balances only to a signed request. That API wallet is
+//! the trade-only key because pewterdesk approves it without withdraw or
+//! spot permission, and reads its permissions back before keeping it - see
+//! `agent.rs` and docs/adr/0002-launch-venues.md. Orders aren't placed yet.
 
+mod account;
+pub mod agent;
 pub mod constants;
 mod icons;
 mod tape;
@@ -27,8 +29,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use pewterdesk_core::{
     AccountSnapshot, Candle, CandleInterval, Capabilities, Decimal, ExchangeAdapter, FundingRate,
-    Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest, OrderType,
-    Trade, TradingAccount, VenueError, VenueId,
+    KeySource, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest,
+    OrderType, Trade, TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -72,6 +74,42 @@ const ICON_FETCHES: usize = 6;
 /// The web API's list of every asset's logo.
 const LOGO_LIST_PATH: &str = "/bapi/futures/v1/public/future/asset/ae/all-asset-logo";
 
+/// A snapshot of the account is read this often while it's on screen.
+const ACCOUNT_EVERY: Duration = Duration::from_secs(5);
+
+/// A nonce for a signed request: the time in microseconds, as Aster wants,
+/// and never one already handed out (two requests can share a microsecond).
+fn next_nonce() -> u64 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static LAST: AtomicU64 = AtomicU64::new(0);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_micros() as u64);
+    let mut last = LAST.load(Ordering::Relaxed);
+    loop {
+        let next = now.max(last + 1);
+        match LAST.compare_exchange_weak(last, next, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => return next,
+            Err(seen) => last = seen,
+        }
+    }
+}
+
+/// Aster's own words for a refusal, except the ones worth saying plainly.
+fn refusal(body: &str) -> VenueError {
+    match serde_json::from_str::<wire::ApiError>(body) {
+        // Signed endpoints open once the main wallet has deposited.
+        Ok(e) if e.code == -5050 => VenueError::InvalidRequest(
+            "this account hasn't deposited on Aster yet; deposit first, then its balances and positions show".into(),
+        ),
+        Ok(e) if e.msg == "No agent found" => VenueError::InvalidRequest(
+            "this API wallet is no longer approved on Aster; connect the wallet again".into(),
+        ),
+        Ok(e) => VenueError::InvalidRequest(e.msg),
+        Err(_) => VenueError::InvalidRequest(body.chars().take(200).collect()),
+    }
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -105,9 +143,7 @@ impl Rest {
             return Err(VenueError::Network(format!("rate limited ({status})")));
         }
         if status.is_client_error() {
-            let body = response.text().await.unwrap_or_default();
-            let msg = serde_json::from_str::<wire::ApiError>(&body).map_or(body, |e| e.msg);
-            return Err(VenueError::InvalidRequest(msg));
+            return Err(refusal(&response.text().await.unwrap_or_default()));
         }
         if !status.is_success() {
             return Err(VenueError::Network(format!("Aster API returned {status}")));
@@ -116,6 +152,59 @@ impl Rest {
             .json()
             .await
             .map_err(|e| VenueError::Network(format!("unexpected Aster response: {e}")))
+    }
+
+    /// A GET signed by the account's API wallet. `key` is held only to make
+    /// the signature; `path` and `params` are this adapter's own.
+    async fn signed_get<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        params: &[(&str, String)],
+        key: &str,
+    ) -> Result<T, VenueError> {
+        let query = agent::sign_request(key, params, next_nonce())?;
+        let response = self
+            .http
+            .get(format!("{}{path}?{query}", self.base))
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        if matches!(status.as_u16(), 418 | 429) {
+            return Err(VenueError::Network(format!("rate limited ({status})")));
+        }
+        if status.is_client_error() {
+            return Err(refusal(&response.text().await.unwrap_or_default()));
+        }
+        if !status.is_success() {
+            return Err(VenueError::Network(format!("Aster API returned {status}")));
+        }
+        response
+            .json()
+            .await
+            .map_err(|e| VenueError::Network(format!("unexpected Aster response: {e}")))
+    }
+
+    /// The account's margin summary, positions and open orders, signed with
+    /// the key at `keys`'s entry for `address`.
+    async fn account(
+        &self,
+        keys: &dyn KeySource,
+        address: &str,
+    ) -> Result<AccountSnapshot, VenueError> {
+        let key = keys.key(&agent::key_account(address)?).await?;
+        let summary: account::WireAccount = self.signed_get("/fapi/v3/account", &[], &key).await?;
+        let positions: Vec<account::WirePosition> =
+            self.signed_get("/fapi/v3/positionRisk", &[], &key).await?;
+        let orders: Vec<account::WireOrder> =
+            self.signed_get("/fapi/v3/openOrders", &[], &key).await?;
+        Ok(account::snapshot(
+            address,
+            summary,
+            positions,
+            orders,
+            now_ms(),
+        ))
     }
 
     async fn exchange_info(&self) -> Result<wire::ExchangeInfo, VenueError> {
@@ -242,6 +331,9 @@ pub struct AsterAdapter {
     /// session; failed downloads aren't cached, so they're retried.
     icons: Mutex<HashMap<String, Option<String>>>,
     icon_fetches: Semaphore,
+    /// Where account reads take the API wallet's key from; unset, account
+    /// data is `Unsupported`.
+    keys: Option<Arc<dyn KeySource>>,
 }
 
 impl AsterAdapter {
@@ -268,7 +360,62 @@ impl AsterAdapter {
             logo_urls: tokio::sync::Mutex::new(None),
             icons: Mutex::new(HashMap::new()),
             icon_fetches: Semaphore::new(ICON_FETCHES),
+            keys: None,
         })
+    }
+
+    /// Adds the app's `KeySource`, which account reads take the stored API
+    /// wallet's key from. Without one, account data is `Unsupported`.
+    pub fn with_keys(mut self, keys: Arc<dyn KeySource>) -> Self {
+        self.keys = Some(keys);
+        self
+    }
+
+    /// Posts an agent approval the main wallet signed. The caller has
+    /// checked the signature is that wallet's (`agent::WalletSignature`).
+    pub async fn approve_agent(
+        &self,
+        approval: &agent::ApproveAgent,
+        signature: &agent::WalletSignature,
+    ) -> Result<(), VenueError> {
+        let response = self
+            .rest
+            .http
+            .post(format!(
+                "{}/fapi/v3/registerAndApproveAgent",
+                self.rest.base
+            ))
+            .form(&approval.form(signature))
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        if status.is_client_error() {
+            return Err(match refusal(&body) {
+                VenueError::InvalidRequest(why) => VenueError::Rejected(why),
+                other => other,
+            });
+        }
+        if !status.is_success() {
+            return Err(VenueError::Network(format!("Aster API returned {status}")));
+        }
+        // 200 with `{"code": 200, "msg": "success"}`; anything else is Aster's refusal.
+        match serde_json::from_str::<wire::ApiError>(&body) {
+            Ok(reply) if reply.code == 200 => Ok(()),
+            Ok(reply) => Err(VenueError::Rejected(reply.msg)),
+            Err(_) => Err(VenueError::Network("unexpected Aster response".into())),
+        }
+    }
+
+    /// The agents approved for the account `key`'s API wallet acts for, as
+    /// Aster lists them, permissions included. Signed with `key`; works
+    /// before the account has deposited.
+    pub async fn approved_agents(
+        &self,
+        key: &str,
+    ) -> Result<Vec<agent::ApprovedAgent>, VenueError> {
+        self.rest.signed_get("/fapi/v3/agent", &[], key).await
     }
 
     async fn meta(&self) -> Result<Arc<wire::Meta>, VenueError> {
@@ -342,8 +489,7 @@ impl AsterAdapter {
     }
 }
 
-const NO_ACCOUNT_DATA: &str =
-    "Aster account data (it needs a request signed by an API wallet, not set up yet)";
+const NO_ACCOUNT_DATA: &str = "Aster account data (no key store is set up)";
 
 #[async_trait]
 impl ExchangeAdapter for AsterAdapter {
@@ -795,15 +941,45 @@ impl ExchangeAdapter for AsterAdapter {
         Ok(icon)
     }
 
-    async fn account(&self, _address: &str) -> Result<AccountSnapshot, VenueError> {
-        Err(VenueError::Unsupported(NO_ACCOUNT_DATA))
+    async fn account(&self, address: &str) -> Result<AccountSnapshot, VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        self.rest.account(keys.as_ref(), address).await
     }
 
+    /// Polled: a snapshot every `ACCOUNT_EVERY`. A failed poll keeps the
+    /// last one on screen and tries again.
     async fn subscribe_account(
         &self,
-        _address: &str,
+        address: &str,
     ) -> Result<mpsc::Receiver<AccountSnapshot>, VenueError> {
-        Err(VenueError::Unsupported(NO_ACCOUNT_DATA))
+        let keys = self
+            .keys
+            .clone()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        let rest = self.rest.clone();
+        let first = rest.account(keys.as_ref(), address).await?;
+        let (tx, rx) = mpsc::channel(4);
+        let address = address.to_owned();
+        tokio::spawn(async move {
+            if tx.send(first).await.is_err() {
+                return;
+            }
+            loop {
+                tokio::select! {
+                    _ = tx.closed() => return,
+                    _ = tokio::time::sleep(ACCOUNT_EVERY) => {}
+                }
+                if let Ok(next) = rest.account(keys.as_ref(), &address).await {
+                    if tx.send(next).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        });
+        Ok(rx)
     }
 
     async fn place_order(

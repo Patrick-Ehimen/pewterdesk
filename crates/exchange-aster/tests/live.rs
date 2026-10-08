@@ -278,3 +278,83 @@ async fn prices_come_at_the_markets_precision() {
     assert_eq!(places(&s.mark_price), tick);
     assert_eq!(places(&s.day_volume), 2);
 }
+
+/// Onboarding end to end with throwaway wallets: approve a new API wallet
+/// for a new address, read its permissions back, then read the account.
+/// Unlike the rest of this file it writes (an approval for an address made
+/// here, with no funds), so it only runs when asked for by name:
+/// `ASTER_LIVE_WRITE=1 cargo test -p pewterdesk-exchange-aster approves -- --ignored`.
+#[tokio::test]
+#[ignore = "hits Aster mainnet, and registers a throwaway API wallet"]
+async fn approves_an_agent_and_reads_as_it() {
+    use std::sync::Arc;
+
+    use k256::ecdsa::SigningKey;
+    use pewterdesk_core::{KeyError, KeySource};
+    use pewterdesk_exchange_aster::agent::{
+        self, check_trade_only, generate_agent, ApproveAgent, WalletSignature,
+    };
+    use zeroize::Zeroizing;
+
+    if std::env::var_os("ASTER_LIVE_WRITE").is_none() {
+        eprintln!("skipped: set ASTER_LIVE_WRITE=1 to register a throwaway API wallet");
+        return;
+    }
+
+    /// The one key, under whatever entry is asked for.
+    struct OneKey(String);
+    #[async_trait::async_trait]
+    impl KeySource for OneKey {
+        async fn key(&self, _account: &str) -> Result<Zeroizing<String>, KeyError> {
+            Ok(Zeroizing::new(self.0.clone()))
+        }
+    }
+
+    // The "main wallet": a key made here, standing in for the user's wallet.
+    let (user_key, user) = generate_agent();
+    let (agent_key, agent_address) = generate_agent();
+    let micros = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_micros() as u64;
+    // Signed "on" Arbitrum: Aster takes the chain the wallet happens to be on.
+    let approval = ApproveAgent::new(&user, &agent_address, 42161, micros).unwrap();
+
+    // Sign the approval as a wallet would (`eth_signTypedData_v4`).
+    let bytes: Vec<u8> = (0..32)
+        .map(|i| u8::from_str_radix(&user_key[2 + i * 2..4 + i * 2], 16).unwrap())
+        .collect();
+    let wallet = SigningKey::from_slice(&bytes).unwrap();
+    let (signature, recovery) = wallet
+        .sign_prehash_recoverable(&approval.signing_hash())
+        .unwrap();
+    let hex: String = signature
+        .to_bytes()
+        .iter()
+        .chain(&[27 + recovery.to_byte()])
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let signature = WalletSignature::parse(&hex).unwrap();
+    assert_eq!(signature.signer(&approval.signing_hash()).unwrap(), user);
+
+    let adapter = adapter().with_keys(Arc::new(OneKey(agent_key.to_string())));
+    adapter.approve_agent(&approval, &signature).await.unwrap();
+
+    // Aster lists it with the permissions asked for: perps, nothing else.
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let approved = adapter.approved_agents(&agent_key).await.unwrap();
+    let found = check_trade_only(&agent_address, approved, now_ms()).unwrap();
+    assert_eq!(found.agent_name, agent::AGENT_NAME);
+    assert_eq!(found.expired, approval.expired);
+    assert!(!found.can_withdraw && !found.can_spot_trade && found.can_perp_trade);
+
+    // The signed read gets through to the account check: an address that
+    // has never deposited is told so, which is past authentication.
+    match adapter.account(&user).await {
+        Err(VenueError::InvalidRequest(why)) => assert!(why.contains("deposited"), "{why}"),
+        other => panic!("expected the deposit refusal, got {other:?}"),
+    }
+
+    // The same approval can't be posted twice (its nonce is spent).
+    assert!(adapter.approve_agent(&approval, &signature).await.is_err());
+}
