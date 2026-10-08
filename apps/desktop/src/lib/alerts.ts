@@ -7,6 +7,13 @@ import { VENUE_IDS } from "./venues";
 const STORAGE_KEY = "pd.alerts";
 /** More than anyone sets by hand; stops a corrupt store growing without bound. */
 const MAX_ALERTS = 200;
+/**
+ * Marks a store saved since each alert's channels were honoured. Before
+ * that, "In app" was the only one that could be picked and every alert
+ * still reached the desktop and played its sound; alerts from then keep
+ * doing so (see `loadAlerts`).
+ */
+const CHANNELS_VERSION = 2;
 
 export interface AlertsState {
   alerts: MarketAlert[];
@@ -64,10 +71,16 @@ export function loadAlerts(store: Store | undefined = storage()): AlertsState {
   try {
     const parsed: unknown = JSON.parse(store?.getItem(STORAGE_KEY) ?? "null");
     if (!isRecord(parsed)) return EMPTY;
+    const upgrade = parsed.channels !== CHANNELS_VERSION;
     return {
       alerts: (Array.isArray(parsed.alerts) ? parsed.alerts : [])
         .filter(isAlert)
-        .slice(0, MAX_ALERTS),
+        .slice(0, MAX_ALERTS)
+        .map((alert) =>
+          upgrade && alert.notify.every((c) => c === "app")
+            ? { ...alert, notify: ["app", "desktop", "sound"] }
+            : alert,
+        ),
       fired: (Array.isArray(parsed.fired) ? parsed.fired : []).filter(isFired),
       paused: parsed.paused === true,
       seenAt: typeof parsed.seenAt === "number" ? parsed.seenAt : 0,
@@ -79,7 +92,7 @@ export function loadAlerts(store: Store | undefined = storage()): AlertsState {
 
 export function saveAlerts(state: AlertsState, store: Store | undefined = storage()) {
   try {
-    store?.setItem(STORAGE_KEY, JSON.stringify(state));
+    store?.setItem(STORAGE_KEY, JSON.stringify({ ...state, channels: CHANNELS_VERSION }));
   } catch {
     // Storage full or unavailable; the alerts just won't survive a restart.
   }

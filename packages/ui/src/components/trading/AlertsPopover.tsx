@@ -444,7 +444,10 @@ function NewAlertForm({
   const [condition, setCondition] = useState<AlertCondition>("above");
   const [input, setInput] = useState("");
   const [repeat, setRepeat] = useState<AlertRepeat>("once");
-  const [notify, setNotify] = useState<ReadonlySet<AlertChannel>>(new Set(["app"]));
+  // Everywhere that reaches you away from the app, unless unticked.
+  const [notify, setNotify] = useState<ReadonlySet<AlertChannel>>(
+    new Set(["app", "desktop", "sound"]),
+  );
   const [note, setNote] = useState("");
 
   const venue = venues.find((v) => v.id === target?.venue);

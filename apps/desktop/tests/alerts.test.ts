@@ -50,4 +50,26 @@ describe("alert storage", () => {
     store.items.set("pd.alerts", "{not json");
     expect(loadAlerts(store).alerts).toEqual([]);
   });
+
+  it("keeps older alerts reaching the desktop and sounding, as they did", () => {
+    const store = memoryStore();
+    // Saved before channels were honoured: "In app" was all that could be picked.
+    store.setItem(
+      "pd.alerts",
+      JSON.stringify({
+        alerts: [alert, { ...alert, id: "b", notify: ["app", "menuBar"] }],
+        fired: [],
+        paused: false,
+        seenAt: 0,
+      }),
+    );
+    const loaded = loadAlerts(store);
+    expect(loaded.alerts.map((a) => a.notify)).toEqual([
+      ["app", "desktop", "sound"],
+      ["app", "menuBar"],
+    ]);
+    // Saved since, "In app" alone is a choice and stays one.
+    saveAlerts({ ...loaded, alerts: [alert] }, store);
+    expect(loadAlerts(store).alerts[0]?.notify).toEqual(["app"]);
+  });
 });
