@@ -7,12 +7,19 @@ import {
   shortAddress,
   t,
 } from "@pewterdesk/ui";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
 import { coinClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { switchLanguage } from "../../lib/language";
+import {
+  currentNoteSettings,
+  NOTE_CHANNELS,
+  NOTE_TYPES,
+  setNoteSettings,
+  subscribeNotes,
+} from "../../lib/notifications";
 import {
   languageOptions,
   marketColorOptions,
@@ -46,7 +53,7 @@ const SECTIONS: { id: SectionId; soon?: MessageKey }[] = [
   { id: "wallets" },
   { id: "trading", soon: "settings.trading.desc" },
   { id: "hotkeys", soon: "settings.hotkeys.desc" },
-  { id: "notifications", soon: "settings.notifications.desc" },
+  { id: "notifications" },
   { id: "appearance" },
   { id: "network", soon: "settings.network.desc" },
   { id: "advanced" },
@@ -59,9 +66,6 @@ export interface SettingsPageProps {
   soundOn: boolean;
   onSound: (on: boolean) => void;
   /** The ticket asks before sending an order. */
-  /** Fills, alerts and liquidation warnings also show as desktop notifications. */
-  notifications: boolean;
-  onNotifications: (on: boolean) => void;
   /** Sends one now, so the system's permission prompt can be answered. */
   onTestNotification: () => void;
   confirmOrders: boolean;
@@ -116,6 +120,8 @@ export function SettingsPage(props: SettingsPageProps) {
           </>
         ) : section === "general" ? (
           <GeneralSection {...props} />
+        ) : section === "notifications" ? (
+          <NotificationsSection {...props} />
         ) : section === "wallets" ? (
           <WalletsSection {...props} />
         ) : section === "appearance" ? (
@@ -128,15 +134,7 @@ export function SettingsPage(props: SettingsPageProps) {
   );
 }
 
-function GeneralSection({
-  soundOn,
-  onSound,
-  confirmOrders,
-  onConfirmOrders,
-  notifications,
-  onNotifications,
-  onTestNotification,
-}: SettingsPageProps) {
+function GeneralSection({ soundOn, onSound, confirmOrders, onConfirmOrders }: SettingsPageProps) {
   const locale = currentLocale();
   return (
     <>
@@ -154,22 +152,6 @@ function GeneralSection({
       <SettingRow title={t("settings.sounds")} help={t("settings.soundsHelp")}>
         <Switch checked={soundOn} onChange={onSound} label={t("settings.sounds")} />
       </SettingRow>
-      <GroupLabel>{t("settings.notifications")}</GroupLabel>
-      <SettingRow title={t("settings.notifications")} help={t("settings.notificationsHelp")}>
-        <Switch
-          checked={notifications}
-          onChange={onNotifications}
-          label={t("settings.notifications")}
-        />
-      </SettingRow>
-      <SettingRow
-        title={t("settings.notificationsTest")}
-        help={t("settings.notificationsTestHelp")}
-      >
-        <button type="button" className="settings-button" onClick={onTestNotification}>
-          {t("settings.notificationsSend")}
-        </button>
-      </SettingRow>
       <GroupLabel>{t("settings.confirmOrders")}</GroupLabel>
       <SettingRow title={t("settings.confirmOrders")} help={t("settings.confirmOrdersHelp")}>
         <Switch
@@ -177,6 +159,79 @@ function GeneralSection({
           onChange={onConfirmOrders}
           label={t("settings.confirmOrders")}
         />
+      </SettingRow>
+    </>
+  );
+}
+
+/**
+ * Where each kind of notification goes: a toast in the app, a desktop
+ * notification when the app isn't in front, a sound. Read from and written
+ * to the notification store directly, so it's the same in every window.
+ */
+function NotificationsSection({ onTestNotification }: SettingsPageProps) {
+  const settings = useSyncExternalStore(subscribeNotes, currentNoteSettings);
+  return (
+    <>
+      <SectionHead
+        title={navLabel("notifications")}
+        description={t("settings.notifications.desc")}
+      />
+      <GroupLabel>{t("settings.dnd")}</GroupLabel>
+      <SettingRow title={t("settings.dnd")} help={t("settings.dndHelp")}>
+        <Switch
+          checked={settings.dnd}
+          onChange={(dnd) => setNoteSettings({ ...settings, dnd })}
+          label={t("settings.dnd")}
+        />
+      </SettingRow>
+      <GroupLabel>{t("settings.notifyTypes")}</GroupLabel>
+      <p className="settings-help">{t("settings.notifyTypesHelp")}</p>
+      <table className="settings-notify">
+        <thead>
+          <tr>
+            <th scope="col" className="settings-notify-head">
+              {t("settings.notifyType")}
+            </th>
+            {NOTE_CHANNELS.map((c) => (
+              <th key={c} scope="col" className="settings-notify-head">
+                {t(`settings.notifyChannel.${c}`)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {NOTE_TYPES.map((type) => (
+            <tr key={type}>
+              <th scope="row" className="settings-notify-type">
+                {t(`notes.type.${type}`)}
+                <small className="settings-notify-desc">{t(`settings.notifyDesc.${type}`)}</small>
+              </th>
+              {NOTE_CHANNELS.map((c) => (
+                <td key={c} className="settings-notify-cell">
+                  <Switch
+                    checked={settings.types[type][c]}
+                    onChange={(on) =>
+                      setNoteSettings({
+                        ...settings,
+                        types: { ...settings.types, [type]: { ...settings.types[type], [c]: on } },
+                      })
+                    }
+                    label={`${t(`notes.type.${type}`)}: ${t(`settings.notifyChannel.${c}`)}`}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <SettingRow
+        title={t("settings.notificationsTest")}
+        help={t("settings.notificationsTestHelp")}
+      >
+        <button type="button" className="settings-button" onClick={onTestNotification}>
+          {t("settings.notificationsSend")}
+        </button>
       </SettingRow>
     </>
   );

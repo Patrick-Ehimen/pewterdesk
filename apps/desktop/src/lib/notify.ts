@@ -22,14 +22,25 @@ export function saveNotifications(on: boolean) {
 /**
  * Shows a desktop notification, if they're on and the window isn't the one
  * being looked at: in the app, the toast already says it. `always` sends it
- * regardless (the "send a test" button).
+ * regardless (the "send a test" button). Resolves to whether it was handed
+ * to the system.
  */
-export async function desktopNotify(title: string, body?: string, always = false): Promise<void> {
-  if (!isTauri()) return;
-  if (!always && (!notificationsOn() || document.hasFocus())) return;
+export async function desktopNotify(
+  title: string,
+  body?: string,
+  always = false,
+): Promise<boolean> {
+  if (!isTauri()) return false;
+  // Whether a kind of notification goes to the desktop is the notification
+  // settings' call (`notifications.ts`); here, only that the app isn't in front.
+  if (!always && document.hasFocus()) return false;
   try {
     await invoke("notify", { title, body });
+    // Handed to the system. Whether it shows a banner is the system's call
+    // (its notification settings, a Focus mode), which the app can't read.
+    return true;
   } catch {
     // Notifications refused or unavailable: the toast is still there.
+    return false;
   }
 }

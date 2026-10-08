@@ -1,4 +1,4 @@
-import type { FiredAlert, MarketAlert } from "@pewterdesk/ui";
+import { ALERT_KINDS, type FiredAlert, type MarketAlert } from "@pewterdesk/ui";
 import { VENUE_IDS } from "./venues";
 
 // Market alerts, kept on this machine. They name public markets and prices,
@@ -24,7 +24,7 @@ const EMPTY: AlertsState = { alerts: [], fired: [], paused: false, seenAt: 0 };
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
 const isVenue = (v: unknown) => VENUE_IDS.some((id) => id === v);
-const isKind = (v: unknown) => v === "price" || v === "move" || v === "funding";
+const isKind = (v: unknown) => ALERT_KINDS.some((k) => k === v);
 const isCondition = (v: unknown) => v === "above" || v === "below";
 
 function isAlert(v: unknown): v is MarketAlert {

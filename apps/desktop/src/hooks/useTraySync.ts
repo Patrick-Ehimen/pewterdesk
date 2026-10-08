@@ -1,7 +1,8 @@
 import type { AccountSnapshot, Market, MarketStats } from "@pewterdesk/core";
 import { decimalsOf, formatNumber, formatSigned } from "@pewterdesk/ui";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { appClient, type TitlePart, type TrayUpdate } from "../api/appClient";
+import { currentTrayFlash, subscribeTrayFlash } from "../lib/trayFlash";
 import { useStoredChoice } from "./useStoredChoice";
 
 /** What the menu-bar item shows beside the icon. */
@@ -27,7 +28,8 @@ const SEND_AFTER_MS = 400;
 
 /**
  * Keeps the menu-bar (tray) item's title in step with the app: the market on
- * screen with its price and 24h change, and the account's PnL. The window
+ * screen with its price and 24h change, and the account's PnL, or for a
+ * while a fired alert that was set to show there. The window
  * can be closed (the app keeps running in the menu bar), so this runs
  * regardless of what's on screen. The tray panel (`tray/TrayPanel.tsx`)
  * shows the rest.
@@ -88,8 +90,11 @@ export function useTraySync({
         return [];
     }
   })();
+  // A fired alert set to show here takes the title for a while, whatever the mode.
+  const flash = useSyncExternalStore(subscribeTrayFlash, currentTrayFlash);
+  const shown: TitlePart[] = flash ? [{ text: `\u{1F514} ${flash.text}`, tone: "plain" }] : groups;
   // A gap between the icon and the text, when there is text.
-  const title: TitlePart[] = groups.length ? [{ text: GAP, tone: "plain" }, ...groups] : [];
+  const title: TitlePart[] = shown.length ? [{ text: GAP, tone: "plain" }, ...shown] : [];
 
   const update: TrayUpdate = { title };
 

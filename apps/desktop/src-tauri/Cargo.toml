@@ -28,6 +28,9 @@ async-trait = "0.1"
 getrandom = "0.2"
 keyring = "4"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "query", "gzip"] }
+# RSS, for the News page's publisher feeds (`news_feeds.rs`). Already in the
+# tree (the plist crate), so nothing new is downloaded.
+quick-xml = "0.42"
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
 pewterdesk-exchange-bybit = { path = "../../../crates/exchange-bybit" }
@@ -43,6 +46,9 @@ tauri-plugin-notification = "2"
 # The tray's coloured title (green/red) is an AppKit attributed string; these
 # are the same bindings the tray itself uses, so nothing new is downloaded.
 [target.'cfg(target_os = "macos")'.dependencies]
+# What tauri-plugin-notification posts through on macOS; named here only for
+# `notify::install` (the app's name on a dev build's notifications).
+mac-notification-sys = "0.6"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSAttributedString", "NSDictionary"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAttributedString", "NSButton", "NSColor", "NSControl", "NSFont", "NSResponder", "NSStatusBarButton", "NSStatusItem", "NSView", "NSWindow"] }

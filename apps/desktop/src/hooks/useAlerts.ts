@@ -1,5 +1,6 @@
-import type { MarketSummary, VenueId } from "@pewterdesk/core";
+import type { AccountSnapshot, MarketSummary, VenueId } from "@pewterdesk/core";
 import {
+  type AlertContext,
   type AlertDraft,
   type AlertKind,
   canFire,
@@ -7,11 +8,18 @@ import {
   type FiredAlert,
   isToday,
   type MarketAlert,
+  RSI_CANDLES,
+  rsiNowAndBefore,
   watchedValue,
 } from "@pewterdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { venueClient } from "../api/venueClient";
 import { type AlertsState, loadAlerts, saveAlerts } from "../lib/alerts";
 import { useMarketSummaries } from "./useVenueFeeds";
+
+/** How often an RSI alert's market has its hourly candles read again. */
+const RSI_REFRESH_MS = 5 * 60_000;
+const rsiKey = (venue: VenueId, market: string) => `${venue}:${market}`;
 
 /** Fired alerts kept for the "Fired today" list. */
 const FIRED_KEPT = 50;
@@ -24,9 +32,11 @@ const summaryOf = (feed: ReturnType<typeof useMarketSummaries>) =>
  * market summaries while pewterdesk runs (the main window's page keeps
  * running in the menu bar when the window is closed). A venue's summaries
  * stream only while it has an alert to check, or while the popover is open
- * to show how close each one is.
+ * to show how close each one is. RSI alerts read their market's hourly
+ * candles every few minutes; PnL and liquidation-distance alerts read
+ * `account`, the connected account's positions on its venue.
  */
-export function useAlerts(popoverOpen: boolean) {
+export function useAlerts(popoverOpen: boolean, account?: AccountSnapshot) {
   const [state, setState] = useState<AlertsState>(loadAlerts);
   useEffect(() => saveAlerts(state), [state]);
 
@@ -51,6 +61,51 @@ export function useAlerts(popoverOpen: boolean) {
     ]);
   }, [hyperliquidSummaries, asterSummaries, bybitSummaries]);
 
+  // RSI(14) on hourly candles, per market: for the RSI alerts, and for any
+  // market the form asks about (`currentOf`).
+  const [rsi, setRsi] = useState<ReadonlyMap<string, number>>(new Map());
+  const rsiReads = useRef(new Map<string, number>());
+  const readRsi = useCallback((venue: VenueId, market: string) => {
+    const key = rsiKey(venue, market);
+    const last = rsiReads.current.get(key);
+    if (last !== undefined && Date.now() - last < RSI_REFRESH_MS) return;
+    rsiReads.current.set(key, Date.now());
+    void venueClient
+      .candles(venue, market, "1h", Date.now() + 1, RSI_CANDLES)
+      .then((candles) => {
+        const reading = rsiNowAndBefore(candles.map((c) => Number(c.close)));
+        if (reading) setRsi((m) => new Map(m).set(key, reading.value));
+      })
+      .catch(() => {
+        // Tried again on the next round.
+        rsiReads.current.delete(key);
+      });
+  }, []);
+  const rsiMarkets = state.alerts
+    .filter((a) => a.kind === "rsi" && a.active)
+    .map((a) => rsiKey(a.venue, a.market))
+    .join();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `rsiMarkets` stands for the RSI alerts' markets
+  useEffect(() => {
+    if (state.paused || rsiMarkets === "") return;
+    const read = () => {
+      for (const a of state.alerts) if (a.kind === "rsi" && a.active) readRsi(a.venue, a.market);
+    };
+    read();
+    const id = setInterval(read, RSI_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [rsiMarkets, state.paused, readRsi]);
+
+  /** What a kind needs beyond the summary: the market's RSI, your position in it. */
+  const contextOf = useCallback(
+    (venue: VenueId, market: string): AlertContext => ({
+      rsi: rsi.get(rsiKey(venue, market)),
+      position:
+        account?.venue === venue ? account.positions.find((p) => p.market === market) : undefined,
+    }),
+    [rsi, account],
+  );
+
   // The last value each alert saw, so a crossing needs two readings.
   const previous = useRef(new Map<string, number>());
   useEffect(() => {
@@ -65,7 +120,11 @@ export function useAlerts(popoverOpen: boolean) {
     for (const alert of state.alerts) {
       const summaries = byVenue.get(alert.venue);
       if (!summaries || summaries.size === 0) continue;
-      const current = watchedValue(alert.kind, summaries.get(alert.market));
+      const current = watchedValue(
+        alert.kind,
+        summaries.get(alert.market),
+        contextOf(alert.venue, alert.market),
+      );
       const before = previous.current.get(alert.id);
       if (current !== undefined) previous.current.set(alert.id, current);
       if (current === undefined || !canFire(alert, now) || !crossed(alert, before, current)) {
@@ -82,6 +141,7 @@ export function useAlerts(popoverOpen: boolean) {
         value: alert.value,
         actual: current,
         time: now,
+        notify: alert.notify,
       });
       updates.set(alert.id, { firedAt: now, active: alert.repeat === "every" });
     }
@@ -94,12 +154,15 @@ export function useAlerts(popoverOpen: boolean) {
       }),
       fired: [...fired.reverse(), ...s.fired].slice(0, FIRED_KEPT),
     }));
-  }, [byVenue, state.alerts, state.paused]);
+  }, [byVenue, contextOf, state.alerts, state.paused]);
 
   const currentOf = useCallback(
-    (venue: VenueId, market: string, kind: AlertKind) =>
-      watchedValue(kind, byVenue.get(venue)?.get(market)),
-    [byVenue],
+    (venue: VenueId, market: string, kind: AlertKind) => {
+      // Asked about a market's RSI (the form's "now"): read it if it isn't known.
+      if (kind === "rsi") readRsi(venue, market);
+      return watchedValue(kind, byVenue.get(venue)?.get(market), contextOf(venue, market));
+    },
+    [byVenue, contextOf, readRsi],
   );
 
   const create = useCallback((draft: AlertDraft) => {
