@@ -22,12 +22,6 @@ const KEY_KIND: Record<VenueId, MessageKey> = {
   aster: "venues.key.apiWallet",
 };
 
-/**
- * Venues whose connect flow opens: Hyperliquid's wallet, and Bybit's API-key
- * dialog, which explains the key while taking it in is still to come.
- */
-const CONNECTABLE: ReadonlySet<VenueId> = new Set(["hyperliquid", "bybit"]);
-
 const UPCOMING = [
   { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
   { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
@@ -130,8 +124,8 @@ export function VenuesPage({
                     <button
                       type="button"
                       className="venues-button"
-                      disabled={!CONNECTABLE.has(id)}
-                      title={CONNECTABLE.has(id) ? undefined : t("venues.connectSoon")}
+                      disabled={!VENUES[id].connectable}
+                      title={VENUES[id].connectable ? undefined : t("venues.connectSoon")}
                       onClick={() => onManage(id)}
                     >
                       {t(

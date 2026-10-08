@@ -16,6 +16,12 @@ export interface VenueInfo {
    * exchange API key made on the venue's site. Picks the connect flow.
    */
   auth: "wallet" | "apiKey";
+  /**
+   * Whether an account can be connected yet. Aster's can't: its API wallet
+   * approval and signed account requests aren't built, and the wallet flow
+   * there is Hyperliquid's own (its approval, its deposit rule).
+   */
+  connectable: boolean;
 }
 
 export const VENUES: Record<VenueId, VenueInfo> = {
@@ -29,6 +35,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     maxSlippage: 0.05,
     majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
     auth: "apiKey",
+    connectable: true,
   },
   // Builder-deployed (HIP-3) markets scale fees per deployer; the ticket shows none for them.
   hyperliquid: {
@@ -38,6 +45,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     maxSlippage: 0.08,
     majors: ["BTC", "ETH", "SOL", "BNB", "HYPE", "ASTER"],
     auth: "wallet",
+    connectable: true,
   },
   aster: {
     label: "Aster",
@@ -47,6 +55,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     maxSlippage: 0.05,
     majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
     auth: "wallet",
+    connectable: false,
   },
 };
 
