@@ -14,6 +14,7 @@ import {
   LuLayoutGrid,
   LuPalette,
   LuPictureInPicture2,
+  LuSearch,
   LuSettings,
   LuVolume2,
   LuVolumeX,
@@ -37,12 +38,16 @@ interface HeaderActionsProps {
   onToggleStar: () => void;
   quickTradeOpen: boolean;
   onToggleQuickTrade: () => void;
+  /** Opens the command palette. */
+  onPalette: () => void;
   editing: boolean;
   onToggleLayout: () => void;
   soundOn: boolean;
   onSound: (on: boolean) => void;
   /** The alerts bell and its popover. */
   alerts: ReactNode;
+  /** The notification centre's inbox and its panel. */
+  notifications: ReactNode;
   settingsOpen: boolean;
   onToggleSettings: () => void;
   theme: Theme;
@@ -66,11 +71,13 @@ export function HeaderActions({
   onToggleStar,
   quickTradeOpen,
   onToggleQuickTrade,
+  onPalette,
   editing,
   onToggleLayout,
   soundOn,
   onSound,
   alerts,
+  notifications,
   settingsOpen,
   onToggleSettings,
   theme,
@@ -94,6 +101,9 @@ export function HeaderActions({
           onToggle={onToggleStar}
         />
       )}
+      <IconButton label={t("cmd.open")} onClick={onPalette}>
+        <LuSearch size={ICON_SIZE} aria-hidden />
+      </IconButton>
       <IconButton
         label={t("action.quickTrade")}
         pressed={quickTradeOpen}
@@ -122,6 +132,7 @@ export function HeaderActions({
         )}
       </IconButton>
       {alerts}
+      {notifications}
       <IconButton
         label={t(settingsOpen ? "settings.back" : "action.settings")}
         pressed={settingsOpen}

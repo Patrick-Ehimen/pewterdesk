@@ -275,6 +275,7 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
           <Liquidations
             events={liquidations.events}
             backfill={liquidations.okx.loading ? liquidations.okx : undefined}
+            loader={<LoadingMark size={48} />}
             markets={byId}
             window={liqWindow}
             onWindow={setLiqWindow}

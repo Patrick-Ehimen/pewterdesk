@@ -127,6 +127,14 @@ discover it on their own. The reasoning behind the rules is in
   venue: no key, nothing signed, two read-only GETs on `www.okx.com` only
   (no redirects followed). The UI names a market only from the list the
   module itself returned; anything else is refused before a request is built.
+- `apps/desktop/src-tauri/src/news_feeds.rs` - news sites' RSS feeds, for
+  the News page. Publishers are data sources, not venues: no key, nothing
+  signed, one read-only GET each to a fixed list of hosts (`PUBLISHERS`; no
+  redirects followed, a size cap). Feed text reaches the UI as plain text
+  (markup stripped, lengths bounded), never a link: an article opens only
+  via `open_news_article`, by an id, as a URL Rust itself fetched - https,
+  on its publisher's own host, its query string dropped, filtered by
+  `safe_url`. Adding a publisher is a security-relevant change.
 - Signing code in each `crates/exchange-<venue>` - what turns a key into a
   signed venue action. The highest-stakes code in the repo. Hold keys only as
   `Zeroizing` and only for the signing call. So far only Bybit's:
@@ -205,9 +213,10 @@ commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `styles/`. `packages/ui` holds the shared presentational components, fed by
 props. The header's page menu switches between
 Trade (the workspace), Portfolio (the connected account's equity and exposure),
-Settings, News (the venue's own announcements, read by its adapter's
-`announcements` from the venue's public API - Bybit only so far; text only,
-no links reach the UI), Maps (an RSI heatmap of every market from its own
+Settings, News (Bybit's own announcements, read by its adapter's
+`announcements` from the venue's public API whichever venue is on screen,
+and news sites' headlines from their RSS feeds - `news_feeds.rs`; text
+only, no links reach the UI), Maps (an RSI heatmap of every market from its own
 candles, a market heatmap of coins by sector from CoinGecko, liquidations
 from Bybit's public live feed and OKX's public history whichever venue is
 on screen, and an estimated liquidation heatmap from hourly open interest
@@ -225,6 +234,28 @@ via `tauri-plugin-notification`, called from Rust only). The floating window (`f
 tray panel, the Window menu, the header, or Control+Option+Space (a global
 shortcut, via `tauri-plugin-global-shortcut`). `.claude/prd-rust-desktop-features.md` has the rest of the
 Rust-side backlog (notifications, deep links, local persistence), not started.
+
+## Command palette
+
+Cmd+K (Ctrl+K off macOS) or the header's search button opens it
+(`components/CommandMenu.tsx`, `lib/commands.ts`, `CommandPalette` in
+`packages/ui`). It reads typed commands (`buy 100 hype at 38.2`, `close eth`,
+`cancel all`), and finds markets and pages. It adds no trading command: an
+order, close or cancel goes through the same `placeOrder` / `cancelOrder` as
+the ticket, and only on a second Enter, after the palette has shown what
+would be sent.
+
+## Notifications
+
+Anything worth telling the user (an order, a fill, a position change, a fired
+alert, a liquidation warning) goes through `notifyEvent` in
+`apps/desktop/src/lib/notifications.ts`, not a bare `toast()`. It records the
+event in the notification centre and delivers it where Settings >
+Notifications says (toast, desktop, sound; do not disturb holds back all but
+liquidation risk). An alert set to show in the menu bar takes the tray
+item's title for 20 seconds (`lib/trayFlash.ts`). Market alerts live in `packages/ui/src/lib/alerts.ts` and
+`hooks/useAlerts.ts`; they are checked in the app while it runs - there is no
+backend, so nothing fires once the app is quit.
 
 ## Interface strings
 

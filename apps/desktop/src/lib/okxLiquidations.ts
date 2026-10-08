@@ -51,6 +51,8 @@ async function pass(marketFor: (base: string) => string, rank: (base: string) =>
   if (running) return;
   running = true;
   try {
+    // Loading from the first moment, before the list of markets is in.
+    if (!filled) publish({ loading: true, done: 0, total: 0, error: undefined });
     const markets = await okxClient.markets();
     const base = (m: string) => m.split("-")[0] ?? m;
     const queue = [...markets].sort((a, b) => rank(base(a)) - rank(base(b)));

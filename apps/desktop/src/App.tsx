@@ -30,6 +30,7 @@ import {
   formatSigned,
   MarketPicker,
   MarketStatsBar,
+  NotificationCentre,
   OpenOrdersPanel,
   OpenOrdersTable,
   OptionsMenu,
@@ -70,6 +71,7 @@ import { LuWallet } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
+import { CommandMenu } from "./components/CommandMenu";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
 import { FeedView } from "./components/FeedView";
@@ -115,6 +117,7 @@ import {
   useMarketStats,
   useMarketSummaries,
   useMarkets,
+  useNewsWire,
   useOrderBook,
   useOrderHistory,
   useTrades,
@@ -130,10 +133,26 @@ import {
 } from "./lib/account";
 import { accountEvents } from "./lib/accountEvents";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
-import { liquidationDistance, positionKey, RISK_CLEAR, RISK_WITHIN } from "./lib/float";
+import {
+  liquidationDistance,
+  positionKey,
+  RISK_CLEAR,
+  RISK_WITHIN,
+  slippageBps,
+} from "./lib/float";
 import { peekSavedIcon } from "./lib/iconCache";
 import { loadIcon } from "./lib/loadIcon";
-import { desktopNotify, notificationsOn, saveNotifications } from "./lib/notify";
+import {
+  clearNotes,
+  currentNoteSettings,
+  currentNotes,
+  markNotesRead,
+  type NoteChannel,
+  type NoteInput,
+  notifyEvent,
+  subscribeNotes,
+} from "./lib/notifications";
+import { desktopNotify } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
 import { PAGES, type Page } from "./lib/pages";
@@ -155,7 +174,8 @@ import {
   saveQuickTrade,
 } from "./lib/quickTrade";
 import { loadMarket, saveMarket } from "./lib/selectedMarket";
-import { playSound } from "./lib/sound";
+import { playSound, type SoundKind } from "./lib/sound";
+import { flashTray } from "./lib/trayFlash";
 import { loadVenue, saveVenue, VENUE_IDS, VENUES } from "./lib/venues";
 import {
   addPanel,
@@ -425,12 +445,6 @@ function OrderBookPanel({
   );
 }
 
-/** Says it in the app (a toast) and, when the app isn't in front, on the desktop. */
-function announce(input: Parameters<typeof toast>[0]) {
-  toast(input);
-  void desktopNotify(input.title, input.body);
-}
-
 export function App() {
   // The venue and market on screen, so a restart opens where you left off.
   // Each venue remembers its own last market.
@@ -467,12 +481,25 @@ export function App() {
         const text = orderText(request, baseFor(request.market));
         try {
           await venueClient.placeOrder(trading.venue, trading.id, request);
-          playSound("order");
-          toast({ title: t("toast.orderPlaced"), body: text });
+          notifyEvent({
+            type: "order",
+            title: t("toast.orderPlaced"),
+            body: text,
+            sound: "order",
+            venue: trading.venue,
+            market: request.market,
+          });
         } catch (err) {
-          playSound("error");
           const why = err instanceof Error ? err.message : t("ticket.failed");
-          toast({ title: t("toast.orderRejected"), body: `${text} · ${why}`, tone: "warn" });
+          notifyEvent({
+            type: "order",
+            title: t("toast.orderRejected"),
+            body: `${text} · ${why}`,
+            tone: "warn",
+            sound: "error",
+            venue: trading.venue,
+            market: request.market,
+          });
           throw err;
         }
       }
@@ -480,8 +507,14 @@ export function App() {
   const cancelOrder = trading
     ? async (order: Order) => {
         await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
-        playSound("cancel");
-        toast({ title: t("toast.orderCancelled"), body: orderLine(order) });
+        notifyEvent({
+          type: "order",
+          title: t("toast.orderCancelled"),
+          body: orderLine(order),
+          sound: "cancel",
+          venue: trading.venue,
+          market: order.market,
+        });
       }
     : undefined;
   // The P&L share card: built from a position (live) or a closed trade.
@@ -561,15 +594,27 @@ export function App() {
   const amend = trading
     ? async (order: Order, change: OrderAmend) => {
         await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
-        playSound("saved");
-        toast({ title: t("toast.orderChanged"), body: symbolFor(order.market) });
+        notifyEvent({
+          type: "order",
+          title: t("toast.orderChanged"),
+          body: symbolFor(order.market),
+          sound: "saved",
+          venue: trading.venue,
+          market: order.market,
+        });
       }
     : undefined;
   const protect = trading
     ? async (position: Position, protection: PositionProtection) => {
         await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
-        playSound("saved");
-        toast({ title: t("toast.protectionSaved"), body: symbolFor(position.market) });
+        notifyEvent({
+          type: "order",
+          title: t("toast.protectionSaved"),
+          body: symbolFor(position.market),
+          sound: "saved",
+          venue: trading.venue,
+          market: position.market,
+        });
       }
     : undefined;
   /** "Buy 120 BTC @ 80,000": an open order in a line. */
@@ -611,7 +656,18 @@ export function App() {
   const [page, setPage] = useStoredChoice<Page>("pd.page", PAGES, "trade");
   // Market alerts, checked while the app runs; the popover is the header's bell.
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const alerts = useAlerts(alertsOpen);
+  // The command palette: Cmd+K (Ctrl+K off macOS), from anywhere in the window.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey)
+        return;
+      e.preventDefault();
+      setPaletteOpen((open) => !open);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [walletOpen, setWalletOpen] = useState(false);
   // The exchange whose API-key dialog is open (Bybit connects with a key, not a wallet).
   const [apiKeyFor, setApiKeyFor] = useState<VenueId>();
@@ -713,7 +769,6 @@ export function App() {
   const [quickQty, setQuickQty] = useState("");
   // The ticket's confirmation: on by default; turning it back on in Settings
   // also forgets "don't confirm orders under…".
-  const [notifications, setNotifications] = useState(notificationsOn);
   const [orderConfirm, setOrderConfirm] = useState(loadOrderConfirm);
   const updateOrderConfirm = (next: OrderConfirmPrefs) => {
     setOrderConfirm(next);
@@ -796,6 +851,12 @@ export function App() {
   const lastSnapshot = useRef<{ key: string; data: AccountSnapshot } | undefined>(undefined);
   const liveAccount =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
+  // The alerts, with the connected account's positions for the PnL and
+  // liquidation-distance ones.
+  const alerts = useAlerts(alertsOpen, liveAccount);
+  // The notification centre: everything `notifyEvent` has recorded.
+  const notes = useSyncExternalStore(subscribeNotes, currentNotes);
+  const noteSettings = useSyncExternalStore(subscribeNotes, currentNoteSettings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per snapshot; the lookups it reads are stable enough
   useEffect(() => {
     if (!liveAccount || !address) return;
@@ -805,11 +866,17 @@ export function App() {
     if (!prev || prev.key !== key) return;
     const events = accountEvents(prev.data, liveAccount);
     // One sound for the snapshot, however many things changed in it.
-    if (events.length > 0) playSound("fill");
+    let sound: SoundKind | undefined = "fill";
+    const announce = (input: Omit<NoteInput, "sound" | "venue">) => {
+      notifyEvent({ ...input, sound, venue });
+      sound = undefined;
+    };
     for (const event of events) {
       if (event.kind === "partialFill") {
         const o = event.order;
         announce({
+          type: "fill",
+          market: o.market,
           title: t("toast.partiallyFilled"),
           tone: o.side,
           body: t("toast.partialBody", {
@@ -829,6 +896,8 @@ export function App() {
       if (event.kind === "positionResized") {
         const grew = Number(p.size) > Number(event.from);
         announce({
+          type: "position",
+          market: p.market,
           title: t(grew ? "toast.positionIncreased" : "toast.positionReduced"),
           tone,
           body: t("toast.resizeBody", {
@@ -841,6 +910,8 @@ export function App() {
       } else {
         const opened = event.kind === "positionOpened";
         announce({
+          type: "position",
+          market: p.market,
           title: t(opened ? "toast.positionOpened" : "toast.positionClosed"),
           tone: opened ? tone : "neutral",
           body: t("toast.positionBody", {
@@ -861,9 +932,23 @@ export function App() {
     if (!newestFired || newestFired.id === lastFired.current) return;
     const until = alerts.fired.findIndex((f) => f.id === lastFired.current);
     lastFired.current = newestFired.id;
-    playSound("alert");
+    let sound: SoundKind | undefined = "alert";
     for (const f of alerts.fired.slice(0, until === -1 ? 1 : until).reverse()) {
-      announce({ title: t("toast.alert"), body: firedAlertText(f) });
+      // Each alert goes only where it was set to: in app, desktop, sound, the menu bar.
+      const only = f.notify?.flatMap((c): NoteChannel[] =>
+        c === "app" ? ["toast"] : c === "desktop" ? ["desktop"] : c === "sound" ? ["sound"] : [],
+      );
+      notifyEvent({
+        type: "alert",
+        title: t("toast.alert"),
+        body: firedAlertText(f),
+        sound,
+        only,
+        venue: f.venue,
+        market: f.market || undefined,
+      });
+      if (f.notify?.includes("menuBar")) flashTray(firedAlertText(f));
+      if (!only || only.includes("sound")) sound = undefined;
     }
   }, [newestFired, alerts.fired]);
 
@@ -885,13 +970,17 @@ export function App() {
       if (already && distance <= RISK_CLEAR) still.add(key);
       if (already || distance > RISK_WITHIN) continue;
       still.add(key);
-      playSound("alert");
       // A toast here; outside the app, the floating window shows it as a
       // notification of its own (FloatWindow), so no system one as well.
-      toast({
+      notifyEvent({
+        type: "risk",
         title: t("notify.liqTitle", { symbol: symbolFor(p.market) }),
         body: t("notify.liqBody", { pct: formatNumber(distance * 100, 2) }),
         tone: "warn",
+        sound: "alert",
+        noDesktop: true,
+        venue,
+        market: p.market,
       });
     }
     warned.current = still;
@@ -950,7 +1039,9 @@ export function App() {
     unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
   const barSummaries = useMarketSummaries(venue, true);
   // Read only while the News page is open.
-  const announcements = useAnnouncements(venue, page === "news");
+  // Bybit's, whichever venue is on screen: no other venue publishes any the app can read.
+  const announcements = useAnnouncements("bybit", page === "news");
+  const newsWire = useNewsWire(page === "news");
   const barPrices =
     barSummaries.status === "live" || barSummaries.status === "closed"
       ? barSummaries.data
@@ -1189,6 +1280,7 @@ export function App() {
             onToggleStar={() => selected && watchlist.toggle(selected.id)}
             quickTradeOpen={quickTrade.open}
             onToggleQuickTrade={() => updateQuickTrade({ ...quickTrade, open: !quickTrade.open })}
+            onPalette={() => setPaletteOpen(true)}
             editing={editing}
             onToggleLayout={() => {
               if (editing) {
@@ -1226,6 +1318,30 @@ export function App() {
                   setAlertsOpen(open);
                   // Opening or closing it counts as having seen what fired.
                   alerts.markSeen();
+                }}
+              />
+            }
+            notifications={
+              <NotificationCentre
+                notes={notes.map((n) => ({
+                  ...n,
+                  // Openable when it names a market on a venue the app knows.
+                  marketLabel:
+                    n.market && VENUE_IDS.some((v) => v === n.venue)
+                      ? n.venue === venue
+                        ? symbolFor(n.market)
+                        : n.market
+                      : undefined,
+                }))}
+                dnd={noteSettings.dnd}
+                onRead={markNotesRead}
+                onClear={clearNotes}
+                onGoTo={(id) => {
+                  const n = notes.find((x) => x.id === id);
+                  const v = VENUE_IDS.find((x) => x === n?.venue);
+                  if (!n?.market || !v) return;
+                  setPage("trade");
+                  showMarket(v, n.market);
                 }}
               />
             }
@@ -1269,7 +1385,9 @@ export function App() {
           <NewsPage
             venue={venue}
             venueLabel={venueInfo.label}
+            announcer={VENUES.bybit.label}
             news={announcements}
+            wire={newsWire}
             markets={marketList}
             summaries={
               barSummaries.status === "live" || barSummaries.status === "closed"
@@ -1303,14 +1421,19 @@ export function App() {
               updateOrderConfirm({ enabled });
               playSound("saved");
             }}
-            notifications={notifications}
-            onNotifications={(on) => {
-              setNotifications(on);
-              saveNotifications(on);
-              playSound("saved");
-            }}
             onTestNotification={() =>
-              void desktopNotify(t("notify.testTitle"), t("notify.testBody"), true)
+              // Says how it went: a banner that doesn't appear is otherwise silence.
+              void desktopNotify(t("notify.testTitle"), t("notify.testBody"), true).then((sent) =>
+                toast(
+                  sent
+                    ? { title: t("notify.testSent"), body: t("notify.testSentHelp") }
+                    : {
+                        title: t("notify.testFailed"),
+                        body: t("notify.testFailedHelp"),
+                        tone: "warn",
+                      },
+                ),
+              )
             }
             theme={appearance.theme}
             onTheme={themeTransition.switchTheme}
@@ -1556,6 +1679,37 @@ export function App() {
         )}
 
         <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        <CommandMenu
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          markets={marketList}
+          current={selected}
+          summaries={
+            barSummaries.status === "live" || barSummaries.status === "closed"
+              ? barSummaries.data
+              : undefined
+          }
+          positions={liveAccount?.positions ?? []}
+          orders={liveAccount?.openOrders ?? []}
+          maxSlippageBps={slippageBps(venueInfo.maxSlippage)}
+          place={placeOrder}
+          cancel={cancelOrder}
+          onMarket={(id) => {
+            showMarket(venue, id);
+            goTo("trade");
+          }}
+          onPage={goTo}
+          onAlerts={() => {
+            goTo("trade");
+            setAlertsOpen(true);
+          }}
+          onFloat={() => void appClient.toggleFloat()}
+          onLayout={() => {
+            setPage("trade");
+            setExpanded(undefined);
+            setEditing(true);
+          }}
+        />
 
         {/* Covers the app while a theme switch happens underneath. */}
         <Toasts />
