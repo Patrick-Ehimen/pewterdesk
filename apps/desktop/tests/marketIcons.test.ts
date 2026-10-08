@@ -4,8 +4,11 @@ import {
   bybitBase,
   firstIcon,
   iconSources,
+  isAnotherCoin,
   isCryptoMarket,
   marketLogo,
+  sameAsset,
+  unitsOf,
 } from "../src/lib/marketIcons";
 
 describe("market logo sources", () => {
@@ -88,6 +91,76 @@ describe("the app's own logos, then CoinGecko as the last resort", () => {
     bundled: none,
     coin: none,
     ...over,
+  });
+
+  it("borrows another venue's logo only for the same asset, by price", async () => {
+    // Bybit's PURR is a company's shares; Hyperliquid's PURR is a memecoin.
+    const stock = market({ id: "PURRUSDT", symbol: "PURR-USDT", base: "PURR", category: "stock" });
+    const asked: string[] = [];
+    const venue = async (v: string, id: string) => {
+      asked.push(`${v}:${id}`);
+      return v === "bybit" ? undefined : `<svg>${v}</svg>`;
+    };
+    const prices = (table: Record<string, number>) => (v: string, m: string) => table[`${v}:${m}`];
+    const apart = prices({
+      "bybit:PURRUSDT": 11.69,
+      "hyperliquid:PURR": 0.124,
+      "aster:PURRUSDT": 0.125,
+    });
+    await expect(
+      marketLogo("bybit", "PURRUSDT", stock, sources({ venue, price: apart })),
+    ).resolves.toBeUndefined();
+    expect(asked).toEqual(["bybit:PURRUSDT"]);
+    // The same ticker, a coin on both, at different prices: still not it.
+    const coin = market({ id: "PURRUSDT", symbol: "PURR-USDT", base: "PURR" });
+    await expect(
+      marketLogo("bybit", "PURRUSDT", coin, sources({ venue, price: apart })),
+    ).resolves.toBeUndefined();
+    // A stock two venues both list, at one price: the same asset, so its logo.
+    const tsla = market({ id: "TSLAUSDT", symbol: "TSLA-USDT", base: "TSLA", category: "stock" });
+    const together = prices({ "bybit:TSLAUSDT": 375.6, "aster:TSLAUSDT": 375.9 });
+    await expect(
+      marketLogo("bybit", "TSLAUSDT", tsla, sources({ venue, price: together })),
+    ).resolves.toBe("<svg>aster</svg>");
+    // No price to go by: a coin's ticker is trusted, a stock's isn't.
+    await expect(marketLogo("bybit", "PURRUSDT", coin, sources({ venue }))).resolves.toBe(
+      "<svg>hyperliquid</svg>",
+    );
+    await expect(
+      marketLogo("bybit", "TSLAUSDT", tsla, sources({ venue })),
+    ).resolves.toBeUndefined();
+  });
+
+  it("tells CoinGecko's coin from the one traded, by what a coin is worth", () => {
+    const coin = (marketCap: number | null, circulatingSupply: number | null) => ({
+      marketCap,
+      circulatingSupply,
+    });
+    // The memecoin is worth 12 cents; the market trades near 12 dollars.
+    expect(isAnotherCoin(coin(73_659_548, 594_778_118), "PURR", 11.69)).toBe(true);
+    expect(isAnotherCoin(coin(73_659_548, 594_778_118), "PURR", 0.1241)).toBe(false);
+    // A market quoted per thousand, or Hyperliquid's "k", is the same coin.
+    expect(isAnotherCoin(coin(5_000_000_000, 420e12), "1000PEPE", 0.0119)).toBe(false);
+    expect(isAnotherCoin(coin(5_000_000_000, 420e12), "kPEPE", 0.0119)).toBe(false);
+    expect(isAnotherCoin(coin(5_000_000_000, 420e12), "PEPE", 0.0119)).toBe(true);
+    // Nothing to go by: it's shown.
+    expect(isAnotherCoin(coin(null, 594_778_118), "PURR", 11.69)).toBe(false);
+    expect(isAnotherCoin(coin(73_659_548, 594_778_118), "PURR", undefined)).toBe(false);
+  });
+
+  it("compares prices unit for unit", () => {
+    // 1000PEPE here is a thousand PEPE there, and one kPEPE.
+    expect(unitsOf("1000PEPE", "PEPE")).toBe(1000);
+    expect(unitsOf("1000PEPE", "PEPEUSDT")).toBe(1000);
+    expect(unitsOf("1000PEPE", "kPEPE")).toBe(1);
+    expect(unitsOf("1000PEPE", "1000PEPEUSDT")).toBe(1);
+    expect(unitsOf("1000000MOG", "kMOG")).toBe(1000);
+    expect(unitsOf("BTC", "BTCUSDT")).toBe(1);
+    expect(sameAsset(0.0123, 0.0000124, 1000)).toBe(true);
+    expect(sameAsset(0.0123, 0.0000124)).toBe(false);
+    expect(sameAsset(100, 104)).toBe(true);
+    expect(sameAsset(100, undefined)).toBeUndefined();
+    expect(sameAsset(0, 5)).toBeUndefined();
   });
 
   it("asks each source only when the ones before it have no logo", async () => {

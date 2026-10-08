@@ -19,6 +19,8 @@ import {
 } from "react-icons/lu";
 import { type CoinInfo, type CoinLink, type CoinLinkKind, coinClient } from "../../api/venueClient";
 import { useCoinInfo } from "../../hooks/useVenueFeeds";
+import { cachedPrice } from "../../lib/cachedPrices";
+import { isAnotherCoin, isCryptoMarket } from "../../lib/marketIcons";
 import { DEFAULT_VIEW_PREFS, type ViewPrefs } from "../../lib/viewPrefs";
 
 type Section = "info" | "fundraising" | "tokenomics";
@@ -227,8 +229,17 @@ export function CoinOverview({
   show?: ViewPrefs["overview"];
 }) {
   const [section, setSection] = useState<Section>("info");
-  const base = market && !market.listedBy ? market.base : undefined;
+  // CoinGecko knows coins by ticker: a stock's would find an unrelated coin
+  // (Bybit's PURR is a company's shares, not the memecoin).
+  const base = isCryptoMarket(market) ? market.base : undefined;
   const feed = useCoinInfo(base);
+  // And among coins, the best-known one with that ticker isn't always the
+  // one traded here: it has to be worth what this market trades at.
+  const wrongCoin =
+    market !== undefined &&
+    feed.status === "live" &&
+    feed.data !== null &&
+    isAnotherCoin(feed.data, market.base, cachedPrice(market.venue, market.id));
 
   const body = (() => {
     if (section !== "info" || !market || !base) return <NoData />;
@@ -243,7 +254,7 @@ export function CoinOverview({
           </div>
         );
       default:
-        return feed.data ? <Info info={feed.data} show={show} /> : <NoData />;
+        return feed.data && !wrongCoin ? <Info info={feed.data} show={show} /> : <NoData />;
     }
   })();
 

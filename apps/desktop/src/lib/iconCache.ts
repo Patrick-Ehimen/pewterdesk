@@ -15,8 +15,10 @@ const PREFIX = "pd.icons.";
  * 5: Bybit's own logo list is asked first, for a connected account.
  * 6: CoinGecko is asked last, for a crypto coin no venue has a logo for.
  * 7: logos that ship with the app (assets/tokens) fill in for stocks and ETFs.
+ * 8: another venue's logo is borrowed only for the same asset, by price
+ *    (Bybit's PURR, a stock, had Hyperliquid's memecoin's).
  */
-export const STORE_VERSION = 7;
+export const STORE_VERSION = 8;
 /** The whole store starts over after this, so changed logos come through. */
 export const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A bigger logo isn't kept; Aster's are about 1.5 KB wrapped, most of Hyperliquid's less. */

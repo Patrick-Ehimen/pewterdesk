@@ -1,6 +1,7 @@
 import type { IconLoader } from "@pewterdesk/ui";
 import { coinClient, venueClient } from "../api/venueClient";
 import { bundledLogo } from "./bundledLogos";
+import { cachedPrice } from "./cachedPrices";
 import { withIconCache } from "./iconCache";
 import { marketLogo } from "./marketIcons";
 
@@ -15,5 +16,6 @@ export const loadIcon: IconLoader = withIconCache((id, venue, market) =>
     venue: venueClient.marketIcon,
     bundled: bundledLogo,
     coin: coinClient.logo,
+    price: cachedPrice,
   }),
 );
