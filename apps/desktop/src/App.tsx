@@ -685,9 +685,19 @@ export function App() {
   const [walletOpen, setWalletOpen] = useState(false);
   // The exchange whose API-key dialog is open (Bybit connects with a key, not a wallet).
   const [apiKeyFor, setApiKeyFor] = useState<VenueId>();
-  /** Opens the venue's own connect flow: a wallet, or an exchange API key. */
-  const openConnect = (id: VenueId = venue) =>
-    VENUES[id].auth === "apiKey" ? setApiKeyFor(id) : setWalletOpen(true);
+  /**
+   * Opens the venue's own connect flow: a wallet, or an exchange API key.
+   * A venue that can't connect yet says so, rather than opening another's.
+   */
+  const openConnect = (id: VenueId = venue) => {
+    if (!VENUES[id].connectable) {
+      toast({ title: VENUES[id].label, body: t("venues.connectSoon"), tone: "warn" });
+    } else if (VENUES[id].auth === "apiKey") {
+      setApiKeyFor(id);
+    } else {
+      setWalletOpen(true);
+    }
+  };
   const [aboutOpen, setAboutOpen] = useState(false);
   // A market picked from the tray panel goes on screen, switching venue if need be.
   const showFromTray = useRef(showMarket);
