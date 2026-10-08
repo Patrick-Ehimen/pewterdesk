@@ -29,6 +29,8 @@ const KEY_KIND: Record<VenueId, MessageKey> = {
 const CONNECTABLE: ReadonlySet<VenueId> = new Set(["hyperliquid", "bybit"]);
 
 const UPCOMING = [
+  { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
+  { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
 ] as const;

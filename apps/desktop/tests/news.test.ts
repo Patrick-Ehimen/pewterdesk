@@ -1,10 +1,13 @@
 import type { Announcement, Candle, Market, MarketSummary, Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
+import type { Article } from "../src/api/venueClient";
 import {
   buildNews,
   filterNews,
   fundingDue,
   mentionedMarkets,
+  moreNews,
+  movers,
   priceChart,
   upcoming,
 } from "../src/lib/news";
@@ -164,5 +167,105 @@ describe("priceChart", () => {
 
   it("leaves the mark out when the headline is after the last candle", () => {
     expect(priceChart([candle(0, "10"), candle(10, "20")], 99, 100, 50)?.mark).toBeUndefined();
+  });
+});
+
+describe("news sites' articles", () => {
+  const article = (over: Partial<Article>): Article => ({
+    id: "coindesk:1",
+    source: "coindesk",
+    sourceName: "CoinDesk",
+    title: "",
+    summary: "",
+    tags: [],
+    time: 0,
+    ...over,
+  });
+
+  it("joins the announcements, newest first, each with what opens it", () => {
+    const items = buildNews(
+      [ann({ kind: "listing", title: "New Listing: MONUSDT", time: 5 })],
+      markets,
+      [],
+      [
+        article({ id: "coindesk:a", title: "Markets wrap", time: 9 }),
+        article({ id: "decrypt:b", source: "decrypt", sourceName: "Decrypt", time: 2 }),
+      ],
+    );
+    expect(items.map((i) => i.article)).toEqual(["coindesk:a", undefined, "decrypt:b"]);
+    expect(items[0]).toMatchObject({ kind: "news", highImpact: false });
+    expect(items[0]?.publisher?.name).toBe("CoinDesk");
+    expect(items[1]?.publisher).toBeUndefined();
+    const news = filterNews(items, {
+      filter: "news",
+      query: "",
+      highOnly: false,
+      campaigns: false,
+    });
+    expect(news.map((i) => i.id)).toEqual(["coindesk:a", "decrypt:b"]);
+    const found = filterNews(items, {
+      filter: "all",
+      query: "decrypt",
+      highOnly: false,
+      campaigns: false,
+    });
+    expect(found.map((i) => i.id)).toEqual(["decrypt:b"]);
+  });
+
+  it("knows a coin by its name, where it's written as a name", () => {
+    expect(mentionedMarkets("Bitcoin slips as Ethereum holds", markets)).toEqual([
+      "BTCUSDT",
+      "ETHUSDT",
+    ]);
+    // Not a name here, and not a coin with a market either.
+    expect(mentionedMarkets("the ether of the internet", markets)).toEqual([]);
+    expect(mentionedMarkets("Dogecoin rallies", markets)).toEqual([]);
+  });
+});
+
+describe("what fills the page beside a headline", () => {
+  it("offers the headlines about the same thing first, then the newest", () => {
+    const items = buildNews(
+      [
+        ann({ title: "Delisting of MONUSDT", kind: "delisting", time: 9 }),
+        ann({ title: "Unrelated note", time: 8 }),
+        ann({ title: "MON margin change", time: 2 }),
+        ann({ title: "Another delisting", kind: "delisting", time: 1 }),
+      ],
+      markets,
+      [],
+    );
+    const first = items[0] as (typeof items)[number];
+    expect(moreNews(first, items).map((i) => i.title)).toEqual([
+      "MON margin change",
+      "Another delisting",
+      "Unrelated note",
+    ]);
+    expect(moreNews(first, items, 1)).toHaveLength(1);
+  });
+
+  it("ranks the day's biggest rises and falls", () => {
+    const s = (market: string, markPrice: string, prevDayPrice: string): MarketSummary => ({
+      market,
+      markPrice,
+      prevDayPrice,
+      dayVolume: "0",
+      openInterest: "0",
+      fundingRate: "0",
+      fundingIntervalSecs: 3600,
+    });
+    const { gainers, losers } = movers(
+      [
+        s("A", "110", "100"),
+        s("B", "150", "100"),
+        s("C", "80", "100"),
+        s("D", "95", "100"),
+        s("E", "1", "0"),
+      ],
+      1,
+    );
+    expect(gainers.map((m) => m.market)).toEqual(["B"]);
+    expect(losers.map((m) => m.market)).toEqual(["C"]);
+    expect(gainers[0]?.change).toBeCloseTo(50);
   });
 });

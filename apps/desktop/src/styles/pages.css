@@ -321,9 +321,22 @@
   border: 1px solid var(--pd-border);
   border-radius: 8px;
 }
+/* The left column: the feed, and what's coming up under it. */
+.news-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
 .news-feed {
+  flex: 1;
   gap: 10px;
   padding-top: 14px;
+}
+.news-coming {
+  flex: none;
+  max-height: 34%;
+  overflow-y: auto;
 }
 .news-feed > :not(.news-scroll) {
   margin: 0 16px;
@@ -527,6 +540,16 @@
 .news-tags {
   margin: 12px 0 0;
 }
+.news-read {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 0;
+}
+.news-row-source {
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
 .news-label {
   margin: 0;
   color: var(--pd-pewter);
@@ -605,6 +628,76 @@
 }
 .news-pad {
   padding: 10px 18px;
+}
+.news-movers,
+.news-more {
+  padding: 18px 22px;
+  border-top: 1px solid var(--pd-border);
+}
+.news-movers {
+  border-top: 0;
+}
+.news-movers-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 12px;
+}
+.news-movers-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.news-mover {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 72px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.news-mover > :last-child {
+  text-align: right;
+}
+.news-mover strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.news-mover:hover,
+.news-more-row:hover {
+  background: color-mix(in srgb, var(--pd-surface-raised) 50%, transparent);
+}
+.news-more .news-label {
+  margin-bottom: 8px;
+}
+.news-more-row {
+  display: flex;
+  gap: 14px;
+  width: calc(100% + 20px);
+  padding: 10px;
+  margin: 0 -10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.news-more-row .news-row-main {
+  gap: 3px;
+}
+.news-sources-note {
+  border-top: 1px solid var(--pd-border);
 }
 .news-num {
   font-family: var(--pd-font-mono);

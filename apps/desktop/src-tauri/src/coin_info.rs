@@ -656,7 +656,7 @@ struct MarketData {
 /// A URL that's safe to hand to the system browser: http or https, a host,
 /// and only characters no shell gives a meaning to (`open_url` goes through
 /// `cmd` on Windows). Anything else isn't offered at all.
-fn safe_url(url: &str) -> Option<String> {
+pub(crate) fn safe_url(url: &str) -> Option<String> {
     let url = url.trim();
     let rest = url
         .strip_prefix("https://")

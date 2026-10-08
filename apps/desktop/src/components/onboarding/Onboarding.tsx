@@ -40,6 +40,8 @@ const UPCOMING: readonly {
   name: string;
   chain: MessageKey;
 }[] = [
+  { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
+  { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
 ];

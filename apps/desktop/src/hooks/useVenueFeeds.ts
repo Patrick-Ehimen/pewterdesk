@@ -17,7 +17,14 @@ import type {
 } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type CoinInfo, coinClient, type StreamHandlers, venueClient } from "../api/venueClient";
+import {
+  type Article,
+  type CoinInfo,
+  coinClient,
+  newsClient,
+  type StreamHandlers,
+  venueClient,
+} from "../api/venueClient";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
 import { RETRY_MS, useRetry } from "./useRetry";
@@ -439,6 +446,15 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
 export function useAccount(venue: VenueId, address: string | undefined): Feed<AccountSnapshot> {
   return useStream(address && `${venue}:${address}`, (handlers) =>
     venueClient.subscribeAccount(venue, address ?? "", handlers),
+  );
+}
+
+/** The news sites' latest headlines, newest first, while `enabled`. */
+export function useNewsWire(enabled: boolean): Feed<Article[]> {
+  return usePolled<Article[]>(
+    enabled ? "wire" : undefined,
+    () => newsClient.feed(),
+    ANNOUNCEMENTS_REFRESH_MS,
   );
 }
 

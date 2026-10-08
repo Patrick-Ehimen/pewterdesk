@@ -420,6 +420,29 @@ export const okxClient = {
     call<OkxLiquidation[]>("okx_liquidations", { market, since }),
 };
 
+/** A news site's headline. Its link stays in Rust; `newsClient.open` opens it. */
+export interface Article {
+  /** Names the article to `newsClient.open`. */
+  id: string;
+  /** The publisher's id, e.g. "coindesk". */
+  source: string;
+  /** The publisher's name, e.g. "CoinDesk". */
+  sourceName: string;
+  title: string;
+  summary: string;
+  /** The publisher's own labels, e.g. "Markets". */
+  tags: string[];
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+}
+
+export const newsClient = {
+  /** The news sites' latest headlines, newest first. */
+  feed: () => call<Article[]>("news_feed", {}),
+  /** Opens an article in the browser, by the id `feed` gave it. */
+  open: (id: string) => call<void>("open_news_article", { id }),
+};
+
 export const coinClient = {
   /** The overview for a market's base coin, or null if CoinGecko doesn't list it. */
   info: (base: string) => call<CoinInfo | null>("coin_info", { base }),
