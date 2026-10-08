@@ -962,7 +962,13 @@ export const messages: Messages = {
   "cmd.cancelFor": "Отменить ордера {base}: {count}",
   "cmd.cancelBadge": "Отмена",
   "cmd.noTrading": "Нет аккаунта, который может торговать",
-  "cmd.tips": "Попробуйте: buy 0.01 btc at 80000 · sell 2 sol · close eth · cancel all · новости",
+  "cmd.tips":
+    "Попробуйте: buy 0.01 btc at 80000 · sell 50% eth · tp eth 2600 · buy 1 sol at 110 to 100 x5 · theme",
+  "cmd.scaled": "лесенкой {from} → {to} · ордеров: {count}",
+  "cmd.ofPosition": "{percent}% вашей позиции {side} на {size}",
+  "cmd.exitAt": "{exit} по {base} на {price}",
+  "cmd.exitOff": "Убрать {exit} по {base}",
+  "cmd.onPosition": "Ваша позиция {side} на {size}, вход {entry}",
   "cmd.empty": "Ничего не найдено. Попробуйте рынок, страницу или команду, как в примерах ниже.",
   "palette.title": "Панели",
   "palette.help":

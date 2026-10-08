@@ -239,11 +239,13 @@ Rust-side backlog (notifications, deep links, local persistence), not started.
 
 Cmd+K (Ctrl+K off macOS) or the header's search button opens it
 (`components/CommandMenu.tsx`, `lib/commands.ts`, `CommandPalette` in
-`packages/ui`). It reads typed commands (`buy 100 hype at 38.2`, `close eth`,
-`cancel all`), and finds markets and pages. It adds no trading command: an
-order, close or cancel goes through the same `placeOrder` / `cancelOrder` as
-the ticket, and only on a second Enter, after the palette has shown what
-would be sent.
+`packages/ui`). It reads typed commands (`buy 100 hype at 38.2`, a scaled
+`... at 38.2 to 37.8 x5`, `sell 50% hype`, `tp hype 41`, `close eth`,
+`cancel all`), and finds markets, pages, venues and themes. It adds no
+trading command: an order, close, cancel or exit goes through the same
+`placeOrder` / `cancelOrder` / `protect` as the ticket and the position
+drawer, and only on a second Enter, after the palette has shown what would
+be sent.
 
 ## Notifications
 

@@ -909,7 +909,13 @@ export const en = {
   "cmd.cancelFor": "Cancel {count} {base} orders",
   "cmd.cancelBadge": "Cancel",
   "cmd.noTrading": "No account that can trade",
-  "cmd.tips": "Try: buy 0.01 btc at 80000 · sell 2 sol · close eth · cancel all · news",
+  "cmd.tips":
+    "Try: buy 0.01 btc at 80000 · sell 50% eth · tp eth 2600 · buy 1 sol at 110 to 100 x5 · theme",
+  "cmd.scaled": "scaled {from} → {to} · {count} orders",
+  "cmd.ofPosition": "{percent}% of your {size} {side}",
+  "cmd.exitAt": "{exit} on {base} at {price}",
+  "cmd.exitOff": "Remove {base} {exit}",
+  "cmd.onPosition": "On your {size} {side}, entered at {entry}",
   "cmd.empty": "Nothing matches. Try a market, a page, or a command like the ones below.",
   "palette.title": "Panels",
   "palette.help":

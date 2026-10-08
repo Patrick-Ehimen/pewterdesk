@@ -1,5 +1,5 @@
-import type { Market, Order, OrderRequest, Position } from "@pewterdesk/core";
-import { roundToStep } from "@pewterdesk/ui";
+import type { Market, Order, OrderRequest, Position, PositionProtection } from "@pewterdesk/core";
+import { decimalsOf, roundToStep } from "@pewterdesk/ui";
 
 /**
  * What a line typed into the command palette asks for. Parsing only: nothing
@@ -15,7 +15,22 @@ export type Intent =
       size: string;
       /** A limit price as typed; unset for a market order. */
       price?: string;
+      /** Scaled: the last order's price, with `count` orders from `price` to it. */
+      to?: string;
+      count?: number;
     }
+  /** Part of an open position, taken off: "sell 50% hype". */
+  | {
+      kind: "reduce";
+      position: Position;
+      market: Market;
+      /** Of the position, above 0 and at most 1. */
+      fraction: number;
+      /** A limit price as typed; unset to do it at market. */
+      price?: string;
+    }
+  /** A position's take-profit or stop-loss: set at `price`, or removed. */
+  | { kind: "protect"; position: Position; market: Market; exit: "tp" | "sl"; price?: string }
   | { kind: "close"; position: Position; market?: Market }
   /** Every open order, or only `market`'s. */
   | { kind: "cancel"; orders: Order[]; market?: Market };
@@ -34,6 +49,10 @@ const SIDES: Record<string, "buy" | "sell"> = {
   sell: "sell",
   short: "sell",
 };
+
+/** Orders a scaled order is split into, when the line doesn't say. */
+const DEFAULT_SCALE = 5;
+const MAX_SCALE = 10;
 
 /** A number as people type one: "1,250.5", "38.2". Positive, or nothing. */
 function amount(word: string | undefined): string | undefined {
@@ -55,12 +74,34 @@ export function findMarket(word: string, markets: readonly Market[]): Market | u
   );
 }
 
+/** "50%" as a fraction, above 0 and at most 1. */
+function percent(word: string | undefined): number | undefined {
+  const value = word?.endsWith("%") ? amount(word.slice(0, -1)) : undefined;
+  return value && Number(value) <= 100 ? Number(value) / 100 : undefined;
+}
+
+/** How many orders "x5", "5" or "5 orders" asks for: 2 to `MAX_SCALE`. */
+function scaleCount(words: string[]): number | undefined {
+  if (words.length === 0) return DEFAULT_SCALE;
+  const [first, second] = words[0] === "in" ? words.slice(1) : words;
+  if (words.length > (words[0] === "in" ? 3 : 2)) return undefined;
+  if (second !== undefined && second !== "orders") return undefined;
+  const count = Number(first?.replace(/^x/, ""));
+  return Number.isInteger(count) && count >= 2 && count <= MAX_SCALE ? count : undefined;
+}
+
 /**
  * Reads a command:
  *
  * - `buy 100 hype at 38.2`, `sell 0.5 eth`, `long btc 0.01 @ 80,000`: an
  *   order, at a limit if a price follows, at market if not. Without a coin
  *   it's the market on screen.
+ * - `buy 100 hype at 38.2 to 37.8 x5`: the same size as five limit orders
+ *   spread evenly between the two prices (five when no count is given).
+ * - `sell 50% hype`: that share of the open position, reduce-only. It has
+ *   to be the side that closes it.
+ * - `tp hype 41`, `sl 36.5`, `tp hype off`: a position's take-profit or
+ *   stop-loss, set or removed.
  * - `close eth`: the open position on that market (or the one on screen).
  * - `cancel all`, `cancel all hype`, `cancel hype`: open orders.
  *
@@ -74,25 +115,53 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
   const side = SIDES[verb];
   if (side) {
     const rest = words.slice(1);
-    // The price is whatever follows "at" or "@" ("@38.2" too).
+    // The price is whatever follows "at" or "@" ("@38.2" too); "to" and a
+    // second price after it make it a scaled order.
     let price: string | undefined;
+    let to: string | undefined;
+    let count: number | undefined;
     const at = rest.findIndex((w) => w === "at" || w.startsWith("@"));
     if (at !== -1) {
-      const word = rest[at] === "at" || rest[at] === "@" ? rest[at + 1] : rest[at]?.slice(1);
-      price = amount(word);
+      const tail = rest.slice(at).flatMap((w) => (w.startsWith("@") ? ["at", w.slice(1)] : [w]));
+      const after = tail.filter(Boolean).slice(1);
+      price = amount(after[0]);
       if (!price) return undefined;
+      if (after.length > 1) {
+        to = after[1] === "to" ? amount(after[2]) : undefined;
+        count = scaleCount(after.slice(3));
+        if (!to || !count || to === price) return undefined;
+      }
       rest.length = at;
     }
     if (rest.length === 0 || rest.length > 2) return undefined;
     // The size and the coin, in either order.
-    const sizeWord = rest.find((w) => amount(w));
-    const coinWord = rest.find((w) => !amount(w));
+    const isSize = (w: string) => amount(w) !== undefined || percent(w) !== undefined;
+    const sizeWord = rest.find(isSize);
+    const coinWord = rest.find((w) => !isSize(w));
     if (!sizeWord || rest.length - (coinWord ? 1 : 0) !== 1) return undefined;
     const market = coinWord ? findMarket(coinWord, ctx.markets) : ctx.current;
     if (!market) return undefined;
+    const fraction = percent(sizeWord);
+    if (fraction !== undefined) {
+      // A share of the position, so only the side that takes it off, and never scaled.
+      const position = ctx.positions.find((p) => p.market === market.id);
+      const closes = position && (position.side === "long" ? "sell" : "buy") === side;
+      return closes && !to ? { kind: "reduce", position, market, fraction, price } : undefined;
+    }
     const size = roundToStep(Number(amount(sizeWord)), market.sizeStep);
     if (size.size <= 0 || size.size < Number(market.minSize)) return undefined;
-    return { kind: "order", side, market, size: size.text, price };
+    if (to && !scaledOrders({ side, market, size: size.text, price, to, count })) return undefined;
+    return { kind: "order", side, market, size: size.text, price, to, count };
+  }
+
+  if ((verb === "tp" || verb === "sl") && words.length >= 2 && words.length <= 3) {
+    const value = words[words.length - 1] ?? "";
+    const market = words.length === 3 ? findMarket(words[1] ?? "", ctx.markets) : ctx.current;
+    const position = market && ctx.positions.find((p) => p.market === market.id);
+    if (!market || !position) return undefined;
+    const off = value === "off" || value === "remove";
+    const price = off ? undefined : amount(value);
+    return off || price ? { kind: "protect", position, market, exit: verb, price } : undefined;
   }
 
   if (verb === "close" && words.length <= 2) {
@@ -127,6 +196,51 @@ export function orderFor(
   return atMarket || intent.price === undefined
     ? { ...base, type: "market", maxSlippageBps }
     : { ...base, type: "limit", price: intent.price };
+}
+
+/**
+ * The limit orders a scaled order comes to: its size in equal parts, at
+ * prices spread evenly from `price` to `to`, each on the market's tick.
+ * Nothing if a part would be under the market's minimum size.
+ */
+export function scaledOrders(
+  order: Pick<
+    Extract<Intent, { kind: "order" }>,
+    "side" | "market" | "size" | "price" | "to" | "count"
+  >,
+): OrderRequest[] | undefined {
+  const { market, count = DEFAULT_SCALE } = order;
+  const from = Number(order.price);
+  const until = Number(order.to);
+  const tick = Number(market.tickSize);
+  if (!(from > 0) || !(until > 0) || !(tick > 0) || count < 2) return undefined;
+  const part = roundToStep(Number(order.size) / count, market.sizeStep);
+  if (part.size <= 0 || part.size < Number(market.minSize)) return undefined;
+  const places = decimalsOf(market.tickSize);
+  return Array.from({ length: count }, (_, i) => {
+    const raw = from + ((until - from) * i) / (count - 1);
+    return {
+      market: market.id,
+      side: order.side,
+      size: part.text,
+      reduceOnly: false,
+      type: "limit" as const,
+      price: (Math.round(raw / tick + 1e-9) * tick).toFixed(places),
+    };
+  });
+}
+
+/** The change a tp/sl command makes: that exit set or removed, the rest kept. */
+export function protectionFor(intent: Extract<Intent, { kind: "protect" }>): PositionProtection {
+  const change = intent.price
+    ? ({ action: "set", price: intent.price } as const)
+    : ({ action: "remove" } as const);
+  const keep = { action: "keep" } as const;
+  return {
+    takeProfit: intent.exit === "tp" ? change : keep,
+    stopLoss: intent.exit === "sl" ? change : keep,
+    trailingStop: keep,
+  };
 }
 
 /**

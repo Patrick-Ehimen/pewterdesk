@@ -956,7 +956,13 @@ export const messages: Messages = {
   "cmd.cancelFor": "{base}の注文{count}件を取消",
   "cmd.cancelBadge": "取消",
   "cmd.noTrading": "取引できるアカウントがありません",
-  "cmd.tips": "例: buy 0.01 btc at 80000 · sell 2 sol · close eth · cancel all · ニュース",
+  "cmd.tips":
+    "例: buy 0.01 btc at 80000 · sell 50% eth · tp eth 2600 · buy 1 sol at 110 to 100 x5 · theme",
+  "cmd.scaled": "分割 {from} → {to} · {count}件",
+  "cmd.ofPosition": "{size}の{side}の{percent}%",
+  "cmd.exitAt": "{base}の{exit}を{price}に設定",
+  "cmd.exitOff": "{base}の{exit}を解除",
+  "cmd.onPosition": "{size}の{side}（建値 {entry}）",
   "cmd.empty":
     "一致するものがありません。銘柄、ページ、または下の例のようなコマンドを試してください。",
   "palette.title": "パネル",

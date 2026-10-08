@@ -1,4 +1,12 @@
-import type { Market, MarketSummary, Order, OrderRequest, Position } from "@pewterdesk/core";
+import type {
+  Market,
+  MarketSummary,
+  Order,
+  OrderRequest,
+  Position,
+  PositionProtection,
+  VenueId,
+} from "@pewterdesk/core";
 import {
   CommandPalette,
   closeOrder,
@@ -18,8 +26,11 @@ import {
   LuBell,
   LuClock,
   LuLayoutGrid,
+  LuPalette,
   LuPanelTop,
   LuPictureInPicture2,
+  LuShield,
+  LuStore,
   LuX,
 } from "react-icons/lu";
 import {
@@ -27,10 +38,13 @@ import {
   loadRecent,
   orderFor,
   parseCommand,
+  protectionFor,
   saveRecent,
+  scaledOrders,
   searchMarkets,
   withRecent,
 } from "../lib/commands";
+import { closeRequest } from "../lib/float";
 import { PAGES, type Page } from "../lib/pages";
 
 const PAGE_LABEL: Record<Page, MessageKey> = {
@@ -67,6 +81,13 @@ interface CommandMenuProps {
   /** Unset where orders can't be placed (no account that may trade). */
   place?: (request: OrderRequest) => Promise<void>;
   cancel?: (order: Order) => Promise<void>;
+  /** Sets a position's exits; unset where they can't be. */
+  protect?: (position: Position, protection: PositionProtection) => Promise<void>;
+  /** The themes and venues that can be switched to, by name. */
+  themes: readonly { value: string; label: string }[];
+  onTheme: (theme: string) => void;
+  venues: readonly { id: VenueId; label: string }[];
+  onVenue: (venue: VenueId) => void;
   onMarket: (marketId: string) => void;
   onPage: (page: Page) => void;
   onAlerts: () => void;
@@ -92,6 +113,11 @@ export function CommandMenu({
   maxSlippageBps,
   place,
   cancel,
+  protect,
+  themes,
+  onTheme,
+  venues,
+  onVenue,
   onMarket,
   onPage,
   onAlerts,
@@ -181,12 +207,111 @@ export function CommandMenu({
         ),
       });
     };
+    const parts = order.to ? scaledOrders(order) : undefined;
+    if (parts && order.to) {
+      const how = t("cmd.scaled", {
+        from: formatNumber(price ?? ""),
+        to: formatNumber(order.to),
+        count: parts.length,
+      });
+      // Every part is the same size, so the value is that size times the prices' sum.
+      const prices = parts.reduce((sum, o) => sum + (o.type === "limit" ? Number(o.price) : 0), 0);
+      describe("order:scaled", {
+        badge: `${sideWord(side)} / ${t(side === "buy" ? "side.long" : "side.short")}`,
+        tone: side,
+        title: `${formatNumber(size)} ${market.base} · ${how}`,
+        detail: t("cmd.value", {
+          value: formatNumber(Number(parts[0]?.size) * prices, 2),
+          quote: market.quote,
+        }),
+      });
+      actions.push({
+        id: "order:scaled",
+        icon: <LuArrowRight size={15} />,
+        label: (
+          <>
+            {head} <span className="pd-cmd-mono">{how}</span>
+          </>
+        ),
+        disabled: noTrading,
+        // One after another, so they rest in the order they were priced.
+        onRun: twice("order:scaled", async () => {
+          for (const part of parts) await place?.(part);
+        }),
+      });
+    }
     if (price) row(false);
     row(true);
   };
 
   if (intent?.kind === "order") {
     orderRows(intent);
+  } else if (intent?.kind === "reduce") {
+    const { position, market, fraction, price } = intent;
+    const base = closeRequest(position, market, fraction, maxSlippageBps);
+    const request: OrderRequest = price
+      ? {
+          market: base.market,
+          side: base.side,
+          size: base.size,
+          reduceOnly: true,
+          type: "limit",
+          price,
+        }
+      : base;
+    const mark = markOf(market.id);
+    const how = price
+      ? t("cmd.atLimit", { price: formatNumber(price) })
+      : Number.isFinite(mark)
+        ? t("cmd.atMarket", { price: formatNumber(mark) })
+        : t("ticket.market");
+    const label = `${sideWord(request.side)} ${formatNumber(request.size)} ${market.base}`;
+    describe("reduce", {
+      badge: t("ticket.reduceOnly"),
+      tone: request.side,
+      title: `${label} · ${how}`,
+      detail: t("cmd.ofPosition", {
+        percent: formatNumber((Number(request.size) / Number(position.size)) * 100, 0),
+        size: formatNumber(position.size),
+        side: t(position.side === "long" ? "side.long" : "side.short").toLowerCase(),
+      }),
+    });
+    actions.push({
+      id: "reduce",
+      icon: <LuArrowRight size={15} />,
+      label: (
+        <>
+          {label} <span className="pd-cmd-mono">{how}</span>
+        </>
+      ),
+      disabled: noTrading,
+      onRun: twice("reduce", () => (place ? place(request) : Promise.resolve())),
+    });
+  } else if (intent?.kind === "protect") {
+    const { position, market, exit, price } = intent;
+    const name = t(exit === "tp" ? "drawer.tp" : "drawer.sl");
+    const label = price
+      ? t("cmd.exitAt", { exit: name, base: market.base, price: formatNumber(price) })
+      : t("cmd.exitOff", { exit: name, base: market.base });
+    describe("protect", {
+      badge: t("col.tpsl"),
+      tone: "plain",
+      title: label,
+      detail: t("cmd.onPosition", {
+        size: formatNumber(position.size),
+        side: t(position.side === "long" ? "side.long" : "side.short").toLowerCase(),
+        entry: formatNumber(position.entryPrice),
+      }),
+    });
+    actions.push({
+      id: "protect",
+      icon: <LuShield size={15} />,
+      label,
+      disabled: protect ? undefined : t("cmd.noTrading"),
+      onRun: twice("protect", () =>
+        protect ? protect(position, protectionFor(intent)) : Promise.resolve(),
+      ),
+    });
   } else if (intent?.kind === "close") {
     const { position, market } = intent;
     const base = market?.base ?? position.market;
@@ -287,6 +412,38 @@ export function CommandMenu({
         return undefined;
       },
     }));
+  // Themes and venues show once asked for: by name, or after "theme" / "venue".
+  const named = (word: string, label: string) =>
+    !intent &&
+    text.length > 0 &&
+    (text === word ||
+      (text.startsWith(`${word} `)
+        ? label.toLowerCase().includes(text.slice(word.length + 1).trim())
+        : label.toLowerCase().includes(text)));
+  const themeRows: PaletteItem[] = themes
+    .filter((th) => named("theme", th.label))
+    .map((th) => ({
+      id: `theme:${th.value}`,
+      icon: <LuPalette size={15} />,
+      label: th.label,
+      meta: t("menu.theme"),
+      onRun: () => {
+        onTheme(th.value);
+        return undefined;
+      },
+    }));
+  const venueRows: PaletteItem[] = venues
+    .filter((v) => named("venue", v.label))
+    .map((v) => ({
+      id: `venue:${v.id}`,
+      icon: <LuStore size={15} />,
+      label: v.label,
+      meta: t("venues.switch"),
+      onRun: () => {
+        onVenue(v.id);
+        return undefined;
+      },
+    }));
   const recentRows: PaletteItem[] = text
     ? []
     : recent.map((r) => ({
@@ -307,6 +464,8 @@ export function CommandMenu({
     { id: "recent", title: t("cmd.recent"), items: recentRows },
     { id: "pages", title: t("nav.menu"), items: pageRows },
     { id: "app", title: t("cmd.app"), items: appRows },
+    { id: "venues", title: t("nav.venues"), items: venueRows },
+    { id: "themes", title: t("menu.theme"), items: themeRows },
   ];
 
   return (

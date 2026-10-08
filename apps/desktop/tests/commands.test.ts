@@ -1,6 +1,14 @@
 import type { Market, Order, Position } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
-import { findMarket, orderFor, parseCommand, searchMarkets, withRecent } from "../src/lib/commands";
+import {
+  findMarket,
+  orderFor,
+  parseCommand,
+  protectionFor,
+  scaledOrders,
+  searchMarkets,
+  withRecent,
+} from "../src/lib/commands";
 
 const market = (base: string, sizeStep = "0.01"): Market => ({
   venue: "bybit",
@@ -119,5 +127,55 @@ describe("markets and recents", () => {
     const two = withRecent(one, "cancel all", 2);
     expect(withRecent(two, "close eth", 3).map((r) => r.text)).toEqual(["close eth", "cancel all"]);
     expect(withRecent(two, "  ", 4)).toEqual(two);
+  });
+});
+
+describe("palette extras", () => {
+  it("takes a share off a position, only from the side that closes it", () => {
+    expect(read("sell 50% eth")).toMatchObject({ kind: "reduce", fraction: 0.5, price: undefined });
+    expect(read("sell 100% eth at 2500")).toMatchObject({ fraction: 1, price: "2500" });
+    // The position is long: buying isn't taking it off. And BTC has none.
+    expect(read("buy 50% eth")).toBeUndefined();
+    expect(read("sell 50% btc")).toBeUndefined();
+    expect(read("sell 150% eth")).toBeUndefined();
+    expect(read("sell 0% eth")).toBeUndefined();
+  });
+
+  it("sets or removes a take-profit or stop-loss, keeping the other exits", () => {
+    const tp = read("tp eth 2600");
+    expect(tp).toMatchObject({ kind: "protect", exit: "tp", price: "2600" });
+    if (tp?.kind !== "protect") throw new Error("not a protect");
+    expect(protectionFor(tp)).toEqual({
+      takeProfit: { action: "set", price: "2600" },
+      stopLoss: { action: "keep" },
+      trailingStop: { action: "keep" },
+    });
+    const off = read("sl off");
+    if (off?.kind !== "protect") throw new Error("not a protect");
+    expect(protectionFor(off).stopLoss).toEqual({ action: "remove" });
+    expect(read("tp btc 90000")).toBeUndefined();
+    expect(read("tp eth soon")).toBeUndefined();
+  });
+
+  it("spreads a scaled order evenly, on the tick, in equal parts", () => {
+    const scaled = read("buy 100 hype at 38.2 to 37.8");
+    expect(scaled).toMatchObject({ kind: "order", price: "38.2", to: "37.8", count: 5 });
+    if (scaled?.kind !== "order") throw new Error("not an order");
+    const orders = scaledOrders(scaled) ?? [];
+    expect(orders.map((o) => o.type === "limit" && o.price)).toEqual([
+      "38.2",
+      "38.1",
+      "38.0",
+      "37.9",
+      "37.8",
+    ]);
+    expect(orders.every((o) => o.size === "20.00" && !o.reduceOnly)).toBe(true);
+    expect(read("sell 3 eth @2500 to 2600 x3")).toMatchObject({ count: 3 });
+    expect(read("sell 3 eth at 2500 to 2600 in 2 orders")).toMatchObject({ count: 2 });
+    // Too many parts, parts under the minimum, or no real range.
+    expect(read("buy 100 hype at 38.2 to 37.8 x50")).toBeUndefined();
+    expect(read("buy 0.002 btc at 80000 to 79000 x5")).toBeUndefined();
+    expect(read("buy 100 hype at 38.2 to 38.2")).toBeUndefined();
+    expect(read("buy 100 hype at 38.2 37.8")).toBeUndefined();
   });
 });

@@ -950,7 +950,13 @@ export const messages: Messages = {
   "cmd.cancelFor": "{base} 주문 {count}건 취소",
   "cmd.cancelBadge": "취소",
   "cmd.noTrading": "거래할 수 있는 계정이 없습니다",
-  "cmd.tips": "예: buy 0.01 btc at 80000 · sell 2 sol · close eth · cancel all · 뉴스",
+  "cmd.tips":
+    "예: buy 0.01 btc at 80000 · sell 50% eth · tp eth 2600 · buy 1 sol at 110 to 100 x5 · theme",
+  "cmd.scaled": "분할 {from} → {to} · {count}건",
+  "cmd.ofPosition": "{size} {side}의 {percent}%",
+  "cmd.exitAt": "{base} {exit} {price}",
+  "cmd.exitOff": "{base} {exit} 해제",
+  "cmd.onPosition": "{size} {side}, 진입가 {entry}",
   "cmd.empty": "일치하는 항목이 없습니다. 마켓, 페이지 또는 아래와 같은 명령을 입력해 보세요.",
   "palette.title": "패널",
   "palette.help":

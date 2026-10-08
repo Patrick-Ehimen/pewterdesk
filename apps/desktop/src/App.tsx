@@ -88,7 +88,13 @@ import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
-import { pageLabel, pageOptions, ROW_MODES, VIEW_KEYS } from "./components/preferences";
+import {
+  pageLabel,
+  pageOptions,
+  ROW_MODES,
+  themeOptions,
+  VIEW_KEYS,
+} from "./components/preferences";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
@@ -99,7 +105,7 @@ import { accountName } from "./components/wallet/AccountList";
 import { ApiKeyDialog } from "./components/wallet/ApiKeyDialog";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
-import { isLightTheme, useAppearance } from "./hooks/useAppearance";
+import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
 import { usePositionDetail } from "./hooks/usePositionDetail";
@@ -1694,6 +1700,14 @@ export function App() {
           maxSlippageBps={slippageBps(venueInfo.maxSlippage)}
           place={placeOrder}
           cancel={cancelOrder}
+          protect={protect}
+          themes={themeOptions()}
+          onTheme={(theme) => {
+            const next = THEMES.find((th) => th === theme);
+            if (next) themeTransition.switchTheme(next);
+          }}
+          venues={venueChips}
+          onVenue={(id) => showMarket(id)}
           onMarket={(id) => {
             showMarket(venue, id);
             goTo("trade");

@@ -961,7 +961,13 @@ export const messages: Messages = {
   "cmd.cancelFor": "Cancelar {count} ordens de {base}",
   "cmd.cancelBadge": "Cancelar",
   "cmd.noTrading": "Nenhuma conta pode operar",
-  "cmd.tips": "Tente: buy 0.01 btc at 80000 · sell 2 sol · close eth · cancel all · notícias",
+  "cmd.tips":
+    "Tente: buy 0.01 btc at 80000 · sell 50% eth · tp eth 2600 · buy 1 sol at 110 to 100 x5 · theme",
+  "cmd.scaled": "escalonada {from} → {to} · {count} ordens",
+  "cmd.ofPosition": "{percent}% do seu {side} de {size}",
+  "cmd.exitAt": "{exit} em {base} a {price}",
+  "cmd.exitOff": "Remover {exit} de {base}",
+  "cmd.onPosition": "No seu {side} de {size}, com entrada em {entry}",
   "cmd.empty": "Nada encontrado. Tente um mercado, uma página ou um comando como os abaixo.",
   "palette.title": "Painéis",
   "palette.help":
