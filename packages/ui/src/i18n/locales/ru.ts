@@ -1361,7 +1361,7 @@ export const messages: Messages = {
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Способы подключения",
   "wallet.wcHow":
-    "Отсканируйте в Rabby, MetaMask, Rainbow или любом кошельке с WalletConnect и подтвердите одну подпись. Она одобряет новый API-кошелёк только для торговли на Hyperliquid; pewterdesk никогда не видит вашу сид-фразу. Сначала на счёт Hyperliquid нужно внести депозит.",
+    "Отсканируйте в Rabby, MetaMask, Rainbow или любом кошельке с WalletConnect и подтвердите одну подпись. Она одобряет новый API-кошелёк только для торговли на {venue}; pewterdesk никогда не видит вашу сид-фразу. Сначала на счёт {venue} нужно внести депозит.",
   "wallet.ledgerHow":
     "Подключите Ledger и откройте приложение Ethereum. Он один раз одобряет ключ только для торговли на экране устройства.",
   "wallet.apiHow":
@@ -1392,7 +1392,7 @@ export const messages: Messages = {
     "Балансы, позиции и ордера теперь видны. Торговля из pewterdesk — следующий шаг.",
   "wallet.disconnect": "Отключить",
   "wallet.disconnectHint":
-    "Удаляет ключ с этого устройства. Чтобы отозвать и одобрение, удалите API-кошелёк на Hyperliquid.",
+    "Удаляет ключ с этого устройства. Чтобы отозвать и одобрение, удалите API-кошелёк на {venue}.",
   "wallet.wcStart": "Показать QR-код",
   "wallet.wcPreparing": "Готовим ссылку…",
   "wallet.wcScan": "Отсканируйте кошельком в телефоне или скопируйте ссылку в настольный кошелёк.",
@@ -1401,12 +1401,12 @@ export const messages: Messages = {
   "wallet.wcCancel": "Отмена",
   "wallet.wcSign":
     "Подключено к {address}. Подтвердите подпись в кошельке, чтобы одобрить API-кошелёк pewterdesk.",
-  "wallet.wcSending": "Одобряем через Hyperliquid…",
+  "wallet.wcSending": "Одобряем через {venue}…",
   "wallet.wcRetry": "Повторить",
   "wallet.browser": "Расширение браузера",
   "wallet.browserDetail": "MetaMask, Rabby, Coinbase и другие",
   "wallet.browserHow":
-    "Подключите кошелёк-расширение в браузере. pewterdesk откроет там страницу: выберите кошелёк и подтвердите одну подпись, чтобы одобрить API-кошелёк только для торговли на Hyperliquid.",
+    "Подключите кошелёк-расширение в браузере. pewterdesk откроет там страницу: выберите кошелёк и подтвердите одну подпись, чтобы одобрить API-кошелёк только для торговли на {venue}.",
   "wallet.browserStep1": "Откройте страницу, которую pewterdesk покажет в браузере",
   "wallet.browserStep2": "Выберите кошелёк и подтвердите одну подпись",
   "wallet.soon": "Скоро",
@@ -1416,13 +1416,14 @@ export const messages: Messages = {
   "browser.pageTitle": "Подключение кошелька · pewterdesk",
   "browser.title": "Подключите кошелёк",
   "browser.lead":
-    "Выберите кошелёк и подтвердите одну подпись. Она одобряет API-кошелёк pewterdesk только для торговли на Hyperliquid.",
+    "Выберите кошелёк и подтвердите одну подпись. Она одобряет API-кошелёк pewterdesk только для торговли на {venue}.",
   "browser.note":
     "Эту страницу показывает приложение pewterdesk на вашем компьютере; она закроется после подключения.",
   "browser.connecting": "Подключаемся к кошельку…",
   "browser.noAccount": "Кошелёк не передал ни одного счёта.",
   "browser.sign": "Подтвердите подпись в кошельке.",
-  "browser.sending": "Одобряем через Hyperliquid…",
+  "browser.sending": "Одобряем через {venue}…",
+  "browser.switchChain": "Переключите кошелёк на {chain}, чтобы подписать.",
   "browser.done": "Подключено. Можно закрыть вкладку и вернуться в pewterdesk.",
   "browser.noWallet":
     "Кошелёк не найден. Установите MetaMask, Rabby или другое расширение в этот браузер и обновите страницу.",
@@ -1696,7 +1697,8 @@ export const messages: Messages = {
   "onb.connect.title": "Подключите кошелёк.",
   "onb.connect.lead":
     "Подключите кошелёк вашего счёта на Hyperliquid. Он один раз одобряет торговый ключ; pewterdesk никогда не видит вашу сид-фразу.",
-  "onb.connect.asterNote": "Счета Aster подключатся, когда появится подпись ордеров.",
+  "onb.connect.asterNote":
+    "Чтобы подключить аккаунт Aster, нажмите «Подключить» на Aster после настройки.",
   "onb.workspace.title": "Настройте рабочее пространство.",
   "onb.workspace.lead": "Выберите тему. Её можно сменить в любой момент в шапке.",
   "onb.theme": "Тема",

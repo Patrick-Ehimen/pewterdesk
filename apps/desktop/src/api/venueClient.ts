@@ -299,8 +299,8 @@ export const walletClient = {
    * 127.0.0.1 and opens it in the system browser, where the extension signs.
    * `strings` is that page's text, in the user's language.
    */
-  startBrowser: (strings: Record<string, string>) =>
-    call<void>("start_browser_connect", { strings }),
+  startBrowser: (venue: VenueId, strings: Record<string, string>) =>
+    call<void>("start_browser_connect", { venue, strings }),
 
   reopenBrowser: () => call<void>("reopen_browser_connect", {}),
 

@@ -59,6 +59,20 @@ struct Running {
     url: String,
 }
 
+/// Which chain the page asks the wallet to switch to before signing, for
+/// `venue`: Arbitrum for Hyperliquid, as its own site does, and none for
+/// Aster. Neither insists: both take a signature made on whichever chain
+/// the wallet is on, so a wallet that can't switch still connects.
+fn page_config(venue: VenueId) -> Result<serde_json::Value, VenueError> {
+    match venue {
+        VenueId::Hyperliquid => Ok(json!({ "chainId": 42161, "required": false })),
+        VenueId::Aster => Ok(json!({ "chainId": 0, "required": false })),
+        VenueId::Bybit => Err(VenueError::Unsupported(
+            "connecting a wallet to Bybit (it connects with an API key)",
+        )),
+    }
+}
+
 /// The page that's up, if any.
 #[derive(Default)]
 pub struct BrowserConnect(Mutex<Option<Running>>);
@@ -70,14 +84,16 @@ fn random_token() -> Result<String, VenueError> {
     Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// Starts the page and opens it in the system browser. `strings` is the
-/// page's text in the user's language.
+/// Starts the page for connecting to `venue` and opens it in the system
+/// browser. `strings` is the page's text in the user's language.
 #[tauri::command]
 pub fn start_browser_connect(
     app: AppHandle,
     state: State<'_, BrowserConnect>,
+    venue: VenueId,
     strings: HashMap<String, String>,
 ) -> Result<(), VenueError> {
+    let config = page_config(venue)?.to_string();
     stop_running(&state);
     let token = random_token()?;
     let server = Server::http("127.0.0.1:0")
@@ -94,7 +110,12 @@ pub fn start_browser_connect(
         url: url.clone(),
     });
     let strings = serde_json::to_string(&strings).unwrap_or_else(|_| "{}".into());
-    std::thread::spawn(move || serve(app, server, Gate { token, port }, stop, strings));
+    let page = Page {
+        venue,
+        strings,
+        config,
+    };
+    std::thread::spawn(move || serve(app, server, Gate { token, port }, stop, page));
     crate::about::open_url(&url)
         .map_err(|_| VenueError::Network("couldn't open the browser".into()))
 }
@@ -230,8 +251,17 @@ fn read_body<T: for<'de> Deserialize<'de>>(request: &mut Request) -> Result<T, V
     serde_json::from_str(&body).map_err(|_| VenueError::InvalidRequest("malformed request".into()))
 }
 
+/// What one run of the page is for.
+struct Page {
+    venue: VenueId,
+    /// The page's text, as JSON.
+    strings: String,
+    /// The chain to switch to first, as JSON (`page_config`).
+    config: String,
+}
+
 /// Serves until connected, cancelled, or `SERVER_FOR` passes, then tells the app.
-fn serve(app: AppHandle, server: Server, gate: Gate, stop: Arc<AtomicBool>, strings: String) {
+fn serve(app: AppHandle, server: Server, gate: Gate, stop: Arc<AtomicBool>, page: Page) {
     let deadline = Instant::now() + SERVER_FOR;
     while !stop.load(Ordering::Relaxed) && Instant::now() < deadline {
         let Ok(Some(mut request)) = server.recv_timeout(Duration::from_millis(250)) else {
@@ -250,6 +280,7 @@ fn serve(app: AppHandle, server: Server, gate: Gate, stop: Arc<AtomicBool>, stri
                 "app.js" => "script",
                 "style.css" => "style",
                 "strings.json" => "strings",
+                "config.json" => "config",
                 "logo.svg" => "logo",
                 _ => "missing",
             }),
@@ -280,14 +311,19 @@ fn serve(app: AppHandle, server: Server, gate: Gate, stop: Arc<AtomicBool>, stri
                 "text/css; charset=utf-8",
                 format!("{TOKENS}\n{STYLE}"),
             ),
-            Route::Asset("strings") => respond(request, 200, "application/json", strings.clone()),
+            Route::Asset("strings") => {
+                respond(request, 200, "application/json", page.strings.clone())
+            }
+            Route::Asset("config") => {
+                respond(request, 200, "application/json", page.config.clone())
+            }
             Route::Asset("logo") => respond(request, 200, "image/svg+xml", LOGO.into()),
             Route::Post("begin") => {
                 let result = read_body::<BeginBody>(&mut request).and_then(|body| {
                     tauri::async_runtime::block_on(wallet::begin(
                         &onboarding,
                         &venues,
-                        VenueId::Hyperliquid,
+                        page.venue,
                         &body.address,
                         body.chain_id,
                     ))

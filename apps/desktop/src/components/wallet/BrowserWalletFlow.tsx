@@ -1,7 +1,9 @@
+import type { VenueId } from "@pewterdesk/core";
 import { type MessageKey, t } from "@pewterdesk/ui";
 import { useEffect, useState } from "react";
 import { walletClient } from "../../api/venueClient";
 import { addAccount } from "../../lib/account";
+import { VENUES } from "../../lib/venues";
 
 /** The local page's text, keyed as `app.js` reads it. */
 const PAGE_STRINGS: Record<string, MessageKey> = {
@@ -17,6 +19,7 @@ const PAGE_STRINGS: Record<string, MessageKey> = {
   failed: "error.failed",
   noWallet: "browser.noWallet",
   injected: "browser.injected",
+  switchChain: "browser.switchChain",
 };
 
 type Step =
@@ -30,7 +33,7 @@ type Step =
  * approval. Rust builds and checks it; this shows the wait and hears the result.
  * Closing the dialog stops the page.
  */
-export function BrowserWalletFlow() {
+export function BrowserWalletFlow({ venue }: { venue: VenueId }) {
   const [step, setStep] = useState<Step>({ kind: "idle" });
 
   useEffect(() => {
@@ -50,10 +53,15 @@ export function BrowserWalletFlow() {
   const start = async () => {
     setStep({ kind: "waiting" });
     try {
+      // The page fills `{chain}` in itself; the venue's name is known here.
+      const label = VENUES[venue].label;
       const strings = Object.fromEntries(
-        Object.entries(PAGE_STRINGS).map(([key, message]) => [key, t(message)]),
+        Object.entries(PAGE_STRINGS).map(([key, message]) => [
+          key,
+          t(message, { venue: label, chain: "{chain}" }),
+        ]),
       );
-      await walletClient.startBrowser(strings);
+      await walletClient.startBrowser(venue, strings);
     } catch (e) {
       setStep({ kind: "error", message: e instanceof Error ? e.message : t("error.failed") });
     }

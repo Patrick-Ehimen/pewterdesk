@@ -73,7 +73,8 @@ impl Venues {
     pub fn new() -> Result<Self, VenueError> {
         Ok(Self {
             hyperliquid: HyperliquidAdapter::new(&MAINNET)?,
-            aster: AsterAdapter::new(&ASTER_MAINNET)?,
+            // Account reads take the stored API wallet's key from the keychain.
+            aster: AsterAdapter::new(&ASTER_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             // Account reads take the stored API key from the keychain.
             bybit: BybitAdapter::new(&BYBIT_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             subscriptions: Arc::default(),
@@ -84,6 +85,11 @@ impl Venues {
     /// Hyperliquid's own methods beyond `ExchangeAdapter`, for onboarding.
     pub fn hyperliquid(&self) -> &HyperliquidAdapter {
         &self.hyperliquid
+    }
+
+    /// Aster's own methods beyond `ExchangeAdapter`, for onboarding.
+    pub fn aster(&self) -> &AsterAdapter {
+        &self.aster
     }
 
     pub fn bybit(&self) -> &BybitAdapter {

@@ -689,7 +689,8 @@ export function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  const [walletOpen, setWalletOpen] = useState(false);
+  // The venue whose wallet dialog is open (Hyperliquid and Aster connect with a wallet).
+  const [walletFor, setWalletFor] = useState<VenueId>();
   // The exchange whose API-key dialog is open (Bybit connects with a key, not a wallet).
   const [apiKeyFor, setApiKeyFor] = useState<VenueId>();
   /**
@@ -702,7 +703,7 @@ export function App() {
     } else if (VENUES[id].auth === "apiKey") {
       setApiKeyFor(id);
     } else {
-      setWalletOpen(true);
+      setWalletFor(id);
     }
   };
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -1502,7 +1503,7 @@ export function App() {
             marketColors={appearance.market}
             onMarketColors={appearance.setMarket}
             address={activeAccount(accounts, "hyperliquid")?.id}
-            onOpenWallet={() => setWalletOpen(true)}
+            onOpenWallet={() => setWalletFor("hyperliquid")}
             onResetLayout={() =>
               setWorkspace((w) => ({
                 ...w,
@@ -1587,7 +1588,12 @@ export function App() {
           </>
         )}
 
-        <ConnectWalletDialog open={walletOpen} onClose={() => setWalletOpen(false)} />
+        <ConnectWalletDialog
+          open={walletFor !== undefined}
+          // The last venue stays while the dialog closes, so it doesn't flip to another's.
+          venue={walletFor ?? (VENUES[venue].auth === "wallet" ? venue : "hyperliquid")}
+          onClose={() => setWalletFor(undefined)}
+        />
         <ApiKeyDialog
           open={apiKeyFor !== undefined}
           onClose={() => setApiKeyFor(undefined)}

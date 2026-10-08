@@ -1,6 +1,6 @@
 //! Connecting a venue account: onboarding takes the venue's trade-only key
-//! (on Hyperliquid, an API/agent wallet the user approved from their main
-//! wallet), checks it, and stores it in the OS keychain.
+//! (on Hyperliquid and Aster, an API/agent wallet the user approves from
+//! their main wallet), checks it, and stores it in the OS keychain.
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
@@ -18,11 +18,16 @@
 //!   back: the approval it signs is built here and kept here, the signature
 //!   must recover to the connected main address, and only then is it sent to
 //!   the venue and the key stored. JS can't change what gets approved.
+//! - On Aster an agent has permissions, so the approval Rust builds grants
+//!   perpetuals only (`pewterdesk_exchange_aster::agent`), and after Aster
+//!   accepts it Rust asks Aster what the agent may do and stores the key
+//!   only if it can't withdraw. A pasted key isn't taken for Aster at all.
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pewterdesk_core::{KeySource, VenueError, VenueId};
+use pewterdesk_exchange_aster::agent as aster_agent;
 use pewterdesk_exchange_hyperliquid::agent::{
     agent_address, generate_agent, ApproveAgent, ApprovedAgent, WalletSignature, AGENT_NAME,
 };
@@ -55,6 +60,12 @@ fn now_ms() -> u64 {
         .map_or(0, |d| d.as_millis() as u64)
 }
 
+fn now_micros() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_micros() as u64)
+}
+
 /// Lowercase `0x` + 40 hex, or an error saying what an address looks like.
 fn normalize_address(address: &str) -> Result<String, VenueError> {
     let address = address.trim().to_ascii_lowercase();
@@ -77,11 +88,13 @@ fn key_account(venue: VenueId, address: &str) -> String {
     }
 }
 
+/// Pasting an API wallet's key is Hyperliquid's alone: there the venue can
+/// say whether a key is an approved agent before it's stored.
 fn only_hyperliquid(venue: VenueId) -> Result<(), VenueError> {
     match venue {
         VenueId::Hyperliquid => Ok(()),
         VenueId::Aster => Err(VenueError::Unsupported(
-            "connecting an Aster account isn't available yet",
+            "pasting a key for Aster (connect a wallet instead, so pewterdesk makes one that can't withdraw)",
         )),
         VenueId::Bybit => Err(VenueError::Unsupported(
             "connecting a Bybit account isn't available yet",
@@ -151,8 +164,11 @@ pub async fn wallet_status(
     venue: VenueId,
     address: String,
 ) -> Result<Option<WalletInfo>, VenueError> {
-    only_hyperliquid(venue)?;
     let address = normalize_address(&address)?;
+    if venue == VenueId::Aster {
+        return aster_status(&venues, address).await;
+    }
+    only_hyperliquid(venue)?;
     let agent = match KeychainKeySource.key(&key_account(venue, &address)).await {
         Ok(key) => agent_address(&key)?,
         Err(pewterdesk_core::KeyError::NotFound) => return Ok(None),
@@ -177,6 +193,34 @@ pub async fn wallet_status(
     }))
 }
 
+/// The connected API wallet for Aster account `address`, with its approval
+/// as Aster lists it now; unset where Aster couldn't be asked, or no longer
+/// lists it as trade-only.
+async fn aster_status(venues: &Venues, address: String) -> Result<Option<WalletInfo>, VenueError> {
+    let key = match KeychainKeySource
+        .key(&key_account(VenueId::Aster, &address))
+        .await
+    {
+        Ok(key) => key,
+        Err(pewterdesk_core::KeyError::NotFound) => return Ok(None),
+        Err(e) => return Err(VenueError::Key(e)),
+    };
+    let agent = aster_agent::agent_address(&key)?;
+    let found = venues
+        .aster()
+        .approved_agents(&key)
+        .await
+        .ok()
+        .and_then(|approved| aster_agent::check_trade_only(&agent, approved, now_ms()).ok());
+    Ok(Some(WalletInfo {
+        venue: VenueId::Aster,
+        address,
+        agent,
+        agent_name: found.as_ref().map(|a| a.agent_name.clone()),
+        valid_until: found.map(|a| a.expired),
+    }))
+}
+
 /// Deletes the stored key. The approval on the venue stays until the user
 /// revokes it there.
 #[tauri::command]
@@ -190,11 +234,16 @@ pub async fn disconnect_wallet(venue: VenueId, address: String) -> Result<(), Ve
 /// An agent approval waiting on the user's wallet. The new key never leaves
 /// this struct until the approval is through and it goes to the keychain.
 struct Pending {
-    venue: VenueId,
     address: String,
     key: Zeroizing<String>,
-    approval: ApproveAgent,
+    approval: Approval,
     started: Instant,
+}
+
+/// The approval waiting to be signed, as its venue shapes it.
+enum Approval {
+    Hyperliquid(ApproveAgent),
+    Aster(aster_agent::ApproveAgent),
 }
 
 /// The one approval in flight, if any; starting another replaces it.
@@ -219,10 +268,11 @@ fn check_role(role: &str) -> Result<(), VenueError> {
     }
 }
 
-/// Starts approving a new agent for `address`: generates its key and
-/// returns the typed data for the wallet to sign (`eth_signTypedData_v4`) on
-/// `chain_id`, the chain the wallet is connected to. Shared by WalletConnect
-/// (through the command) and the browser page (`browser_connect.rs`).
+/// Starts approving a new agent for `address` on `venue`: generates its key
+/// and returns the typed data for the wallet to sign
+/// (`eth_signTypedData_v4`) on `chain_id`, the chain the wallet is
+/// connected to: both venues take whichever it is. Shared by WalletConnect (through the command) and the browser page
+/// (`browser_connect.rs`).
 pub async fn begin(
     onboarding: &Onboarding,
     venues: &Venues,
@@ -230,25 +280,40 @@ pub async fn begin(
     address: &str,
     chain_id: u64,
 ) -> Result<Value, VenueError> {
-    only_hyperliquid(venue)?;
     let address = normalize_address(address)?;
     if chain_id == 0 {
         return Err(VenueError::InvalidRequest(
             "the wallet's chain is unknown".into(),
         ));
     }
-    check_role(&venues.hyperliquid().user_role(&address).await?)?;
-    let (key, agent) = generate_agent();
-    let approval = ApproveAgent {
-        chain: venues.hyperliquid().chain(),
-        signature_chain_id: chain_id,
-        agent_address: agent,
-        agent_name: AGENT_NAME.into(),
-        nonce: now_ms(),
+    let (key, approval, typed) = match venue {
+        VenueId::Hyperliquid => {
+            check_role(&venues.hyperliquid().user_role(&address).await?)?;
+            let (key, agent) = generate_agent();
+            let approval = ApproveAgent {
+                chain: venues.hyperliquid().chain(),
+                signature_chain_id: chain_id,
+                agent_address: agent,
+                agent_name: AGENT_NAME.into(),
+                nonce: now_ms(),
+            };
+            let typed = approval.typed_data();
+            (key, Approval::Hyperliquid(approval), typed)
+        }
+        VenueId::Aster => {
+            let (key, agent) = aster_agent::generate_agent();
+            let approval =
+                aster_agent::ApproveAgent::new(&address, &agent, chain_id, now_micros())?;
+            let typed = approval.typed_data();
+            (key, Approval::Aster(approval), typed)
+        }
+        VenueId::Bybit => {
+            return Err(VenueError::Unsupported(
+                "connecting a wallet to Bybit (it connects with an API key)",
+            ))
+        }
     };
-    let typed = approval.typed_data();
     *onboarding.0.lock().unwrap() = Some(Pending {
-        venue,
         address,
         key,
         approval,
@@ -273,34 +338,61 @@ pub async fn finish(
             "the approval took too long; start again".into(),
         ));
     }
-    let signature = WalletSignature::parse(signature)?;
-    let signer = signature.signer(&pending.approval.signing_hash()?)?;
-    if signer != pending.address {
-        return Err(VenueError::InvalidRequest(
-            "the signature came from a different wallet than the connected one".into(),
-        ));
-    }
-    venues
-        .hyperliquid()
-        .approve_agent(&pending.approval, &signature)
-        .await?;
     let Pending {
-        venue,
         address,
         key,
         approval,
         ..
     } = pending;
-    keychain::store_key(key_account(venue, &address), key)
-        .await
-        .map_err(|e| VenueError::Key(e.into()))?;
-    Ok(WalletInfo {
-        venue,
-        address,
-        agent: approval.agent_address,
-        agent_name: Some(approval.agent_name),
-        valid_until: None,
-    })
+    let other_wallet = || {
+        VenueError::InvalidRequest(
+            "the signature came from a different wallet than the connected one".into(),
+        )
+    };
+    match approval {
+        Approval::Hyperliquid(approval) => {
+            let signature = WalletSignature::parse(signature)?;
+            if signature.signer(&approval.signing_hash()?)? != address {
+                return Err(other_wallet());
+            }
+            venues
+                .hyperliquid()
+                .approve_agent(&approval, &signature)
+                .await?;
+            keychain::store_key(key_account(VenueId::Hyperliquid, &address), key)
+                .await
+                .map_err(|e| VenueError::Key(e.into()))?;
+            Ok(WalletInfo {
+                venue: VenueId::Hyperliquid,
+                address,
+                agent: approval.agent_address,
+                agent_name: Some(approval.agent_name),
+                valid_until: None,
+            })
+        }
+        Approval::Aster(approval) => {
+            let signature = aster_agent::WalletSignature::parse(signature)?;
+            if signature.signer(&approval.signing_hash())? != address {
+                return Err(other_wallet());
+            }
+            venues.aster().approve_agent(&approval, &signature).await?;
+            // What Aster now says this agent may do, asked with the agent's
+            // own key: the key is kept only if that's perpetuals and nothing
+            // that moves funds. Not being able to ask is a refusal too.
+            let listed = venues.aster().approved_agents(&key).await?;
+            let found = aster_agent::check_trade_only(&approval.agent_address, listed, now_ms())?;
+            keychain::store_key(key_account(VenueId::Aster, &address), key)
+                .await
+                .map_err(|e| VenueError::Key(e.into()))?;
+            Ok(WalletInfo {
+                venue: VenueId::Aster,
+                address,
+                agent: approval.agent_address,
+                agent_name: Some(found.agent_name),
+                valid_until: Some(found.expired),
+            })
+        }
+    }
 }
 
 /// Drops the approval in flight, if any; its key is zeroed with it.

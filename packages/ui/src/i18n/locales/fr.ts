@@ -1375,7 +1375,7 @@ export const messages: Messages = {
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Moyens de connexion",
   "wallet.wcHow":
-    "Scannez avec Rabby, MetaMask, Rainbow ou tout wallet WalletConnect, puis approuvez une signature. Cela autorise un nouvel API wallet limité au trading sur Hyperliquid ; pewterdesk ne voit jamais votre phrase de récupération. Votre compte Hyperliquid doit d'abord avoir reçu un dépôt.",
+    "Scannez avec Rabby, MetaMask, Rainbow ou tout wallet WalletConnect, puis approuvez une signature. Cela autorise un nouvel API wallet limité au trading sur {venue} ; pewterdesk ne voit jamais votre phrase de récupération. Votre compte {venue} doit d'abord avoir reçu un dépôt.",
   "wallet.ledgerHow":
     "Branchez votre Ledger et ouvrez son app Ethereum. Il approuve une fois une clé de trading uniquement, sur l'écran de l'appareil.",
   "wallet.apiHow":
@@ -1407,7 +1407,7 @@ export const messages: Messages = {
     "Vos soldes, positions et ordres s'affichent. Passer des ordres depuis pewterdesk arrive ensuite.",
   "wallet.disconnect": "Déconnecter",
   "wallet.disconnectHint":
-    "Supprime la clé de cet appareil. Pour mettre fin à son autorisation, supprimez aussi l'API wallet sur Hyperliquid.",
+    "Supprime la clé de cet appareil. Pour mettre fin à son autorisation, supprimez aussi l'API wallet sur {venue}.",
   "wallet.wcStart": "Afficher le QR code",
   "wallet.wcPreparing": "Préparation d'un lien…",
   "wallet.wcScan":
@@ -1417,12 +1417,12 @@ export const messages: Messages = {
   "wallet.wcCancel": "Annuler",
   "wallet.wcSign":
     "Connecté à {address}. Approuvez la signature dans votre wallet pour autoriser l'API wallet de pewterdesk.",
-  "wallet.wcSending": "Autorisation auprès d'Hyperliquid…",
+  "wallet.wcSending": "Autorisation auprès d'{venue}…",
   "wallet.wcRetry": "Réessayer",
   "wallet.browser": "Extension du navigateur",
   "wallet.browserDetail": "MetaMask, Rabby, Coinbase et d'autres",
   "wallet.browserHow":
-    "Connectez l'extension de wallet de votre navigateur. pewterdesk y ouvre une page ; choisissez votre wallet et approuvez une signature pour autoriser un API wallet limité au trading sur Hyperliquid.",
+    "Connectez l'extension de wallet de votre navigateur. pewterdesk y ouvre une page ; choisissez votre wallet et approuvez une signature pour autoriser un API wallet limité au trading sur {venue}.",
   "wallet.browserStep1": "Ouvrez la page que pewterdesk affiche dans votre navigateur",
   "wallet.browserStep2": "Choisissez votre wallet et approuvez une signature",
   "wallet.soon": "Bientôt",
@@ -1432,13 +1432,14 @@ export const messages: Messages = {
   "browser.pageTitle": "Connecter un wallet · pewterdesk",
   "browser.title": "Connectez votre wallet",
   "browser.lead":
-    "Choisissez votre wallet, puis approuvez une signature. Cela autorise un API wallet limité au trading pour pewterdesk sur Hyperliquid.",
+    "Choisissez votre wallet, puis approuvez une signature. Cela autorise un API wallet limité au trading pour pewterdesk sur {venue}.",
   "browser.note":
     "Cette page est servie par l'app pewterdesk sur votre ordinateur et s'arrête une fois la connexion faite.",
   "browser.connecting": "Connexion à votre wallet…",
   "browser.noAccount": "Votre wallet n'a partagé aucun compte.",
   "browser.sign": "Approuvez la signature dans votre wallet.",
-  "browser.sending": "Autorisation auprès d'Hyperliquid…",
+  "browser.sending": "Autorisation auprès d'{venue}…",
+  "browser.switchChain": "Passez votre wallet sur {chain} pour signer.",
   "browser.done": "Connecté. Vous pouvez fermer cet onglet et revenir à pewterdesk.",
   "browser.noWallet":
     "Aucun wallet trouvé. Installez MetaMask, Rabby ou une autre extension dans ce navigateur, puis rechargez.",
@@ -1714,7 +1715,7 @@ export const messages: Messages = {
   "onb.connect.lead":
     "Connectez le wallet de votre compte Hyperliquid. Il approuve une fois une clé de trading ; pewterdesk ne voit jamais votre phrase de récupération.",
   "onb.connect.asterNote":
-    "Les comptes Aster se connecteront avec l'arrivée de la signature des ordres.",
+    "Pour connecter un compte Aster, cliquez sur Connecter sur Aster une fois la configuration terminée.",
   "onb.workspace.title": "Préparez votre espace de travail.",
   "onb.workspace.lead": "Choisissez un thème. Changez-le quand vous voulez depuis l'en-tête.",
   "onb.theme": "Thème",

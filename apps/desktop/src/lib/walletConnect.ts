@@ -1,3 +1,4 @@
+import type { VenueId } from "@pewterdesk/core";
 import type SignClient from "@walletconnect/sign-client";
 
 // WalletConnect, for approving pewterdesk's API wallet from the user's own
@@ -13,6 +14,11 @@ export const WALLETCONNECT_PROJECT_ID = "04474a9ae1a19220f85b7c4165631bd9";
 
 /** Arbitrum One: where Hyperliquid's own site has wallets sign. */
 export const ARBITRUM_CHAIN_ID = 42161;
+/**
+ * The chain a venue's API wallet approval is asked to be signed on. Both
+ * venues take any chain, and Arbitrum is one nearly every wallet has.
+ */
+export const approvalChain = (_venue: VenueId) => ARBITRUM_CHAIN_ID;
 
 let client: Promise<SignClient> | undefined;
 
@@ -60,13 +66,13 @@ export interface Pairing {
   session: Promise<WalletSession>;
 }
 
-/** Proposes a session asking only to sign typed data, on Arbitrum. */
-export async function startPairing(): Promise<Pairing> {
+/** Proposes a session asking only to sign typed data, on `chainId`. */
+export async function startPairing(chainId: number): Promise<Pairing> {
   const c = await signClient();
   const { uri, approval } = await c.connect({
     optionalNamespaces: {
       eip155: {
-        chains: [`eip155:${ARBITRUM_CHAIN_ID}`],
+        chains: [`eip155:${chainId}`],
         methods: ["eth_signTypedData_v4"],
         events: ["accountsChanged", "chainChanged"],
       },
@@ -74,7 +80,11 @@ export async function startPairing(): Promise<Pairing> {
   });
   if (!uri) throw new Error("WalletConnect gave no pairing link");
   const session = approval().then((s) => {
-    const account = s.namespaces.eip155?.accounts.map(parseAccount).find((a) => a !== undefined);
+    const accounts = (s.namespaces.eip155?.accounts ?? [])
+      .map(parseAccount)
+      .filter((a) => a !== undefined);
+    // The one on the chain asked for, where the wallet shares several.
+    const account = accounts.find((a) => a.chainId === chainId) ?? accounts[0];
     if (!account) throw new Error("the wallet shared no Ethereum account");
     return { topic: s.topic, ...account };
   });
