@@ -3,7 +3,19 @@
 // builds the approval and checks the signature; this page only asks the
 // wallet. Text comes from the app in the user's language.
 
-const ARBITRUM = 42161;
+// Chains a wallet may need adding before it can switch to them, with the
+// details wallets ask for. The page itself never contacts these.
+const CHAINS = {
+  56: {
+    chainName: "BNB Smart Chain",
+    nativeCurrency: { name: "BNB", symbol: "BNB", decimals: 18 },
+    rpcUrls: ["https://bsc-dataseed.binance.org"],
+    blockExplorerUrls: ["https://bscscan.com"],
+  },
+};
+// The chain to switch the wallet to before signing, from the app; 0 for
+// none (sign on whichever chain the wallet is on).
+let config = { chainId: 42161, required: false };
 const providers = new Map();
 let strings = {};
 let busy = false;
@@ -29,6 +41,22 @@ async function post(path, body) {
   return reply;
 }
 
+/** Switches the wallet to `chainId`, adding the chain first if it doesn't know it. */
+async function switchChain(provider, chainId) {
+  const hex = `0x${chainId.toString(16)}`;
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
+  } catch (error) {
+    // 4902: the wallet has no such chain yet.
+    const known = CHAINS[chainId];
+    if (error?.code !== 4902 || !known) throw error;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [{ chainId: hex, ...known }],
+    });
+  }
+}
+
 function messageOf(error) {
   if (error && typeof error.message === "string") return error.message;
   return t("failed");
@@ -43,15 +71,18 @@ async function connect(provider) {
     const [address] = await provider.request({ method: "eth_requestAccounts" });
     if (!address) throw new Error(t("noAccount"));
     let chainId = Number.parseInt(await provider.request({ method: "eth_chainId" }), 16);
-    if (chainId !== ARBITRUM) {
+    if (config.chainId > 0 && chainId !== config.chainId) {
       try {
-        await provider.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: `0x${ARBITRUM.toString(16)}` }],
-        });
-        chainId = ARBITRUM;
-      } catch {
-        // Signing on the wallet's own chain works too.
+        await switchChain(provider, config.chainId);
+        chainId = config.chainId;
+      } catch (error) {
+        // Wallets only sign typed data for the chain they're on. Where the
+        // venue names the chain, there's no signing on another.
+        if (config.required) {
+          const name = CHAINS[config.chainId]?.chainName ?? `chain ${config.chainId}`;
+          throw new Error(`${t("switchChain", { chain: name })} ${messageOf(error)}`.trim());
+        }
+        // Otherwise signing on the wallet's own chain works too.
       }
     }
     const typedData = await post("begin", { address, chainId });
@@ -101,6 +132,12 @@ async function start() {
   strings = await fetch("strings.json")
     .then((r) => r.json())
     .catch(() => ({}));
+  const fetched = await fetch("config.json")
+    .then((r) => r.json())
+    .catch(() => undefined);
+  if (fetched && Number.isInteger(fetched.chainId) && fetched.chainId >= 0) {
+    config = { chainId: fetched.chainId, required: fetched.required === true };
+  }
   document.title = t("pageTitle");
   $("title").textContent = t("title");
   $("lead").textContent = t("lead");

@@ -16,11 +16,7 @@ export interface VenueInfo {
    * exchange API key made on the venue's site. Picks the connect flow.
    */
   auth: "wallet" | "apiKey";
-  /**
-   * Whether an account can be connected yet. Aster's can't: its API wallet
-   * approval and signed account requests aren't built, and the wallet flow
-   * there is Hyperliquid's own (its approval, its deposit rule).
-   */
+  /** Whether an account can be connected yet. */
   connectable: boolean;
 }
 
@@ -55,7 +51,7 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     maxSlippage: 0.05,
     majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
     auth: "wallet",
-    connectable: false,
+    connectable: true,
   },
 };
 

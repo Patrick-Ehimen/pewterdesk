@@ -1344,7 +1344,7 @@ export const messages: Messages = {
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "연결 방법",
   "wallet.wcHow":
-    "Rabby, MetaMask, Rainbow 등 WalletConnect 지갑으로 스캔한 뒤 서명을 한 번 승인하세요. Hyperliquid에서 거래 전용 새 API 지갑을 승인합니다. pewterdesk는 시드 문구를 보지 않습니다. 먼저 Hyperliquid 계정에 입금해야 합니다.",
+    "Rabby, MetaMask, Rainbow 등 WalletConnect 지갑으로 스캔한 뒤 서명을 한 번 승인하세요. {venue}에서 거래 전용 새 API 지갑을 승인합니다. pewterdesk는 시드 문구를 보지 않습니다. 먼저 {venue} 계정에 입금해야 합니다.",
   "wallet.ledgerHow":
     "Ledger를 연결하고 Ethereum 앱을 여세요. 기기 화면에서 거래 전용 키를 한 번 승인합니다.",
   "wallet.apiHow":
@@ -1373,7 +1373,7 @@ export const messages: Messages = {
     "이제 잔고, 포지션, 주문이 표시됩니다. pewterdesk에서의 주문은 다음 단계입니다.",
   "wallet.disconnect": "연결 해제",
   "wallet.disconnectHint":
-    "이 기기에서 키를 삭제합니다. 승인까지 끝내려면 Hyperliquid에서 API 지갑을 삭제하세요.",
+    "이 기기에서 키를 삭제합니다. 승인까지 끝내려면 {venue}에서 API 지갑을 삭제하세요.",
   "wallet.wcStart": "QR 코드 표시",
   "wallet.wcPreparing": "링크 준비 중…",
   "wallet.wcScan": "휴대폰 지갑으로 스캔하거나 링크를 데스크톱 지갑에 복사하세요.",
@@ -1382,12 +1382,12 @@ export const messages: Messages = {
   "wallet.wcCancel": "취소",
   "wallet.wcSign":
     "{address}에 연결되었습니다. 지갑에서 서명을 승인하면 pewterdesk의 API 지갑이 승인됩니다.",
-  "wallet.wcSending": "Hyperliquid에서 승인 중…",
+  "wallet.wcSending": "{venue}에서 승인 중…",
   "wallet.wcRetry": "다시 시도",
   "wallet.browser": "브라우저 확장 프로그램",
   "wallet.browserDetail": "MetaMask, Rabby, Coinbase 등",
   "wallet.browserHow":
-    "브라우저의 지갑 확장 프로그램으로 연결합니다. pewterdesk가 브라우저에 페이지를 열면 지갑을 고르고 서명을 한 번 승인해 Hyperliquid의 거래 전용 API 지갑을 승인하세요.",
+    "브라우저의 지갑 확장 프로그램으로 연결합니다. pewterdesk가 브라우저에 페이지를 열면 지갑을 고르고 서명을 한 번 승인해 {venue}의 거래 전용 API 지갑을 승인하세요.",
   "wallet.browserStep1": "pewterdesk가 브라우저에 여는 페이지로 이동",
   "wallet.browserStep2": "지갑을 고르고 서명을 한 번 승인",
   "wallet.soon": "곧 지원",
@@ -1397,12 +1397,13 @@ export const messages: Messages = {
   "browser.pageTitle": "지갑 연결 · pewterdesk",
   "browser.title": "지갑 연결",
   "browser.lead":
-    "지갑을 고른 뒤 서명을 한 번 승인하세요. Hyperliquid에서 pewterdesk용 거래 전용 API 지갑이 승인됩니다.",
+    "지갑을 고른 뒤 서명을 한 번 승인하세요. {venue}에서 pewterdesk용 거래 전용 API 지갑이 승인됩니다.",
   "browser.note": "이 페이지는 내 컴퓨터의 pewterdesk 앱이 제공하며, 연결이 끝나면 종료됩니다.",
   "browser.connecting": "지갑에 연결 중…",
   "browser.noAccount": "지갑에서 계정을 공유하지 않았습니다.",
   "browser.sign": "지갑에서 서명을 승인하세요.",
-  "browser.sending": "Hyperliquid에서 승인 중…",
+  "browser.sending": "{venue}에서 승인 중…",
+  "browser.switchChain": "서명하려면 지갑을 {chain}(으)로 전환하세요.",
   "browser.done": "연결되었습니다. 이 탭을 닫고 pewterdesk로 돌아가세요.",
   "browser.noWallet":
     "브라우저 지갑을 찾지 못했습니다. 이 브라우저에 MetaMask, Rabby 등 확장 프로그램을 설치한 뒤 새로고침하세요.",
@@ -1672,7 +1673,7 @@ export const messages: Messages = {
   "onb.connect.title": "지갑을 연결하세요.",
   "onb.connect.lead":
     "Hyperliquid 계정이 있는 지갑을 연결하세요. 거래 전용 키를 한 번만 승인하며, pewterdesk는 시드 문구를 볼 수 없습니다.",
-  "onb.connect.asterNote": "Aster 계정은 주문 서명이 지원되면 연결할 수 있습니다.",
+  "onb.connect.asterNote": "Aster 계정은 설정을 마친 뒤 Aster에서 연결을 눌러 연결하세요.",
   "onb.workspace.title": "작업 공간을 설정하세요.",
   "onb.workspace.lead": "테마를 고르세요. 헤더에서 언제든 바꿀 수 있습니다.",
   "onb.theme": "테마",

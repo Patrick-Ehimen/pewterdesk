@@ -96,6 +96,18 @@ discover it on their own. The reasoning behind the rules is in
   wraps it in `Zeroizing`, refuses the main wallet's own key, and stores it
   only if the venue lists it as an approved agent of that account. The
   commands return public addresses only.
+- `crates/exchange-aster/src/agent.rs` (with `wallet.rs`) - Aster
+  onboarding and request signing. Aster has no API key: an API wallet
+  (agent) the main wallet approves signs every private request. Rust
+  generates the agent key and builds the approval, whose permissions are
+  fixed in the code - perpetuals only, no spot, no withdrawals - so nothing
+  from the UI can widen them. After Aster accepts it, Rust asks Aster what
+  the agent may do and stores the key only if it can't withdraw
+  (`check_trade_only`, which also treats a missing answer as "can"). A
+  pasted key isn't taken for Aster. Requests are signed over exactly the
+  parameter string sent (EIP-712, `Message(string msg)`), with a fresh
+  microsecond nonce; the key is held only for that call. Checked against
+  `eth_account` vectors and Aster's live API.
 - `apps/desktop/src-tauri/src/bybit_key.rs` and `crates/exchange-bybit/src/auth.rs`
   - Bybit onboarding. The API key and secret cross IPC once, into
   `connect_bybit_key`, which signs one fixed request (`/v5/user/query-api`)
@@ -109,7 +121,9 @@ discover it on their own. The reasoning behind the rules is in
   extension wallet. It serves a one-time page on 127.0.0.1 (random port, a
   random token in every path, the exact Host checked, posts only from the
   page's own origin) that asks the extension to sign the approval
-  `wallet.rs` builds. It stops after a connection, a cancel, or 10 minutes.
+  `wallet.rs` builds, for the venue the app named when it started the page
+  (the page can't choose). It stops after a connection, a cancel, or 10
+  minutes.
 - `apps/desktop/src-tauri/src/coin_info.rs` - the Markets panel's Overview
   tab, from CoinGecko (`api.coingecko.com` only), and a coin's logo as a last
   resort when no venue has one (`coin_logo`; the image from
@@ -206,15 +220,17 @@ the builder-deployed perp exchanges (HIP-3, market ids like `xyz:TSLA`), and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
 it can't place orders yet. `crates/exchange-aster` serves Aster's public market
 data the same way (markets, order books, trades, candles, stats, summaries and
-history, funding history); its account methods are `Unsupported`, since Aster
-serves account data only to requests signed by an API wallet. The UI doesn't
-show Aster yet.
+history, funding history), and an account's balances, positions and open
+orders once its wallet is connected: Aster serves those only to requests
+signed by an API wallet (`agent.rs`), and only after the main wallet has
+deposited. Fills, history, leverage settings and orders aren't built for
+Aster yet.
 
 The desktop frontend is a read-only trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
-ticket). They fill once a Hyperliquid API wallet is connected (the Connect
-wallet dialog; the connected main address is kept in `lib/account.ts`), while
-the ticket still can't place orders. The Markets panel is tabbed:
+ticket). They fill once a Hyperliquid or Aster API wallet is connected (the Connect
+wallet dialog, for the venue on screen; the connected main address is kept
+in `lib/account.ts`), while the ticket can't place orders on either. The Markets panel is tabbed:
 chart (lightweight-charts), depth, screener and watchlist. In `apps/desktop/src/`,
 `App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is

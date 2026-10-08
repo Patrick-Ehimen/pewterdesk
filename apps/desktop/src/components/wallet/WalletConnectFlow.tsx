@@ -1,9 +1,12 @@
+import type { VenueId } from "@pewterdesk/core";
 import { shortAddress, t } from "@pewterdesk/ui";
 import { create as createQr } from "qrcode";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { walletClient } from "../../api/venueClient";
 import { addAccount } from "../../lib/account";
+import { VENUES } from "../../lib/venues";
 import {
+  approvalChain,
   endSession,
   signTypedData,
   startPairing,
@@ -88,7 +91,7 @@ export function QrCode({ value }: { value: string }) {
  * the signature; this only shows the steps and carries the messages.
  * Closing the dialog (unmounting) abandons the attempt and its key.
  */
-export function WalletConnectFlow() {
+export function WalletConnectFlow({ venue }: { venue: VenueId }) {
   const [step, setStep] = useState<Step>({ kind: "idle" });
   const [copied, setCopied] = useState(false);
   // Bumped to abandon an attempt: its late results are ignored.
@@ -110,7 +113,7 @@ export function WalletConnectFlow() {
     setCopied(false);
     setStep({ kind: "pairing" });
     try {
-      const pairing = await startPairing();
+      const pairing = await startPairing(approvalChain(venue));
       if (!alive()) return;
       setStep({ kind: "pairing", uri: pairing.uri });
       const connected = await pairing.session;
@@ -118,7 +121,7 @@ export function WalletConnectFlow() {
       session.current = connected;
       setStep({ kind: "signing", address: connected.address });
       const typedData = await walletClient.beginApproval(
-        "hyperliquid",
+        venue,
         connected.address,
         connected.chainId,
       );
@@ -189,7 +192,7 @@ export function WalletConnectFlow() {
       return (
         <div className="wallet-waiting">
           <span className="wallet-spinner" aria-hidden />
-          <strong>{t("wallet.wcSending")}</strong>
+          <strong>{t("wallet.wcSending", { venue: VENUES[venue].label })}</strong>
         </div>
       );
     case "error":

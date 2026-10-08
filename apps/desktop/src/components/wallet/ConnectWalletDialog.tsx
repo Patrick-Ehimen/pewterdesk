@@ -29,6 +29,7 @@ import {
   subscribeAccounts,
   venueAccounts,
 } from "../../lib/account";
+import { VENUES } from "../../lib/venues";
 import { AccountList } from "./AccountList";
 import { BrowserWalletFlow } from "./BrowserWalletFlow";
 import { WalletConnectFlow } from "./WalletConnectFlow";
@@ -45,6 +46,8 @@ interface Method {
   steps: MessageKey[];
   /** Not built yet: the pane explains it and says it's coming. */
   soon?: boolean;
+  /** The only venue it works on; unset, every wallet venue. */
+  only?: VenueId;
 }
 
 // Each way to connect approves the same thing: a trade-only API wallet that
@@ -74,6 +77,9 @@ const METHODS: Method[] = [
     detail: "wallet.apiDetail",
     how: "wallet.apiHow",
     steps: ["wallet.hlStep1", "wallet.hlStep2", "wallet.hlStep3"],
+    // Aster's API wallets have permissions a pasted key can't prove; there
+    // pewterdesk makes the key itself, without withdrawals.
+    only: "hyperliquid",
   },
   {
     id: "ledger",
@@ -174,6 +180,7 @@ function ApiWalletForm() {
 
 /** The connected account: its addresses, the agent's approval, and disconnect. */
 function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) {
+  const venueLabel = VENUES[venue].label;
   const [info, setInfo] = useState<WalletInfo | null>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -248,7 +255,7 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
           {t("wallet.disconnect")}
         </button>
       </div>
-      <p className="wallet-note">{t("wallet.disconnectHint")}</p>
+      <p className="wallet-note">{t("wallet.disconnectHint", { venue: venueLabel })}</p>
     </section>
   );
 }
@@ -259,15 +266,20 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
  * a half-done connection when it unmounts.
  */
 export function ConnectWalletBody({
+  venue = "hyperliquid",
   selected,
   onSelect,
 }: {
+  /** The venue being connected to. */
+  venue?: VenueId;
   selected: MethodId;
   onSelect: (id: MethodId) => void;
 }) {
-  const method = METHODS.find((m) => m.id === selected) ?? (METHODS[0] as Method);
+  const methods = METHODS.filter((m) => !m.only || m.only === venue);
+  const method = methods.find((m) => m.id === selected) ?? (methods[0] as Method);
+  const venueLabel = VENUES[venue].label;
   const state = useSyncExternalStore(subscribeAccounts, accountsState);
-  const wallet = activeAccount(state, "hyperliquid");
+  const wallet = activeAccount(state, venue);
   // Adding another account shows the ways to connect until one connects:
   // any change to the accounts (the new one saved) ends it.
   const [addingFrom, setAddingFrom] = useState<AccountsState>();
@@ -277,14 +289,14 @@ export function ConnectWalletBody({
       {wallet && !adding ? (
         <div className="wallet-accounts">
           <div className="wallet-accounts-list">
-            <AccountList venue="hyperliquid" onAdd={() => setAddingFrom(state)} />
+            <AccountList venue={venue} onAdd={() => setAddingFrom(state)} />
           </div>
           <ConnectedPane key={wallet.id} venue={wallet.venue} address={wallet.id} />
         </div>
       ) : (
         <>
           <nav className="wallet-list" aria-label={t("wallet.tradingGroup")}>
-            {adding && venueAccounts(state, "hyperliquid").length > 0 && (
+            {adding && venueAccounts(state, venue).length > 0 && (
               <button type="button" className="acct-back" onClick={() => setAddingFrom(undefined)}>
                 <LuChevronLeft size={15} aria-hidden />
                 {t("accounts.back")}
@@ -292,13 +304,13 @@ export function ConnectWalletBody({
             )}
             <p className="wallet-group">{t("wallet.tradingGroup")}</p>
             <div role="radiogroup" aria-label={t("wallet.tradingGroup")}>
-              {METHODS.map((m) => (
+              {methods.map((m) => (
                 // biome-ignore lint/a11y/useSemanticElements: a card-style radio, like the app's other segmented choices
                 <button
                   key={m.id}
                   type="button"
                   role="radio"
-                  aria-checked={m.id === selected}
+                  aria-checked={m.id === method.id}
                   className="wallet-option"
                   data-soon={m.soon || undefined}
                   onClick={() => onSelect(m.id)}
@@ -323,7 +335,7 @@ export function ConnectWalletBody({
               <Mark mark={method.mark} size="lg" />
               <div>
                 <h3 id="wallet-pane-title">{t(method.title)}</h3>
-                <p>{t(method.how)}</p>
+                <p>{t(method.how, { venue: venueLabel })}</p>
               </div>
             </div>
 
@@ -338,8 +350,8 @@ export function ConnectWalletBody({
               ))}
             </ol>
 
-            {method.id === "browser" && <BrowserWalletFlow />}
-            {method.id === "walletConnect" && <WalletConnectFlow />}
+            {method.id === "browser" && <BrowserWalletFlow key={venue} venue={venue} />}
+            {method.id === "walletConnect" && <WalletConnectFlow key={venue} venue={venue} />}
             {method.id === "api" && <ApiWalletForm />}
             {method.soon && <p className="wallet-note">{t("wallet.coming")}</p>}
 
@@ -367,6 +379,8 @@ export function ConnectWalletBody({
 interface ConnectWalletDialogProps {
   open: boolean;
   onClose: () => void;
+  /** The venue being connected to: Hyperliquid or Aster. */
+  venue: VenueId;
 }
 
 /**
@@ -375,13 +389,10 @@ interface ConnectWalletDialogProps {
  * does it. Every way ends with a trade-only API wallet in the keychain. Once
  * connected, the dialog shows the account and can disconnect it.
  */
-export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps) {
+export function ConnectWalletDialog({ open, onClose, venue }: ConnectWalletDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState<MethodId>("browser");
-  const wallet = activeAccount(
-    useSyncExternalStore(subscribeAccounts, accountsState),
-    "hyperliquid",
-  );
+  const wallet = activeAccount(useSyncExternalStore(subscribeAccounts, accountsState), venue);
 
   // Drive the native dialog from `open`: showModal gives focus trapping,
   // Escape and the backdrop for free.
@@ -419,7 +430,7 @@ export function ConnectWalletDialog({ open, onClose }: ConnectWalletDialogProps)
       </header>
 
       {/* Mounted only while open, so a half-typed key or a pending approval doesn't outlive the dialog. */}
-      {open && <ConnectWalletBody selected={selected} onSelect={setSelected} />}
+      {open && <ConnectWalletBody venue={venue} selected={selected} onSelect={setSelected} />}
 
       <footer className="wallet-dialog-foot">
         <LuLock size={14} aria-hidden />

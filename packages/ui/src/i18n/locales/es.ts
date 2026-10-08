@@ -1368,7 +1368,7 @@ export const messages: Messages = {
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "Formas de conectar",
   "wallet.wcHow":
-    "Escanea con Rabby, MetaMask, Rainbow o cualquier wallet compatible con WalletConnect y aprueba una firma. Autoriza una nueva API wallet solo para operar en Hyperliquid; pewterdesk nunca ve tu frase semilla. Tu cuenta de Hyperliquid necesita un depósito antes.",
+    "Escanea con Rabby, MetaMask, Rainbow o cualquier wallet compatible con WalletConnect y aprueba una firma. Autoriza una nueva API wallet solo para operar en {venue}; pewterdesk nunca ve tu frase semilla. Tu cuenta de {venue} necesita un depósito antes.",
   "wallet.ledgerHow":
     "Conecta tu Ledger y abre su app de Ethereum. Aprueba una clave solo para operar una vez, en la pantalla del dispositivo.",
   "wallet.apiHow":
@@ -1400,7 +1400,7 @@ export const messages: Messages = {
     "Ya se muestran tus saldos, posiciones y órdenes. Operar desde pewterdesk llega a continuación.",
   "wallet.disconnect": "Desconectar",
   "wallet.disconnectHint":
-    "Borra la clave de este dispositivo. Para revocar también su aprobación, elimina la API wallet en Hyperliquid.",
+    "Borra la clave de este dispositivo. Para revocar también su aprobación, elimina la API wallet en {venue}.",
   "wallet.wcStart": "Mostrar código QR",
   "wallet.wcPreparing": "Preparando un enlace…",
   "wallet.wcScan":
@@ -1410,12 +1410,12 @@ export const messages: Messages = {
   "wallet.wcCancel": "Cancelar",
   "wallet.wcSign":
     "Conectado a {address}. Aprueba la firma en tu wallet para autorizar la API wallet de pewterdesk.",
-  "wallet.wcSending": "Autorizando con Hyperliquid…",
+  "wallet.wcSending": "Autorizando con {venue}…",
   "wallet.wcRetry": "Reintentar",
   "wallet.browser": "Extensión del navegador",
   "wallet.browserDetail": "MetaMask, Rabby, Coinbase y más",
   "wallet.browserHow":
-    "Conecta la extensión de wallet de tu navegador. pewterdesk abre allí una página; elige tu wallet y aprueba una firma para autorizar una API wallet solo para operar en Hyperliquid.",
+    "Conecta la extensión de wallet de tu navegador. pewterdesk abre allí una página; elige tu wallet y aprueba una firma para autorizar una API wallet solo para operar en {venue}.",
   "wallet.browserStep1": "Abre la página que pewterdesk muestra en tu navegador",
   "wallet.browserStep2": "Elige tu wallet y aprueba una firma",
   "wallet.soon": "Pronto",
@@ -1425,13 +1425,14 @@ export const messages: Messages = {
   "browser.pageTitle": "Conectar wallet · pewterdesk",
   "browser.title": "Conecta tu wallet",
   "browser.lead":
-    "Elige tu wallet y aprueba una firma. Autoriza una API wallet solo para operar de pewterdesk en Hyperliquid.",
+    "Elige tu wallet y aprueba una firma. Autoriza una API wallet solo para operar de pewterdesk en {venue}.",
   "browser.note":
     "La app pewterdesk sirve esta página en tu propio ordenador y la cierra cuando terminas de conectar.",
   "browser.connecting": "Conectando con tu wallet…",
   "browser.noAccount": "Tu wallet no compartió ninguna cuenta.",
   "browser.sign": "Aprueba la firma en tu wallet.",
-  "browser.sending": "Autorizando con Hyperliquid…",
+  "browser.sending": "Autorizando con {venue}…",
+  "browser.switchChain": "Cambia tu wallet a {chain} para firmar.",
   "browser.done": "Conectado. Puedes cerrar esta pestaña y volver a pewterdesk.",
   "browser.noWallet":
     "No se encontró ninguna wallet. Instala MetaMask, Rabby u otra extensión en este navegador y recarga.",
@@ -1704,7 +1705,8 @@ export const messages: Messages = {
   "onb.connect.title": "Conecta una wallet.",
   "onb.connect.lead":
     "Conecta la wallet de tu cuenta de Hyperliquid. Aprueba una vez una clave solo de trading; pewterdesk nunca ve tu frase semilla.",
-  "onb.connect.asterNote": "Las cuentas de Aster se conectarán cuando llegue la firma de órdenes.",
+  "onb.connect.asterNote":
+    "Para conectar una cuenta de Aster, pulsa Conectar en Aster al terminar la configuración.",
   "onb.workspace.title": "Prepara tu espacio de trabajo.",
   "onb.workspace.lead": "Elige un tema. Puedes cambiarlo cuando quieras desde la cabecera.",
   "onb.theme": "Tema",

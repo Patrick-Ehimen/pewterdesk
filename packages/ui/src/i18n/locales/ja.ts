@@ -1352,7 +1352,7 @@ export const messages: Messages = {
   "tray.position": "{market} {side} {size} · {pnl}",
   "wallet.tradingGroup": "接続方法",
   "wallet.wcHow":
-    "Rabby、MetaMask、Rainbow など WalletConnect 対応ウォレットでスキャンし、署名を1回承認します。Hyperliquid で取引専用の新しい API ウォレットを承認します。pewterdesk がシードフレーズを見ることはありません。事前に Hyperliquid アカウントへの入金が必要です。",
+    "Rabby、MetaMask、Rainbow など WalletConnect 対応ウォレットでスキャンし、署名を1回承認します。{venue} で取引専用の新しい API ウォレットを承認します。pewterdesk がシードフレーズを見ることはありません。事前に {venue} アカウントへの入金が必要です。",
   "wallet.ledgerHow":
     "Ledger を接続し、Ethereum アプリを開きます。取引専用の鍵をデバイスの画面で一度だけ承認します。",
   "wallet.apiHow":
@@ -1383,7 +1383,7 @@ export const messages: Messages = {
     "残高・ポジション・注文が表示されるようになりました。pewterdesk からの発注は次に対応します。",
   "wallet.disconnect": "切断",
   "wallet.disconnectHint":
-    "この端末から鍵を削除します。承認も取り消すには、Hyperliquid で API ウォレットを削除してください。",
+    "この端末から鍵を削除します。承認も取り消すには、{venue} で API ウォレットを削除してください。",
   "wallet.wcStart": "QR コードを表示",
   "wallet.wcPreparing": "リンクを準備中…",
   "wallet.wcScan":
@@ -1393,12 +1393,12 @@ export const messages: Messages = {
   "wallet.wcCancel": "キャンセル",
   "wallet.wcSign":
     "{address} に接続しました。ウォレットで署名を承認すると、pewterdesk の API ウォレットが承認されます。",
-  "wallet.wcSending": "Hyperliquid で承認中…",
+  "wallet.wcSending": "{venue} で承認中…",
   "wallet.wcRetry": "再試行",
   "wallet.browser": "ブラウザ拡張機能",
   "wallet.browserDetail": "MetaMask、Rabby、Coinbase など",
   "wallet.browserHow":
-    "ブラウザのウォレット拡張機能で接続します。pewterdesk がブラウザでページを開くので、ウォレットを選んで署名を1回承認すると、Hyperliquid で取引専用の API ウォレットが承認されます。",
+    "ブラウザのウォレット拡張機能で接続します。pewterdesk がブラウザでページを開くので、ウォレットを選んで署名を1回承認すると、{venue} で取引専用の API ウォレットが承認されます。",
   "wallet.browserStep1": "pewterdesk がブラウザで開くページに進む",
   "wallet.browserStep2": "ウォレットを選び、署名を1回承認する",
   "wallet.soon": "近日対応",
@@ -1408,13 +1408,14 @@ export const messages: Messages = {
   "browser.pageTitle": "ウォレット接続 · pewterdesk",
   "browser.title": "ウォレットを接続",
   "browser.lead":
-    "ウォレットを選んで署名を1回承認してください。Hyperliquid で pewterdesk 用の取引専用 API ウォレットが承認されます。",
+    "ウォレットを選んで署名を1回承認してください。{venue} で pewterdesk 用の取引専用 API ウォレットが承認されます。",
   "browser.note":
     "このページはお使いのコンピューター上の pewterdesk アプリが提供しており、接続が終わると停止します。",
   "browser.connecting": "ウォレットに接続中…",
   "browser.noAccount": "ウォレットからアカウントが共有されませんでした。",
   "browser.sign": "ウォレットで署名を承認してください。",
-  "browser.sending": "Hyperliquid で承認中…",
+  "browser.sending": "{venue} で承認中…",
+  "browser.switchChain": "署名するにはウォレットを{chain}に切り替えてください。",
   "browser.done": "接続しました。このタブを閉じて pewterdesk に戻れます。",
   "browser.noWallet":
     "ウォレットが見つかりません。このブラウザに MetaMask や Rabby などの拡張機能を入れてから再読み込みしてください。",
@@ -1686,7 +1687,7 @@ export const messages: Messages = {
   "onb.connect.title": "ウォレットを接続。",
   "onb.connect.lead":
     "Hyperliquid の口座を持つウォレットを接続します。取引専用の鍵を一度だけ承認し、pewterdesk がシードフレーズを見ることはありません。",
-  "onb.connect.asterNote": "Aster の口座は注文署名の対応後に接続できます。",
+  "onb.connect.asterNote": "Asterのアカウントは、設定完了後にAsterで「接続」を押して接続します。",
   "onb.workspace.title": "ワークスペースの設定。",
   "onb.workspace.lead": "テーマを選びます。ヘッダーからいつでも切り替えられます。",
   "onb.theme": "テーマ",
