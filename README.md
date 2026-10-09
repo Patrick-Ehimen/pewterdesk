@@ -37,7 +37,7 @@ crates/exchange-<venue>         one adapter per venue: hyperliquid, aster
 packages/core                   TS domain types (generated from crates/core) + SecretStore
 packages/ui                     shared React components (order ticket, position table, chart, hotkeys)
 apps/desktop                    the shipped app: Tauri 2 shell (Rust) + its own Vite/React frontend
-apps/web                        v2, deferred - same frontend stack; can't run the Rust adapters as-is
+apps/web                        the landing page for now; the web terminal is v2, deferred - can't run the Rust adapters as-is
 ```
 
 ### The one architectural rule
@@ -107,7 +107,7 @@ commands yet: [src-tauri/src/main.rs](apps/desktop/src-tauri/src/main.rs) is a
 bare `tauri::Builder`. That stops being true as soon as keychain access lands -
 from then on, anything touching Tauri IPC will only work in the native window.
 
-The web app (`apps/web`) is a separate, deferred v2 target:
+`apps/web` holds the landing page for now (the web terminal is a deferred v2 target):
 
 ```sh
 pnpm --filter @pewterdesk/web dev

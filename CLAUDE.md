@@ -42,9 +42,15 @@ a key before storing it.
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
-- `apps/web` - v2, deferred. Same frontend stack, but it can't run the Rust
-  adapters as-is (needs a WASM build or its own implementation, a
-  browser-wallet signer, and a proxy for CORS)
+- `apps/web` - the landing site for now: four static pages (home, Features,
+  Security, Download) after the editorial mockup in `design/landing/`, one
+  `index.html` each, all loading `src/main.tsx`. Copy and facts are in
+  `src/content/` (English only), colors from the light palette's tokens. Its
+  Security page restates the rules below, so a change to the signing surface
+  or key handling may mean a change there. The web build of the terminal is still
+  v2, deferred: same frontend stack, but it can't run the Rust adapters as-is
+  (needs a WASM build or its own implementation, a browser-wallet signer, and
+  a proxy for CORS)
 
 The root `Cargo.toml` is a workspace over `crates/*` and `apps/desktop/src-tauri`;
 build output goes to the root `target/`.

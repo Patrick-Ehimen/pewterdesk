@@ -68,7 +68,7 @@ dev-ui: ## Run the desktop frontend in a browser only (no Rust, port 1420)
 	$(PNPM) --filter $(DESKTOP_PKG) run dev
 
 .PHONY: dev-web
-dev-web: ## Run the deferred v2 web app
+dev-web: ## Run the landing page (apps/web; the web terminal is deferred)
 	$(PNPM) --filter $(WEB_PKG) run dev
 
 .PHONY: stop

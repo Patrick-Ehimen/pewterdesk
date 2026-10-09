@@ -12,6 +12,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@pewterdesk/assets": "workspace:*",
     "@pewterdesk/core": "workspace:*",
     "@pewterdesk/ui": "workspace:*",
     "react": "^19.3.0",
