@@ -916,6 +916,10 @@ export const messages: Messages = {
   "rsi.now": "RSI（{frame}）",
   "rsi.volume": "24時間出来高",
   "rsi.clickToTrade": "クリックで取引",
+  "rsi.view": "表示",
+  "rsi.view.chart": "チャート",
+  "rsi.view.table": "テーブル",
+  "rsi.noRows": "選択したゾーンに市場はありません。",
 
   "nav.settingsDesc": "設定・ウォレット・鍵",
 

@@ -912,6 +912,10 @@ export const messages: Messages = {
   "rsi.now": "RSI ({frame})",
   "rsi.volume": "24시간 거래량",
   "rsi.clickToTrade": "클릭하여 거래",
+  "rsi.view": "보기",
+  "rsi.view.chart": "차트",
+  "rsi.view.table": "표",
+  "rsi.noRows": "선택한 구간에 시장이 없습니다.",
 
   "nav.settingsDesc": "환경설정, 지갑, 키",
 

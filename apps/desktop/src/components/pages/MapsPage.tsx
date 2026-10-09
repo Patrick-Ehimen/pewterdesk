@@ -13,6 +13,7 @@ import {
   openInterestFromVolume,
   RSI_FRAMES,
   RSI_SCOPES,
+  RSI_VIEWS,
   RsiHeatmap,
   type RsiQuote,
   Tabs,
@@ -77,6 +78,7 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [view, setView] = useStoredChoice<View>("pd.maps.view", VIEWS, "rsi");
   const [frame, setFrame] = useStoredChoice("pd.maps.rsiFrame", RSI_FRAMES, "4h");
   const [scope, setScope] = useStoredChoice("pd.maps.rsiScope", RSI_SCOPES, "all");
+  const [rsiView, setRsiView] = useStoredChoice("pd.maps.rsiView", RSI_VIEWS, "chart");
   const [heatIndex, setHeatIndex] = useStoredChoice("pd.maps.heatIndex", HEAT_INDEXES, "marketCap");
   const [heatPeriod, setHeatPeriod] = useStoredChoice("pd.maps.heatPeriod", HEAT_PERIODS, "24h");
   const [heatTop, setHeatTop] = useStoredChoice("pd.maps.heatTop", HEAT_TOPS, "20");
@@ -246,6 +248,8 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             onFrame={setFrame}
             scope={scope}
             onScope={setScope}
+            view={rsiView}
+            onView={setRsiView}
             loading={rsi.loading}
             progress={{ done: rsi.done, total: rsi.total }}
             onRefresh={rsi.refresh}

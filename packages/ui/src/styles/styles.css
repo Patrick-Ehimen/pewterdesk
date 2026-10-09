@@ -6078,6 +6078,99 @@ button.pd-drawer-exit:hover {
 [data-zone="oversold"] {
   --rsi-tone: var(--pd-buy);
 }
+/* Chart or table: a two-way toggle in the bar */
+.pd-rsi-views {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+}
+.pd-rsi-view {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-rsi-view:hover {
+  color: var(--pd-text);
+}
+.pd-rsi-view[aria-pressed="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+/* The readings as rows */
+.pd-rsi-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.pd-rsi-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+.pd-rsi-th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: var(--pd-surface);
+  border-bottom: 1px solid var(--pd-border);
+  text-align: right;
+}
+.pd-rsi-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pd-rsi-sort:hover,
+.pd-rsi-sort[data-on] {
+  color: var(--pd-text);
+}
+.pd-rsi-td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--pd-border);
+  text-align: right;
+  white-space: nowrap;
+}
+.pd-rsi-th-text,
+.pd-rsi-td-text {
+  text-align: left;
+}
+.pd-rsi-row:hover {
+  background: var(--pd-surface-raised);
+}
+.pd-rsi-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-rsi-ticker {
+  font-size: 12px;
+}
+.pd-rsi-value {
+  color: var(--rsi-tone, var(--pd-text));
+}
 .pd-rsi-stage {
   position: relative;
   flex: 1;

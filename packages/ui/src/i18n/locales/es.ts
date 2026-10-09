@@ -938,6 +938,10 @@ export const messages: Messages = {
   "rsi.now": "RSI ({frame})",
   "rsi.volume": "Volumen 24 h",
   "rsi.clickToTrade": "Haz clic para operar",
+  "rsi.view": "Vista",
+  "rsi.view.chart": "Gráfico",
+  "rsi.view.table": "Tabla",
+  "rsi.noRows": "No hay mercados en las zonas elegidas.",
 
   "nav.settingsDesc": "Preferencias, wallets y claves",
 
