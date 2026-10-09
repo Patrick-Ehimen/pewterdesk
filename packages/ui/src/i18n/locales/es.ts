@@ -1247,7 +1247,20 @@ export const messages: Messages = {
   "settings.trading.desc":
     "Tamaño de orden, slippage y apalancamiento por defecto. Llega con la colocación de órdenes.",
   "settings.hotkeys.desc":
-    "Atajos de teclado para colocar y cancelar órdenes. Llega con la colocación de órdenes.",
+    "Atajos de teclado en toda la app. Aún no se pueden cambiar, y ninguno envía una orden.",
+  "hotkeys.general": "General",
+  "hotkeys.or": "o",
+  "hotkeys.palette": "Abrir la paleta de comandos",
+  "hotkeys.page": "Ir a {page}",
+  "hotkeys.settings": "Abrir o cerrar Ajustes",
+  "hotkeys.back": "Volver a la página anterior",
+  "hotkeys.forward": "Avanzar de nuevo",
+  "hotkeys.help": "Mostrar estos atajos",
+  "hotkeys.quickTrade": "Mostrar u ocultar operación rápida",
+  "hotkeys.float": "Mostrar u ocultar la ventana flotante (funciona desde cualquier app)",
+  "hotkeys.maximise": "Dar toda la página a un gráfico por su número; otra vez para devolverla",
+  "hotkeys.restore": "Volver a la cuadrícula de gráficos",
+  "hotkeys.rsiView": "Cambiar el mapa de RSI entre gráfico y tabla",
   "settings.notifications.desc": "Avisos de ejecuciones y riesgo de liquidación.",
   "settings.network.desc": "Endpoints de los exchanges y estado de conexión.",
   "settings.appearance.desc":

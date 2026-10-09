@@ -41,6 +41,7 @@ import {
 import { appClient } from "../../api/appClient";
 import { useCandles, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { exportChartImage } from "../../lib/chartPrefs";
+import { isTyping, plainKey } from "../../lib/hotkeys";
 import {
   applySet,
   type CellSettings,
@@ -519,6 +520,22 @@ export function MultiChartPage({
 
   // The chart given the whole page, by its place in the grid.
   const [maximised, setMaximised] = useState<number>();
+  // 1 to 9 give that chart the page (again to give it back); Esc restores the grid.
+  const shownCount = Math.min(state.cells.length, GRID[state.layout].charts);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const key = plainKey(e, isTyping(e.target));
+      if (key === undefined || e.shiftKey) return;
+      if (key === "escape") return setMaximised(undefined);
+      if (!/^[1-9]$/.test(key)) return;
+      const index = Number(key) - 1;
+      if (index >= shownCount) return;
+      e.preventDefault();
+      setMaximised((now) => (now === index ? undefined : index));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shownCount]);
   // The moment under the pointer, and the chart it's on: marked on the rest.
   const [crosshair, setCrosshair] = useState<{ from: number; time: number }>();
   // Pointer moves come many times a frame; the other charts follow once per frame.

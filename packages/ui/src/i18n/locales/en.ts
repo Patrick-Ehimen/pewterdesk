@@ -1173,7 +1173,20 @@ export const en = {
   "settings.trading.desc":
     "Default order size, slippage and leverage. Arrives with order placement.",
   "settings.hotkeys.desc":
-    "Keyboard shortcuts for placing and cancelling orders. Arrives with order placement.",
+    "Keyboard shortcuts across the app. They can't be changed yet, and none places an order.",
+  "hotkeys.general": "General",
+  "hotkeys.or": "or",
+  "hotkeys.palette": "Open the command palette",
+  "hotkeys.page": "Go to {page}",
+  "hotkeys.settings": "Open or close Settings",
+  "hotkeys.back": "Back to the page before",
+  "hotkeys.forward": "Forward again",
+  "hotkeys.help": "Show these shortcuts",
+  "hotkeys.quickTrade": "Show or hide quick trade",
+  "hotkeys.float": "Show or hide the floating window (works from any app)",
+  "hotkeys.maximise": "Give a chart the whole page, by its number; again to give it back",
+  "hotkeys.restore": "Back to the grid of charts",
+  "hotkeys.rsiView": "Switch the RSI heatmap between chart and table",
   "settings.notifications.desc": "Alerts for fills and liquidation risk.",
   "settings.network.desc": "Venue endpoints and connection status.",
   "settings.appearance.desc":

@@ -7,11 +7,19 @@ import {
   shortAddress,
   t,
 } from "@pewterdesk/ui";
-import { type FormEvent, useEffect, useState, useSyncExternalStore } from "react";
+import { type FormEvent, Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
 import { coinClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
+import {
+  HOTKEY_GROUPS,
+  HOTKEYS,
+  type HotkeyGroup,
+  keyLabel,
+  onMac,
+  pageRows,
+} from "../../lib/hotkeys";
 import { switchLanguage } from "../../lib/language";
 import {
   currentNoteSettings,
@@ -23,6 +31,7 @@ import {
 import {
   languageOptions,
   marketColorOptions,
+  pageLabel,
   ROW_MODES,
   rowModeOptions,
   themeOptions,
@@ -36,6 +45,8 @@ import {
   SectionHead,
   SettingRow,
 } from "./parts";
+
+export type SettingsSection = SectionId;
 
 type SectionId =
   | "general"
@@ -52,7 +63,7 @@ const SECTIONS: { id: SectionId; soon?: MessageKey }[] = [
   { id: "general" },
   { id: "wallets" },
   { id: "trading", soon: "settings.trading.desc" },
-  { id: "hotkeys", soon: "settings.hotkeys.desc" },
+  { id: "hotkeys" },
   { id: "notifications" },
   { id: "appearance" },
   { id: "network", soon: "settings.network.desc" },
@@ -61,8 +72,77 @@ const SECTIONS: { id: SectionId; soon?: MessageKey }[] = [
 
 const navLabel = (id: SectionId) => t(`settings.nav.${id}`);
 
+const HOTKEY_GROUP_LABEL: Record<HotkeyGroup, MessageKey> = {
+  general: "hotkeys.general",
+  pages: "nav.menu",
+  trade: "nav.trade",
+  charts: "nav.charts",
+  maps: "nav.maps",
+};
+const HOTKEY_LABEL: Record<string, MessageKey> = {
+  palette: "hotkeys.palette",
+  settings: "hotkeys.settings",
+  help: "hotkeys.help",
+  float: "hotkeys.float",
+  back: "hotkeys.back",
+  forward: "hotkeys.forward",
+  quickTrade: "hotkeys.quickTrade",
+  maximise: "hotkeys.maximise",
+  restore: "hotkeys.restore",
+  rsiView: "hotkeys.rsiView",
+};
+
+/** The keys of one way to press a shortcut, as keycaps. */
+function Keys({ keys, mac }: { keys: readonly string[]; mac: boolean }) {
+  return (
+    <span className="hotkey-keys">
+      {keys.map((key) => (
+        <kbd key={key}>{keyLabel(key, mac)}</kbd>
+      ))}
+    </span>
+  );
+}
+
+/** Every keyboard shortcut, by where it works. They're fixed for now. */
+function HotkeysSection() {
+  const mac = onMac();
+  return (
+    <>
+      <SectionHead title={navLabel("hotkeys")} description={t("settings.hotkeys.desc")} />
+      {HOTKEY_GROUPS.map((group) => (
+        <div key={group}>
+          <GroupLabel>{t(HOTKEY_GROUP_LABEL[group])}</GroupLabel>
+          {group === "pages" &&
+            pageRows().map((row) => (
+              <div key={row.page} className="settings-row hotkey-row">
+                <span>{t("hotkeys.page", { page: pageLabel(row.page) })}</span>
+                <Keys keys={row.keys} mac={mac} />
+              </div>
+            ))}
+          {HOTKEYS[group].map((row) => (
+            <div key={row.id} className="settings-row hotkey-row">
+              <span>{t(HOTKEY_LABEL[row.id] ?? "hotkeys.general")}</span>
+              <span className="hotkey-ways">
+                {row.keys.map((keys, i) => (
+                  <Fragment key={keys.join("+")}>
+                    {/* Another way to press the same thing. */}
+                    {i > 0 && <span className="hotkey-or">{t("hotkeys.or")}</span>}
+                    <Keys keys={keys} mac={mac} />
+                  </Fragment>
+                ))}
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
 export interface SettingsPageProps {
   onClose: () => void;
+  /** The section to open on, and to move to when it changes. */
+  section?: SettingsSection;
   soundOn: boolean;
   onSound: (on: boolean) => void;
   /** The ticket asks before sending an order. */
@@ -85,7 +165,12 @@ export interface SettingsPageProps {
 
 /** Full-page settings, after the design's settings screen. */
 export function SettingsPage(props: SettingsPageProps) {
-  const [section, setSection] = useState<SectionId>("general");
+  const [section, setSection] = useState<SectionId>(props.section ?? "general");
+  // Asked for from outside (the "?" shortcut opens the hotkeys list).
+  const asked = props.section;
+  useEffect(() => {
+    if (asked) setSection(asked);
+  }, [asked]);
   const current = SECTIONS.find((s) => s.id === section);
 
   return (
@@ -124,6 +209,8 @@ export function SettingsPage(props: SettingsPageProps) {
           <NotificationsSection {...props} />
         ) : section === "wallets" ? (
           <WalletsSection {...props} />
+        ) : section === "hotkeys" ? (
+          <HotkeysSection />
         ) : section === "appearance" ? (
           <AppearanceSection {...props} />
         ) : (
