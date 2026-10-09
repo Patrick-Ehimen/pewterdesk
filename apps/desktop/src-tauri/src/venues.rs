@@ -44,6 +44,7 @@ use tokio::sync::mpsc;
 
 use crate::keychain::KeychainKeySource;
 use crate::live_trading::LiveTrading;
+use crate::trading_rules::TradingRules;
 
 /// One message on a subscription's channel. `closed` is final: the venue ended
 /// the stream (e.g. it rejected the market), and nothing more will arrive.
@@ -96,7 +97,7 @@ impl Venues {
         &self.bybit
     }
 
-    fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
+    pub(crate) fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
             VenueId::Aster => Ok(&self.aster),
@@ -435,11 +436,16 @@ fn trading_account(
 pub async fn place_order(
     venues: State<'_, Venues>,
     live: State<'_, LiveTrading>,
+    rules: State<'_, TradingRules>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
 ) -> Result<Order, VenueError> {
     let trading = trading_account(venue, &account, &live)?;
+    // The trader's own rules, before anything is signed.
+    rules
+        .guard_order(&venues, venue, &account, &request)
+        .await?;
     venues.adapter(venue)?.place_order(&trading, &request).await
 }
 
@@ -462,9 +468,12 @@ pub async fn cancel_order(
 /// Changes `account`'s open order `order_id`: price, size, or attached TP/SL.
 /// Behind the same gate as orders (`trading_account`).
 #[tauri::command]
+// Tauri hands each piece of state and each argument in separately.
+#[allow(clippy::too_many_arguments)]
 pub async fn amend_order(
     venues: State<'_, Venues>,
     live: State<'_, LiveTrading>,
+    rules: State<'_, TradingRules>,
     venue: VenueId,
     account: String,
     market: String,
@@ -472,6 +481,9 @@ pub async fn amend_order(
     amend: OrderAmend,
 ) -> Result<(), VenueError> {
     let trading = trading_account(venue, &account, &live)?;
+    rules
+        .guard_amend(&venues, venue, &account, &order_id, &amend)
+        .await?;
     venues
         .adapter(venue)?
         .amend_order(&trading, &market, &order_id, &amend)
@@ -485,12 +497,16 @@ pub async fn amend_order(
 pub async fn set_position_protection(
     venues: State<'_, Venues>,
     live: State<'_, LiveTrading>,
+    rules: State<'_, TradingRules>,
     venue: VenueId,
     account: String,
     market: String,
     protection: PositionProtection,
 ) -> Result<(), VenueError> {
     let trading = trading_account(venue, &account, &live)?;
+    rules
+        .guard_protection(&venues, venue, &account, &market, &protection)
+        .await?;
     venues
         .adapter(venue)?
         .set_position_protection(&trading, &market, &protection)

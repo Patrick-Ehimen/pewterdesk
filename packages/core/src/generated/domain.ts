@@ -641,6 +641,6 @@ key: string, };
  * Crosses IPC to the frontend, so details must never carry key material -
  * venue error messages are fine, anything from a key or signer is not.
  */
-export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "key", "detail": KeyError };
+export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "blocked", "detail": string } | { "kind": "key", "detail": KeyError };
 
 export type VenueId = "hyperliquid" | "aster" | "bybit";

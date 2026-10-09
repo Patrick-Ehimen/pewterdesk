@@ -603,8 +603,71 @@ export const messages: Messages = {
   "nav.chartsDesc": "Plusieurs marchés ou intervalles côte à côte",
   "nav.rules": "Règles de trading",
   "nav.rulesDesc": "Limites de perte, règles de prop firm et alertes de tilt",
+  "rules.deleteTitle": "Supprimer ces règles ?",
+  "rules.deleteBody":
+    "« {name} » et sa progression seront supprimés. Cette action est irréversible.",
+  "rules.deleteBodyOn":
+    "« {name} » est actif. Le supprimer arrête tout de suite la vérification des ordres de ce compte, et sa progression est perdue. Cette action est irréversible.",
+  "rules.remove": "Supprimer ces règles",
+  "rules.deleteNow": "Supprimer",
+  "rules.add": "Ajouter des règles pour {venue}",
+  "rules.emptyTitle": "Pas encore de règles pour {venue}",
+  "rules.emptyBody":
+    "Ajoutez des règles pour que les ordres de ce compte soient vérifiés selon vos propres limites.",
+  "rules.tabs": "Comptes",
+  "rules.state.on": "Actives",
+  "rules.state.waiting": "Changement en attente",
+  "rules.connectTitle": "Connectez un compte {venue} pour lui fixer des règles",
+  "rules.connectBody":
+    "Chaque compte a ses propres règles de trading, appliquées uniquement à ses ordres.",
+  "rules.accountOf": "ces règles ne s’appliquent qu’à ce compte",
+  "rules.name": "Nom",
+  "rules.namePlaceholder": "p. ex. Firme 100k",
+  "rules.nameHint": "pour distinguer les règles de vos comptes",
+  "rules.on": "Règles actives",
+  "rules.useEquity": "Utiliser le capital actuel ({equity})",
+  "rules.footer":
+    "Les règles plus strictes s’appliquent tout de suite. Les plus souples, et leur désactivation, attendent 00:00 UTC.",
+  "rules.pendingAt":
+    "Un changement est en attente : il s’applique le {time} (00:00 UTC). D’ici là, les règles actuelles tiennent.",
+  "rules.newsSoon": "pas encore appliqué : il n’y a pas de calendrier économique à lire",
+  "rules.locked": "Verrouillé",
+  "rules.offNote": "Les règles sont désactivées. Modifiez-les pour les activer.",
+  "rules.chartSoon": "La courbe commence dès qu’un deuxième jour est enregistré.",
+  "rules.banner.locked.dailyLoss":
+    "Limite de perte journalière atteinte. Vous pouvez toujours clôturer, réduire et annuler.",
+  "rules.banner.locked.maxDrawdown":
+    "Drawdown max atteint : verrouillé jusqu’au redémarrage des règles. Vous pouvez toujours clôturer, réduire et annuler.",
+  "rules.banner.open": "Règles",
+  "rules.note.locked": "Ordres d’ouverture verrouillés",
+  "rules.note.warn": "{pct} de la limite de perte du jour utilisée",
+  "rules.note.warnBody":
+    "Il reste {left} USD avant le verrouillage des ordres d’ouverture jusqu’à 00:00 UTC.",
+  "rules.note.coolOff": "Pause commencée : {minutes} min",
+  "rules.note.revenge": "Cela ressemble à un trade de revanche",
+  "rules.block.lockedDailyLoss":
+    "Les ordres d’ouverture sont verrouillés jusqu’à 00:00 UTC : la limite de perte journalière est atteinte.",
+  "rules.block.lockedMaxDrawdown":
+    "Les ordres d’ouverture sont verrouillés : le drawdown max est atteint.",
+  "rules.block.hours": "En dehors de vos heures de trading.",
+  "rules.block.coolOff":
+    "Vous êtes en pause après une série de pertes. Clôturer et réduire restent possibles.",
+  "rules.block.revenge":
+    "Cela ressemble à un trade de revanche : vous venez de perdre sur ce marché. Attendez la fin de la pause.",
+  "rules.block.tradesPerDay": "C’est votre maximum de trades pour aujourd’hui.",
+  "rules.block.positionSize": "La position dépasserait votre limite.",
+  "rules.block.leverage": "Votre exposition dépasserait votre limite de levier.",
+  "rules.block.tradeRisk": "Cet ordre risque jusqu’à son stop plus que ce qu’un trade autorise.",
+  "rules.block.dailyLeft": "Cet ordre risque plus que ce qu’il reste de votre perte journalière.",
+  "rules.block.needsStop": "Vos règles exigent un stop-loss sur chaque ordre d’ouverture.",
+  "rules.block.unchecked":
+    "Votre compte n’a pas pu être lu pour vérifier vos règles : l’ordre n’a pas été envoyé. Clôturer reste possible.",
+  "rules.block.lockedAmend":
+    "Les ordres d’ouverture sont verrouillés : un ordre ne peut pas être agrandi.",
+  "rules.block.lockedStop":
+    "Les ordres d’ouverture sont verrouillés : un stop peut être rapproché, pas éloigné ni retiré.",
+  "rules.block.other": "Refusé par vos règles de trading.",
   "rules.account": "Compte",
-  "rules.accountHint": "le compte de la plateforme à l’écran",
   "rules.accountSize": "Taille du compte",
   "rules.accountSizeHint": "les pourcentages ci-dessous s’y rapportent",
   "rules.active": "{count} actifs",
@@ -612,7 +675,6 @@ export const messages: Messages = {
   "rules.breach.lock": "Bloquer à 100 %",
   "rules.breach.warn": "Avertir seulement",
   "rules.breach.warnLock": "Avertir à 80 %, bloquer à 100 %",
-  "rules.breached": "Dépassé",
   "rules.changePreset": "Changer de modèle",
   "rules.chart": "Capital et limites",
   "rules.checkedOn": "Vos limites sur {venue} · compte de {size} USD",
@@ -678,7 +740,6 @@ export const messages: Messages = {
   "rules.minN": "min {days}",
   "rules.needsStop": "Stop requis",
   "rules.news": "Pause actualités",
-  "rules.newsHint": "avant et après les événements à fort impact",
   "rules.newsNote":
     "Aucun nouveau trade non plus {minutes} min avant et après les actualités à fort impact.",
   "rules.noTimeLimit": "Sans limite de temps",
@@ -686,7 +747,6 @@ export const messages: Messages = {
   "rules.notTracked": "Pas encore suivi",
   "rules.off": "Désactivé",
   "rules.ok": "OK",
-  "rules.on": "Activé",
   "rules.onLastEntry": "{risk} sur la dernière entrée",
   "rules.onTrack": "En bonne voie",
   "rules.open": "Ouvert",
@@ -709,8 +769,6 @@ export const messages: Messages = {
   "rules.preset.oneStepDesc": "Une phase, drawdown plus strict",
   "rules.preset.own": "Mes propres règles",
   "rules.preset.ownDesc": "Pas de challenge, juste des limites",
-  "rules.preview":
-    "Aperçu : les règles sont enregistrées ici, mais rien ne les suit ni ne les applique encore.",
   "rules.reentryWithin": "ré-entrée en moins de",
   "rules.requireCoolOff": "Imposer une pause",
   "rules.requireStop": "Exiger un stop",

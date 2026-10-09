@@ -183,6 +183,22 @@ discover it on their own. The reasoning behind the rules is in
   against a live order sent by mistake, not against the page itself.
   Opening trading to another venue, or loosening this switch, is a
   security-relevant change.
+- `apps/desktop/src-tauri/src/trading_rules.rs` - the trader's own rules
+  (daily loss, drawdown, risk per trade, position size, trades a day, trading
+  hours, a cool-off after losses), kept in `trading-rules.json` in the app's
+  config folder (rules and equity figures, no key material) and checked in
+  `place_order`, `amend_order` and `set_position_protection` before anything
+  is signed. It only ever refuses, with `VenueError::Blocked` and a rule's
+  code: an order that reduces a position, a cancel and a stop moved closer
+  always pass. It reads the venue's own account, fills and closed trades, and
+  fails closed (an opening order is refused when they can't be read).
+  Each account has its own set (a prop firm's, a venue's), checked only
+  against that account's orders. Loosening a rule or turning a set off waits
+  for the next 00:00 UTC; tightening applies at once. Deleting a set is
+  the one way out that doesn't wait: it is immediate, on or off, behind a
+  confirmation on the page. It guards a
+  trader against themselves in this app, not against the page, and not
+  against an order placed on the venue's own site (which still counts).
 - `apps/desktop/src-tauri/src/share.rs` - the P&L share card. Saving
   writes the page's PNG (checked) to Downloads under a name Rust picks.
   `open_share` opens a social site's post page: the page names one of a
@@ -277,6 +293,19 @@ Orders work on Bybit: demo accounts, and live accounts with live trading
 turned on in the account's details (the API key dialog; `lib/liveTrading.ts`
 mirrors Rust's list for the page). A trading live account shows a "Live"
 badge on the ticket. Hyperliquid and Aster still can't place orders.
+
+## Trading rules
+
+The Trading rules page (`components/rules/`, after the Rules mockups in
+`design/`) edits each account's rules (one set per account, picked at the
+top of "Your rules") and shows where the chosen account stands: Rust keeps
+both (`trading_rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
+`Status`), and `hooks/useTradingRules.ts` reads them on a timer, raises the
+notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
+the banner above the workspace. Orders are only placed on Bybit, so that is
+where rules are enforced. The news blackout isn't (there's no calendar yet),
+and the ticket's own rule check and locked state from the mockups aren't
+built; `check_trading_rules` is there for them.
 
 ## Command palette
 

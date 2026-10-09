@@ -1,6 +1,6 @@
 import { type MessageKey, Select, Switch, t } from "@pewterdesk/ui";
 import { type ReactNode, useState } from "react";
-import { LuInfo } from "react-icons/lu";
+import { LuLock } from "react-icons/lu";
 import {
   amounts,
   BREACH_ACTIONS,
@@ -13,10 +13,11 @@ import {
   PRESET_TERMS,
   PRESETS,
   type Preset,
+  type RulesView,
   type TradingRules,
   withPreset,
 } from "../../lib/tradingRules";
-import { money, NumberField, Segmented } from "./parts";
+import { clockTime, money, NumberField, Segmented } from "./parts";
 
 export const PRESET_NAME: Record<Preset, MessageKey> = {
   classic: "rules.preset.classic",
@@ -46,6 +47,9 @@ const MAX_KIND_HINT: Record<MaxKind, MessageKey> = {
   intraday: "rules.maxHint.intraday",
   eod: "rules.maxHint.eod",
 };
+/** The longest name a set of rules is kept under (Rust cuts it there too). */
+const RULES_NAME_MAX = 40;
+
 const BREACH_NAME: Record<BreachAction, MessageKey> = {
   warn: "rules.breach.warn",
   warnLock: "rules.breach.warnLock",
@@ -67,20 +71,51 @@ const Hint = ({ children }: { children: ReactNode }) => (
 );
 
 interface RulesEditorProps {
-  rules: TradingRules;
-  /** The venue whose account the rules are checked against. */
-  venue: string;
-  onSave: (rules: TradingRules) => void;
+  /** The account's rules in force, and any change waiting to apply. */
+  view: RulesView;
+  /** Whether they've been saved before; new ones start switched on. */
+  saved: boolean;
+  /** The account they're checked against, by its venue, and the venue's logo. */
+  account: string;
+  logo?: ReactNode;
+  /** That account's equity, to start the account size from. */
+  equity?: number;
+  /** Saves them under a name; rejects with why not. */
+  onSave: (name: string, on: boolean, rules: TradingRules) => Promise<void>;
   onCancel: () => void;
 }
 
 /**
  * Editing the rules: a preset to start from on the left, then the
  * challenge's terms, the trader's own limits and the tilt signals. Nothing
- * changes until it's saved.
+ * changes until it's saved; a change that's waiting for midnight is what's
+ * edited, so it isn't lost.
  */
-export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps) {
-  const [draft, setDraft] = useState(rules);
+export function RulesEditor({
+  view,
+  saved,
+  account,
+  logo,
+  equity,
+  onSave,
+  onCancel,
+}: RulesEditorProps) {
+  const [draft, setDraft] = useState(view.pending?.rules ?? view.rules);
+  const [name, setName] = useState(view.name);
+  // New rules start switched on; saved ones keep their switch.
+  const [on, setOn] = useState(view.pending?.on ?? (view.on || !saved));
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState<string>();
+  const save = async () => {
+    setSaving(true);
+    setFailed(undefined);
+    try {
+      await onSave(name, on, draft);
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : String(e));
+      setSaving(false);
+    }
+  };
   const set = (change: Partial<TradingRules>) => setDraft({ ...draft, ...change });
   const { challenge, tilt } = draft;
   const setChallenge = (change: Partial<TradingRules["challenge"]>) =>
@@ -145,6 +180,10 @@ export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps
       <section className="rules-panel rules-form">
         <header className="rules-form-head">
           <h1>{t("rules.title", { preset: t(PRESET_NAME[draft.preset]) })}</h1>
+          <span className="rules-on">
+            {t("rules.on")}
+            <Switch label={t("rules.on")} checked={on} onChange={setOn} />
+          </span>
           <label className="rules-breach-pick" htmlFor="rules-breach">
             {t("rules.breach")}
           </label>
@@ -161,8 +200,24 @@ export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps
             {t(own ? "rules.section.drawdown" : "rules.section.challenge")}
           </h3>
           <Row label={t("rules.account")}>
-            <span className="rules-static">{venue}</span>
-            <Hint>{t("rules.accountHint")}</Hint>
+            <span className="rules-static">
+              {logo}
+              {account}
+            </span>
+            <Hint>{t("rules.accountOf")}</Hint>
+          </Row>
+          <Row label={t("rules.name")}>
+            <span className="rules-field" data-wide="text">
+              <input
+                type="text"
+                maxLength={RULES_NAME_MAX}
+                aria-label={t("rules.name")}
+                placeholder={t("rules.namePlaceholder")}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </span>
+            <Hint>{t("rules.nameHint")}</Hint>
           </Row>
           <Row label={t("rules.accountSize")}>
             <NumberField
@@ -173,6 +228,15 @@ export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps
               onChange={(size) => setChallenge({ size })}
             />
             <Hint>{t("rules.accountSizeHint")}</Hint>
+            {equity !== undefined && Math.round(equity) !== challenge.size && (
+              <button
+                type="button"
+                className="rules-link"
+                onClick={() => setChallenge({ size: Math.round(equity) })}
+              >
+                {t("rules.useEquity", { equity: money(equity) })}
+              </button>
+            )}
           </Row>
           {hasTarget(draft.preset) && (
             <Row label={t("rules.target")}>
@@ -309,20 +373,15 @@ export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps
             ))}
           </Row>
           <Row label={t("rules.news")}>
-            <Switch
-              label={t("rules.news")}
-              checked={draft.news.on}
-              onChange={(on) => set({ news: { ...draft.news, on } })}
-            />
             <NumberField
               whole
               label={t("rules.news")}
               value={draft.news.minutes}
               unit={t("rules.min")}
-              disabled={!draft.news.on}
+              disabled
               onChange={(minutes) => set({ news: { ...draft.news, minutes } })}
             />
-            <Hint>{t("rules.newsHint")}</Hint>
+            <Hint>{t("rules.newsSoon")}</Hint>
           </Row>
           <Row label={t("rules.coolOffShort")}>
             <NumberField
@@ -411,15 +470,21 @@ export function RulesEditor({ rules, venue, onSave, onCancel }: RulesEditorProps
         </div>
 
         <footer className="rules-form-foot">
-          <LuInfo size={15} aria-hidden />
-          <span className="rules-foot-note">{t("rules.preview")}</span>
+          <LuLock size={15} aria-hidden />
+          <span className="rules-foot-note" data-failed={failed ? true : undefined}>
+            {failed ??
+              (view.pending
+                ? t("rules.pendingAt", { time: clockTime(view.pending.at) })
+                : t("rules.footer"))}
+          </span>
           <button type="button" className="rules-button" onClick={onCancel}>
             {t("protect.cancel")}
           </button>
           <button
             type="button"
             className="rules-button rules-primary"
-            onClick={() => onSave(draft)}
+            disabled={saving}
+            onClick={() => void save()}
           >
             {t("rules.save")}
           </button>
