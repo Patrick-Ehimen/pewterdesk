@@ -26,12 +26,23 @@ const PANEL_MAX_HEIGHT: f64 = 640.0;
 const PANEL_GAP: f64 = 6.0;
 /// Longest text shown anywhere in the tray, in characters.
 const MAX_TEXT: usize = 80;
+/// The widest the title gets in the menu bar, in characters: a longer one
+/// scrolls through a window this wide instead of pushing other items along.
+const SCROLL_WIDTH: usize = 22;
+/// How often a scrolling title moves on by a character.
+const SCROLL_EVERY: Duration = Duration::from_millis(350);
+/// Between the end of a scrolling title and its start coming round again.
+const SCROLL_GAP: &str = "   \u{2022}   ";
 
 /// When the panel last hid because it lost focus. A click on the tray icon
 /// while the panel is open blurs it first (hiding it), then arrives as a
 /// click; without this, that click would open it straight back up.
 #[derive(Default)]
 pub struct PanelState(Mutex<Option<Instant>>);
+
+/// The title the page last sent, and how far along it has scrolled.
+#[derive(Default)]
+pub struct TitleState(Mutex<(Vec<TitlePart>, usize)>);
 
 fn clip(text: &str) -> String {
     text.chars()
@@ -78,10 +89,98 @@ fn sanitize_title(parts: Vec<TitlePart>) -> Vec<TitlePart> {
     out
 }
 
+/// How many characters of the title scroll: all but the gap it opens with,
+/// which stays put beside the icon.
+fn scrolling_len(parts: &[TitlePart]) -> usize {
+    parts
+        .iter()
+        .skip_while(|p| p.text.trim().is_empty())
+        .map(|p| p.text.chars().count())
+        .sum()
+}
+
+/// The title as it shows `offset` characters into its scroll: `width`
+/// characters of it, coming round again after a gap. One that fits is
+/// returned as it is.
+fn scrolled(parts: &[TitlePart], offset: usize, width: usize) -> Vec<TitlePart> {
+    if scrolling_len(parts) <= width {
+        return parts.to_vec();
+    }
+    let lead = parts
+        .iter()
+        .take_while(|p| p.text.trim().is_empty())
+        .count();
+    let mut cycle: Vec<(char, Tone)> = parts[lead..]
+        .iter()
+        .flat_map(|p| p.text.chars().map(move |c| (c, p.tone)))
+        .collect();
+    cycle.extend(SCROLL_GAP.chars().map(|c| (c, Tone::Plain)));
+    let mut out = parts[..lead].to_vec();
+    // The window's characters, joined back into runs of one colour.
+    let mut run: Option<TitlePart> = None;
+    for (c, tone) in cycle.iter().cycle().skip(offset % cycle.len()).take(width) {
+        match run.as_mut() {
+            Some(r) if r.tone == *tone => r.text.push(*c),
+            _ => {
+                out.extend(run.take());
+                run = Some(TitlePart {
+                    text: c.to_string(),
+                    tone: *tone,
+                });
+            }
+        }
+    }
+    out.extend(run);
+    out
+}
+
+/// Draws `parts` as the item's title. `fixed` (a scrolling title) sets it in
+/// a fixed-width face on macOS, so the item keeps its width as it moves.
+fn draw_title<R: Runtime>(
+    tray: &tauri::tray::TrayIcon<R>,
+    parts: Vec<TitlePart>,
+    fixed: bool,
+) -> tauri::Result<()> {
+    let plain: String = parts.iter().map(|p| p.text.as_str()).collect();
+    // The tray library sizes the item from the plain title; an empty one
+    // leaves the icon alone.
+    tray.set_title(Some(plain.as_str()))?;
+    #[cfg(target_os = "macos")]
+    if !parts.is_empty() {
+        colour_title(tray, parts, fixed);
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = fixed;
+    Ok(())
+}
+
+/// Moves a title too long for the menu bar on by a character, for as long as
+/// the app runs. One that fits is left alone.
+fn scroll_titles<R: Runtime>(app: AppHandle<R>) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(SCROLL_EVERY);
+        let (Some(state), Some(tray)) = (app.try_state::<TitleState>(), app.tray_by_id(TRAY_ID))
+        else {
+            continue;
+        };
+        let view = {
+            let Ok(mut title) = state.0.lock() else {
+                continue;
+            };
+            if scrolling_len(&title.0) <= SCROLL_WIDTH {
+                continue;
+            }
+            title.1 = title.1.wrapping_add(1);
+            scrolled(&title.0, title.1, SCROLL_WIDTH)
+        };
+        let _ = draw_title(&tray, view, true);
+    });
+}
+
 /// On macOS, redraws the status item's title with its runs coloured, over
 /// the plain title the tray library keeps (and sizes the item from).
 #[cfg(target_os = "macos")]
-fn colour_title<R: Runtime>(tray: &tauri::tray::TrayIcon<R>, parts: Vec<TitlePart>) {
+fn colour_title<R: Runtime>(tray: &tauri::tray::TrayIcon<R>, parts: Vec<TitlePart>, fixed: bool) {
     use objc2::runtime::AnyObject;
     use objc2_app_kit::{NSColor, NSFont, NSFontAttributeName, NSForegroundColorAttributeName};
     use objc2_foundation::{
@@ -96,8 +195,17 @@ fn colour_title<R: Runtime>(tray: &tauri::tray::TrayIcon<R>, parts: Vec<TitlePar
             return;
         };
         let title = NSMutableAttributedString::new();
-        // The menu bar's own font, so the title doesn't change size.
-        let font = NSFont::menuBarFontOfSize(0.0);
+        // The menu bar's own font, so the title doesn't change size; a
+        // scrolling one in the fixed-width face of the same size, so its
+        // width doesn't change from one step to the next.
+        let menu = NSFont::menuBarFontOfSize(0.0);
+        let font = if fixed {
+            NSFont::monospacedSystemFontOfSize_weight(menu.pointSize(), unsafe {
+                objc2_app_kit::NSFontWeightRegular
+            })
+        } else {
+            menu
+        };
         for part in &parts {
             let colour = match part.tone {
                 Tone::Up => NSColor::systemGreenColor(),
@@ -228,6 +336,8 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
     #[cfg(not(target_os = "macos"))]
     let _ = panel;
     app.manage(PanelState::default());
+    app.manage(TitleState::default());
+    scroll_titles(app.handle().clone());
 
     // A monochrome template: macOS draws it white on a dark menu bar and
     // black on a light one.
@@ -258,15 +368,19 @@ pub fn update_tray(app: AppHandle, update: TrayUpdate) -> Result<(), String> {
         return Ok(());
     };
     let parts = sanitize_title(update.title);
-    let plain: String = parts.iter().map(|p| p.text.as_str()).collect();
-    // The tray library sizes the item from the plain title; an empty one
-    // leaves the icon alone.
-    tray.set_title(Some(plain.as_str()))
-        .map_err(|_| "couldn't update the menu bar item".to_owned())?;
-    #[cfg(target_os = "macos")]
-    if !parts.is_empty() {
-        colour_title(&tray, parts);
-    }
+    // Kept for the scroll, which carries on from where it was: prices change
+    // the text several times a second.
+    let state = app.try_state::<TitleState>();
+    let offset = state
+        .as_ref()
+        .and_then(|s| s.0.lock().ok())
+        .map_or(0, |mut title| {
+            title.0 = parts.clone();
+            title.1
+        });
+    let fixed = scrolling_len(&parts) > SCROLL_WIDTH;
+    let view = scrolled(&parts, offset, SCROLL_WIDTH);
+    draw_title(&tray, view, fixed).map_err(|_| "couldn't update the menu bar item".to_owned())?;
     Ok(())
 }
 
@@ -316,6 +430,36 @@ mod tests {
         assert_eq!(parts.len(), 2);
         let tone: Tone = serde_json::from_str("\"down\"").unwrap();
         assert_eq!(tone, Tone::Down);
+    }
+
+    #[test]
+    fn scrolls_a_title_too_long_for_the_menu_bar() {
+        let plain = |text: &str| TitlePart {
+            text: text.into(),
+            tone: Tone::Plain,
+        };
+        let text =
+            |parts: &[TitlePart]| -> String { parts.iter().map(|p| p.text.as_str()).collect() };
+        // One that fits is left as it is.
+        let short = vec![plain(" "), plain("BTC 104,812.5")];
+        assert_eq!(text(&scrolled(&short, 7, 22)), " BTC 104,812.5");
+
+        let long = vec![plain("\u{2002}"), plain("ABCDEF"), part("ghij")];
+        // The gap beside the icon stays; the rest moves through the window.
+        assert_eq!(text(&scrolled(&long, 0, 8)), "\u{2002}ABCDEFgh");
+        assert_eq!(text(&scrolled(&long, 4, 8)), "\u{2002}EFghij  ");
+        // Round again after the gap, and the same place a whole turn later.
+        let turn = 10 + SCROLL_GAP.chars().count();
+        assert_eq!(text(&scrolled(&long, turn - 2, 8)), "\u{2002}  ABCDEF");
+        assert_eq!(
+            text(&scrolled(&long, turn + 4, 8)),
+            text(&scrolled(&long, 4, 8))
+        );
+        // Always the window's width, and each run keeps its colour.
+        let view = scrolled(&long, 4, 8);
+        assert_eq!(scrolling_len(&view), 8);
+        assert_eq!(view[1].text, "EF");
+        assert_eq!((view[2].text.as_str(), view[2].tone), ("ghij", Tone::Up));
     }
 
     #[test]
