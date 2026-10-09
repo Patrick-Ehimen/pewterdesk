@@ -196,6 +196,17 @@ discover it on their own. The reasoning behind the rules is in
   order buttons need a 0.4s hold, and it is hidden from screen sharing by
   default. Giving it anything the main window can't do is a security-relevant
   change.
+- `apps/desktop/src-tauri/src/chart_window.rs` and `apps/desktop/src/chart/`
+  - a chart popped out of the Multi-chart page into a window of its own (the
+  same frontend at `#chart?...`, up to 8). Rust builds the address: the venue
+  and interval are the domain's types, the market id is checked first. Its
+  one command opens a window; the page draws a chart only, with no order
+  buttons and no key. Giving it any is a security-relevant change.
+- The Multi-chart page's trading (`components/pages/MultiChartPage.tsx`):
+  with "Trade" on, each chart on the venue on screen gets market buy and sell
+  buttons that need a 0.4s hold, and a position's TP / SL lines can be
+  dragged. Neither adds a command: they go through the same `placeOrder` and
+  `protect` as the ticket and the Trade chart, so the same accounts can trade.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
   wallet, Aster API wallet with withdraw off), not the
   user's main wallet key.

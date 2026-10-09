@@ -602,6 +602,26 @@ export const messages: Messages = {
   "multichart.syncIntervalHint": "Смена интервала на одном графике меняет его на всех",
   "multichart.syncSymbolHint": "Один рынок на всех графиках, у каждого свой таймфрейм",
   "multichart.trade": "Торговать {symbol}",
+  "multichart.move": "Перетащите, чтобы поменять {symbol} местами с другим графиком",
+  "multichart.sets": "Сохранённые наборы",
+  "multichart.saveSet": "Сохранить эти графики как набор",
+  "multichart.setName": "Название набора",
+  "multichart.deleteSet": "Удалить набор «{name}»",
+  "multichart.range": "Диапазон",
+  "multichart.syncRangeHint":
+    "Прокрутка или масштаб одного графика переводит остальные с тем же таймфреймом на те же даты",
+  "multichart.popOut": "Открыть {symbol} в отдельном окне",
+  "multichart.tradeBar": "Торговля",
+  "multichart.tradeBarHint":
+    "Кнопки покупки и продажи под каждым графиком: рыночные ордера, отправляются при удержании кнопки",
+  "multichart.tradeOtherVenue": "Переключитесь на {venue}, чтобы торговать на этом графике",
+  "multichart.crosshair": "Перекрестие",
+  "multichart.syncCrosshairHint": "Момент под указателем на одном графике отмечается на всех",
+  "multichart.positions": "Мои позиции",
+  "multichart.positionsHint": "Показать на графиках рынки с вашими позициями, от крупной к мелкой",
+  "multichart.noPositions": "Нет открытых позиций",
+  "multichart.maximise": "Развернуть этот график на всю страницу",
+  "multichart.restore": "Вернуться ко всем графикам",
 
   "nav.journal": "Журнал",
 

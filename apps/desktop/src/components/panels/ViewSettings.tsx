@@ -27,7 +27,7 @@ const VIEW_LABEL: Record<ViewId, MessageKey> = {
 const volumeLabel = (usd: number) => (usd >= 1e6 ? `$${usd / 1e6}M` : `$${usd}`);
 
 /** One setting: its name on the left, its control on the right. */
-function Row({ label, children }: { label: string; children: ReactNode }) {
+export function SettingRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="view-setting">
       <span className="view-setting-name">{label}</span>
@@ -36,20 +36,44 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-interface ViewSettingsProps {
-  /** The tab on screen, whose settings these are. */
-  view: ViewId;
-  prefs: ViewPrefs;
-  /** Applied to the latest settings, so quick changes in a row all land. */
-  onChange: (change: (prefs: ViewPrefs) => ViewPrefs) => void;
+/** A switch row: one setting that's on or off. */
+export function SettingSwitch({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <SettingRow label={label}>
+      <Switch label={label} checked={checked} onChange={onChange} />
+    </SettingRow>
+  );
+}
+
+interface SettingsPopoverProps {
+  /** The panel's heading, e.g. "Chart settings". */
+  title: string;
+  /** Puts every setting back to its default. */
+  onReset: () => void;
+  /** Extra class for the button. */
+  className?: string;
+  children: ReactNode;
 }
 
 /**
- * The Markets panel's settings button: a panel of the showing tab's own
- * settings, opening under the button. Each change applies at once; it closes
- * on Escape or a click outside.
+ * A settings button and its panel, opening under the button (above it where
+ * there's no room below). Each change applies at once; it closes on Escape
+ * or a click outside.
  */
-export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
+export function SettingsPopover({
+  title,
+  onReset,
+  className = "pd-kebab",
+  children,
+}: SettingsPopoverProps) {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<{ top: number; right: number }>();
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -60,7 +84,14 @@ export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
     if (!open) return setPlace(undefined);
     const placeIt = () => {
       const b = buttonRef.current?.getBoundingClientRect();
-      if (b) setPlace({ top: b.bottom + GAP, right: Math.max(window.innerWidth - b.right, GAP) });
+      if (!b) return;
+      const height = popRef.current?.offsetHeight ?? 0;
+      const below = b.bottom + GAP;
+      setPlace({
+        top:
+          below + height > window.innerHeight - GAP ? Math.max(b.top - GAP - height, GAP) : below,
+        right: Math.max(window.innerWidth - b.right, GAP),
+      });
     };
     placeIt();
     window.addEventListener("resize", placeIt);
@@ -86,6 +117,58 @@ export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
     };
   }, [open]);
 
+  return (
+    <>
+      <IconButton
+        ref={buttonRef}
+        className={className}
+        label={title}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        pressed={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <LuSettings size={15} aria-hidden />
+      </IconButton>
+      {open &&
+        createPortal(
+          <div
+            ref={popRef}
+            className="view-settings"
+            role="dialog"
+            aria-labelledby={titleId}
+            style={place ? { top: place.top, right: place.right } : { visibility: "hidden" }}
+          >
+            <h3 id={titleId} className="view-settings-title">
+              {title}
+            </h3>
+            {children}
+            <button type="button" className="view-reset" onClick={onReset}>
+              {t("view.reset")}
+            </button>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+const Row = SettingRow;
+
+interface ViewSettingsProps {
+  /** The tab on screen, whose settings these are. */
+  view: ViewId;
+  prefs: ViewPrefs;
+  /** Applied to the latest settings, so quick changes in a row all land. */
+  onChange: (change: (prefs: ViewPrefs) => ViewPrefs) => void;
+}
+
+/**
+ * The Markets panel's settings button: a panel of the showing tab's own
+ * settings, opening under the button. Each change applies at once; it closes
+ * on Escape or a click outside.
+ */
+export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
   /** A switch row bound to one boolean of this view's settings. */
   const toggle = <V extends ViewId>(section: V, key: keyof ViewPrefs[V], label: MessageKey) => (
     <Row label={t(label)}>
@@ -188,41 +271,11 @@ export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
   };
 
   return (
-    <>
-      <IconButton
-        ref={buttonRef}
-        className="pd-kebab"
-        label={t("panel.settings")}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        pressed={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <LuSettings size={15} aria-hidden />
-      </IconButton>
-      {open &&
-        createPortal(
-          <div
-            ref={popRef}
-            className="view-settings"
-            role="dialog"
-            aria-labelledby={titleId}
-            style={place ? { top: place.top, right: place.right } : { visibility: "hidden" }}
-          >
-            <h3 id={titleId} className="view-settings-title">
-              {t("view.title", { view: t(VIEW_LABEL[view]) })}
-            </h3>
-            {body[view]()}
-            <button
-              type="button"
-              className="view-reset"
-              onClick={() => onChange((p) => ({ ...p, [view]: DEFAULT_VIEW_PREFS[view] }))}
-            >
-              {t("view.reset")}
-            </button>
-          </div>,
-          document.body,
-        )}
-    </>
+    <SettingsPopover
+      title={t("view.title", { view: t(VIEW_LABEL[view]) })}
+      onReset={() => onChange((p) => ({ ...p, [view]: DEFAULT_VIEW_PREFS[view] }))}
+    >
+      {body[view]()}
+    </SettingsPopover>
   );
 }

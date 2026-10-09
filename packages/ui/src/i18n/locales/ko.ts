@@ -593,6 +593,26 @@ export const messages: Messages = {
   "multichart.syncIntervalHint": "한 차트의 간격을 바꾸면 모두 바뀝니다",
   "multichart.syncSymbolHint": "모든 차트에 같은 마켓을 각기 다른 시간대로 표시합니다",
   "multichart.trade": "{symbol} 거래",
+  "multichart.move": "드래그하여 {symbol}을(를) 다른 차트와 교체",
+  "multichart.sets": "저장한 세트",
+  "multichart.saveSet": "이 차트들을 세트로 저장",
+  "multichart.setName": "세트 이름",
+  "multichart.deleteSet": "세트 “{name}” 삭제",
+  "multichart.range": "범위",
+  "multichart.syncRangeHint":
+    "한 차트를 스크롤하거나 확대하면 같은 시간대의 다른 차트도 같은 기간을 표시합니다",
+  "multichart.popOut": "{symbol}을(를) 별도 창에서 열기",
+  "multichart.tradeBar": "거래",
+  "multichart.tradeBarHint":
+    "각 차트 아래에 매수·매도 버튼 표시: 시장가 주문, 버튼을 길게 누르면 전송",
+  "multichart.tradeOtherVenue": "이 차트에서 거래하려면 {venue}(으)로 전환하세요",
+  "multichart.crosshair": "십자선",
+  "multichart.syncCrosshairHint": "한 차트에서 포인터가 가리키는 시점을 모든 차트에 표시합니다",
+  "multichart.positions": "내 포지션",
+  "multichart.positionsHint": "보유 중인 마켓을 큰 순서대로 차트에 배치합니다",
+  "multichart.noPositions": "보유 포지션 없음",
+  "multichart.maximise": "이 차트를 페이지 전체로 보기",
+  "multichart.restore": "모든 차트로 돌아가기",
 
   "nav.journal": "저널",
 

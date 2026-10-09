@@ -1,4 +1,4 @@
-import type { VenueId } from "@pewterdesk/core";
+import type { CandleInterval, VenueId } from "@pewterdesk/core";
 import type { ShareTarget } from "@pewterdesk/ui";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -102,6 +102,11 @@ export const appClient = {
   /** Tray panel: fits its window to its content. */
   resizeTrayPanel: async (height: number) => {
     if (isTauri()) await invoke("resize_tray_panel", { height });
+  },
+
+  /** Opens one chart in a window of its own. */
+  openChartWindow: async (venue: VenueId, market: string, interval: CandleInterval) => {
+    if (isTauri()) await invoke("open_chart_window", { venue, market, interval });
   },
 
   /** Shows the floating window, or hides it if it's showing. */

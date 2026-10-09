@@ -806,30 +806,37 @@ export function App() {
     setOrderConfirm(next);
     saveOrderConfirm(next);
   };
-  // One click, one market order of the bar's quantity: built like the
-  // ticket's (size on the market's step, the venue's slippage bound).
-  const quickOrder =
-    placeOrder && selected
-      ? async (side: "buy" | "sell") => {
-          const built = ticketOrder({
-            market: selected,
-            type: "market",
-            side,
-            sizeBase: Number(quickQty) || 0,
-            limitPrice: "",
-            trigger: "",
-            reduceOnly: false,
-            tpsl: false,
-            maxSlippage: venueInfo.maxSlippage,
-          });
-          if (!("request" in built)) {
-            toast({ title: t("quick.title"), body: t("ticket.needSize"), tone: "warn" });
-            // Not placed: the bar keeps what's typed.
-            throw new Error(t("ticket.needSize"));
-          }
-          await placeOrder(built.request);
+  // One market order of a quantity, built like the ticket's (size on the
+  // market's step, the venue's slippage bound): the quick trade bar's, and
+  // the Multi-chart page's buttons.
+  const marketOrder = placeOrder
+    ? async (market: Market, side: "buy" | "sell", sizeBase: number) => {
+        const built = ticketOrder({
+          market,
+          type: "market",
+          side,
+          sizeBase,
+          limitPrice: "",
+          trigger: "",
+          reduceOnly: false,
+          tpsl: false,
+          maxSlippage: venueInfo.maxSlippage,
+        });
+        if (!("request" in built)) {
+          toast({ title: t("quick.title"), body: t("ticket.needSize"), tone: "warn" });
+          // Not placed: what's typed is kept.
+          throw new Error(t("ticket.needSize"));
         }
+        await placeOrder(built.request);
+      }
+    : undefined;
+  const quickOrder =
+    marketOrder && selected
+      ? (side: "buy" | "sell") => marketOrder(selected, side, Number(quickQty) || 0)
       : undefined;
+  // Why orders can't be placed here, where there's a better reason than "not yet".
+  const tradeUnavailable =
+    venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
   // Computed once: a fresh object each render would keep resetting the bar.
   const [quickDefault] = useState(defaultQuickTradePosition);
   const bookData = book.status === "live" || book.status === "closed" ? book.data : undefined;
@@ -1451,17 +1458,15 @@ export function App() {
         ) : page === "charts" ? (
           <MultiChartPage
             venue={venue}
-            markets={marketList}
-            majors={venueInfo.majors}
-            summaries={
-              barSummaries.status === "live" || barSummaries.status === "closed"
-                ? barSummaries.data
-                : undefined
-            }
-            onTrade={(id) => {
-              showMarket(venue, id);
+            venues={venueChips}
+            account={accountData}
+            onTrade={(v, id) => {
+              showMarket(v, id);
               setPage("trade");
             }}
+            onProtect={protect}
+            onOrder={marketOrder}
+            tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
           />
         ) : page === "maps" ? (
           <MapsPage
@@ -1663,9 +1668,7 @@ export function App() {
             quote={selected?.quote}
             onLong={quickOrder && (() => quickOrder("buy"))}
             onShort={quickOrder && (() => quickOrder("sell"))}
-            unavailableReason={
-              venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined
-            }
+            unavailableReason={tradeUnavailable}
             bid={bestBid === undefined ? undefined : Number(bestBid)}
             ask={bestAsk === undefined ? undefined : Number(bestAsk)}
             decimals={decimalsOf(bestBid ?? bestAsk ?? "0")}

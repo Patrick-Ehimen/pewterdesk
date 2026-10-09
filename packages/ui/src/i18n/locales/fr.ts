@@ -608,6 +608,27 @@ export const messages: Messages = {
   "multichart.syncIntervalHint": "Changer l’intervalle d’un graphique change celui de tous",
   "multichart.syncSymbolHint": "Un marché sur tous les graphiques, chacun à son intervalle",
   "multichart.trade": "Trader {symbol}",
+  "multichart.move": "Faites glisser pour échanger {symbol} avec un autre graphique",
+  "multichart.sets": "Ensembles enregistrés",
+  "multichart.saveSet": "Enregistrer ces graphiques comme ensemble",
+  "multichart.setName": "Nom de l’ensemble",
+  "multichart.deleteSet": "Supprimer l’ensemble « {name} »",
+  "multichart.range": "Plage",
+  "multichart.syncRangeHint":
+    "Faire défiler ou zoomer un graphique place les autres de même unité de temps sur les mêmes dates",
+  "multichart.popOut": "Ouvrir {symbol} dans sa propre fenêtre",
+  "multichart.tradeBar": "Trader",
+  "multichart.tradeBarHint":
+    "Boutons d’achat et de vente sous chaque graphique : ordres au marché, envoyés en maintenant le bouton",
+  "multichart.tradeOtherVenue": "Passez à {venue} pour trader ce graphique",
+  "multichart.crosshair": "Réticule",
+  "multichart.syncCrosshairHint": "L’instant sous le pointeur sur un graphique est marqué sur tous",
+  "multichart.positions": "Mes positions",
+  "multichart.positionsHint":
+    "Affiche sur les graphiques les marchés détenus, du plus gros au plus petit",
+  "multichart.noPositions": "Aucune position ouverte",
+  "multichart.maximise": "Afficher ce graphique en pleine page",
+  "multichart.restore": "Revenir à tous les graphiques",
 
   "nav.journal": "Journal",
 

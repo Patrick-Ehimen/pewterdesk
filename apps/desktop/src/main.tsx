@@ -11,6 +11,7 @@ import "./styles/wallet.css";
 import "./styles/onboarding.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";
+import { ChartWindow } from "./chart/ChartWindow";
 import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { FloatWindow } from "./float/FloatWindow";
 import { applyStoredAppearance } from "./hooks/useAppearance";
@@ -84,8 +85,23 @@ async function startFloatWindow() {
   );
 }
 
+/** A popped-out chart: the same frontend once more, at #chart?… */
+async function startChartWindow() {
+  applyStoredAppearance();
+  const locale = storedLanguage();
+  await loadLocale(locale);
+  document.documentElement.lang = locale;
+  root.render(
+    <StrictMode>
+      <ChartWindow />
+    </StrictMode>,
+  );
+}
+
 void (location.hash === "#tray"
   ? startTrayPanel()
   : location.hash === "#float"
     ? startFloatWindow()
-    : start());
+    : location.hash.startsWith("#chart?")
+      ? startChartWindow()
+      : start());

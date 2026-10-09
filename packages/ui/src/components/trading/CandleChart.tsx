@@ -551,6 +551,25 @@ interface CandleChartProps {
   grid?: boolean;
   /** A logarithmic price scale, so equal moves in percent are equal in height. */
   logScale?: boolean;
+  /**
+   * Told the moment (ms) under the pointer as it moves over this chart, and
+   * `undefined` when it leaves: for showing the same moment on other charts.
+   * Not called for a crosshair this chart was given (`crosshairTime`).
+   */
+  onCrosshairTime?: (time: number | undefined) => void;
+  /**
+   * A moment (ms) to put this chart's crosshair on, from another chart; the
+   * candle covering it is marked. Unset leaves the crosshair to the pointer.
+   */
+  crosshairTime?: number;
+  /**
+   * Told the dates on screen (ms) as the user scrolls or zooms this chart:
+   * for showing the same dates on other charts. Not called for a range this
+   * chart was given (`visibleRange`), or one that moved by itself.
+   */
+  onVisibleRange?: (range: { from: number; to: number }) => void;
+  /** Dates (ms) to show, from another chart; unset leaves the view alone. */
+  visibleRange?: { from: number; to: number };
   ref?: Ref<CandleChartHandle>;
 }
 
@@ -582,6 +601,10 @@ export function CandleChart({
   countdown = true,
   grid = true,
   logScale = false,
+  onCrosshairTime,
+  crosshairTime,
+  onVisibleRange,
+  visibleRange,
   ref,
 }: CandleChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -595,6 +618,12 @@ export function CandleChart({
   /** The latest `onNeedOlder`, for the chart's range listener. */
   const needOlder = useRef(onNeedOlder);
   needOlder.current = onNeedOlder;
+  /** The latest `onCrosshairTime`, for the chart's crosshair listener. */
+  const tellCrosshair = useRef(onCrosshairTime);
+  tellCrosshair.current = onCrosshairTime;
+  /** The latest `onVisibleRange`, for the chart's range listener. */
+  const tellRange = useRef(onVisibleRange);
+  tellRange.current = onVisibleRange;
   /** Open time of the candle under the crosshair; unset shows the latest. */
   const [hovered, setHovered] = useState<number>();
   /** Bumped by a theme change, which rebuilds the series in the new colors. */
@@ -612,7 +641,11 @@ export function CandleChart({
     chartRef.current = chart;
 
     const onCrosshair = (param: MouseEventParams) => {
-      setHovered(typeof param.time === "number" ? param.time * 1000 : undefined);
+      const time = typeof param.time === "number" ? param.time * 1000 : undefined;
+      setHovered(time);
+      // Only the pointer's own moves are passed on: a crosshair set from
+      // outside comes through here too, and would be sent straight back.
+      if (param.sourceEvent || time === undefined) tellCrosshair.current?.(time);
     };
     chart.subscribeCrosshairMove(onCrosshair);
 
@@ -622,6 +655,34 @@ export function CandleChart({
       if (range && range.from < LOAD_OLDER_MARGIN) needOlder.current?.();
     };
     chart.timeScale().subscribeVisibleLogicalRangeChange(onRange);
+
+    // The dates on screen are passed on only while the user has a hand on
+    // this chart (the pointer over it, or a drag that began on it): a range
+    // set from outside, or one that moved as a candle arrived, isn't theirs.
+    const hand = { over: false, down: false };
+    const onEnter = () => {
+      hand.over = true;
+    };
+    const onLeave = () => {
+      hand.over = false;
+    };
+    const onDown = () => {
+      hand.down = true;
+    };
+    const onUp = () => {
+      hand.down = false;
+    };
+    host.addEventListener("pointerenter", onEnter);
+    host.addEventListener("pointerleave", onLeave);
+    host.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    const onDates = (range: { from: unknown; to: unknown } | null) => {
+      if (!range || !(hand.over || hand.down)) return;
+      if (typeof range.from !== "number" || typeof range.to !== "number") return;
+      tellRange.current?.({ from: range.from * 1000, to: range.to * 1000 });
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(onDates);
 
     const observer = new MutationObserver(() => {
       const next = tokens(host);
@@ -637,6 +698,12 @@ export function CandleChart({
       observer.disconnect();
       chart.unsubscribeCrosshairMove(onCrosshair);
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRange);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(onDates);
+      host.removeEventListener("pointerenter", onEnter);
+      host.removeEventListener("pointerleave", onLeave);
+      host.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
       chart.remove();
       chartRef.current = null;
       drawnRef.current = null;
@@ -646,6 +713,28 @@ export function CandleChart({
       shown.current = { key: "", count: 0, first: 0, last: 0 };
     };
   }, []);
+
+  // Another chart's moment, marked here on the candle that covers it.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const main = drawnRef.current?.main;
+    if (!chart || !main) return;
+    if (crosshairTime === undefined) {
+      chart.clearCrosshairPosition();
+      return;
+    }
+    // The last candle that had opened by then; none if it's before them all.
+    let at: Candle | undefined;
+    for (const candle of candles) {
+      if (candle.openTime > crosshairTime) break;
+      at = candle;
+    }
+    if (!at) {
+      chart.clearCrosshairPosition();
+      return;
+    }
+    chart.setCrosshairPosition(Number(at.close), toTime(at.openTime), main);
+  }, [crosshairTime, candles]);
 
   // The view's own settings; a theme change re-applies colors but leaves these.
   useEffect(() => {
@@ -1130,6 +1219,22 @@ export function CandleChart({
     current && indicators.some((id) => id !== "volume")
       ? indicatorRows(indicators, compute(candles, active), index, priceDecimals)
       : [];
+
+  // Another chart's dates, shown here. Again once older candles arrive, when
+  // the dates reached back past what was loaded.
+  const oldest = candles[0]?.openTime;
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || !visibleRange || oldest === undefined || !drawnRef.current?.main) return;
+    try {
+      chart.timeScale().setVisibleRange({
+        from: toTime(visibleRange.from),
+        to: toTime(visibleRange.to),
+      });
+    } catch {
+      // Nothing drawn yet; the next change tries again.
+    }
+  }, [visibleRange, oldest]);
 
   return (
     <div

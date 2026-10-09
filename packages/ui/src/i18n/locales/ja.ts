@@ -596,6 +596,26 @@ export const messages: Messages = {
   "multichart.syncIntervalHint": "1つのチャートの時間足を変えるとすべて変わります",
   "multichart.syncSymbolHint": "すべてのチャートに同じ銘柄を、それぞれ別の時間足で表示します",
   "multichart.trade": "{symbol}を取引",
+  "multichart.move": "ドラッグして{symbol}を別のチャートと入れ替え",
+  "multichart.sets": "保存したセット",
+  "multichart.saveSet": "このチャート構成をセットとして保存",
+  "multichart.setName": "セット名",
+  "multichart.deleteSet": "セット「{name}」を削除",
+  "multichart.range": "範囲",
+  "multichart.syncRangeHint":
+    "1つのチャートをスクロールまたは拡大すると、同じ時間足の他のチャートも同じ期間を表示します",
+  "multichart.popOut": "{symbol}を別ウィンドウで開く",
+  "multichart.tradeBar": "取引",
+  "multichart.tradeBarHint": "各チャートの下に売買ボタンを表示:成行注文、ボタンを長押しすると送信",
+  "multichart.tradeOtherVenue": "このチャートで取引するには{venue}に切り替えてください",
+  "multichart.crosshair": "クロスヘア",
+  "multichart.syncCrosshairHint":
+    "1つのチャートでポインタを置いた時刻を、すべてのチャートに表示します",
+  "multichart.positions": "保有ポジション",
+  "multichart.positionsHint": "保有中の銘柄を大きい順にチャートへ並べます",
+  "multichart.noPositions": "保有ポジションはありません",
+  "multichart.maximise": "このチャートをページ全体に表示",
+  "multichart.restore": "すべてのチャートに戻る",
 
   "nav.journal": "ジャーナル",
 

@@ -3,6 +3,7 @@ use tauri::Manager;
 mod about;
 mod browser_connect;
 mod bybit_key;
+mod chart_window;
 mod coin_info;
 mod float;
 mod keychain;
@@ -95,6 +96,9 @@ pub fn run() {
                 if keep {
                     api.prevent_close();
                     let _ = window.hide();
+                } else if window.label() == "main" {
+                    // Closing the main window quits here: its charts go too.
+                    chart_window::close_all(window.app_handle());
                 }
             }
             // The panel closes when you click anywhere else.
@@ -112,6 +116,7 @@ pub fn run() {
             tray::tray_quit,
             tray::resize_tray_panel,
             notify::notify,
+            chart_window::open_chart_window,
             float::toggle_float,
             float::show_float,
             float::show_float_notice,

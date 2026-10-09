@@ -599,6 +599,26 @@ export const messages: Messages = {
   "multichart.syncIntervalHint": "Mudar o intervalo de um gráfico muda o de todos",
   "multichart.syncSymbolHint": "Um mercado em todos os gráficos, cada um no seu intervalo",
   "multichart.trade": "Negociar {symbol}",
+  "multichart.move": "Arraste para trocar {symbol} com outro gráfico",
+  "multichart.sets": "Conjuntos salvos",
+  "multichart.saveSet": "Salvar estes gráficos como conjunto",
+  "multichart.setName": "Nome do conjunto",
+  "multichart.deleteSet": "Excluir o conjunto “{name}”",
+  "multichart.range": "Intervalo",
+  "multichart.syncRangeHint":
+    "Rolar ou ampliar um gráfico leva os outros do mesmo tempo gráfico às mesmas datas",
+  "multichart.popOut": "Abrir {symbol} em sua própria janela",
+  "multichart.tradeBar": "Negociar",
+  "multichart.tradeBarHint":
+    "Botões de compra e venda sob cada gráfico: ordens a mercado, enviadas ao manter o botão pressionado",
+  "multichart.tradeOtherVenue": "Mude para {venue} para negociar neste gráfico",
+  "multichart.crosshair": "Cursor",
+  "multichart.syncCrosshairHint": "O instante sob o ponteiro em um gráfico é marcado em todos",
+  "multichart.positions": "Minhas posições",
+  "multichart.positionsHint": "Coloca nos gráficos os mercados que você tem, do maior para o menor",
+  "multichart.noPositions": "Sem posições abertas",
+  "multichart.maximise": "Ampliar este gráfico para a página toda",
+  "multichart.restore": "Voltar a todos os gráficos",
 
   "nav.journal": "Diário",
 
