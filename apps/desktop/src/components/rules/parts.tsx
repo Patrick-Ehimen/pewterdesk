@@ -1,8 +1,12 @@
-import { formatNumber } from "@pewterdesk/ui";
+import { dateFormat, formatNumber } from "@pewterdesk/ui";
 import { type ReactNode, useState } from "react";
 
 /** An amount in USD, as the rules show them: "500.00". */
 export const money = (v: number) => formatNumber(v, 2);
+
+/** A moment as its date and time here: "Oct 10, 01:00". */
+export const clockTime = (at: number) =>
+  dateFormat({ month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(at);
 
 /** Minutes as "7h 56m", or "42m" under an hour. */
 export const span = (minutes: number) =>

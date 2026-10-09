@@ -30,6 +30,10 @@ pub enum VenueError {
     Rejected(String),
     #[error("network error: {0}")]
     Network(String),
+    /// The app's own trading rules refused it before anything was signed;
+    /// the detail is the rule's code, for the page to put into words.
+    #[error("blocked by a trading rule: {0}")]
+    Blocked(String),
     #[error(transparent)]
     Key(#[from] KeyError),
 }

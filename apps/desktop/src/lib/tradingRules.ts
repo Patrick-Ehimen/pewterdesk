@@ -1,11 +1,12 @@
+import type { VenueId } from "@pewterdesk/core";
+
 /**
  * The trader's own rules: a prop-firm challenge to hold the account to, the
- * limits they set themselves, and the tilt patterns to watch for. Saved on
- * this machine. For now this is the settings only - nothing reads them to
- * warn about an order or block one.
+ * limits they set themselves, and the tilt patterns to watch for. Rust keeps
+ * them and checks every order against them before it's signed
+ * (`src-tauri/src/trading_rules.rs`, whose `Rules` is this shape); the page
+ * edits them and mirrors where the account stands.
  */
-
-const STORAGE_KEY = "pd.rules.2";
 
 /** The challenge the rules start from; "own" is no challenge, just limits. */
 export const PRESETS = ["classic", "oneStep", "instant", "own"] as const;
@@ -207,22 +208,6 @@ export function restoreRules(saved: unknown): TradingRules {
   };
 }
 
-export function loadRules(): TradingRules {
-  try {
-    return restoreRules(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"));
-  } catch {
-    return DEFAULT_RULES;
-  }
-}
-
-export function saveRules(rules: TradingRules) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-  } catch {
-    // Storage unavailable; the rules just won't survive a restart.
-  }
-}
-
 /** The rules' amounts in USD, worked out from the account size. */
 export function amounts(rules: TradingRules) {
   const { size, targetPct, dailyPct, maxPct } = rules.challenge;
@@ -270,43 +255,97 @@ export function hoursNow(
 /** One trade of today's, for the dashboard's list. */
 export interface DayTrade {
   at: number;
-  coin: string;
+  /** `Market::id`. */
+  market: string;
   side: "long" | "short";
   pnl: number;
-  tag?: "revenge" | "open";
+  tag?: "revenge" | "open" | null;
+}
+
+/** Why opening orders are locked, and until when (unset: until started over). */
+export interface RulesLock {
+  reason: "dailyLoss" | "maxDrawdown";
+  until?: number | null;
 }
 
 /**
- * Where the account stands against the rules. Nothing fills this in yet:
- * the page shows the limits without it until tracking is built.
+ * Where the account stands against the rules, as Rust works it out from the
+ * venue's own account, fills and closed trades (`Status` there).
  */
 export interface RulesStatus {
   equity: number;
-  /** When the challenge began (ms). */
+  /** When the rules were started (ms). */
   startedAt: number;
-  /** Equity (or balance) at the start of today, and the highest reached. */
+  /** What the day's drawdown is measured from. */
   dayStart: number;
+  /** What the overall drawdown is measured from: the start, or the peak. */
   peak: number;
   dayPnl: number;
   tradesToday: number;
   lossStreak: number;
   /** A cool-off running until then (ms), or already served today. */
-  coolOffUntil?: number;
-  coolOffServed?: boolean;
-  /** What the last entry risks to its stop, in USD; unset where it has none. */
-  lastRisk?: number;
-  /** The largest open position. */
-  position?: { notional: number; leverage: number };
-  /** Days traded, and which day of the challenge today is. */
+  coolOffUntil?: number | null;
+  coolOffServed: boolean;
+  /** What the newest position risks to its stop, in USD; unset where it has none. */
+  lastRisk?: number | null;
+  needsStop: boolean;
+  /** The largest open position, and the account's exposure over its equity. */
+  position?: { notional: number; leverage: number } | null;
   tradingDays: number;
   day: number;
-  /** Equity since the challenge began, oldest first. */
+  /** Equity since the rules were started, oldest first. */
   curve: readonly { at: number; equity: number }[];
-  /** A revenge trade today: the coin re-entered, and how soon after the loss. */
-  revenge?: { coin: string; minutes: number; count: number };
+  /** A revenge trade today: the market re-entered, and how soon after the loss. */
+  revenge?: { market: string; minutes: number; count: number } | null;
   /** The last few trades' sizes (USD), oldest first, and the usual size. */
-  sizes?: { recent: readonly number[]; usual: number };
+  sizes?: { recent: readonly number[]; usual: number } | null;
   /** Trades so far today against the 30-day average by this time of day. */
-  pace?: { today: number; average: number };
+  pace?: { today: number; average: number } | null;
   trades: readonly DayTrade[];
+  lock?: RulesLock | null;
+  /** Share of the daily loss limit used. */
+  dailyUsed: number;
+  /** Whether that share has reached the warning. */
+  dailyWarned: boolean;
+  hoursOpen: boolean;
 }
+
+/** The account the rules are checked against. */
+export interface RulesAccount {
+  venue: VenueId;
+  id: string;
+}
+
+/**
+ * One account's rules as Rust keeps them: whether they're on, and any change
+ * waiting. Each account has at most one set (a prop firm's, a venue's).
+ */
+export interface RulesView {
+  /** The trader's name for the set; may be empty. */
+  name: string;
+  on: boolean;
+  account: RulesAccount;
+  rules: TradingRules;
+  /** A loosening, or turning them off: it applies at `at` (the next 00:00 UTC). */
+  pending?: { on: boolean; rules: TradingRules; at: number } | null;
+}
+
+/** One rule's answer for an order, before it's sent. */
+export interface RuleCheck {
+  rule: string;
+  ok: boolean;
+  value: number;
+  limit: number;
+}
+
+/** Whether two accounts are the same one. */
+export const sameAccount = (a: RulesAccount | undefined, b: RulesAccount | undefined) =>
+  a !== undefined && b !== undefined && a.venue === b.venue && a.id === b.id;
+
+/** The rules an account starts from before it has any: off, and the defaults. */
+export const newRules = (account: RulesAccount): RulesView => ({
+  name: "",
+  on: false,
+  account,
+  rules: DEFAULT_RULES,
+});

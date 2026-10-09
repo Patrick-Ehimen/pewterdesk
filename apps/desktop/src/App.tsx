@@ -97,6 +97,7 @@ import {
   themeOptions,
   VIEW_KEYS,
 } from "./components/preferences";
+import { RulesBanner } from "./components/rules/RulesBanner";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
@@ -114,6 +115,7 @@ import { usePositionDetail } from "./hooks/usePositionDetail";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
 import { useTradeSettings } from "./hooks/useTradeSettings";
+import { useTradingRules } from "./hooks/useTradingRules";
 import { useTraySync } from "./hooks/useTraySync";
 import {
   type Feed,
@@ -488,6 +490,8 @@ export function App() {
   const accounts = useSyncExternalStore(subscribeAccounts, accountsState);
   const activeOnVenue = activeAccount(accounts, venue);
   const address = activeOnVenue?.id;
+  // The trader's own rules, kept and enforced in Rust; where this account stands.
+  const tradingRules = useTradingRules(venue, address);
   // Orders go only where Rust allows them: Bybit demo accounts, for now.
   const liveUids = useSyncExternalStore(subscribeLiveTrading, liveTradingUids);
   // Rust keeps the list; the page's copy is refreshed once it's up.
@@ -504,6 +508,7 @@ export function App() {
         const text = orderText(request, baseFor(request.market));
         try {
           await venueClient.placeOrder(trading.venue, trading.id, request);
+          tradingRules.refresh();
           notifyEvent({
             type: "order",
             title: t("toast.orderPlaced"),
@@ -1478,8 +1483,17 @@ export function App() {
           />
         ) : page === "rules" ? (
           <TradingRulesPage
-            venue={venueInfo.label}
+            venue={venue}
+            account={address}
             equity={accountData ? Number(accountData.equity) : undefined}
+            views={tradingRules.views}
+            status={tradingRules.status}
+            error={tradingRules.error}
+            venueLabel={(id) => VENUES[id].label}
+            coinOf={baseFor}
+            onSave={tradingRules.save}
+            onRemove={tradingRules.remove}
+            onConnect={() => openConnect()}
           />
         ) : page === "journal" ? (
           <ComingSoonPage
@@ -1593,6 +1607,11 @@ export function App() {
             )}
 
             <ConnectionBanner venue={venueInfo.label} connection={connection} />
+            <RulesBanner
+              rules={tradingRules.view?.rules}
+              status={tradingRules.status}
+              onOpen={() => goTo("rules")}
+            />
             <div className="app-body">
               <WorkspaceGrid
                 layout={workspace.layout}

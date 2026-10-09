@@ -14,6 +14,7 @@ mod notify;
 mod okx_liquidations;
 mod share;
 mod splash;
+mod trading_rules;
 mod tray;
 mod venues;
 mod wallet;
@@ -61,6 +62,13 @@ pub fn run() {
                 .ok()
                 .map(|dir| dir.join(live_trading::FILE));
             app.manage(live_trading::LiveTrading::load(kept));
+            // The trader's own rules and their progress, kept beside it.
+            let kept = app
+                .path()
+                .app_config_dir()
+                .ok()
+                .map(|dir| dir.join(trading_rules::FILE));
+            app.manage(trading_rules::TradingRules::load(kept));
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
@@ -172,6 +180,11 @@ pub fn run() {
             bybit_key::disconnect_bybit_key,
             live_trading::live_trading_accounts,
             live_trading::set_live_trading,
+            trading_rules::trading_rules,
+            trading_rules::set_trading_rules,
+            trading_rules::delete_trading_rules,
+            trading_rules::trading_rules_status,
+            trading_rules::check_trading_rules,
             coin_info::coin_info,
             coin_info::coin_logo,
             coin_info::coin_markets,

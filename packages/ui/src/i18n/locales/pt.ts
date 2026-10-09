@@ -594,8 +594,70 @@ export const messages: Messages = {
   "nav.chartsDesc": "Vários mercados ou intervalos lado a lado",
   "nav.rules": "Regras de trading",
   "nav.rulesDesc": "Limites de perda, regras de prop firm e alertas de tilt",
+  "rules.deleteTitle": "Excluir estas regras?",
+  "rules.deleteBody": "“{name}” e seu progresso serão excluídos. Isso não pode ser desfeito.",
+  "rules.deleteBodyOn":
+    "“{name}” está ligado. Excluí-lo interrompe na hora a verificação das ordens desta conta, e o progresso é perdido. Isso não pode ser desfeito.",
+  "rules.remove": "Excluir estas regras",
+  "rules.deleteNow": "Excluir",
+  "rules.add": "Adicionar regras para {venue}",
+  "rules.emptyTitle": "Ainda não há regras para {venue}",
+  "rules.emptyBody":
+    "Adicione regras para que as ordens desta conta sejam verificadas pelos seus próprios limites.",
+  "rules.tabs": "Contas",
+  "rules.state.on": "Ligadas",
+  "rules.state.waiting": "Mudança pendente",
+  "rules.connectTitle": "Conecte uma conta {venue} para definir regras para ela",
+  "rules.connectBody":
+    "Cada conta tem suas próprias regras de trading, aplicadas apenas às ordens dessa conta.",
+  "rules.accountOf": "estas regras valem apenas para esta conta",
+  "rules.name": "Nome",
+  "rules.namePlaceholder": "ex.: Firma 100k",
+  "rules.nameHint": "para distinguir as regras das suas contas",
+  "rules.on": "Regras ativas",
+  "rules.useEquity": "Usar o patrimônio atual ({equity})",
+  "rules.footer":
+    "Regras mais rígidas valem na hora. As mais brandas, e desligá-las, esperam até 00:00 UTC.",
+  "rules.pendingAt":
+    "Há uma mudança pendente: vale a partir de {time} (00:00 UTC). Até lá valem as regras atuais.",
+  "rules.newsSoon": "ainda não aplicado: não há calendário econômico para ler",
+  "rules.locked": "Bloqueado",
+  "rules.offNote": "As regras estão desligadas. Edite-as para ligá-las.",
+  "rules.chartSoon": "A linha começa quando um segundo dia for registrado.",
+  "rules.banner.locked.dailyLoss":
+    "Limite de perda diária atingido. Você ainda pode fechar, reduzir e cancelar.",
+  "rules.banner.locked.maxDrawdown":
+    "Drawdown máximo atingido: bloqueado até as regras serem reiniciadas. Você ainda pode fechar, reduzir e cancelar.",
+  "rules.banner.open": "Regras",
+  "rules.note.locked": "Ordens de abertura bloqueadas",
+  "rules.note.warn": "{pct} do limite de perda de hoje usado",
+  "rules.note.warnBody":
+    "Restam {left} USD antes de as ordens de abertura serem bloqueadas até 00:00 UTC.",
+  "rules.note.coolOff": "Pausa iniciada: {minutes} min",
+  "rules.note.revenge": "Isto parece uma operação de vingança",
+  "rules.block.lockedDailyLoss":
+    "As ordens de abertura estão bloqueadas até 00:00 UTC: o limite de perda diária foi atingido.",
+  "rules.block.lockedMaxDrawdown":
+    "As ordens de abertura estão bloqueadas: o drawdown máximo foi atingido.",
+  "rules.block.hours": "Fora do seu horário de trading.",
+  "rules.block.coolOff":
+    "Você está em pausa após uma sequência de perdas. Fechar e reduzir continuam funcionando.",
+  "rules.block.revenge":
+    "Isto parece uma operação de vingança: você acabou de perder neste mercado. Aguarde a pausa.",
+  "rules.block.tradesPerDay": "Esse é o seu máximo de operações por hoje.",
+  "rules.block.positionSize": "Isto deixaria a posição maior que o seu limite.",
+  "rules.block.leverage": "Isto levaria sua exposição acima do limite de alavancagem.",
+  "rules.block.tradeRisk": "Esta ordem arrisca até o stop mais do que uma operação permite.",
+  "rules.block.dailyLeft": "Esta ordem arrisca mais do que resta da sua perda diária.",
+  "rules.block.needsStop": "Suas regras exigem stop-loss em toda ordem de abertura.",
+  "rules.block.unchecked":
+    "Não foi possível ler sua conta para verificar suas regras, então a ordem não foi enviada. Fechar continua funcionando.",
+  "rules.block.lockedAmend":
+    "As ordens de abertura estão bloqueadas: não é possível aumentar uma ordem.",
+  "rules.block.lockedStop":
+    "As ordens de abertura estão bloqueadas: um stop pode ser aproximado, não afastado nem removido.",
+  "rules.block.other": "Recusado pelas suas regras de trading.",
   "rules.account": "Conta",
-  "rules.accountHint": "a conta da plataforma na tela",
   "rules.accountSize": "Tamanho da conta",
   "rules.accountSizeHint": "as porcentagens abaixo são sobre isto",
   "rules.active": "{count} ativos",
@@ -603,7 +665,6 @@ export const messages: Messages = {
   "rules.breach.lock": "Bloquear em 100%",
   "rules.breach.warn": "Apenas avisar",
   "rules.breach.warnLock": "Avisar em 80%, bloquear em 100%",
-  "rules.breached": "Violado",
   "rules.changePreset": "Trocar modelo",
   "rules.chart": "Patrimônio x limites",
   "rules.checkedOn": "Seus limites na {venue} · conta de {size} USD",
@@ -668,7 +729,6 @@ export const messages: Messages = {
   "rules.minN": "mín. {days}",
   "rules.needsStop": "Precisa de stop",
   "rules.news": "Bloqueio por notícias",
-  "rules.newsHint": "antes e depois de eventos de alto impacto",
   "rules.newsNote":
     "Também sem novas operações {minutes} min antes e depois de notícias de alto impacto.",
   "rules.noTimeLimit": "Sem limite de tempo",
@@ -676,7 +736,6 @@ export const messages: Messages = {
   "rules.notTracked": "Ainda sem acompanhamento",
   "rules.off": "Desligado",
   "rules.ok": "OK",
-  "rules.on": "Ligado",
   "rules.onLastEntry": "{risk} na última entrada",
   "rules.onTrack": "No caminho",
   "rules.open": "Aberto",
@@ -699,8 +758,6 @@ export const messages: Messages = {
   "rules.preset.oneStepDesc": "Uma fase, drawdown mais rígido",
   "rules.preset.own": "Minhas próprias regras",
   "rules.preset.ownDesc": "Sem desafio, apenas limites",
-  "rules.preview":
-    "Prévia: as regras ficam salvas aqui, mas nada as acompanha nem as aplica ainda.",
   "rules.reentryWithin": "reentrada em até",
   "rules.requireCoolOff": "Exigir pausa",
   "rules.requireStop": "Exigir stop",

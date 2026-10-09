@@ -1,15 +1,15 @@
 import { dateFormat, formatNumber, formatSigned, t, trendClass } from "@pewterdesk/ui";
-import type { ReactNode } from "react";
-import { LuInfo, LuShield } from "react-icons/lu";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { LuLock, LuShield, LuTrash2 } from "react-icons/lu";
 import {
   amounts,
   hasTarget,
   hoursNow,
   type RulesStatus,
-  type TradingRules,
+  type RulesView,
   WARN_AT,
 } from "../../lib/tradingRules";
-import { Badge, Bar, money, span, type Tone, usedTone } from "./parts";
+import { Badge, Bar, clockTime, money, span, type Tone, usedTone } from "./parts";
 import { MAX_KIND_NAME, PRESET_NAME } from "./RulesEditor";
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
@@ -91,6 +91,32 @@ interface Level {
   tone: "target" | "daily" | "max" | "start";
 }
 
+/** The least room between two labels, as a share of the chart's height. */
+const LABEL_GAP = 0.075;
+
+/**
+ * `items` with their places (0 at the top, 1 at the bottom) moved apart
+ * until each is at least `gap` from the next, staying inside the chart
+ * where there's room for them all.
+ */
+export function spread<T extends { at: number }>(items: readonly T[], gap: number): T[] {
+  const out = [...items].sort((a, b) => a.at - b.at).map((item) => ({ ...item }));
+  // Down from the top, each pushed clear of the one above...
+  for (const [i, item] of out.entries()) {
+    const above = out[i - 1];
+    if (above && item.at < above.at + gap) item.at = above.at + gap;
+  }
+  // ...then back up from the bottom, for any pushed past the end.
+  for (let i = out.length - 1; i >= 0; i--) {
+    const item = out[i];
+    const below = out[i + 1];
+    if (!item) continue;
+    const limit = below ? below.at - gap : 1;
+    if (item.at > limit) item.at = Math.max(limit, 0);
+  }
+  return out;
+}
+
 /** Equity since the challenge began, against the lines it must stay between. */
 function EquityChart({
   curve,
@@ -117,6 +143,24 @@ function EquityChart({
     )
     .join("");
   const top = curve?.find((p) => p.equity === peak);
+  // With one reading there's no line yet: where the equity is, as a dot and a label.
+  const alone = curve?.length === 1 ? last : undefined;
+  // The labels beside the lines, kept apart where the lines sit close together.
+  const labels = spread(
+    [
+      ...levels.map((l) => ({ key: l.tone as string, text: l.label, at: y(l.value) })),
+      ...(alone
+        ? [
+            {
+              key: "equity",
+              text: `${t("rules.legend.equity")} ${formatNumber(alone.equity, 0)}`,
+              at: y(alone.equity),
+            },
+          ]
+        : []),
+    ],
+    LABEL_GAP,
+  );
   return (
     <div className="rules-chart">
       <div className="rules-chart-plot">
@@ -126,9 +170,17 @@ function EquityChart({
             className="rules-chart-line"
             data-tone={l.tone}
             style={{ top: `${y(l.value) * 100}%` }}
+          />
+        ))}
+        {labels.map((l) => (
+          <span
+            key={l.key}
+            className="pd-num rules-chart-label"
+            data-tone={l.key}
+            style={{ top: `${l.at * 100}%` }}
           >
-            <span className="pd-num rules-chart-label">{l.label}</span>
-          </div>
+            {l.text}
+          </span>
         ))}
         {curve && curve.length > 1 ? (
           <>
@@ -151,7 +203,19 @@ function EquityChart({
             )}
           </>
         ) : (
-          <p className="rules-chart-empty">{t("rules.notTracked")}</p>
+          <>
+            {alone && (
+              <span
+                className="rules-chart-dot"
+                style={{ left: "100%", top: `${y(alone.equity) * 100}%` }}
+              />
+            )}
+            <p className="rules-chart-empty">
+              <span className="rules-chart-hint">
+                {t(curve ? "rules.chartSoon" : "rules.notTracked")}
+              </span>
+            </p>
+          </>
         )}
       </div>
       {first && last && (
@@ -165,16 +229,23 @@ function EquityChart({
 }
 
 interface RulesDashboardProps {
-  rules: TradingRules;
-  /** The venue whose account the rules are checked against. */
+  /** The chosen account's rules. */
+  view: RulesView;
+  /** The chosen account's venue, by name. */
   venue: string;
   /** The connected account's equity, where there is one. */
   equity?: number;
-  /** Where the account stands; unset until that's tracked. */
+  /** Where the account stands; unset while the rules aren't its. */
   status?: RulesStatus;
+  /** Why the account couldn't be read, when it couldn't. */
+  error?: string;
+  /** A market's coin, for the lists. */
+  coinOf: (market: string) => string;
   /** The time, for the trading hours. */
   now: Date;
   onEdit: () => void;
+  /** Deletes these rules; rejects with why not. */
+  onDelete: () => Promise<void>;
 }
 
 /**
@@ -182,7 +253,38 @@ interface RulesDashboardProps {
  * used, the challenge's numbers with equity drawn against its floors, the
  * tilt signals, and today's trades.
  */
-export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: RulesDashboardProps) {
+export function RulesDashboard({
+  view,
+  venue,
+  equity,
+  status,
+  error,
+  now,
+  coinOf,
+  onEdit,
+  onDelete,
+}: RulesDashboardProps) {
+  // Deleting asks first, in a dialog.
+  const [deleting, setDeleting] = useState<"asking" | "busy">();
+  const [deleteFailed, setDeleteFailed] = useState<string>();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (deleting && !dialog.open) dialog.showModal();
+    if (!deleting && dialog.open) dialog.close();
+  }, [deleting]);
+  const confirmDelete = async () => {
+    setDeleting("busy");
+    setDeleteFailed(undefined);
+    try {
+      await onDelete();
+    } catch (e) {
+      setDeleteFailed(e instanceof Error ? e.message : String(e));
+    }
+    setDeleting(undefined);
+  };
+  const { rules } = view;
   const { challenge, tilt } = rules;
   const usd = amounts(rules);
   const none = "–";
@@ -190,14 +292,15 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
   // The day's loss, and the account's fall from where the drawdown is measured.
   const dayLoss = status ? Math.max(-status.dayPnl, 0) : undefined;
   const dayShare = dayLoss === undefined ? undefined : dayLoss / (usd.daily || 1);
-  const from = status ? (challenge.maxKind === "static" ? challenge.size : status.peak) : undefined;
+  // What the overall drawdown is measured from: Rust says (the start, or the peak).
+  const from = status?.peak;
   const fall = status && from !== undefined ? Math.max(from - status.equity, 0) : undefined;
   const fallShare = fall === undefined ? undefined : fall / (usd.max || 1);
   const profit = status ? status.equity - challenge.size : undefined;
-  const breached = (dayShare ?? 0) >= 1 || (fallShare ?? 0) >= 1;
+  const locked = status?.lock ?? undefined;
 
-  const riskShare =
-    status?.lastRisk === undefined ? undefined : status.lastRisk / (usd.tradeLoss || 1);
+  const lastRisk = status?.lastRisk ?? undefined;
+  const riskShare = lastRisk === undefined ? undefined : lastRisk / (usd.tradeLoss || 1);
   const sizeShare = status?.position
     ? Math.max(
         status.position.notional / (rules.position.usd || 1),
@@ -206,7 +309,16 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
     : undefined;
   const tradesLeft = status ? Math.max(rules.tradesPerDay - status.tradesToday, 0) : undefined;
   const hours = hoursNow(rules.hours, now);
-  const cooling = status?.coolOffUntil !== undefined && status.coolOffUntil > now.getTime();
+  const cooling = status?.coolOffUntil != null;
+  // Whose rules these are, and whether anything is waiting.
+  const state =
+    (deleteFailed ?? error)
+      ? (deleteFailed ?? error)
+      : view.pending
+        ? t("rules.pendingAt", { time: clockTime(view.pending.at) })
+        : !view.on
+          ? t("rules.offNote")
+          : t("rules.footer");
 
   const maxLabel = `${t("rules.maxDrawdown")} · ${challenge.maxPct}% ${t(MAX_KIND_NAME[challenge.maxKind])}`;
   const staticFloor = challenge.size - usd.max;
@@ -255,10 +367,10 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
   ];
   const biggest = Math.max(...(status?.sizes?.recent ?? [1]), 1);
   const time = dateFormat({ hour: "2-digit", minute: "2-digit", hour12: false });
-  const onOff = (on: boolean) => <Badge>{t(on ? "rules.on" : "rules.off")}</Badge>;
+  const onOff = (on: boolean) => <Badge>{t(on ? "rules.state.on" : "rules.off")}</Badge>;
 
   return (
-    <div className="page rules rules-dash">
+    <div className="rules rules-dash">
       {/* The trader's own limits */}
       <aside className="rules-panel rules-mine">
         <header className="rules-mine-head">
@@ -266,6 +378,15 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
           <h2>{t("rules.yours")}</h2>
           <button type="button" className="rules-button" onClick={onEdit}>
             {t("rules.edit")}
+          </button>
+          <button
+            type="button"
+            className="pd-icon-button rules-delete"
+            aria-label={t("rules.remove")}
+            title={t("rules.remove")}
+            onClick={() => setDeleting("asking")}
+          >
+            <LuTrash2 size={15} aria-hidden />
           </button>
         </header>
         <div className="rules-mine-list">
@@ -297,15 +418,14 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
             badge={
               status &&
               (riskShare === undefined ? (
+                status.needsStop &&
                 rules.tradeLoss.mode === "stop" && <Badge tone="warn">{t("rules.needsStop")}</Badge>
               ) : (
                 <Badge tone={usedTone(riskShare)}>{t("rules.used", { pct: pct(riskShare) })}</Badge>
               ))
             }
             value={
-              status?.lastRisk === undefined
-                ? none
-                : t("rules.onLastEntry", { risk: money(status.lastRisk) })
+              lastRisk === undefined ? none : t("rules.onLastEntry", { risk: money(lastRisk) })
             }
             limit={`${money(usd.tradeLoss)} USD`}
             bar={
@@ -400,9 +520,12 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
             limit={`${rules.coolOff.losses} → ${rules.coolOff.minutes} ${t("rules.min")}`}
           />
         </div>
-        <footer className="rules-mine-foot">
-          <LuInfo size={15} aria-hidden />
-          <span>{t("rules.preview")}</span>
+        <footer
+          className="rules-mine-foot"
+          data-failed={(deleteFailed ?? error) ? true : undefined}
+        >
+          <LuLock size={15} aria-hidden />
+          <span>{state}</span>
         </footer>
       </aside>
 
@@ -413,8 +536,8 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
             <h1>
               {t(PRESET_NAME[rules.preset])}
               {status && (
-                <Badge tone={breached ? "over" : "ok"}>
-                  {t(breached ? "rules.breached" : "rules.onTrack")}
+                <Badge tone={locked ? "over" : "ok"}>
+                  {t(locked ? "rules.locked" : "rules.onTrack")}
                 </Badge>
               )}
             </h1>
@@ -562,7 +685,7 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
             <p>
               {firing[0] && status?.revenge
                 ? t("rules.revengeHit", {
-                    coin: status.revenge.coin,
+                    coin: coinOf(status.revenge.market),
                     minutes: status.revenge.minutes,
                   })
                 : t("rules.revengeRule", { minutes: tilt.revenge.minutes })}
@@ -649,9 +772,9 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
           {status && status.trades.length > 0 ? (
             <ul className="rules-trades">
               {status.trades.map((trade) => (
-                <li key={`${trade.at}:${trade.coin}`}>
+                <li key={`${trade.at}:${trade.market}:${trade.tag ?? ""}`}>
                   <time className="pd-num">{time.format(trade.at)}</time>
-                  <strong>{trade.coin}</strong>
+                  <strong>{coinOf(trade.market)}</strong>
                   <span className={trade.side === "long" ? "pd-up" : "pd-down"}>
                     {t(trade.side === "long" ? "side.long" : "side.short")}
                   </span>
@@ -671,6 +794,42 @@ export function RulesDashboard({ rules, venue, equity, status, now, onEdit }: Ru
           )}
         </section>
       </div>
+      {/* Deleting is at once, on or off: asked first. */}
+      <dialog
+        ref={dialogRef}
+        className="pd-confirm rules-confirm"
+        aria-labelledby="rules-delete-title"
+        onClose={() => setDeleting(undefined)}
+      >
+        <div className="pd-confirm-head">
+          <h3 id="rules-delete-title">{t("rules.deleteTitle")}</h3>
+        </div>
+        <div className="pd-confirm-body">
+          <p className="rules-confirm-text">
+            {t(view.on ? "rules.deleteBodyOn" : "rules.deleteBody", {
+              name: view.name || venue,
+            })}
+          </p>
+          <div className="rules-confirm-actions">
+            <button
+              type="button"
+              className="rules-button"
+              disabled={deleting === "busy"}
+              onClick={() => setDeleting(undefined)}
+            >
+              {t("protect.cancel")}
+            </button>
+            <button
+              type="button"
+              className="rules-button rules-danger"
+              disabled={deleting === "busy"}
+              onClick={() => void confirmDelete()}
+            >
+              {t("rules.deleteNow")}
+            </button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }

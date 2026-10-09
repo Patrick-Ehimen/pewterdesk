@@ -24,10 +24,11 @@ import type {
   VenueError,
   VenueId,
 } from "@pewterdesk/core";
-import { type HeatCoin, type HeatSector, t } from "@pewterdesk/ui";
+import { type HeatCoin, type HeatSector, type MessageKey, t } from "@pewterdesk/ui";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { trackFeed } from "../lib/feedActivity";
+import type { RuleCheck, RulesStatus, RulesView, TradingRules } from "../lib/tradingRules";
 
 /**
  * StreamEvent as serde emits it from venues.rs: adjacently tagged, so
@@ -43,7 +44,35 @@ export interface StreamHandlers<T> {
   onError: (message: string) => void;
 }
 
-const venueErrorKinds = new Set(["unsupported", "invalidRequest", "rejected", "network", "key"]);
+const venueErrorKinds = new Set([
+  "unsupported",
+  "invalidRequest",
+  "rejected",
+  "network",
+  "key",
+  "blocked",
+]);
+
+/** The trading rules' reasons for refusing an order, by the code Rust sends. */
+const BLOCK_TEXT: Record<string, MessageKey> = {
+  lockedDailyLoss: "rules.block.lockedDailyLoss",
+  lockedMaxDrawdown: "rules.block.lockedMaxDrawdown",
+  hours: "rules.block.hours",
+  coolOff: "rules.block.coolOff",
+  revenge: "rules.block.revenge",
+  tradesPerDay: "rules.block.tradesPerDay",
+  positionSize: "rules.block.positionSize",
+  leverage: "rules.block.leverage",
+  tradeRisk: "rules.block.tradeRisk",
+  dailyLeft: "rules.block.dailyLeft",
+  needsStop: "rules.block.needsStop",
+  unchecked: "rules.block.unchecked",
+  lockedAmend: "rules.block.lockedAmend",
+  lockedStop: "rules.block.lockedStop",
+};
+
+/** What a trading rule's code means, in words. */
+export const blockText = (rule: string) => t(BLOCK_TEXT[rule] ?? "rules.block.other");
 
 /** Narrows an invoke rejection to a VenueError, or undefined if it isn't one. */
 export function asVenueError(raw: unknown): VenueError | undefined {
@@ -70,6 +99,8 @@ export function describeVenueError(error: VenueError | undefined): string {
       return t("error.rejected", { detail: error.detail });
     case "network":
       return t("error.network", { detail: error.detail });
+    case "blocked":
+      return blockText(error.detail);
     case "key":
       return error.detail.kind === "notFound"
         ? t("error.noKey")
@@ -154,6 +185,34 @@ export const venueClient = {
    * Rust builds the key reference itself and, for now, takes Bybit demo
    * accounts only. Resolves once the venue has accepted it.
    */
+  /** Every account's trading rules: whether they're on, and any change waiting. */
+  tradingRules: () => call<RulesView[]>("trading_rules", {}),
+
+  /**
+   * Saves `account`'s rules under `name`. Tightening applies now; a
+   * loosening, or turning them off, waits for 00:00 UTC (it comes back as
+   * `pending`). Resolves to every account's rules.
+   */
+  setTradingRules: (
+    venue: VenueId,
+    account: string,
+    name: string,
+    on: boolean,
+    rules: TradingRules,
+  ) => call<RulesView[]>("set_trading_rules", { venue, account, name, on, rules }),
+
+  /** Forgets `account`'s rules at once, on or off. */
+  deleteTradingRules: (venue: VenueId, account: string) =>
+    call<RulesView[]>("delete_trading_rules", { venue, account }),
+
+  /** Where `account` stands against the rules; null while they aren't its. */
+  tradingRulesStatus: (venue: VenueId, account: string) =>
+    call<RulesStatus | null>("trading_rules_status", { venue, account }),
+
+  /** What each rule says about an order before it's sent. */
+  checkTradingRules: (venue: VenueId, account: string, request: OrderRequest) =>
+    call<RuleCheck[]>("check_trading_rules", { venue, account, request }),
+
   placeOrder: (venue: VenueId, account: string, request: OrderRequest) =>
     call<Order>("place_order", { venue, account, request }),
 
