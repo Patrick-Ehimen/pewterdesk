@@ -1588,7 +1588,8 @@ export const messages: Messages = {
   "float.hold": "maintenir",
   "float.buy": "Acheter {size}",
   "float.sell": "Vendre {size}",
-  "float.closeHalf": "Clôturer 50 %",
+  "float.closePart": "Clôturer {pct} %",
+  "float.closeShare": "Part à clôturer",
   "float.positions": "Positions · {count}",
   "float.flatten": "Tout clôturer",
   "float.flattened": "Ordres de clôture envoyés pour toutes les positions.",
@@ -1998,6 +1999,16 @@ export const messages: Messages = {
     "La plus grande plateforme en volume, avec une clé API limitée au trading (retraits désactivés). Bientôt.",
   "venues.soon.okx":
     "Une plateforme centralisée aux marchés de perpétuels profonds, avec une clé API limitée au trading. Bientôt.",
+  "venues.soon.coinbase":
+    "Une plateforme régulée aux États-Unis, avec des contrats perpétuels et une clé API limitée au trading. Bientôt disponible.",
+  "venues.soon.kraken":
+    "Une plateforme de longue date, avec des marchés de futures et une clé API limitée au trading. Bientôt disponible.",
+  "venues.soon.kucoin":
+    "Une plateforme centralisée avec une large liste de perpétuels et une clé API limitée au trading. Bientôt disponible.",
+  "venues.soon.bitget":
+    "Une plateforme centralisée connue pour le copy trading, avec des perpétuels et une clé API limitée au trading. Bientôt disponible.",
+  "venues.soon.backpack":
+    "Une plateforme de l’écosystème Solana, avec des marchés perpétuels et une clé API limitée au trading. Bientôt disponible.",
   "venues.soon.gmx":
     "Perpétuels sur Arbitrum, exécutés aux prix d'oracle, avec des clés de trading en un clic. Bientôt.",
   "venues.soon.dydx":

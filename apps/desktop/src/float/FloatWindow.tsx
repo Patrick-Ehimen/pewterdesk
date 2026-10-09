@@ -65,6 +65,8 @@ type Mode = (typeof MODES)[number];
 const ON_OFF = ["on", "off"] as const;
 /** Presets for the size: this much of what's available, at the leverage in use. */
 const PRESETS = [10, 25, 50, 100];
+/** The shares of a position the "close part" tab offers, in percent. */
+const CLOSE_PARTS = [25, 50, 75] as const;
 /** Markets offered while searching. */
 const PICKS = 8;
 /** Tickers in the strip. */
@@ -216,6 +218,8 @@ function FloatWidget() {
 
   // The ticket.
   const [type, setType] = useState<"market" | "limit" | "half">("market");
+  // How much of the position the "close part" tab closes.
+  const [part, setPart] = useState<(typeof CLOSE_PARTS)[number]>(50);
   const [size, setSize] = useState("");
   const [limit, setLimit] = useState("");
   const kind = type === "half" && !position ? "market" : type;
@@ -707,24 +711,41 @@ function FloatWidget() {
                   ? "ticket.market"
                   : k === "limit"
                     ? "ticket.limit"
-                    : "float.closeHalf",
+                    : "float.closePart",
+                { pct: part },
               )}
             </button>
           ))}
         </div>
 
         {kind === "half" && position ? (
-          <HoldButton
-            className="float-side"
-            disabled={!trading || busy}
-            label={t("float.closeHalf")}
-            onDone={() => close(position, 0.5)}
-          >
-            <strong>
-              {t("float.closeHalf")} · {market?.symbol ?? marketId}
-            </strong>
-            <span>{t("float.hold")}</span>
-          </HoldButton>
+          <>
+            <div className="float-parts" role="radiogroup" aria-label={t("float.closeShare")}>
+              {CLOSE_PARTS.map((pct) => (
+                // biome-ignore lint/a11y/useSemanticElements: segmented control, like the app's others
+                <button
+                  key={pct}
+                  type="button"
+                  role="radio"
+                  aria-checked={part === pct}
+                  onClick={() => setPart(pct)}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+            <HoldButton
+              className="float-side"
+              disabled={!trading || busy}
+              label={t("float.closePart", { pct: part })}
+              onDone={() => close(position, part / 100)}
+            >
+              <strong>
+                {t("float.closePart", { pct: part })} · {market?.symbol ?? marketId}
+              </strong>
+              <span>{t("float.hold")}</span>
+            </HoldButton>
+          </>
         ) : (
           <>
             {kind === "limit" && (

@@ -172,6 +172,7 @@ html:has(.float) #root {
 }
 .float-types,
 .float-presets,
+.float-parts,
 .float-sides {
   display: grid;
   gap: 6px;
@@ -182,10 +183,15 @@ html:has(.float) #root {
 .float-presets {
   grid-template-columns: repeat(4, 1fr);
 }
+/* How much of the position to close: a quarter, half, three quarters */
+.float-parts {
+  grid-template-columns: repeat(3, 1fr);
+}
 .float-sides {
   grid-template-columns: 1fr 1fr;
 }
 .float-types button,
+.float-parts button,
 .float-presets button {
   height: 28px;
   border: 1px solid var(--pd-border-strong);
@@ -195,7 +201,8 @@ html:has(.float) #root {
   font: 12.5px var(--pd-font-mono);
   cursor: pointer;
 }
-.float-types button[aria-checked="true"] {
+.float-types button[aria-checked="true"],
+.float-parts button[aria-checked="true"] {
   background: var(--pd-surface-raised);
   color: var(--pd-text);
 }

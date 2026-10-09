@@ -20,11 +20,16 @@ import horizontalLightBg from "./logo/pewterdesk-horizontal-light-bg.svg";
 import markDarkBg from "./logo/pewterdesk-mark-dark-bg.svg";
 import markLightBg from "./logo/pewterdesk-mark-light-bg.svg";
 import venueAster from "./venues/aster.svg";
+import venueBackpack from "./venues/backpack.svg";
 import venueBinance from "./venues/binance.svg";
+import venueBitget from "./venues/bitget.svg";
 import venueBybit from "./venues/bybit.svg";
+import venueCoinbase from "./venues/coinbase.svg";
 import venueDydx from "./venues/dydx.svg";
 import venueGmx from "./venues/gmx.svg";
 import venueHyperliquid from "./venues/hyperliquid.svg";
+import venueKraken from "./venues/kraken.svg";
+import venueKucoin from "./venues/kucoin.svg";
 import venueOkx from "./venues/okx.svg";
 import walletCoinbase from "./wallets/coinbase.svg";
 import walletLedger from "./wallets/ledger.svg";
@@ -91,6 +96,11 @@ export const walletLogos = {
 export const upcomingVenueLogos = {
   binance: venueBinance,
   okx: venueOkx,
+  coinbase: venueCoinbase,
+  kraken: venueKraken,
+  kucoin: venueKucoin,
+  bitget: venueBitget,
+  backpack: venueBackpack,
   gmx: venueGmx,
   dydx: venueDydx,
 } as const;

@@ -25,6 +25,11 @@ const KEY_KIND: Record<VenueId, MessageKey> = {
 const UPCOMING = [
   { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
   { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
+  { id: "coinbase", name: "Coinbase", chain: "onb.chain.bybit" },
+  { id: "kraken", name: "Kraken", chain: "onb.chain.bybit" },
+  { id: "kucoin", name: "KuCoin", chain: "onb.chain.bybit" },
+  { id: "bitget", name: "Bitget", chain: "onb.chain.bybit" },
+  { id: "backpack", name: "Backpack", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
 ] as const;

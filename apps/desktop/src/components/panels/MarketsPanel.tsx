@@ -279,7 +279,12 @@ export function MarketsPanel({
               <FeedView
                 feed={orLoading(funding)}
                 idle={t("feed.pickMarket")}
-                loading={<ChartSkeleton />}
+                loading={
+                  // The app's mark, as on the price chart.
+                  <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
+                    <LoadingMark size={48} />
+                  </div>
+                }
                 live={(rates) =>
                   rates.length === 0 ? (
                     <p className="pd-empty">{t("funding.empty")}</p>

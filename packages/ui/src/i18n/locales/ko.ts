@@ -1544,7 +1544,8 @@ export const messages: Messages = {
   "float.hold": "길게 누르기",
   "float.buy": "매수 {size}",
   "float.sell": "매도 {size}",
-  "float.closeHalf": "50% 청산",
+  "float.closePart": "{pct}% 청산",
+  "float.closeShare": "청산할 비율",
   "float.positions": "포지션 · {count}",
   "float.flatten": "전체 청산",
   "float.flattened": "모든 포지션에 청산 주문을 보냈습니다.",
@@ -1941,6 +1942,16 @@ export const messages: Messages = {
   "venues.add": "터미널에 추가",
   "venues.soon.binance": "거래량 최대의 거래소. 거래 전용 API 키(출금 꺼짐)를 씁니다. 곧 지원.",
   "venues.soon.okx": "무기한 선물 유동성이 깊은 중앙화 거래소. 거래 전용 API 키를 씁니다. 곧 지원.",
+  "venues.soon.coinbase":
+    "미국 규제를 받는 거래소로, 무기한 선물과 거래 전용 API 키를 지원합니다. 곧 지원 예정.",
+  "venues.soon.kraken":
+    "오랜 역사의 거래소로, 선물 시장과 거래 전용 API 키를 지원합니다. 곧 지원 예정.",
+  "venues.soon.kucoin":
+    "다양한 무기한 시장을 갖춘 중앙화 거래소로, 거래 전용 API 키를 지원합니다. 곧 지원 예정.",
+  "venues.soon.bitget":
+    "카피 트레이딩으로 알려진 중앙화 거래소로, 무기한 시장과 거래 전용 API 키를 지원합니다. 곧 지원 예정.",
+  "venues.soon.backpack":
+    "솔라나 생태계의 거래소로, 무기한 시장과 거래 전용 API 키를 지원합니다. 곧 지원 예정.",
   "venues.soon.gmx":
     "Arbitrum의 무기한 선물. 오라클 가격으로 체결되며 원클릭 거래 키를 씁니다. 곧 지원.",
   "venues.soon.dydx": "호가창 기반 무기한 선물 체인. 권한이 있는 거래 키를 씁니다. 곧 지원.",
