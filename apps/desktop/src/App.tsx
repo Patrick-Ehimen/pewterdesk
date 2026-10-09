@@ -87,6 +87,7 @@ import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
+import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
 import {
@@ -1474,6 +1475,11 @@ export function App() {
               showMarket(id);
               openConnect(id);
             }}
+          />
+        ) : page === "rules" ? (
+          <TradingRulesPage
+            venue={venueInfo.label}
+            equity={accountData ? Number(accountData.equity) : undefined}
           />
         ) : page === "journal" ? (
           <ComingSoonPage

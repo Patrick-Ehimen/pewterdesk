@@ -51,6 +51,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   trade: "nav.trade",
   portfolio: "nav.portfolio",
   charts: "nav.charts",
+  rules: "nav.rules",
   venues: "nav.venues",
   journal: "nav.journal",
   news: "nav.news",

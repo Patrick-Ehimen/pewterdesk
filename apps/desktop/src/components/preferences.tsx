@@ -12,6 +12,7 @@ import {
   LuNotebookPen,
   LuOrbit,
   LuSettings,
+  LuShieldCheck,
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
@@ -56,6 +57,7 @@ const PAGE_ICONS = {
   trade: LuChartCandlestick,
   portfolio: LuBriefcaseBusiness,
   charts: LuLayoutGrid,
+  rules: LuShieldCheck,
   venues: LuLandmark,
   journal: LuNotebookPen,
   news: LuNewspaper,
