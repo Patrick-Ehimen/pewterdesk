@@ -1252,7 +1252,21 @@ export const messages: Messages = {
   "settings.trading.desc":
     "Taille d'ordre, slippage et levier par défaut. Arrive avec le passage d'ordres.",
   "settings.hotkeys.desc":
-    "Raccourcis clavier pour passer et annuler des ordres. Arrive avec le passage d'ordres.",
+    "Raccourcis clavier dans toute l’app. Ils ne sont pas encore modifiables, et aucun ne passe d’ordre.",
+  "hotkeys.general": "Général",
+  "hotkeys.or": "ou",
+  "hotkeys.palette": "Ouvrir la palette de commandes",
+  "hotkeys.page": "Aller à {page}",
+  "hotkeys.settings": "Ouvrir ou fermer les Réglages",
+  "hotkeys.back": "Revenir à la page précédente",
+  "hotkeys.forward": "Avancer de nouveau",
+  "hotkeys.help": "Afficher ces raccourcis",
+  "hotkeys.quickTrade": "Afficher ou masquer le trade rapide",
+  "hotkeys.float": "Afficher ou masquer la fenêtre flottante (depuis n’importe quelle app)",
+  "hotkeys.maximise":
+    "Donner toute la page à un graphique par son numéro ; à nouveau pour la rendre",
+  "hotkeys.restore": "Revenir à la grille de graphiques",
+  "hotkeys.rsiView": "Basculer la carte RSI entre graphique et tableau",
   "settings.notifications.desc": "Alertes d'exécution et de risque de liquidation.",
   "settings.network.desc": "Points d'accès des plateformes et état de la connexion.",
   "settings.appearance.desc":

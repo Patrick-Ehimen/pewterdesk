@@ -26,6 +26,7 @@ import { useLiquidations } from "../../hooks/useLiquidations";
 import { useRsiMap } from "../../hooks/useRsiMap";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { useMarketSummaries } from "../../hooks/useVenueFeeds";
+import { isTyping, plainKey } from "../../lib/hotkeys";
 import { loadRsiOrder, saveRsiOrder } from "../../lib/rsiStore";
 import { LoadingMark } from "../Splash";
 
@@ -79,6 +80,17 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [frame, setFrame] = useStoredChoice("pd.maps.rsiFrame", RSI_FRAMES, "4h");
   const [scope, setScope] = useStoredChoice("pd.maps.rsiScope", RSI_SCOPES, "all");
   const [rsiView, setRsiView] = useStoredChoice("pd.maps.rsiView", RSI_VIEWS, "chart");
+  // V flips the RSI heatmap between its chart and its table.
+  useEffect(() => {
+    if (view !== "rsi") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (plainKey(e, isTyping(e.target)) !== "v" || e.shiftKey) return;
+      e.preventDefault();
+      setRsiView(rsiView === "chart" ? "table" : "chart");
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [view, rsiView, setRsiView]);
   const [heatIndex, setHeatIndex] = useStoredChoice("pd.maps.heatIndex", HEAT_INDEXES, "marketCap");
   const [heatPeriod, setHeatPeriod] = useStoredChoice("pd.maps.heatPeriod", HEAT_PERIODS, "24h");
   const [heatTop, setHeatTop] = useStoredChoice("pd.maps.heatTop", HEAT_TOPS, "20");

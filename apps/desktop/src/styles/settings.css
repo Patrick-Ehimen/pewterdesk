@@ -337,3 +337,35 @@
   border-top: 1px solid var(--pd-border);
   text-align: center;
 }
+
+/* Hotkeys: what each does on the left, its keys on the right */
+.hotkey-row {
+  padding: 10px 0;
+}
+.hotkey-ways {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+}
+.hotkey-keys {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+}
+.hotkey-keys kbd {
+  min-width: 26px;
+  padding: 3px 7px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  color: var(--pd-text);
+  font-family: var(--pd-font-mono);
+  font-size: 12px;
+  text-align: center;
+}
+.hotkey-or {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}

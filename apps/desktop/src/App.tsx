@@ -99,7 +99,7 @@ import {
 } from "./components/preferences";
 import { RulesBanner } from "./components/rules/RulesBanner";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
-import { SettingsPage } from "./components/settings/SettingsPage";
+import { SettingsPage, type SettingsSection } from "./components/settings/SettingsPage";
 import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
 import { Movement } from "./components/statusbar/Movement";
 import { Tickers } from "./components/statusbar/Tickers";
@@ -151,6 +151,7 @@ import {
   RISK_WITHIN,
   slippageBps,
 } from "./lib/float";
+import { type HotkeyAction, hotkeyFor, isTyping } from "./lib/hotkeys";
 import { peekSavedIcon } from "./lib/iconCache";
 import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "./lib/liveTrading";
 import { loadIcon } from "./lib/loadIcon";
@@ -690,16 +691,8 @@ export function App() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   // The command palette: Cmd+K (Ctrl+K off macOS), from anywhere in the window.
   const [paletteOpen, setPaletteOpen] = useState(false);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "k" || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey)
-        return;
-      e.preventDefault();
-      setPaletteOpen((open) => !open);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // Which Settings section a shortcut asked for ("?" opens the hotkeys list).
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>();
   // The venue whose wallet dialog is open (Hyperliquid and Aster connect with a wallet).
   const [walletFor, setWalletFor] = useState<VenueId>();
   // The exchange whose API-key dialog is open (Bybit connects with a key, not a wallet).
@@ -1148,25 +1141,40 @@ export function App() {
     setHistory(stepped(history, by));
     goTo(to);
   };
-  // Cmd+[ and Cmd+] (Alt+Left and Alt+Right too), and a mouse's side buttons.
+  // The app-wide shortcuts (`lib/hotkeys.ts`; Settings lists them), and a
+  // mouse's side buttons for back and forward. Each page adds its own keys.
+  const onHotkey = (action: HotkeyAction) => {
+    switch (action.type) {
+      case "palette":
+        return setPaletteOpen((open) => !open);
+      case "page":
+        return goTo(action.page);
+      case "settings":
+        setSettingsSection(undefined);
+        return goTo(page === "settings" ? "trade" : "settings");
+      case "help":
+        setSettingsSection("hotkeys");
+        return goTo("settings");
+      case "back":
+        return step(-1);
+      case "forward":
+        return step(1);
+      case "quickTrade":
+        // The bar belongs to the Trade page.
+        if (page === "trade") updateQuickTrade({ ...quickTrade, open: !quickTrade.open });
+        return;
+    }
+  };
+  const hotkeyRef = useRef(onHotkey);
+  hotkeyRef.current = onHotkey;
   const stepRef = useRef(step);
   stepRef.current = step;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const bracket = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
-      const arrow = e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
-      const by =
-        (bracket && e.key === "[") || (arrow && e.key === "ArrowLeft")
-          ? -1
-          : (bracket && e.key === "]") || (arrow && e.key === "ArrowRight")
-            ? 1
-            : undefined;
-      if (by === undefined) return;
-      // Alt+arrow moves by a word while typing.
-      const el = e.target as HTMLElement | null;
-      if (arrow && el?.closest("input, textarea, [contenteditable]")) return;
+      const action = hotkeyFor(e, isTyping(e.target));
+      if (!action) return;
       e.preventDefault();
-      stepRef.current(by);
+      hotkeyRef.current(action);
     };
     const onMouse = (e: MouseEvent) => {
       if (e.button !== 3 && e.button !== 4) return;
@@ -1546,6 +1554,7 @@ export function App() {
           />
         ) : page === "settings" ? (
           <SettingsPage
+            section={settingsSection}
             onClose={() => goTo("trade")}
             soundOn={sound === "on"}
             onSound={changeSound}
