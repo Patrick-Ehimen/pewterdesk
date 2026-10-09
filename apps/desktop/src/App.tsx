@@ -164,6 +164,7 @@ import {
 import { desktopNotify } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
+import { startHistory, stepped, stepTo, visited } from "./lib/pageHistory";
 import { PAGES, type Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { HISTORY_MS } from "./lib/performance";
@@ -675,6 +676,10 @@ export function App() {
   }, [expanded]);
   // Remembered, so a reload comes back to the page that was open.
   const [page, setPage] = useStoredChoice<Page>("pd.page", PAGES, "trade");
+  // The pages opened this session, for stepping back and forward. However
+  // a page was opened (the menu, the palette, a shortcut), it lands here.
+  const [history, setHistory] = useState(() => startHistory(page));
+  useEffect(() => setHistory((h) => visited(h, page)), [page]);
   // Market alerts, checked while the app runs; the popover is the header's bell.
   const [alertsOpen, setAlertsOpen] = useState(false);
   // The command palette: Cmd+K (Ctrl+K off macOS), from anywhere in the window.
@@ -1129,6 +1134,46 @@ export function App() {
     if (next !== "trade" && editing) finishEditing();
     setPage(next);
   };
+
+  /** One page back or forward through the ones opened, where there is one. */
+  const step = (by: -1 | 1) => {
+    const to = stepTo(history, by);
+    if (to === undefined) return;
+    setHistory(stepped(history, by));
+    goTo(to);
+  };
+  // Cmd+[ and Cmd+] (Alt+Left and Alt+Right too), and a mouse's side buttons.
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const bracket = (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey;
+      const arrow = e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey;
+      const by =
+        (bracket && e.key === "[") || (arrow && e.key === "ArrowLeft")
+          ? -1
+          : (bracket && e.key === "]") || (arrow && e.key === "ArrowRight")
+            ? 1
+            : undefined;
+      if (by === undefined) return;
+      // Alt+arrow moves by a word while typing.
+      const el = e.target as HTMLElement | null;
+      if (arrow && el?.closest("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      stepRef.current(by);
+    };
+    const onMouse = (e: MouseEvent) => {
+      if (e.button !== 3 && e.button !== 4) return;
+      e.preventDefault();
+      stepRef.current(e.button === 3 ? -1 : 1);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mouseup", onMouse);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mouseup", onMouse);
+    };
+  }, []);
 
   /** Leaving edit mode closes any gaps the edits left behind. */
   const finishEditing = () => {
