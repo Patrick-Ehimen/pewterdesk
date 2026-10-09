@@ -1506,7 +1506,8 @@ export const en = {
   "float.hold": "hold",
   "float.buy": "Buy {size}",
   "float.sell": "Sell {size}",
-  "float.closeHalf": "Close 50%",
+  "float.closePart": "Close {pct}%",
+  "float.closeShare": "How much to close",
   "float.positions": "Positions · {count}",
   "float.flatten": "Flatten all",
   "float.flattened": "Closing orders sent for every position.",
@@ -1911,6 +1912,16 @@ export const en = {
     "The largest exchange by volume, with a trade-only API key (withdrawals off). Coming soon.",
   "venues.soon.okx":
     "A centralized exchange with deep perp markets and a trade-only API key. Coming soon.",
+  "venues.soon.coinbase":
+    "A US-regulated exchange with perpetual futures and a trade-only API key. Coming soon.",
+  "venues.soon.kraken":
+    "A long-standing exchange with futures markets and a trade-only API key. Coming soon.",
+  "venues.soon.kucoin":
+    "A centralized exchange with a wide list of perp markets and a trade-only API key. Coming soon.",
+  "venues.soon.bitget":
+    "A centralized exchange known for copy trading, with perp markets and a trade-only API key. Coming soon.",
+  "venues.soon.backpack":
+    "An exchange from the Solana ecosystem with perp markets and a trade-only API key. Coming soon.",
   "venues.soon.gmx":
     "Perps on Arbitrum, filled against oracle prices, with one-click trading keys. Coming soon.",
   "venues.soon.dydx": "An order-book perp chain with permissioned trading keys. Coming soon.",

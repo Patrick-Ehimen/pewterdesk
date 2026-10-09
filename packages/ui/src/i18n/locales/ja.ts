@@ -1553,7 +1553,8 @@ export const messages: Messages = {
   "float.hold": "長押し",
   "float.buy": "買い {size}",
   "float.sell": "売り {size}",
-  "float.closeHalf": "50% 決済",
+  "float.closePart": "{pct}%決済",
+  "float.closeShare": "決済する割合",
   "float.positions": "ポジション · {count}",
   "float.flatten": "全決済",
   "float.flattened": "すべてのポジションに決済注文を送信しました。",
@@ -1958,6 +1959,13 @@ export const messages: Messages = {
     "出来高最大の取引所。取引専用のAPIキー（出金は無効）を使います。近日対応。",
   "venues.soon.okx":
     "無期限先物の板が厚い中央集権型取引所。取引専用のAPIキーを使います。近日対応。",
+  "venues.soon.coinbase": "米国で規制された取引所。無期限先物と取引専用APIキーに対応。近日対応。",
+  "venues.soon.kraken": "老舗の取引所。先物市場と取引専用APIキーに対応。近日対応。",
+  "venues.soon.kucoin": "幅広い無期限市場を持つ中央集権型取引所。取引専用APIキーに対応。近日対応。",
+  "venues.soon.bitget":
+    "コピートレードで知られる中央集権型取引所。無期限市場と取引専用APIキーに対応。近日対応。",
+  "venues.soon.backpack":
+    "Solanaエコシステム発の取引所。無期限市場と取引専用APIキーに対応。近日対応。",
   "venues.soon.gmx":
     "Arbitrum の無期限先物。オラクル価格で約定し、ワンクリックの取引用の鍵を使います。近日対応。",
   "venues.soon.dydx": "板取引の無期限先物チェーン。権限付きの取引用の鍵を使います。近日対応。",

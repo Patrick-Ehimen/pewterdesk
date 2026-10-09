@@ -1569,7 +1569,8 @@ export const messages: Messages = {
   "float.hold": "segurar",
   "float.buy": "Comprar {size}",
   "float.sell": "Vender {size}",
-  "float.closeHalf": "Fechar 50%",
+  "float.closePart": "Fechar {pct}%",
+  "float.closeShare": "Quanto fechar",
   "float.positions": "Posições · {count}",
   "float.flatten": "Fechar tudo",
   "float.flattened": "Ordens de fechamento enviadas para todas as posições.",
@@ -1977,6 +1978,16 @@ export const messages: Messages = {
     "A maior exchange em volume, com uma chave de API só para trading (saques desativados). Em breve.",
   "venues.soon.okx":
     "Uma exchange centralizada com mercados de perpétuos profundos e uma chave de API só para trading. Em breve.",
+  "venues.soon.coinbase":
+    "Uma exchange regulada nos EUA com futuros perpétuos e chave de API só para trading. Em breve.",
+  "venues.soon.kraken":
+    "Uma exchange tradicional com mercados de futuros e chave de API só para trading. Em breve.",
+  "venues.soon.kucoin":
+    "Uma exchange centralizada com ampla lista de perpétuos e chave de API só para trading. Em breve.",
+  "venues.soon.bitget":
+    "Uma exchange centralizada conhecida pelo copy trading, com perpétuos e chave de API só para trading. Em breve.",
+  "venues.soon.backpack":
+    "Uma exchange do ecossistema Solana com mercados perpétuos e chave de API só para trading. Em breve.",
   "venues.soon.gmx":
     "Perpétuos na Arbitrum, executados contra preços de oráculo, com chaves de trading de um clique. Em breve.",
   "venues.soon.dydx":
