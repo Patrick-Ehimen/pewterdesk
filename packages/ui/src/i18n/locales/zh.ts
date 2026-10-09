@@ -890,6 +890,10 @@ export const messages: Messages = {
   "rsi.now": "RSI（{frame}）",
   "rsi.volume": "24 小时成交量",
   "rsi.clickToTrade": "点击交易",
+  "rsi.view": "视图",
+  "rsi.view.chart": "图表",
+  "rsi.view.table": "表格",
+  "rsi.noRows": "所选区间内没有市场。",
 
   "nav.settingsDesc": "偏好设置、钱包与密钥",
 

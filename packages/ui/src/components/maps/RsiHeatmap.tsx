@@ -1,6 +1,6 @@
 import type { Market } from "@pewterdesk/core";
 import { type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { LuRefreshCw } from "react-icons/lu";
+import { LuArrowDown, LuArrowUp, LuChartScatter, LuRefreshCw, LuTable } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
 import { formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import { RSI_FRAMES, RSI_ZONES, type RsiFrame, type RsiZone, rsiZone } from "../../lib/marketMaps";
@@ -33,6 +33,10 @@ const LABEL_H = 11;
 /** How near (px) the pointer must be to a dot for its card. */
 const HOVER_REACH = 12;
 
+/** How the readings are laid out: dots on the fixed chart, or rows to sort. */
+export const RSI_VIEWS = ["chart", "table"] as const;
+export type RsiView = (typeof RSI_VIEWS)[number];
+
 export type RsiScope = "all" | "50" | "100";
 export const RSI_SCOPES: readonly RsiScope[] = ["all", "50", "100"];
 
@@ -59,6 +63,138 @@ function useSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
+const price = (v: number) => formatNumber(v, v < 1 ? 5 : v < 100 ? 3 : 2);
+
+/** One market in the table. */
+interface Row {
+  market: Market;
+  /** Its place by volume, from 1: the chart's column. */
+  rank: number;
+  value: number;
+  previous?: number;
+  zone: RsiZone;
+  quote?: RsiQuote;
+}
+
+type SortKey = "rank" | "name" | "price" | "volume" | "change" | "rsi" | "previous";
+
+const SORT_VALUE: Record<SortKey, (row: Row) => number | string | undefined> = {
+  rank: (r) => r.rank,
+  name: (r) => r.market.base.toLowerCase(),
+  price: (r) => r.quote?.price,
+  volume: (r) => r.quote?.volume,
+  change: (r) => r.quote?.change24h,
+  rsi: (r) => r.value,
+  previous: (r) => r.previous,
+};
+
+/**
+ * The same readings as rows: each market with its price, volume, the day's
+ * change, and its RSI now and one candle ago. Any column sorts; a row opens
+ * the market to trade.
+ */
+function RsiTable({
+  rows,
+  frame,
+  onTrade,
+}: {
+  rows: readonly Row[];
+  frame: RsiFrame;
+  onTrade: (market: Market) => void;
+}) {
+  const [sort, setSort] = useState<{ key: SortKey; down: boolean }>({ key: "rank", down: false });
+  const sorted = useMemo(() => {
+    const value = SORT_VALUE[sort.key];
+    return [...rows].sort((a, b) => {
+      const x = value(a);
+      const y = value(b);
+      // A market with no number for the column goes last, either way up.
+      if (x === undefined || y === undefined) return x === y ? 0 : x === undefined ? 1 : -1;
+      const order = typeof x === "string" ? x.localeCompare(String(y)) : x - Number(y);
+      return sort.down ? -order : order;
+    });
+  }, [rows, sort]);
+  const head = (key: SortKey, label: string, text = false) => (
+    <th
+      className={text ? "pd-rsi-th pd-rsi-th-text" : "pd-rsi-th"}
+      aria-sort={sort.key === key ? (sort.down ? "descending" : "ascending") : "none"}
+    >
+      <button
+        type="button"
+        className="pd-rsi-sort"
+        data-on={sort.key === key || undefined}
+        // Numbers start from the largest; a second click turns it round.
+        onClick={() =>
+          setSort((now) =>
+            now.key === key
+              ? { key, down: !now.down }
+              : { key, down: key !== "rank" && key !== "name" },
+          )
+        }
+      >
+        {label}
+        {sort.key === key &&
+          (sort.down ? <LuArrowDown size={12} aria-hidden /> : <LuArrowUp size={12} aria-hidden />)}
+      </button>
+    </th>
+  );
+  return (
+    <div className="pd-rsi-table-wrap">
+      <table className="pd-rsi-table">
+        <thead>
+          <tr>
+            {head("rank", "#", true)}
+            {head("name", t("col.market"), true)}
+            {head("price", t("col.price"))}
+            {head("volume", t("heat.volume"))}
+            {head("change", "24h %")}
+            {head("rsi", t("rsi.now", { frame: t(`rsi.frame.${frame}`) }))}
+            {head("previous", t("rsi.before"))}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((row) => (
+            <tr key={row.market.id} className="pd-rsi-row">
+              <td className="pd-rsi-td pd-rsi-td-text pd-muted pd-num">{row.rank}</td>
+              <td className="pd-rsi-td pd-rsi-td-text">
+                <button
+                  type="button"
+                  className="pd-rsi-name"
+                  title={t("rsi.clickToTrade")}
+                  onClick={() => onTrade(row.market)}
+                >
+                  <TokenIcon market={row.market} size={22} />
+                  <strong>{row.market.base}</strong>
+                  <span className="pd-muted pd-rsi-ticker">{row.market.symbol}</span>
+                </button>
+              </td>
+              <td className="pd-rsi-td pd-num">{row.quote ? price(row.quote.price) : "–"}</td>
+              <td className="pd-rsi-td pd-num">
+                {row.quote ? `$${formatCompact(row.quote.volume)}` : "–"}
+              </td>
+              <td
+                className={`pd-rsi-td pd-num ${row.quote ? (row.quote.change24h >= 0 ? "pd-up" : "pd-down") : ""}`}
+              >
+                {row.quote ? `${formatSigned(row.quote.change24h * 100, 2)}%` : "–"}
+              </td>
+              <td className="pd-rsi-td pd-num pd-rsi-value" data-zone={row.zone}>
+                {formatNumber(row.value, 1)}
+              </td>
+              <td
+                className="pd-rsi-td pd-num pd-rsi-value"
+                data-zone={row.previous === undefined ? undefined : rsiZone(row.previous)}
+              >
+                {row.previous === undefined ? "–" : formatNumber(row.previous, 1)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {sorted.length === 0 && <EmptyState>{t("rsi.noRows")}</EmptyState>}
+    </div>
+  );
+}
+
 interface Point {
   market: Market;
   value: number;
@@ -77,6 +213,9 @@ interface RsiHeatmapProps {
   onFrame: (frame: RsiFrame) => void;
   scope: RsiScope;
   onScope: (scope: RsiScope) => void;
+  /** The chart of dots, or the same readings as a table. */
+  view: RsiView;
+  onView: (view: RsiView) => void;
   /** Markets read so far this pass, while loading. */
   progress?: { done: number; total: number };
   loading: boolean;
@@ -90,7 +229,8 @@ interface RsiHeatmapProps {
  * always 10 to 90, so dots stay put while values load and refresh. Bands
  * mark overbought, strong, neutral, weak and oversold; a dotted line runs
  * back to the RSI one candle earlier; the market average runs across.
- * Hover a dot for its numbers; click it to trade.
+ * Hover a dot for its numbers; click it to trade. The table view lists the
+ * same readings as rows that sort by any column.
  */
 export function RsiHeatmap({
   slots,
@@ -100,6 +240,8 @@ export function RsiHeatmap({
   onFrame,
   scope,
   onScope,
+  view,
+  onView,
   progress,
   loading,
   onRefresh,
@@ -190,6 +332,25 @@ export function RsiHeatmap({
     }
     setHover(best?.market.id);
   };
+  // The table's rows: the same markets, zones and scope as the chart.
+  const rows = useMemo(() => {
+    const out: Row[] = [];
+    columns.forEach((market, i) => {
+      const reading = values.get(market.id);
+      if (!reading) return;
+      const zone = rsiZone(reading.value);
+      if (!zones.has(zone)) return;
+      out.push({
+        market,
+        rank: i + 1,
+        value: reading.value,
+        previous: reading.previous,
+        zone,
+        quote: quotes?.get(market.id),
+      });
+    });
+    return out;
+  }, [columns, values, zones, quotes]);
   const hovered = hover ? shown.find((p) => p.market.id === hover) : undefined;
   const quote = hovered ? quotes?.get(hovered.market.id) : undefined;
 
@@ -203,6 +364,26 @@ export function RsiHeatmap({
             {t("rsi.loading", { done: progress.done, total: progress.total })}
           </span>
         )}
+        {/* biome-ignore lint/a11y/useSemanticElements: a two-way toggle of icon buttons */}
+        <div className="pd-rsi-views" role="group" aria-label={t("rsi.view")}>
+          {RSI_VIEWS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              className="pd-rsi-view"
+              aria-label={t(v === "chart" ? "rsi.view.chart" : "rsi.view.table")}
+              title={t(v === "chart" ? "rsi.view.chart" : "rsi.view.table")}
+              onClick={() => onView(v)}
+            >
+              {v === "chart" ? (
+                <LuChartScatter size={15} aria-hidden />
+              ) : (
+                <LuTable size={15} aria-hidden />
+              )}
+            </button>
+          ))}
+        </div>
         <Select<RsiScope>
           label={t("rsi.scope")}
           value={scope}
@@ -252,9 +433,11 @@ export function RsiHeatmap({
           </button>
         ))}
       </div>
+      {view === "table" && <RsiTable rows={rows} frame={frame} onTrade={onTrade} />}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: hovering finds the nearest of hundreds of dots; every market is also on the Trade page's picker */}
       <div
         ref={ref}
+        hidden={view === "table"}
         className="pd-rsi-stage"
         onPointerMove={onMove}
         onPointerLeave={() => setHover(undefined)}
@@ -400,9 +583,7 @@ export function RsiHeatmap({
               {quote && (
                 <div className="pd-map-card-row">
                   <dt>{t("col.price")}</dt>
-                  <dd className="pd-num">
-                    {formatNumber(quote.price, quote.price < 1 ? 5 : quote.price < 100 ? 3 : 2)}
-                  </dd>
+                  <dd className="pd-num">{price(quote.price)}</dd>
                   <dt>24H</dt>
                   <dd className={`pd-num ${quote.change24h >= 0 ? "pd-up" : "pd-down"}`}>
                     {formatSigned(quote.change24h * 100, 2)}%

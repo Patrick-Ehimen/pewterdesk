@@ -42,9 +42,11 @@ export {
 } from "./components/maps/MarketHeatmap";
 export {
   RSI_SCOPES,
+  RSI_VIEWS,
   RsiHeatmap,
   type RsiQuote,
   type RsiScope,
+  type RsiView,
 } from "./components/maps/RsiHeatmap";
 export {
   AccountSummary,
