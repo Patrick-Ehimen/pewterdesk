@@ -159,6 +159,16 @@ pub fn install(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Puts the window on screen where the user is - on macOS over a
+/// full-screen app too, without bringing this app forward.
+fn reveal<R: Runtime>(window: &WebviewWindow<R>) {
+    #[cfg(target_os = "macos")]
+    if crate::tray::show_in_place(window, false) {
+        return;
+    }
+    let _ = window.show();
+}
+
 fn show<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = float(app) else {
         return;
@@ -174,7 +184,7 @@ fn show<R: Runtime>(app: &AppHandle<R>) {
         }
     }
     // Shown without taking focus: it's there to be glanced at.
-    let _ = window.show();
+    reveal(&window);
 }
 
 /// Shows the floating window, or hides it if it's showing. From the global
@@ -216,7 +226,7 @@ pub fn show_float_notice(app: AppHandle) -> bool {
         let gap = EDGE_GAP * scale;
         move_to(&window, (area.x + area.width - gap - size.0, area.y + gap));
     }
-    let _ = window.show();
+    reveal(&window);
     true
 }
 

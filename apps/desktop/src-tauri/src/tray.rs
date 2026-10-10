@@ -227,13 +227,59 @@ fn colour_title<R: Runtime>(tray: &tauri::tray::TrayIcon<R>, parts: Vec<TitlePar
     });
 }
 
+/// The class the panel and the floating window are switched to on macOS: an
+/// `NSPanel` that can take the keyboard. `None` if it can't be made.
+#[cfg(target_os = "macos")]
+fn overlay_class() -> Option<&'static objc2::runtime::AnyClass> {
+    use objc2::runtime::{AnyClass, AnyObject, Bool, ClassBuilder, Sel};
+    use objc2::{class, sel};
+    use std::sync::OnceLock;
+
+    extern "C-unwind" fn yes(_: &AnyObject, _: Sel) -> Bool {
+        Bool::YES
+    }
+    extern "C-unwind" fn no(_: &AnyObject, _: Sel) -> Bool {
+        Bool::NO
+    }
+
+    static CLASS: OnceLock<Option<&'static AnyClass>> = OnceLock::new();
+    *CLASS.get_or_init(|| {
+        let mut builder = ClassBuilder::new(c"PewterdeskOverlayPanel", class!(NSPanel))?;
+        // SAFETY: both selectors take no arguments and return a BOOL, as the
+        // functions do.
+        unsafe {
+            builder.add_method(
+                sel!(canBecomeKeyWindow),
+                yes as extern "C-unwind" fn(_, _) -> _,
+            );
+            builder.add_method(
+                sel!(canBecomeMainWindow),
+                no as extern "C-unwind" fn(_, _) -> _,
+            );
+        }
+        // The windowing library's own window class keeps this flag, and looks
+        // it up by name; kept so the two classes have the same layout.
+        builder.add_ivar::<Bool>(c"focusable");
+        Some(builder.register())
+    })
+}
+
 /// On macOS, lets the panel open over anything, full-screen apps included,
 /// like the menu bar it hangs from: it joins every Space (including another
 /// app's full-screen one) and sits at the menu bar's own level. Mission
 /// Control leaves it be, and ⌘` skips it.
+///
+/// An ordinary window of an ordinary app is never drawn in another app's
+/// full-screen Space, whatever its level: only a panel that doesn't activate
+/// its app is. So the window becomes one - its class is switched to an
+/// `NSPanel` subclass - and `show_in_place` then shows it without bringing
+/// the app (and its Space) forward.
 #[cfg(target_os = "macos")]
 pub(crate) fn float_over_everything<R: Runtime>(panel: &WebviewWindow<R>) {
-    use objc2_app_kit::{NSStatusWindowLevel, NSWindow, NSWindowCollectionBehavior};
+    use objc2::runtime::AnyObject;
+    use objc2_app_kit::{
+        NSStatusWindowLevel, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask,
+    };
 
     let Ok(ptr) = panel.ns_window() else {
         return;
@@ -241,6 +287,17 @@ pub(crate) fn float_over_everything<R: Runtime>(panel: &WebviewWindow<R>) {
     // SAFETY: Tauri hands back the panel's live NSWindow, and setup (where
     // this runs) is on the main thread, as AppKit requires.
     let window: &NSWindow = unsafe { &*ptr.cast::<NSWindow>() };
+    let object: &AnyObject = window;
+    // Only between classes of one size, so nothing reads or writes past the
+    // window's memory: otherwise it stays an ordinary window, as before.
+    if let Some(class) =
+        overlay_class().filter(|c| c.instance_size() == object.class().instance_size())
+    {
+        // SAFETY: an NSPanel is an NSWindow with nothing added, and the new
+        // class lays out its one flag where the old one did (checked above).
+        unsafe { AnyObject::set_class(object, class) };
+        window.setStyleMask(window.styleMask() | NSWindowStyleMask::NonactivatingPanel);
+    }
     window.setCollectionBehavior(
         NSWindowCollectionBehavior::CanJoinAllSpaces
             | NSWindowCollectionBehavior::FullScreenAuxiliary
@@ -248,6 +305,38 @@ pub(crate) fn float_over_everything<R: Runtime>(panel: &WebviewWindow<R>) {
             | NSWindowCollectionBehavior::IgnoresCycle,
     );
     window.setLevel(NSStatusWindowLevel);
+}
+
+/// Shows a window `float_over_everything` prepared where the user is, over a
+/// full-screen app included, without bringing this app forward (which would
+/// switch to its own Space). `key` also gives it the keyboard, so a click
+/// elsewhere is noticed. Returns false if it isn't such a panel - then the
+/// caller shows it the ordinary way.
+#[cfg(target_os = "macos")]
+pub(crate) fn show_in_place<R: Runtime>(window: &WebviewWindow<R>, key: bool) -> bool {
+    use objc2_app_kit::{NSWindow, NSWindowStyleMask};
+
+    let target = window.clone();
+    let (sent, shown) = std::sync::mpsc::channel();
+    let asked = window.run_on_main_thread(move || {
+        let Ok(ptr) = target.ns_window() else {
+            let _ = sent.send(false);
+            return;
+        };
+        // SAFETY: the window's live NSWindow, used on the main thread.
+        let window: &NSWindow = unsafe { &*ptr.cast::<NSWindow>() };
+        let panel = window
+            .styleMask()
+            .contains(NSWindowStyleMask::NonactivatingPanel);
+        if panel {
+            window.orderFrontRegardless();
+            if key {
+                window.makeKeyWindow();
+            }
+        }
+        let _ = sent.send(panel);
+    });
+    asked.is_ok() && shown.recv().unwrap_or(false)
 }
 
 /// Brings the main window back (from hidden or minimised) and focuses it.
@@ -308,6 +397,10 @@ fn toggle_panel<R: Runtime>(app: &AppHandle<R>, rect: tauri::Rect) {
     }
     let y = icon.y + icon_size.height + gap;
     let _ = panel.set_position(PhysicalPosition::new(x, y));
+    #[cfg(target_os = "macos")]
+    if show_in_place(&panel, true) {
+        return;
+    }
     let _ = panel.show();
     let _ = panel.set_focus();
 }
@@ -413,6 +506,26 @@ pub fn resize_tray_panel(app: AppHandle, height: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The class switch relies on a panel adding nothing to a window: the
+    /// overlay class is then a window plus its one flag, like the class it
+    /// replaces.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn the_overlay_class_is_a_window_plus_one_flag() {
+        use objc2::class;
+
+        let overlay = overlay_class().expect("the class registers");
+        assert_eq!(overlay.superclass(), Some(class!(NSPanel)));
+        assert_eq!(
+            class!(NSPanel).instance_size(),
+            class!(NSWindow).instance_size()
+        );
+        let extra = overlay.instance_size() - class!(NSWindow).instance_size();
+        // The flag is one byte, and may fit in the window's own padding.
+        assert!(extra <= 8, "{extra} bytes added");
+        assert!(overlay.instance_variable(c"focusable").is_some());
+    }
 
     fn part(text: &str) -> TitlePart {
         TitlePart {
