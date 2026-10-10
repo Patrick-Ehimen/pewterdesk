@@ -1252,9 +1252,14 @@ export const en = {
   "layout.editing": "Editing layout",
   "layout.hint": "Drag titles to move · drag edges to resize",
   "layout.saveAs": "Save as…",
+  "layout.save": "Save",
   "layout.done": "Done",
   "layout.name": "Layout name",
-  "layout.nameTaken": "That name belongs to a built-in layout",
+  "layout.nameTaken": "That name is already used",
+  "layout.new": "New layout",
+  "layout.newName": "Name the new layout",
+  "layout.kept": "“{name}” is yours: changes are saved as you make them",
+  "layout.unsaved": "Built-in layout changed · Save as… to keep it",
   "layout.delete": "Delete layout {name}",
   "preset.Default": "Default",
   "preset.Scalping": "Scalping",
@@ -1289,8 +1294,8 @@ export const en = {
   "cmd.onPosition": "On your {size} {side}, entered at {entry}",
   "cmd.empty": "Nothing matches. Try a market, a page, or a command like the ones below.",
   "palette.title": "Panels",
-  "palette.help":
-    "Drag onto the grid, or click to add at the bottom. A panel can appear more than once.",
+  "palette.help": "Drag onto the grid, or click to add at the bottom. Each panel goes in once.",
+  "palette.already": "Already in the layout",
   "palette.inLayout": "in layout",
 
   // Wallet

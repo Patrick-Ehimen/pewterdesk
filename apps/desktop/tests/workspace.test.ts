@@ -8,6 +8,8 @@ import {
   fillGaps,
   GRID,
   initialWorkspace,
+  isChanged,
+  newLayout,
   PRESETS,
   removePanel,
   STATS_BAR_ID,
@@ -16,6 +18,7 @@ import {
   sanitizeWorkspace,
   saveAs,
   upgradeDefault,
+  withLayout,
   withStatsBar,
 } from "../src/lib/workspace";
 
@@ -61,15 +64,23 @@ describe("presets", () => {
 });
 
 describe("addPanel / removePanel", () => {
-  it("adds a new instance of a kind that's already placed", () => {
-    const layout = addPanel(DEFAULT_PRESET.layout, "orderBook");
-    const books = layout.filter((p) => panelKindOf(p.i) === "orderBook");
-    expect(books).toHaveLength(2);
+  it("adds a panel once, with an id of its own", () => {
+    // Default has no CLI panel.
+    const layout = addPanel(DEFAULT_PRESET.layout, "cli");
+    expect(layout.filter((p) => panelKindOf(p.i) === "cli")).toHaveLength(1);
     expect(new Set(layout.map((p) => p.i)).size).toBe(layout.length);
+    // A kind that's already there isn't added again: the same layout comes back.
+    expect(addPanel(layout, "cli")).toBe(layout);
+    expect(addPanel(DEFAULT_PRESET.layout, "orderBook")).toBe(DEFAULT_PRESET.layout);
+  });
+
+  it("keeps the copies a layout was saved with", () => {
+    const twice = [...DEFAULT_PRESET.layout, { i: "orderBook:second", x: 0, y: 40, w: 5, h: 8 }];
+    expect(sanitizeLayout(twice).filter((p) => panelKindOf(p.i) === "orderBook")).toHaveLength(2);
   });
 
   it("appends below everything when no spot is given", () => {
-    const added = addPanel(DEFAULT_PRESET.layout, "markets").at(-1);
+    const added = addPanel(DEFAULT_PRESET.layout, "cli").at(-1);
     const bottom = Math.max(...DEFAULT_PRESET.layout.map((p) => p.y + p.h));
     expect(added?.y).toBe(bottom);
   });
@@ -217,6 +228,40 @@ describe("saveAs", () => {
     const state = initialWorkspace();
     expect(saveAs(state, "  ")).toBe(state);
     expect(saveAs(state, "Scalping")).toBe(state);
+  });
+});
+
+describe("layouts of the user's own", () => {
+  it("keeps a custom layout as it's changed, and leaves a built-in one as it ships", () => {
+    const mine = saveAs(initialWorkspace(), "Mine");
+    const moved = addPanel(mine.layout, "cli");
+    const kept = withLayout(mine, moved);
+    expect(kept.layout).toBe(moved);
+    expect(kept.saved).toEqual([{ name: "Mine", layout: moved }]);
+    // On a built-in layout the change is on screen only.
+    const preset = withLayout(initialWorkspace(), moved);
+    expect(preset.layout).toBe(moved);
+    expect(preset.saved).toEqual([]);
+    expect(isChanged(preset)).toBe(true);
+    expect(isChanged(initialWorkspace())).toBe(false);
+    // One of the user's own is never "changed from a built-in".
+    expect(isChanged(kept)).toBe(false);
+    // The same layout again changes nothing.
+    expect(withLayout(kept, moved)).toBe(kept);
+  });
+
+  it("starts a new layout empty but for the stats bar", () => {
+    const state = newLayout(initialWorkspace(), "  Scalp 2 ");
+    expect(state.active).toBe("Scalp 2");
+    expect(state.layout.map((p) => p.i)).toEqual([STATS_BAR_ID]);
+    expect(state.saved).toEqual([{ name: "Scalp 2", layout: state.layout }]);
+    // A blank name, a built-in's or one already used starts nothing.
+    expect(newLayout(state, " ")).toBe(state);
+    expect(newLayout(state, "Default")).toBe(state);
+    expect(newLayout(state, "Scalp 2")).toBe(state);
+    // Panels added to it are kept with it.
+    const built = withLayout(state, addPanel(state.layout, "markets"));
+    expect(built.saved[0]?.layout).toHaveLength(2);
   });
 });
 

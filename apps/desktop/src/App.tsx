@@ -198,8 +198,11 @@ import {
   DEFAULT_PRESET,
   type ExpandMode,
   fillGaps,
+  isChanged,
+  newLayout,
   removePanel,
   saveAs,
+  withLayout,
 } from "./lib/workspace";
 
 /** The launch splash stays up at least this long after the page starts, and at most this. */
@@ -1193,7 +1196,7 @@ export function App() {
   /** Leaving edit mode closes any gaps the edits left behind. */
   const finishEditing = () => {
     setEditing(false);
-    setWorkspace((w) => ({ ...w, layout: fillGaps(w.layout) }));
+    setWorkspace((w) => withLayout(w, fillGaps(w.layout)));
   };
 
   const placed = new Set(
@@ -1629,7 +1632,9 @@ export function App() {
                 onApply={(l) =>
                   setWorkspace((w) => ({ ...w, layout: fillGaps(l.layout), active: l.name }))
                 }
+                changed={isChanged(workspace)}
                 onSaveAs={(name) => setWorkspace((w) => saveAs(w, name))}
+                onNew={(name) => setWorkspace((w) => newLayout(w, name))}
                 onDelete={(name) =>
                   setWorkspace((w) => ({ ...w, saved: w.saved.filter((s) => s.name !== name) }))
                 }
@@ -1648,13 +1653,13 @@ export function App() {
                 layout={workspace.layout}
                 editing={editing}
                 dragging={dragging}
-                onChange={(layout) => setWorkspace((w) => ({ ...w, layout }))}
+                onChange={(layout) => setWorkspace((w) => withLayout(w, layout))}
                 onDrop={(kind, at) => {
                   setDragging(undefined);
-                  setWorkspace((w) => ({ ...w, layout: addPanel(w.layout, kind, at) }));
+                  setWorkspace((w) => withLayout(w, addPanel(w.layout, kind, at)));
                 }}
                 onRemove={(id) =>
-                  setWorkspace((w) => ({ ...w, layout: fillGaps(removePanel(w.layout, id)) }))
+                  setWorkspace((w) => withLayout(w, fillGaps(removePanel(w.layout, id))))
                 }
                 renderPanel={renderPanel}
                 renderAside={renderAside}
@@ -1685,9 +1690,7 @@ export function App() {
                   placed={placed}
                   onDragStart={setDragging}
                   onDragEnd={() => setDragging(undefined)}
-                  onAdd={(kind) =>
-                    setWorkspace((w) => ({ ...w, layout: addPanel(w.layout, kind) }))
-                  }
+                  onAdd={(kind) => setWorkspace((w) => withLayout(w, addPanel(w.layout, kind)))}
                 />
               )}
             </div>

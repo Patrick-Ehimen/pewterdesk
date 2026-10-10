@@ -167,8 +167,18 @@ export function initialWorkspace(): WorkspaceState {
   return { layout: DEFAULT_PRESET.layout, active: DEFAULT_PRESET.name, saved: [] };
 }
 
-/** Adds a panel at `at`, or at the bottom of the grid when no spot is given. */
+/** Whether a panel of `kind` is in `layout`. */
+export const hasPanel = (layout: Layout, kind: PanelKind) =>
+  layout.some((p) => panelKindOf(p.i) === kind);
+
+/**
+ * Adds a panel at `at`, or at the bottom of the grid when no spot is given.
+ * A kind goes in once: every copy would show the same market and account,
+ * so one that's already there leaves the layout as it is. (Layouts saved
+ * with more than one keep them.)
+ */
 export function addPanel(layout: Layout, kind: PanelKind, at?: { x: number; y: number }): Layout {
+  if (hasPanel(layout, kind)) return layout;
   const { w, h } = PANELS[kind];
   const bottom = layout.reduce((max, p) => Math.max(max, p.y + p.h), 0);
   const x = Math.min(at?.x ?? 0, GRID.cols - w);
@@ -311,6 +321,45 @@ export function sanitizeWorkspace(raw: unknown): WorkspaceState {
     active: typeof active === "string" ? active : fallback.active,
     saved: savedLayouts,
   };
+}
+
+/** Whether `name` is one of the user's own layouts (not a built-in one). */
+export const isCustom = (state: WorkspaceState, name: string) =>
+  state.saved.some((s) => s.name === name);
+
+/**
+ * `state` showing `layout`. A layout of the user's own is kept as it's
+ * changed, so there's no separate step to save it; a built-in one stays as
+ * it shipped, and the change lives only on screen until it's saved as one.
+ */
+export function withLayout(state: WorkspaceState, layout: Layout): WorkspaceState {
+  if (layout === state.layout) return state;
+  return {
+    ...state,
+    layout,
+    saved: state.saved.map((s) => (s.name === state.active ? { ...s, layout } : s)),
+  };
+}
+
+/** Whether a built-in layout on screen has been changed from how it ships. */
+export function isChanged(state: WorkspaceState): boolean {
+  const preset = PRESETS.find((p) => p.name === state.active);
+  return (
+    preset !== undefined && JSON.stringify(fillGaps(preset.layout)) !== JSON.stringify(state.layout)
+  );
+}
+
+/**
+ * A new, empty layout of the user's own under `name` (only the stats bar),
+ * to build up from the palette. Nothing changes for a blank or taken name.
+ */
+export function newLayout(state: WorkspaceState, name: string): WorkspaceState {
+  const trimmed = name.trim();
+  const taken =
+    PRESETS.some((p) => p.name === trimmed) || state.saved.some((s) => s.name === trimmed);
+  if (!trimmed || taken) return state;
+  const layout = withStatsBar([]);
+  return { ...state, layout, active: trimmed, saved: [...state.saved, { name: trimmed, layout }] };
 }
 
 /** Saves (or overwrites) the current layout under `name`; presets can't be overwritten. */
