@@ -7,12 +7,16 @@ export function tokens(el: HTMLElement) {
   const css = getComputedStyle(el);
   const v = (name: string) => css.getPropertyValue(name).trim();
   return {
-    bg: v("--pd-surface"),
+    // A theme may give the chart a background of its own.
+    bg: v("--pd-chart-bg") || v("--pd-surface"),
     text: v("--pd-pewter"),
     grid: v("--pd-border"),
     border: v("--pd-border-strong"),
     buy: v("--pd-buy"),
     sell: v("--pd-sell"),
+    // Candles and bars: the market colours, unless the theme has its own pair.
+    up: v("--pd-candle-up") || v("--pd-buy"),
+    down: v("--pd-candle-down") || v("--pd-sell"),
     buyTint: v("--pd-buy-tint"),
     sellTint: v("--pd-sell-tint"),
     crosshair: v("--pd-pewter-dim"),

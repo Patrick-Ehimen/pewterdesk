@@ -50,7 +50,7 @@ Colorblind mode (`data-market="colorblind"`): buy #4C9BE8, sell #E8894A, warning
 
 ## Themes
 
-Six themes in the app's picker, in this order, set with `data-theme` on
+Twelve themes in the app's picker, in this order, set with `data-theme` on
 `<html>`. Monokai Pro is the default until one is picked; Pewter's tokens are
 the bare `:root` set, so it needs no attribute. Every text
 token passes WCAG AA (4.5:1) on bg, surface and surface-raised, with the
@@ -64,6 +64,12 @@ exceptions noted under Contrast.
 | `dark` | Pewter | Pewter and brass on near-black | #111110 | brass #C9A45C |
 | `palenight` | Palenight | Soft purple on slate blue | #202331 | purple #C792EA |
 | `parchment` | Parchment | Warm, paper-toned light | #F2ECDF | brass #A9803A |
+| `bybit` | Bybit | The venue's amber on near-black | #101014 | amber #F7A600 |
+| `binance` | Binance | The venue's yellow on charcoal | #0B0E11 | yellow #FCD535 |
+| `ftx` | FTX | Turquoise and red on blue-black | #0F1218 | turquoise #02D4C3 |
+| `hyrotrader` | Hyrotrader | Indigo on midnight, mint and rose | #0D0E1B | indigo #4D54F5 |
+| `bambam` | BAMBAM | One hue: deep teal and mint on navy | #202431 | teal #006064 |
+| `cosku` | Cosku | Slate and crimson on blue-grey | #2F3447 | slate #476072 |
 
 `light` (Porcelain, the light column of the core palette) stays defined in the
 tokens but isn't offered in the picker.
@@ -71,9 +77,21 @@ tokens but isn't offered in the picker.
 **Exception to "brass is the sole accent":** the three editor-inspired themes
 (Synthwave '84, Monokai Pro, Palenight) replace brass with their own signature
 color through the same `--pd-brass*` tokens. Each still has exactly one accent,
-used only where brass would be, and green/red remain market-only in all six.
+used only where brass would be, and green/red remain market-only in every theme.
 Their market reds are lightened slightly from the editor originals where the
 original fails contrast. Don't carry these accents into the pewter themes.
+
+**Venue-styled themes.** The last six copy a venue's look, or a Tealstreet
+theme of the same name (FTX, Hyrotrader, BAMBAM and Cosku were sampled from
+it). Like the editor themes, each puts its one accent through `--pd-brass*`.
+Where the original's colours can't be read as text, the text tokens are
+lightened just enough to pass and the price chart keeps the originals through
+`--pd-candle-up` / `--pd-candle-down`; `--pd-chart-bg` gives the chart a
+background of its own where the original's differs from its panel (FTX,
+Cosku). Other themes leave all three at their defaults (the market colours
+and the panel's surface). BAMBAM is one hue by design, so rising and falling
+differ in lightness, not colour: the colourblind market colours are the
+answer for anyone who needs more.
 
 Full values are in the tokens file. A new theme defines every `--pd-*` color
 token; check it with a contrast script before adding it here.

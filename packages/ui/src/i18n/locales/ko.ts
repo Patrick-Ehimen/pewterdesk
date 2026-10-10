@@ -1225,6 +1225,18 @@ export const messages: Messages = {
   "theme.palenight.desc": "슬레이트 블루 위의 부드러운 보라",
   "theme.parchment.name": "양피지",
   "theme.parchment.desc": "따뜻한 종이 톤의 라이트",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "거의 검정에 가까운 배경에 앰버",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "차콜 배경에 옐로",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "푸른빛 검정에 터쿼이즈와 레드",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "미드나이트에 인디고, 민트와 로즈",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "단일 색조: 네이비에 딥 틸과 민트",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "블루그레이에 슬레이트와 크림슨",
 
   // Settings page
   "settings.title": "설정",

@@ -1231,6 +1231,18 @@ export const messages: Messages = {
   "theme.palenight.desc": "スレートブルーに柔らかな紫",
   "theme.parchment.name": "パーチメント",
   "theme.parchment.desc": "紙のような温かみのある明るさ",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "黒に近い背景にアンバー",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "チャコールにイエロー",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "青みがかった黒にターコイズと赤",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "ミッドナイトにインディゴ、ミントとローズ",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "単色:ネイビーにディープティールとミント",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "ブルーグレーにスレートとクリムゾン",
 
   // Settings page
   "settings.title": "設定",

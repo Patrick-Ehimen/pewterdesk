@@ -14,6 +14,13 @@ export const THEMES = [
   "dark",
   "palenight",
   "parchment",
+  // After venues and Tealstreet's themes of the same names.
+  "bybit",
+  "binance",
+  "ftx",
+  "hyrotrader",
+  "bambam",
+  "cosku",
 ] as const;
 export type Theme = (typeof THEMES)[number];
 /** Monokai Pro, until a theme is picked. Keep in sync with public/boot.js and tauri.conf.json. */

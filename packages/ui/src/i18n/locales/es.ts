@@ -1254,6 +1254,18 @@ export const messages: Messages = {
   "theme.palenight.desc": "Morado suave sobre azul pizarra",
   "theme.parchment.name": "Pergamino",
   "theme.parchment.desc": "Claro y cálido, tono papel",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "Ámbar sobre casi negro",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "Amarillo sobre carbón",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "Turquesa y rojo sobre negro azulado",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "Índigo sobre medianoche, menta y rosa",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "Un solo tono: verde azulado y menta sobre azul marino",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "Pizarra y carmesí sobre gris azulado",
 
   // Settings page
   "settings.title": "Ajustes",

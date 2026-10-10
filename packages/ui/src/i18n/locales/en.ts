@@ -1180,6 +1180,18 @@ export const en = {
   "theme.palenight.desc": "Soft purple on slate blue",
   "theme.parchment.name": "Parchment",
   "theme.parchment.desc": "Warm, paper-toned light",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "Amber on near-black",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "Yellow on charcoal",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "Turquoise and red on blue-black",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "Indigo on midnight, mint and rose",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "One hue: deep teal and mint on navy",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "Slate and crimson on blue-grey",
 
   // Settings page
   "settings.title": "Settings",

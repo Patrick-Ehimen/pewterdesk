@@ -1201,6 +1201,18 @@ export const messages: Messages = {
   "theme.palenight.desc": "板岩蓝底上的柔和紫",
   "theme.parchment.name": "羊皮纸",
   "theme.parchment.desc": "温暖的纸质浅色",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "近黑底色配琥珀色",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "炭灰底色配黄色",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "蓝黑底色配青绿与红色",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "午夜底色配靛蓝，薄荷与玫瑰色",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "单一色调：深青与薄荷配藏青",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "蓝灰底色配石板灰与深红",
 
   // Settings page
   "settings.title": "设置",

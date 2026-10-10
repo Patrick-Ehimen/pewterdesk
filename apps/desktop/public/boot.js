@@ -8,7 +8,21 @@
     const theme = localStorage.getItem("pd.theme") ?? "monokai";
     // Same list as THEMES there, minus "dark" (Pewter): its tokens are the
     // bare :root ones, so it needs no attribute.
-    if (["graphite", "synthwave", "monokai", "palenight", "parchment"].includes(theme)) {
+    if (
+      [
+        "graphite",
+        "synthwave",
+        "monokai",
+        "palenight",
+        "parchment",
+        "bybit",
+        "binance",
+        "ftx",
+        "hyrotrader",
+        "bambam",
+        "cosku",
+      ].includes(theme)
+    ) {
       root.dataset.theme = theme;
     }
     if (localStorage.getItem("pd.marketColors") === "colorblind")

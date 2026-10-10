@@ -1,10 +1,12 @@
 /* Pewterdesk color tokens. Pewter (dark) is the bare :root set; the app's
    default theme is Monokai Pro. Set data-theme on
-   <html> to dark | graphite | synthwave | monokai | palenight | parchment
-   (or light, the brand light palette), and data-market="colorblind" for
+   <html> to dark | graphite | synthwave | monokai | palenight | parchment |
+   bybit | binance | ftx | hyrotrader | bambam | cosku (or light, the brand
+   light palette), and data-market="colorblind" for
    colorblind-safe market colors. The brand themes vary only the neutrals -
    brass is the one accent. The editor-inspired themes (synthwave, monokai,
-   palenight) swap in their own single accent through the --pd-brass tokens;
+   palenight) and the venue-styled ones (bybit, binance, ftx, hyrotrader,
+   bambam, cosku) swap in their own single accent through the --pd-brass tokens;
    green/red stay market-only everywhere. Selectors work on any element, so a
    subtree (e.g. a theme preview swatch) can show another theme. Full rules:
    .claude/brand/BRAND.md */
@@ -179,13 +181,190 @@
   --pd-info: #2a6499;
 }
 
+/* Bybit: its amber on near-black, with its own green and red. The red is
+   nudged for text; candles keep the original (--pd-candle-down). */
+[data-theme="bybit"] {
+  --pd-bg: #101014;
+  --pd-surface: #17181e;
+  --pd-surface-raised: #1f2129;
+  --pd-border: #262830;
+  --pd-border-strong: #3a3d48;
+  --pd-text: #f4f5f7;
+  --pd-pewter: #adb1b8;
+  --pd-pewter-dim: #85898f;
+  --pd-brass: #f7a600;
+  --pd-brass-text: #f7a600;
+  --pd-brass-hover: #ffb82e;
+  --pd-on-brass: #101014;
+  --pd-buy: #20b26c;
+  --pd-on-buy: #06140d;
+  --pd-buy-tint: rgb(32 178 108 / 0.12);
+  --pd-sell: #f05055;
+  --pd-on-sell: #240708;
+  --pd-sell-tint: rgb(240 80 85 / 0.13);
+  --pd-warning: #ff9c2e;
+  --pd-info: #6ea8fe;
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: #ef454a;
+}
+
+/* Binance: its yellow on charcoal, with its own green and red. The red is
+   nudged for text; candles keep the original (--pd-candle-down). */
+[data-theme="binance"] {
+  --pd-bg: #0b0e11;
+  --pd-surface: #181a20;
+  --pd-surface-raised: #1e2329;
+  --pd-border: #2b3139;
+  --pd-border-strong: #474d57;
+  --pd-text: #eaecef;
+  --pd-pewter: #b7bdc6;
+  --pd-pewter-dim: #848e9c;
+  --pd-brass: #fcd535;
+  --pd-brass-text: #fcd535;
+  --pd-brass-hover: #ffe066;
+  --pd-on-brass: #181a20;
+  --pd-buy: #0ecb81;
+  --pd-on-buy: #04170f;
+  --pd-buy-tint: rgb(14 203 129 / 0.12);
+  --pd-sell: #f64a60;
+  --pd-on-sell: #26080d;
+  --pd-sell-tint: rgb(246 74 96 / 0.13);
+  --pd-warning: #ff9f43;
+  --pd-info: #5aa9ff;
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: #f6465d;
+}
+
+/* FTX, after the Tealstreet theme: turquoise and red on blue-black, the
+   chart a shade darker than its panel. The red is nudged for text; candles
+   keep the original (--pd-candle-down). */
+[data-theme="ftx"] {
+  --pd-bg: #0f1218;
+  --pd-surface: #171d26;
+  --pd-surface-raised: #1f2733;
+  --pd-border: #232b38;
+  --pd-border-strong: #37414f;
+  --pd-text: #ffffff;
+  --pd-pewter: #a8abaf;
+  --pd-pewter-dim: #898f98;
+  --pd-brass: #02d4c3;
+  --pd-brass-text: #02d4c3;
+  --pd-brass-hover: #3fe3d6;
+  --pd-on-brass: #06201e;
+  --pd-buy: #00c3bd;
+  --pd-on-buy: #031a19;
+  --pd-buy-tint: rgb(0 195 189 / 0.12);
+  --pd-sell: #f95054;
+  --pd-on-sell: #260607;
+  --pd-sell-tint: rgb(249 80 84 / 0.13);
+  --pd-warning: #ffb347;
+  --pd-info: #6fb1ff;
+  --pd-chart-bg: #101421;
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: #f83d41;
+}
+
+/* Hyrotrader, after the Tealstreet theme: indigo on midnight, mint and rose
+   for the market. The accent's text is lightened from #4d54f5 to pass on
+   the panels. */
+[data-theme="hyrotrader"] {
+  --pd-bg: #0d0e1b;
+  --pd-surface: #12131f;
+  --pd-surface-raised: #1a1c2c;
+  --pd-border: #1f2136;
+  --pd-border-strong: #33365a;
+  --pd-text: #f5f5f5;
+  --pd-pewter: #a4a4a9;
+  --pd-pewter-dim: #828493;
+  --pd-brass: #4d54f5;
+  --pd-brass-text: #8f94ff;
+  --pd-brass-hover: #6a70ff;
+  --pd-on-brass: #ffffff;
+  --pd-buy: #4dbe95;
+  --pd-on-buy: #06170f;
+  --pd-buy-tint: rgb(77 190 149 / 0.12);
+  --pd-sell: #e0607a;
+  --pd-on-sell: #26090f;
+  --pd-sell-tint: rgb(224 96 122 / 0.13);
+  --pd-warning: #ffb86b;
+  --pd-info: #7db4ff;
+}
+
+/* BAMBAM, after the Tealstreet theme: one hue, deep teal and pale mint on
+   navy. Its candles are those two exactly (--pd-candle-*); the falling
+   colour is lightened for text, where #006064 can't be read. */
+[data-theme="bambam"] {
+  --pd-bg: #202431;
+  --pd-surface: #131722;
+  --pd-surface-raised: #1b2130;
+  --pd-border: #2a3040;
+  --pd-border-strong: #3d4558;
+  --pd-text: #e8f6f3;
+  --pd-pewter: #9db8b4;
+  --pd-pewter-dim: #79908e;
+  --pd-brass: #006064;
+  --pd-brass-text: #ace5dc;
+  --pd-brass-hover: #0a7b80;
+  --pd-on-brass: #e8f6f3;
+  --pd-buy: #ace5dc;
+  --pd-on-buy: #0b2a28;
+  --pd-buy-tint: rgb(172 229 220 / 0.12);
+  --pd-sell: #3f9ea3;
+  --pd-on-sell: #04191a;
+  --pd-sell-tint: rgb(63 158 163 / 0.13);
+  --pd-warning: #e8c07a;
+  --pd-info: #8fc7e8;
+  --pd-candle-up: #ace5dc;
+  --pd-candle-down: #006064;
+}
+
+/* Cosku, after the Tealstreet theme: slate and crimson on blue-grey, warm
+   grey text, the chart near-black. Its candles are the theme's own muted
+   pair (--pd-candle-*); both are lightened for text. */
+[data-theme="cosku"] {
+  --pd-bg: #2f3447;
+  --pd-surface: #202737;
+  --pd-surface-raised: #2a3245;
+  --pd-border: #343b50;
+  --pd-border-strong: #4a5370;
+  --pd-text: #dcd9d2;
+  --pd-pewter: #b6b3ac;
+  --pd-pewter-dim: #9e9da2;
+  --pd-brass: #476072;
+  --pd-brass-text: #9dbdd0;
+  --pd-brass-hover: #55748a;
+  --pd-on-brass: #f0eee9;
+  --pd-buy: #74a9b3;
+  --pd-on-buy: #06171a;
+  --pd-buy-tint: rgb(116 169 179 / 0.12);
+  --pd-sell: #e77c97;
+  --pd-on-sell: #26070f;
+  --pd-sell-tint: rgb(231 124 151 / 0.13);
+  --pd-warning: #e0a96d;
+  --pd-info: #8fb7dd;
+  --pd-candle-up: #345b63;
+  --pd-candle-down: #7d1835;
+  --pd-chart-bg: #0e0e14;
+}
+
 [data-market="colorblind"] {
   --pd-buy: #4c9be8;
   --pd-buy-tint: rgb(76 155 232 / 0.12);
   --pd-sell: #e8894a;
   --pd-sell-tint: rgb(232 137 74 / 0.12);
   --pd-warning: #d96bc7;
+  /* Over a theme's own candle pair too. */
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: var(--pd-sell);
 }
+
+/* The price chart's own tokens are optional: --pd-candle-up, --pd-candle-down
+   and --pd-chart-bg. A theme sets them only where a venue's look needs candles
+   that aren't its text colours, or a chart darker than its panel; left unset,
+   the chart takes --pd-buy, --pd-sell and --pd-surface (chartTheme.ts). They
+   aren't given defaults here on purpose: a var() default on :root would be
+   worked out there and carried, already resolved, into any subtree showing
+   another theme. */
 
 /* QR codes: black on white in every theme. Wallet cameras read that most
    reliably, so it doesn't follow the palette. */

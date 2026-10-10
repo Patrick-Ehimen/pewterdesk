@@ -181,7 +181,7 @@ function build(
   indicators: ReadonlySet<IndicatorId>,
   t: Tokens,
 ): Drawn {
-  const up = { upColor: t.buy, downColor: t.sell };
+  const up = { upColor: t.up, downColor: t.down };
   let main: Any;
   switch (type) {
     case "bars":
@@ -214,11 +214,11 @@ function build(
       // Candles, hollow candles (rising bodies unfilled) and Heikin-Ashi.
       main = chart.addSeries(CandlestickSeries, {
         ...up,
-        upColor: type === "hollow" ? "rgba(0, 0, 0, 0)" : t.buy,
-        borderUpColor: t.buy,
-        borderDownColor: t.sell,
-        wickUpColor: t.buy,
-        wickDownColor: t.sell,
+        upColor: type === "hollow" ? "rgba(0, 0, 0, 0)" : t.up,
+        borderUpColor: t.up,
+        borderDownColor: t.down,
+        wickUpColor: t.up,
+        wickDownColor: t.down,
       });
   }
   const drawn: Drawn = { main, lines: {} };

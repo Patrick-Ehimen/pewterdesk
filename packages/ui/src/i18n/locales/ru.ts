@@ -1241,6 +1241,18 @@ export const messages: Messages = {
   "theme.palenight.desc": "Мягкий фиолетовый на сланцево-синем",
   "theme.parchment.name": "Пергамент",
   "theme.parchment.desc": "Тёплая светлая, как бумага",
+  "theme.bybit.name": "Bybit",
+  "theme.bybit.desc": "Янтарный на почти чёрном",
+  "theme.binance.name": "Binance",
+  "theme.binance.desc": "Жёлтый на угольном",
+  "theme.ftx.name": "FTX",
+  "theme.ftx.desc": "Бирюзовый и красный на сине-чёрном",
+  "theme.hyrotrader.name": "Hyrotrader",
+  "theme.hyrotrader.desc": "Индиго на полуночном, мята и роза",
+  "theme.bambam.name": "BAMBAM",
+  "theme.bambam.desc": "Один тон: тёмная бирюза и мята на тёмно-синем",
+  "theme.cosku.name": "Cosku",
+  "theme.cosku.desc": "Сланцевый и малиновый на серо-синем",
 
   // Settings page
   "settings.title": "Настройки",
