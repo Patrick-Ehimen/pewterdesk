@@ -89,6 +89,7 @@ import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
+import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
 import {
   pageLabel,
@@ -1267,6 +1268,27 @@ export function App() {
               setChartRequest((n) => n + 1);
               setDrawerFor({ market: p.market, side: p.side });
             }}
+          />
+        );
+      case "cli":
+        // The palette's commands, typed into a panel; nothing is sent until confirmed.
+        return (
+          <CliPanel
+            markets={marketList}
+            current={selected}
+            where={activeOnVenue?.name || venueInfo.label}
+            summaries={
+              barSummaries.status === "live" || barSummaries.status === "closed"
+                ? barSummaries.data
+                : undefined
+            }
+            account={liveAccount}
+            maxSlippageBps={slippageBps(venueInfo.maxSlippage)}
+            place={placeOrder}
+            cancel={cancelOrder}
+            protect={protect}
+            onMarket={(marketId) => showMarket(venue, marketId)}
+            onPage={goTo}
           />
         );
       case "trade":

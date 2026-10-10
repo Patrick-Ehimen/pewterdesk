@@ -1534,3 +1534,152 @@ button.coin-chip:hover {
 .maps-liqmap-title {
   font-size: 16px;
 }
+
+/* The CLI panel: a screen of lines and a prompt, in the mono face */
+.cli {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--pd-bg);
+  font-family: var(--pd-font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  cursor: text;
+}
+.cli-screen {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px 4px;
+  overflow-y: auto;
+}
+.cli-line {
+  margin: 0;
+  color: var(--pd-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cli-line[data-tone="in"] {
+  color: var(--pd-pewter);
+}
+.cli-line[data-tone="dim"] {
+  color: var(--pd-pewter-dim);
+}
+.cli-line[data-tone="ok"] {
+  color: var(--pd-buy);
+}
+.cli-line[data-tone="err"] {
+  color: var(--pd-sell);
+}
+.cli-line[data-tone="warn"] {
+  color: var(--pd-warning);
+}
+.cli-mark {
+  flex: none;
+  margin-right: 8px;
+  color: var(--pd-brass-text);
+}
+/* What a trading line would send, before it's sent */
+.cli-confirm {
+  flex: none;
+  margin: 6px 10px 0;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--pd-warning) 9%, var(--pd-surface));
+  border: 1px solid color-mix(in srgb, var(--pd-warning) 55%, var(--pd-border));
+  border-radius: 8px;
+  cursor: default;
+}
+.cli-confirm-head,
+.cli-confirm-line,
+.cli-confirm-ask {
+  margin: 0;
+}
+.cli-confirm-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  color: var(--pd-text);
+  font-size: 13px;
+}
+.cli-confirm-tag {
+  padding: 1px 7px;
+  border: 1px solid var(--pd-warning);
+  border-radius: 999px;
+  color: var(--pd-warning);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cli-confirm-line {
+  padding-top: 3px;
+  color: var(--pd-pewter);
+}
+.cli-confirm-ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 9px;
+  color: var(--pd-text);
+}
+.cli-confirm-ask span {
+  flex: 1;
+  min-width: 180px;
+}
+.cli-confirm-button {
+  flex: none;
+  padding: 4px 12px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.cli-confirm-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.cli-confirm-send {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.cli-status {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  margin: 0;
+  padding: 6px 12px 0;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter);
+}
+.cli-where {
+  color: var(--pd-brass-text);
+}
+.cli-prompt {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 2px 12px 8px;
+}
+.cli-prompt[data-pending] {
+  background: color-mix(in srgb, var(--pd-warning) 10%, var(--pd-bg));
+}
+.cli-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  color: var(--pd-text);
+  font: inherit;
+}
+.cli-input:focus-visible {
+  box-shadow: none;
+}

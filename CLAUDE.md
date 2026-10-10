@@ -325,6 +325,17 @@ trading command: an order, close, cancel or exit goes through the same
 drawer, and only on a second Enter, after the palette has shown what would
 be sent.
 
+## CLI panel
+
+A panel kind (`cli` in `lib/panels.ts`, `components/panels/CliPanel.tsx`)
+that isn't in any built-in layout: it's added from the layout editor's
+palette. It reads the command palette's language (`lib/commands.ts`) plus a
+few lines of its own (`positions`, `orders`, `balance`, `price btc`,
+`market btc`, `go portfolio`; `lib/cli.ts`). Like the palette it adds no
+trading command: an order, close, cancel or exit goes through the same
+`placeOrder` / `cancelOrder` / `protect`, and only on a second Enter, after
+the panel has printed what would be sent.
+
 ## Notifications
 
 Anything worth telling the user (an order, a fill, a position change, a fired

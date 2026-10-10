@@ -18,6 +18,9 @@ export type Intent =
       /** Scaled: the last order's price, with `count` orders from `price` to it. */
       to?: string;
       count?: number;
+      /** Exits to put on the position it opens: "... sl 2400 tp 2600". */
+      stopLoss?: string;
+      takeProfit?: string;
     }
   /** Part of an open position, taken off: "sell 50% hype". */
   | {
@@ -63,14 +66,29 @@ function amount(word: string | undefined): string | undefined {
 
 /**
  * The market a word names: its id ("BTCUSDT"), its symbol ("BTC-USDT") or
- * its coin ("btc"), in that order, so a coin gets its first-listed market.
+ * its coin ("btc"). A coin can have several markets (Bybit lists SOLUSDT
+ * and the USDC-margined SOLPERP): it means the one on screen if that's the
+ * coin's, else the USDT one, else the USDC one, else the first listed. So
+ * "buy sol" doesn't land on a market margined in a coin the account lacks.
  */
-export function findMarket(word: string, markets: readonly Market[]): Market | undefined {
+export function findMarket(
+  word: string,
+  markets: readonly Market[],
+  current?: Market,
+): Market | undefined {
   const w = word.toUpperCase();
-  return (
+  const named =
     markets.find((m) => m.id.toUpperCase() === w) ??
-    markets.find((m) => m.symbol.toUpperCase() === w) ??
-    markets.find((m) => m.base.toUpperCase() === w)
+    markets.find((m) => m.symbol.toUpperCase() === w);
+  if (named) return named;
+  const coins = markets.filter((m) => m.base.toUpperCase() === w);
+  return (
+    coins.find((m) => m.id === current?.id) ??
+    // The perpetual before a dated future ("SOLUSDT-30OCT26").
+    coins.find((m) => m.quote === "USDT" && !m.id.includes("-")) ??
+    coins.find((m) => m.quote === "USDT") ??
+    coins.find((m) => m.quote === "USDC") ??
+    coins[0]
   );
 }
 
@@ -102,6 +120,8 @@ function scaleCount(words: string[]): number | undefined {
  *   to be the side that closes it.
  * - `tp hype 41`, `sl 36.5`, `tp hype off`: a position's take-profit or
  *   stop-loss, set or removed.
+ * - `buy 100 hype sl 36 tp 41`: an order with a stop-loss, a take-profit or
+ *   both to put on the position it opens.
  * - `close eth`: the open position on that market (or the one on screen).
  * - `cancel all`, `cancel all hype`, `cancel hype`: open orders.
  *
@@ -115,6 +135,17 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
   const side = SIDES[verb];
   if (side) {
     const rest = words.slice(1);
+    // "sl 2400" and "tp 2600", anywhere after the verb, go on with the order.
+    const exits: { sl?: string; tp?: string } = {};
+    for (const exit of ["sl", "tp"] as const) {
+      const i = rest.indexOf(exit);
+      if (i === -1) continue;
+      const price = amount(rest[i + 1]);
+      if (!price) return undefined;
+      exits[exit] = price;
+      rest.splice(i, 2);
+    }
+    const withExits = exits.sl !== undefined || exits.tp !== undefined;
     // The price is whatever follows "at" or "@" ("@38.2" too); "to" and a
     // second price after it make it a scaled order.
     let price: string | undefined;
@@ -139,24 +170,38 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
     const sizeWord = rest.find(isSize);
     const coinWord = rest.find((w) => !isSize(w));
     if (!sizeWord || rest.length - (coinWord ? 1 : 0) !== 1) return undefined;
-    const market = coinWord ? findMarket(coinWord, ctx.markets) : ctx.current;
+    const market = coinWord ? findMarket(coinWord, ctx.markets, ctx.current) : ctx.current;
     if (!market) return undefined;
     const fraction = percent(sizeWord);
     if (fraction !== undefined) {
       // A share of the position, so only the side that takes it off, and never scaled.
       const position = ctx.positions.find((p) => p.market === market.id);
       const closes = position && (position.side === "long" ? "sell" : "buy") === side;
-      return closes && !to ? { kind: "reduce", position, market, fraction, price } : undefined;
+      // Taking part off opens nothing for an exit to protect.
+      return closes && !to && !withExits
+        ? { kind: "reduce", position, market, fraction, price }
+        : undefined;
     }
     const size = roundToStep(Number(amount(sizeWord)), market.sizeStep);
     if (size.size <= 0 || size.size < Number(market.minSize)) return undefined;
     if (to && !scaledOrders({ side, market, size: size.text, price, to, count })) return undefined;
-    return { kind: "order", side, market, size: size.text, price, to, count };
+    return {
+      kind: "order",
+      side,
+      market,
+      size: size.text,
+      price,
+      to,
+      count,
+      ...(exits.sl && { stopLoss: exits.sl }),
+      ...(exits.tp && { takeProfit: exits.tp }),
+    };
   }
 
   if ((verb === "tp" || verb === "sl") && words.length >= 2 && words.length <= 3) {
     const value = words[words.length - 1] ?? "";
-    const market = words.length === 3 ? findMarket(words[1] ?? "", ctx.markets) : ctx.current;
+    const market =
+      words.length === 3 ? findMarket(words[1] ?? "", ctx.markets, ctx.current) : ctx.current;
     const position = market && ctx.positions.find((p) => p.market === market.id);
     if (!market || !position) return undefined;
     const off = value === "off" || value === "remove";
@@ -165,7 +210,7 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
   }
 
   if (verb === "close" && words.length <= 2) {
-    const market = words[1] ? findMarket(words[1], ctx.markets) : ctx.current;
+    const market = words[1] ? findMarket(words[1], ctx.markets, ctx.current) : ctx.current;
     const position = market && ctx.positions.find((p) => p.market === market.id);
     return position ? { kind: "close", position, market } : undefined;
   }
@@ -173,13 +218,19 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
   if (verb === "cancel" && words.length >= 2 && words.length <= 3) {
     const coin = words[1] === "all" ? words[2] : words.length === 2 ? words[1] : undefined;
     if (words[1] !== "all" && !coin) return undefined;
-    const market = coin ? findMarket(coin, ctx.markets) : undefined;
+    const market = coin ? findMarket(coin, ctx.markets, ctx.current) : undefined;
     if (coin && !market) return undefined;
     const orders = market ? ctx.orders.filter((o) => o.market === market.id) : [...ctx.orders];
     return orders.length > 0 ? { kind: "cancel", orders, market } : undefined;
   }
   return undefined;
 }
+
+/** The exits an order command asks for, as the request carries them. */
+const exitsOf = (order: { stopLoss?: string; takeProfit?: string }) => ({
+  ...(order.stopLoss && { stopLoss: order.stopLoss }),
+  ...(order.takeProfit && { takeProfit: order.takeProfit }),
+});
 
 /** The order an order command comes to; a market order goes with a slippage bound. */
 export function orderFor(
@@ -192,6 +243,7 @@ export function orderFor(
     side: intent.side,
     size: intent.size,
     reduceOnly: false,
+    ...exitsOf(intent),
   };
   return atMarket || intent.price === undefined
     ? { ...base, type: "market", maxSlippageBps }
@@ -206,7 +258,7 @@ export function orderFor(
 export function scaledOrders(
   order: Pick<
     Extract<Intent, { kind: "order" }>,
-    "side" | "market" | "size" | "price" | "to" | "count"
+    "side" | "market" | "size" | "price" | "to" | "count" | "stopLoss" | "takeProfit"
   >,
 ): OrderRequest[] | undefined {
   const { market, count = DEFAULT_SCALE } = order;
@@ -226,6 +278,8 @@ export function scaledOrders(
       reduceOnly: false,
       type: "limit" as const,
       price: (Math.round(raw / tick + 1e-9) * tick).toFixed(places),
+      // Each part carries the exits, so whichever fill is protected.
+      ...exitsOf(order),
     };
   });
 }

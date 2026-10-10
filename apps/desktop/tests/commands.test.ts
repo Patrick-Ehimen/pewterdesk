@@ -41,6 +41,20 @@ const ctx = {
 };
 const read = (text: string) => parseCommand(text, ctx);
 
+/** A market for the exits test: whole-coin steps keep the sizes plain. */
+const MARKETS_FOR_EXITS = [
+  {
+    venue: "bybit",
+    id: "ETHUSDT",
+    symbol: "ETHUSDT",
+    base: "ETH",
+    quote: "USDT",
+    sizeStep: "0.01",
+    minSize: "0.01",
+    tickSize: "0.1",
+  } as unknown as Market,
+];
+
 describe("parseCommand", () => {
   it("reads an order, at a limit when a price follows", () => {
     expect(read("buy 100 hype at 38.2")).toEqual({
@@ -177,5 +191,63 @@ describe("palette extras", () => {
     expect(read("buy 0.002 btc at 80000 to 79000 x5")).toBeUndefined();
     expect(read("buy 100 hype at 38.2 to 38.2")).toBeUndefined();
     expect(read("buy 100 hype at 38.2 37.8")).toBeUndefined();
+  });
+
+  it("puts a stop-loss and a take-profit on an order", () => {
+    const eth = MARKETS_FOR_EXITS[0] as Market;
+    const ctx = { markets: [eth], current: eth, positions: [], orders: [] };
+    const order = parseCommand("sell 10 eth sl 2600 tp 2300", ctx);
+    expect(order).toMatchObject({
+      kind: "order",
+      side: "sell",
+      stopLoss: "2600",
+      takeProfit: "2300",
+    });
+    if (order?.kind !== "order") throw new Error("not an order");
+    expect(orderFor(order, 50)).toMatchObject({
+      type: "market",
+      stopLoss: "2600",
+      takeProfit: "2300",
+    });
+    // With a limit price too, in any order; and on every part of a ladder.
+    const limit = parseCommand("buy 1 eth sl 2300 at 2400", ctx);
+    if (limit?.kind !== "order") throw new Error("not an order");
+    expect(orderFor(limit, 50)).toMatchObject({ type: "limit", price: "2400", stopLoss: "2300" });
+    expect(orderFor(limit, 50)).not.toHaveProperty("takeProfit");
+    const ladder = parseCommand("buy 5 eth at 2400 to 2300 x5 sl 2200", ctx);
+    if (ladder?.kind !== "order") throw new Error("not an order");
+    expect(scaledOrders(ladder)?.every((o) => o.stopLoss === "2200")).toBe(true);
+    // An exit needs a price, and an order without one carries none.
+    expect(parseCommand("buy 1 eth sl", ctx)).toBeUndefined();
+    expect(parseCommand("buy 1 eth sl soon", ctx)).toBeUndefined();
+    const plain = parseCommand("buy 1 eth", ctx);
+    if (plain?.kind !== "order") throw new Error("not an order");
+    expect(orderFor(plain, 50)).not.toHaveProperty("stopLoss");
+  });
+
+  it("takes a coin with several markets to the one meant", () => {
+    const of = (id: string, quote: string) =>
+      ({ ...MARKETS_FOR_EXITS[0], id, symbol: id, base: "SOL", quote }) as Market;
+    // Listed USDC-margined first, as a venue may.
+    const perp = of("SOLPERP", "USDC");
+    const usdt = of("SOLUSDT", "USDT");
+    const markets = [perp, usdt];
+    // The USDT market, not whichever is listed first.
+    expect(findMarket("sol", markets)?.id).toBe("SOLUSDT");
+    // Unless the coin's other market is the one on screen.
+    expect(findMarket("sol", markets, perp)?.id).toBe("SOLPERP");
+    // A market named outright is that market.
+    expect(findMarket("solperp", markets, usdt)?.id).toBe("SOLPERP");
+    expect(findMarket("sol", [perp])?.id).toBe("SOLPERP");
+    // Bybit's own list for SOL, in its order: the USDT perpetual, not a dated future.
+    const dated = of("SOLUSDT-16OCT26", "USDT");
+    expect(findMarket("sol", [perp, dated, usdt])?.id).toBe("SOLUSDT");
+    const order = parseCommand("buy 0.5 sol", {
+      markets,
+      current: usdt,
+      positions: [],
+      orders: [],
+    });
+    expect(order).toMatchObject({ kind: "order", market: { id: "SOLUSDT" } });
   });
 });

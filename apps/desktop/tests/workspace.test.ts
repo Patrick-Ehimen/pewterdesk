@@ -1,3 +1,4 @@
+import { loadLocale, type MessageKey, t } from "@pewterdesk/ui";
 import { describe, expect, it } from "vitest";
 import { panelKindOf } from "../src/lib/panels";
 import {
@@ -44,6 +45,14 @@ describe("presets", () => {
       expect(p && p.y + p.h, kind).toBeLessThanOrEqual(GRID.rows);
     }
     for (const kind of ["positions", "account"]) expect(at(kind)?.h, kind).toBe(12);
+  });
+
+  it("each have a name to show in the layout bar", async () => {
+    // The bar looks the name up by key, which the typecheck can't see.
+    await loadLocale("en");
+    for (const preset of PRESETS) {
+      expect(t(`preset.${preset.name}` as MessageKey), preset.name).toBe(preset.name);
+    }
   });
 
   it("survive sanitising unchanged", () => {
@@ -216,7 +225,7 @@ describe("stats bar", () => {
     layout.filter((p) => p.i === STATS_BAR_ID);
 
   it.each(PRESETS.map((p) => [p.name, p.layout] as const))(
-    "%s has one bar across the top, directly left of the top-right panel",
+    "%s has one bar across the top, up to the top-right panel where there is one",
     (_name, layout) => {
       const [b, ...extra] = bar(layout);
       // Account in the older presets, Trade in Default.
@@ -225,7 +234,8 @@ describe("stats bar", () => {
       );
       expect(extra).toEqual([]);
       expect(b).toMatchObject({ x: 0, y: 0, h: STATS_BAR_ROWS });
-      expect(b && topRight && b.x + b.w).toBe(topRight?.x);
+      // Without an account or ticket in the corner (Developer), it spans the window.
+      expect(b && b.x + b.w).toBe(topRight?.x ?? GRID.cols);
     },
   );
 

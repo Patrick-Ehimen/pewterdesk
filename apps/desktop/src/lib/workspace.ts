@@ -72,6 +72,12 @@ export const PRESETS: readonly SavedLayout[] = [
     ],
   },
   {
+    // After Tealstreet's developer view: a command line beside the chart,
+    // and nothing else. Orders, closes and cancels are typed.
+    name: "Developer",
+    layout: [bar(24), place("cli", 0, 2, 9, 22), place("markets", 9, 2, 15, 22)],
+  },
+  {
     name: "Swing",
     layout: [
       bar(16),
