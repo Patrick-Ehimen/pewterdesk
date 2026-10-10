@@ -7,8 +7,9 @@ import {
   shortAddress,
   t,
 } from "@pewterdesk/ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
+  LuChevronsLeft,
   LuGlobe,
   LuKeyRound,
   LuLayoutGrid,
@@ -64,7 +65,12 @@ interface HeaderActionsProps {
   onOpenWallet: () => void;
 }
 
-/** The header's right end: watchlist star, layout, sound, alerts, settings, language, theme and the wallet. */
+/**
+ * The header's right end. Six actions are always there (the watchlist star,
+ * search, quick trade, the floating window, alerts and notifications); the
+ * rest (layout, sound, language, theme, settings) roll out to their left on
+ * hover. Then the wallet.
+ */
 export function HeaderActions({
   marketSymbol,
   starred,
@@ -90,9 +96,72 @@ export function HeaderActions({
   onOpenWallet,
 }: HeaderActionsProps) {
   const locale = currentLocale();
+  // Clicking the chevron keeps the rest of the actions out; hovering shows them anyway.
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <div className="app-actions">
+      {/* The rest of the actions: rolled up, and out to the left when the
+          pointer is over the bar, one of them has the focus or its menu is
+          open, or the chevron has been clicked. */}
+      <div className="app-actions-more" data-open={moreOpen || undefined}>
+        <div className="app-actions-roll">
+          <IconButton
+            label={t(editing ? "action.doneLayout" : "action.editLayout")}
+            pressed={editing}
+            onClick={onToggleLayout}
+          >
+            <LuLayoutGrid size={ICON_SIZE} aria-hidden />
+          </IconButton>
+          <IconButton
+            label={t(soundOn ? "action.mute" : "action.unmute")}
+            onClick={() => onSound(!soundOn)}
+          >
+            {soundOn ? (
+              <LuVolume2 size={ICON_SIZE} aria-hidden />
+            ) : (
+              <LuVolumeX size={ICON_SIZE} aria-hidden />
+            )}
+          </IconButton>
+          <OptionsMenu
+            label={t("action.language", { language: languageName(locale) })}
+            heading={t("menu.language")}
+            icon={<LuGlobe size={ICON_SIZE} aria-hidden />}
+            className=""
+            columns={4}
+            options={languageOptions()}
+            value={locale}
+            onChange={(next) => next !== locale && switchLanguage(next)}
+          />
+          <OptionsMenu
+            label={t("action.theme", { theme: t(`theme.${theme}.name`) })}
+            heading={t("menu.theme")}
+            icon={<LuPalette size={ICON_SIZE} aria-hidden />}
+            className=""
+            columns={3}
+            menuClassName="theme-menu"
+            options={themeOptions()}
+            value={theme}
+            onChange={(next) => next !== theme && onTheme(next)}
+          />
+          <IconButton
+            label={t(settingsOpen ? "settings.back" : "action.settings")}
+            pressed={settingsOpen}
+            onClick={onToggleSettings}
+          >
+            <LuSettings size={ICON_SIZE} aria-hidden />
+          </IconButton>
+        </div>
+      </div>
+      <IconButton
+        className="app-actions-toggle"
+        label={t("action.more")}
+        pressed={moreOpen}
+        onClick={() => setMoreOpen((open) => !open)}
+      >
+        <LuChevronsLeft size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      {/* The six always in reach. */}
       {marketSymbol && (
         <StarButton
           starred={starred}
@@ -114,53 +183,8 @@ export function HeaderActions({
       <IconButton label={t("float.open")} onClick={() => void appClient.toggleFloat()}>
         <LuPictureInPicture2 size={ICON_SIZE} aria-hidden />
       </IconButton>
-      <IconButton
-        label={t(editing ? "action.doneLayout" : "action.editLayout")}
-        pressed={editing}
-        onClick={onToggleLayout}
-      >
-        <LuLayoutGrid size={ICON_SIZE} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={t(soundOn ? "action.mute" : "action.unmute")}
-        onClick={() => onSound(!soundOn)}
-      >
-        {soundOn ? (
-          <LuVolume2 size={ICON_SIZE} aria-hidden />
-        ) : (
-          <LuVolumeX size={ICON_SIZE} aria-hidden />
-        )}
-      </IconButton>
       {alerts}
       {notifications}
-      <IconButton
-        label={t(settingsOpen ? "settings.back" : "action.settings")}
-        pressed={settingsOpen}
-        onClick={onToggleSettings}
-      >
-        <LuSettings size={ICON_SIZE} aria-hidden />
-      </IconButton>
-      <OptionsMenu
-        label={t("action.language", { language: languageName(locale) })}
-        heading={t("menu.language")}
-        icon={<LuGlobe size={ICON_SIZE} aria-hidden />}
-        className=""
-        columns={4}
-        options={languageOptions()}
-        value={locale}
-        onChange={(next) => next !== locale && switchLanguage(next)}
-      />
-      <OptionsMenu
-        label={t("action.theme", { theme: t(`theme.${theme}.name`) })}
-        heading={t("menu.theme")}
-        icon={<LuPalette size={ICON_SIZE} aria-hidden />}
-        className=""
-        columns={3}
-        menuClassName="theme-menu"
-        options={themeOptions()}
-        value={theme}
-        onChange={(next) => next !== theme && onTheme(next)}
-      />
 
       {address ? (
         <button

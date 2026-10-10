@@ -16,6 +16,14 @@ describe("hotkeys", () => {
     expect(hotkeyFor(press("k", { metaKey: true }), false)).toEqual({ type: "palette" });
     expect(hotkeyFor(press("K", { ctrlKey: true }), false)).toEqual({ type: "palette" });
     expect(hotkeyFor(press(",", { metaKey: true }), false)).toEqual({ type: "settings" });
+    expect(hotkeyFor(press("t", { metaKey: true }), false)).toEqual({ type: "newTab" });
+    expect(hotkeyFor(press("Tab", { ctrlKey: true }), true)).toEqual({ type: "tab", by: 1 });
+    expect(hotkeyFor(press("Tab", { ctrlKey: true, shiftKey: true }), false)).toEqual({
+      type: "tab",
+      by: -1,
+    });
+    // Tab on its own moves the focus, as ever.
+    expect(hotkeyFor(press("Tab"), false)).toBeUndefined();
     expect(hotkeyFor(press("[", { metaKey: true }), false)).toEqual({ type: "back" });
     expect(hotkeyFor(press("]", { ctrlKey: true }), false)).toEqual({ type: "forward" });
     expect(hotkeyFor(press("ArrowLeft", { metaKey: true }), false)).toEqual({ type: "back" });

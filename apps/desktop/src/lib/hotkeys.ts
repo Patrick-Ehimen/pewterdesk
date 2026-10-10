@@ -6,6 +6,9 @@ export type HotkeyAction =
   | { type: "page"; page: Page }
   | { type: "settings" }
   | { type: "help" }
+  | { type: "newTab" }
+  /** The next tab along (1) or the one before (-1). */
+  | { type: "tab"; by: -1 | 1 }
   | { type: "back" }
   | { type: "forward" }
   | { type: "quickTrade" };
@@ -42,10 +45,15 @@ export function plainKey(e: KeyPress, typing: boolean): string | undefined {
  * and Cmd with an arrow, which moves the caret there.
  */
 export function hotkeyFor(e: KeyPress, typing: boolean): HotkeyAction | undefined {
+  // Ctrl+Tab and Ctrl+Shift+Tab step through the tabs, as in a browser.
+  if (e.key === "Tab" && e.ctrlKey && !e.metaKey && !e.altKey) {
+    return { type: "tab", by: e.shiftKey ? -1 : 1 };
+  }
   const mod = (e.metaKey || e.ctrlKey) && !e.altKey;
   if (mod && !e.shiftKey) {
     const key = e.key.toLowerCase();
     if (key === "k") return { type: "palette" };
+    if (key === "t") return { type: "newTab" };
     if (key === ",") return { type: "settings" };
     if (key === "[") return { type: "back" };
     if (key === "]") return { type: "forward" };
@@ -85,6 +93,8 @@ export const HOTKEYS: Record<HotkeyGroup, readonly HotkeyRow[]> = {
     { id: "float", keys: [["Ctrl", "Alt", "Space"]] },
   ],
   pages: [
+    { id: "newTab", keys: [["mod", "T"]] },
+    { id: "nextTab", keys: [["Ctrl", "Tab"]] },
     {
       id: "back",
       keys: [

@@ -142,8 +142,60 @@
 .app-logo-text {
   fill: var(--pd-text);
 }
+/* The tabs: each holds a page of its own. The one on screen is the page
+   menu; the rest are plain buttons that switch to theirs. */
+.app-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.app-tab {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius);
+}
+.app-tab[data-active] {
+  background: var(--pd-surface-raised);
+  border-color: var(--pd-border);
+}
+.app-tab-button {
+  height: 32px;
+  padding: 0 12px;
+  background: none;
+  border: 0;
+  border-radius: var(--pd-radius);
+  color: var(--pd-pewter);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-tab-button:hover {
+  color: var(--pd-text);
+}
+.app-tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  color: var(--pd-pewter-dim);
+  cursor: pointer;
+}
+.app-tab-close:hover {
+  background: var(--pd-border);
+  color: var(--pd-text);
+}
+.app-tab-add {
+  color: var(--pd-pewter-dim);
+}
 .app-page-menu {
-  margin-right: 4px;
+  margin-right: 0;
 }
 /* The pages list: a little clear of its button, each page's description in
    small type on one line under its name (cut short rather than wrapping) */
@@ -684,6 +736,63 @@ button.app-status-venue[aria-expanded="true"] {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+/* The actions past the first six: rolled up to nothing, and out to the left
+   when the bar is hovered, one of them is focused or has its menu open, or
+   the chevron has pinned them out. They lie over whatever is to the left
+   (the market, the tabs) on a panel of their own, so nothing in the header
+   moves to make room. */
+.app-actions {
+  position: relative;
+}
+.app-actions-more {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  z-index: 5;
+  width: max-content;
+  transform: translateY(-50%);
+  /* Rolled up: cut away from its left edge to nothing at the right. */
+  clip-path: inset(-12px 0 -12px 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    clip-path 200ms ease,
+    opacity 140ms ease;
+}
+.app-actions-roll {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  /* The header's own surface, so what's underneath doesn't show through */
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius);
+  box-shadow: -10px 0 18px -6px color-mix(in srgb, var(--pd-bg) 80%, transparent);
+}
+.app-actions:hover .app-actions-more,
+.app-actions-more:focus-within,
+.app-actions-more:has([aria-expanded="true"]),
+.app-actions-more[data-open] {
+  /* Out: with room left for its shadow and a focus ring. */
+  clip-path: inset(-12px 0 -12px -24px);
+  opacity: 1;
+  pointer-events: auto;
+}
+.app-actions-toggle {
+  color: var(--pd-pewter-dim);
+  transition: transform 180ms ease;
+}
+.app-actions:hover .app-actions-toggle,
+.app-actions-toggle[aria-pressed="true"] {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-actions-more,
+  .app-actions-toggle {
+    transition: none;
+  }
 }
 .app-connect,
 .app-wallet-chip {

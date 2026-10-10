@@ -67,7 +67,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { LuWallet } from "react-icons/lu";
+import { LuPlus, LuWallet, LuX } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
@@ -170,7 +170,7 @@ import { desktopNotify } from "./lib/notify";
 import { loadOnboarding, type OnboardingState, saveOnboarding } from "./lib/onboarding";
 import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./lib/orderConfirm";
 import { startHistory, stepped, stepTo, visited } from "./lib/pageHistory";
-import { PAGES, type Page } from "./lib/pages";
+import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import { HISTORY_MS } from "./lib/performance";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
@@ -191,6 +191,18 @@ import {
 } from "./lib/quickTrade";
 import { loadMarket, saveMarket } from "./lib/selectedMarket";
 import { playSound, type SoundKind } from "./lib/sound";
+import {
+  activePage,
+  closed,
+  loadTabs,
+  MAX_TABS,
+  opened,
+  saveTabs,
+  type TabsState,
+  selected as tabSelected,
+  stepped as tabStepped,
+  withPage,
+} from "./lib/tabs";
 import { flashTray } from "./lib/trayFlash";
 import { loadVenue, saveVenue, VENUE_IDS, VENUES } from "./lib/venues";
 import {
@@ -686,7 +698,12 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
   // Remembered, so a reload comes back to the page that was open.
-  const [page, setPage] = useStoredChoice<Page>("pd.page", PAGES, "trade");
+  // The header's tabs: each holds a page of its own, and the one on screen's
+  // is the page. Kept, so a reload comes back to the same tabs.
+  const [tabs, setTabs] = useState(loadTabs);
+  useEffect(() => saveTabs(tabs), [tabs]);
+  const page = activePage(tabs);
+  const setPage = useCallback((next: Page) => setTabs((now) => withPage(now, next)), []);
   // The pages opened this session, for stepping back and forward. However
   // a page was opened (the menu, the palette, a shortcut), it lands here.
   const [history, setHistory] = useState(() => startHistory(page));
@@ -1138,6 +1155,13 @@ export function App() {
     setPage(next);
   };
 
+  /** Puts another set of tabs up; like `goTo`, leaving the workspace ends layout editing. */
+  const showTabs = (next: TabsState) => {
+    if (next === tabs) return;
+    if (activePage(next) !== "trade" && editing) finishEditing();
+    setTabs(next);
+  };
+
   /** One page back or forward through the ones opened, where there is one. */
   const step = (by: -1 | 1) => {
     const to = stepTo(history, by);
@@ -1159,6 +1183,10 @@ export function App() {
       case "help":
         setSettingsSection("hotkeys");
         return goTo("settings");
+      case "newTab":
+        return showTabs(opened(tabs));
+      case "tab":
+        return showTabs(tabStepped(tabs, action.by));
       case "back":
         return step(-1);
       case "forward":
@@ -1375,16 +1403,60 @@ export function App() {
           >
             <AppLogo className="app-logo" />
           </button>
-          <OptionsMenu
-            label={t("nav.menu")}
-            heading={t("nav.menu")}
-            triggerText={pageLabel(page)}
-            className="app-page-menu"
-            menuClassName="app-page-list"
-            options={pageOptions()}
-            value={page}
-            onChange={goTo}
-          />
+          {/* The tabs: the one on screen is the page menu, so its page can be
+              changed; the others switch to theirs. */}
+          <nav className="app-tabs" aria-label={t("tabs.label")}>
+            {tabs.tabs.map((tab) => (
+              <span
+                key={tab.id}
+                className="app-tab"
+                data-active={tab.id === tabs.active || undefined}
+              >
+                {tab.id === tabs.active ? (
+                  <OptionsMenu
+                    label={t("nav.menu")}
+                    heading={t("nav.menu")}
+                    triggerText={pageLabel(page)}
+                    className="app-page-menu"
+                    menuClassName="app-page-list"
+                    options={pageOptions()}
+                    value={page}
+                    onChange={goTo}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="app-tab-button"
+                    onClick={() => showTabs(tabSelected(tabs, tab.id))}
+                  >
+                    {pageLabel(tab.page)}
+                  </button>
+                )}
+                {tabs.tabs.length > 1 && (
+                  <button
+                    type="button"
+                    className="app-tab-close"
+                    aria-label={t("tabs.close", { page: pageLabel(tab.page) })}
+                    title={t("tabs.close", { page: pageLabel(tab.page) })}
+                    onClick={() => showTabs(closed(tabs, tab.id))}
+                  >
+                    <LuX size={12} aria-hidden />
+                  </button>
+                )}
+              </span>
+            ))}
+            {tabs.tabs.length < MAX_TABS && (
+              <button
+                type="button"
+                className="pd-icon-button app-tab-add"
+                aria-label={t("tabs.new")}
+                title={t("tabs.new")}
+                onClick={() => showTabs(opened(tabs))}
+              >
+                <LuPlus size={15} aria-hidden />
+              </button>
+            )}
+          </nav>
           <VenueSwitcher
             venue={venue}
             venues={setup.venues}
@@ -1761,7 +1833,11 @@ export function App() {
             ids={venueInfo.majors}
             markets={marketList}
             summaries={barPrices}
-            onOpen={(m) => showMarket(m.venue, m.id)}
+            // "Open in chart": the market, on the Trade page, wherever it's asked from.
+            onOpen={(m) => {
+              showMarket(m.venue, m.id);
+              goTo("trade");
+            }}
           />
         </StatusBar>
 

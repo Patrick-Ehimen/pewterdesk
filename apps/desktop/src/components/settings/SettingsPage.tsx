@@ -84,6 +84,8 @@ const HOTKEY_LABEL: Record<string, MessageKey> = {
   settings: "hotkeys.settings",
   help: "hotkeys.help",
   float: "hotkeys.float",
+  newTab: "hotkeys.newTab",
+  nextTab: "hotkeys.nextTab",
   back: "hotkeys.back",
   forward: "hotkeys.forward",
   quickTrade: "hotkeys.quickTrade",
