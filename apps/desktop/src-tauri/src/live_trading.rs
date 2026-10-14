@@ -1,17 +1,21 @@
-//! Which live Bybit accounts may trade. A demo account trades as soon as
-//! it's connected (demo funds); a live one doesn't until the user turns
-//! live trading on for it, here. The trading commands ask this before they
-//! sign anything (`venues::trading_account`).
+//! Which live accounts may trade. A Bybit demo account trades as soon as
+//! it's connected (demo funds); a live Bybit account, and a Hyperliquid or
+//! Aster account (always real funds), doesn't until the user turns live
+//! trading on for it, here. The trading commands ask this before they sign
+//! anything (`venues::trading_account`).
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
 //! - The switch is kept and checked in Rust: a live order is refused unless
 //!   this module says the account is on, whatever the page believes.
-//! - Turning it on asks Bybit again what the stored key may do, and refuses
-//!   a key that isn't trade-only (`auth::ALLOWED`), belongs to another
-//!   account, or can't be checked (offline included): it fails closed.
-//! - Only the account's UID is kept, in a small file in the app's config
-//!   folder. No key material: keys stay in the keychain.
+//! - Turning it on asks the venue again what the stored key may do, and
+//!   refuses a key that isn't trade-only (Bybit's `auth::ALLOWED`; on
+//!   Hyperliquid and Aster, an API wallet still approved for that account,
+//!   which on Aster can't withdraw), belongs to another account, or can't
+//!   be checked (offline included): it fails closed.
+//! - Only the account's id is kept (a Bybit UID, or the venue and the main
+//!   wallet's public address), in a small file in the app's config folder.
+//!   No key material: keys stay in the keychain.
 //! - It guards against an order sent to a live account by mistake. It is
 //!   not a defence against the page itself, which can call these commands.
 
@@ -19,12 +23,12 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use pewterdesk_core::VenueError;
+use pewterdesk_core::{VenueError, VenueId};
 use pewterdesk_exchange_bybit::auth;
 use tauri::State;
 
-use crate::bybit_key;
 use crate::venues::Venues;
+use crate::{bybit_key, wallet};
 
 /// The file the switched-on accounts are kept in, in the app's config folder.
 pub const FILE: &str = "live-trading.json";
@@ -40,7 +44,35 @@ fn live_uid(uid: &str) -> Result<String, VenueError> {
     }
 }
 
-/// The live Bybit accounts (by UID) with trading on.
+/// How a Hyperliquid or Aster account is kept in the list: its venue, then
+/// its main wallet's address (lowercase). Bybit accounts are bare UIDs,
+/// which are all digits, so the two can't be mistaken for each other.
+pub(crate) fn wallet_id(venue: VenueId, address: &str) -> Result<String, VenueError> {
+    let address = wallet::normalize_address(address)?;
+    match venue {
+        VenueId::Hyperliquid => Ok(format!("hyperliquid:{address}")),
+        VenueId::Aster => Ok(format!("aster:{address}")),
+        VenueId::Bybit => Err(VenueError::InvalidRequest(
+            "a Bybit account is switched by its UID".into(),
+        )),
+    }
+}
+
+/// Whether `id` is one this module writes: a live Bybit UID or a wallet id.
+fn known_id(id: &str) -> bool {
+    if live_uid(id).is_ok_and(|bare| bare == id) {
+        return true;
+    }
+    [VenueId::Hyperliquid, VenueId::Aster]
+        .into_iter()
+        .any(|venue| {
+            id.split_once(':')
+                .and_then(|(_, address)| wallet_id(venue, address).ok())
+                .is_some_and(|whole| whole == id)
+        })
+}
+
+/// The live accounts with trading on: Bybit UIDs and wallet ids.
 pub struct LiveTrading {
     on: Mutex<BTreeSet<String>>,
     /// Where they're kept between runs; unset when there's nowhere to.
@@ -57,7 +89,7 @@ impl LiveTrading {
             .and_then(|bytes| serde_json::from_slice::<Vec<String>>(&bytes).ok())
             .unwrap_or_default()
             .into_iter()
-            .filter(|uid| live_uid(uid).is_ok_and(|bare| bare == *uid))
+            .filter(|id| known_id(id))
             .collect();
         Self {
             on: Mutex::new(on),
@@ -65,7 +97,7 @@ impl LiveTrading {
         }
     }
 
-    /// Whether live Bybit account `uid` may trade.
+    /// Whether the live account `uid` (a Bybit UID or a `wallet_id`) may trade.
     pub fn is_on(&self, uid: &str) -> bool {
         self.on.lock().unwrap().contains(uid)
     }
@@ -112,9 +144,17 @@ impl LiveTrading {
             let _ = self.set(&bare, false);
         }
     }
+
+    /// Turns a Hyperliquid or Aster account off when its key is removed.
+    pub fn forget_wallet(&self, venue: VenueId, address: &str) {
+        if let Ok(id) = wallet_id(venue, address) {
+            let _ = self.set(&id, false);
+        }
+    }
 }
 
-/// The live Bybit accounts (UIDs) with trading on.
+/// The live accounts with trading on: Bybit UIDs, and Hyperliquid and Aster
+/// accounts as `<venue>:<address>`. Public ids only.
 #[tauri::command]
 pub fn live_trading_accounts(live: State<'_, LiveTrading>) -> Vec<String> {
     live.list()
@@ -135,6 +175,26 @@ pub async fn set_live_trading(
         bybit_key::verify_trade_only(&venues, &bare).await?;
     }
     live.set(&bare, on)
+}
+
+/// Turns live trading on or off for the Hyperliquid or Aster account
+/// `address`. Turning it on checks the stored API wallet with the venue
+/// first: it must still be that account's approved, trade-only wallet, or
+/// it stays off.
+#[tauri::command]
+pub async fn set_wallet_trading(
+    venues: State<'_, Venues>,
+    live: State<'_, LiveTrading>,
+    venue: VenueId,
+    address: String,
+    on: bool,
+) -> Result<(), VenueError> {
+    let address = wallet::normalize_address(&address)?;
+    let id = wallet_id(venue, &address)?;
+    if on {
+        wallet::verify_trade_only(&venues, venue, &address).await?;
+    }
+    live.set(&id, on)
 }
 
 #[cfg(test)]
@@ -181,6 +241,53 @@ mod tests {
         );
         std::fs::write(&path, b"not json").unwrap();
         assert!(LiveTrading::load(Some(path.clone())).list().is_empty());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
+    }
+
+    #[test]
+    fn wallets_are_kept_by_venue_and_address() {
+        let address = "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23";
+        let id = wallet_id(
+            VenueId::Hyperliquid,
+            &address.to_uppercase().replace("0X", "0x"),
+        );
+        assert_eq!(id.unwrap(), format!("hyperliquid:{address}"));
+        assert_eq!(
+            wallet_id(VenueId::Aster, address).unwrap(),
+            format!("aster:{address}")
+        );
+        assert!(wallet_id(VenueId::Bybit, address).is_err());
+        assert!(wallet_id(VenueId::Aster, "0x12").is_err());
+
+        let path = scratch("wallets");
+        let live = LiveTrading::load(Some(path.clone()));
+        let hl = wallet_id(VenueId::Hyperliquid, address).unwrap();
+        live.set(&hl, true).unwrap();
+        // On for that venue's account only: not the same address on Aster.
+        assert!(live.is_on(&hl));
+        assert!(!live.is_on(&wallet_id(VenueId::Aster, address).unwrap()));
+        assert_eq!(
+            LiveTrading::load(Some(path.clone())).list(),
+            std::slice::from_ref(&hl)
+        );
+        live.forget_wallet(VenueId::Aster, address);
+        assert!(live.is_on(&hl));
+        live.forget_wallet(VenueId::Hyperliquid, address);
+        assert!(!live.is_on(&hl));
+
+        // Only ids this module writes are read back.
+        std::fs::write(
+            &path,
+            format!(
+                r#"["aster:{address}","bybit:{address}","aster:0x12","hyperliquid:{}","x:1"]"#,
+                address.to_uppercase()
+            ),
+        )
+        .unwrap();
+        assert_eq!(
+            LiveTrading::load(Some(path.clone())).list(),
+            [format!("aster:{address}")]
+        );
         let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
     }
 

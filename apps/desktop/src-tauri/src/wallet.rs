@@ -37,6 +37,7 @@ use tauri::State;
 use zeroize::Zeroizing;
 
 use crate::keychain::{self, KeychainKeySource};
+use crate::live_trading::LiveTrading;
 use crate::venues::Venues;
 
 /// A connected account, as the UI shows it. Public addresses only.
@@ -67,7 +68,7 @@ fn now_micros() -> u64 {
 }
 
 /// Lowercase `0x` + 40 hex, or an error saying what an address looks like.
-fn normalize_address(address: &str) -> Result<String, VenueError> {
+pub(crate) fn normalize_address(address: &str) -> Result<String, VenueError> {
     let address = address.trim().to_ascii_lowercase();
     let hex = address.strip_prefix("0x").unwrap_or("");
     if hex.len() == 40 && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -80,7 +81,7 @@ fn normalize_address(address: &str) -> Result<String, VenueError> {
 }
 
 /// The keychain entry a venue account's key lives under.
-fn key_account(venue: VenueId, address: &str) -> String {
+pub(crate) fn key_account(venue: VenueId, address: &str) -> String {
     match venue {
         VenueId::Hyperliquid => format!("hyperliquid:{address}"),
         VenueId::Aster => format!("aster:{address}"),
@@ -221,11 +222,51 @@ async fn aster_status(venues: &Venues, address: String) -> Result<Option<WalletI
     }))
 }
 
-/// Deletes the stored key. The approval on the venue stays until the user
-/// revokes it there.
+/// Asks the venue, now, whether the key stored for `address` is still its
+/// approved, trade-only API wallet: for turning live trading on. Anything
+/// else - no key, an approval that lapsed or was revoked, one that can
+/// withdraw, a venue that can't be asked - is an error, so it fails closed.
+pub(crate) async fn verify_trade_only(
+    venues: &Venues,
+    venue: VenueId,
+    address: &str,
+) -> Result<(), VenueError> {
+    let key = KeychainKeySource
+        .key(&key_account(venue, address))
+        .await
+        .map_err(VenueError::Key)?;
+    match venue {
+        VenueId::Hyperliquid => {
+            let agent = agent_address(&key)?;
+            drop(key);
+            let approved = venues.hyperliquid().approved_agents(address).await?;
+            check_approval(&agent, approved, now_ms())?;
+        }
+        VenueId::Aster => {
+            let agent = aster_agent::agent_address(&key)?;
+            let approved = venues.aster().approved_agents(&key).await?;
+            drop(key);
+            aster_agent::check_trade_only(&agent, approved, now_ms())?;
+        }
+        VenueId::Bybit => {
+            return Err(VenueError::Unsupported(
+                "a Bybit account is checked by its API key, not a wallet",
+            ))
+        }
+    }
+    Ok(())
+}
+
+/// Deletes the stored key, and turns live trading off for the account. The
+/// approval on the venue stays until the user revokes it there.
 #[tauri::command]
-pub async fn disconnect_wallet(venue: VenueId, address: String) -> Result<(), VenueError> {
+pub async fn disconnect_wallet(
+    live: State<'_, LiveTrading>,
+    venue: VenueId,
+    address: String,
+) -> Result<(), VenueError> {
     let address = normalize_address(&address)?;
+    live.forget_wallet(venue, &address);
     keychain::delete_key(key_account(venue, &address))
         .await
         .map_err(|e| VenueError::Key(e.into()))

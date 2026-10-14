@@ -29,9 +29,11 @@ import {
   subscribeAccounts,
   venueAccounts,
 } from "../../lib/account";
+import { refreshLiveTrading } from "../../lib/liveTrading";
 import { VENUES } from "../../lib/venues";
 import { AccountList } from "./AccountList";
 import { BrowserWalletFlow } from "./BrowserWalletFlow";
+import { LiveTradingSwitch } from "./LiveTradingSwitch";
 import { WalletConnectFlow } from "./WalletConnectFlow";
 
 export type MethodId = "browser" | "walletConnect" | "api" | "ledger";
@@ -202,6 +204,8 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
     try {
       await walletClient.disconnect(venue, address);
       removeAccount(venue, address);
+      // Rust turned live trading off with the key; hear it.
+      void refreshLiveTrading();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.failed"));
       setBusy(false);
@@ -245,6 +249,8 @@ function ConnectedPane({ venue, address }: { venue: VenueId; address: string }) 
         </div>
       </dl>
       {info === null && <p className="wallet-error">{t("wallet.keyMissing")}</p>}
+      {/* Orders use real funds here, so they wait for this switch. */}
+      {info && <LiveTradingSwitch account={{ venue, id: address }} />}
       {error && (
         <p className="wallet-error" role="alert">
           {error}

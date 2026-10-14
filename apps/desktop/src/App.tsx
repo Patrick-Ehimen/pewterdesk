@@ -860,8 +860,7 @@ export function App() {
       ? (side: "buy" | "sell") => marketOrder(selected, side, Number(quickQty) || 0)
       : undefined;
   // Why orders can't be placed here, where there's a better reason than "not yet".
-  const tradeUnavailable =
-    venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
+  const tradeUnavailable = activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
   // Computed once: a fresh object each render would keep resetting the bar.
   const [quickDefault] = useState(defaultQuickTradePosition);
   const bookData = book.status === "live" || book.status === "closed" ? book.data : undefined;
@@ -1343,9 +1342,7 @@ export function App() {
               maxSlippage={venueInfo.maxSlippage}
               onConnect={() => openConnect()}
               onSubmit={placeOrder}
-              unavailableReason={
-                venue === "bybit" && activeOnVenue && !trading ? t("ticket.liveOff") : undefined
-              }
+              unavailableReason={activeOnVenue && !trading ? t("ticket.liveOff") : undefined}
               accountBadge={
                 tradingLive
                   ? t("apiKey.live")

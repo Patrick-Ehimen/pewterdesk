@@ -456,13 +456,7 @@ function FloatWidget() {
     return v === undefined ? "-" : formatNumber(v, s ? decimalsOf(s.markPrice) : 2);
   };
   const upnl = positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
-  const why = !active
-    ? t("float.connect")
-    : !trading
-      ? venue === "bybit"
-        ? t("ticket.liveOff")
-        : t("quick.unavailable")
-      : undefined;
+  const why = !active ? t("float.connect") : !trading ? t("ticket.liveOff") : undefined;
   const sizeLabel =
     Number(size) > 0
       ? `${formatNumber(Number(size), decimalsOf(market?.sizeStep ?? "0"))} ${base}`

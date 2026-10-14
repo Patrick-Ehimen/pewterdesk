@@ -283,3 +283,70 @@ async fn streams_account() {
     assert_eq!(account.address, ACTIVE_ACCOUNT);
     assert!(!account.positions.is_empty());
 }
+
+/// An order signed by a wallet nobody approved: Hyperliquid reads the action
+/// and the signature, finds no account behind the signer, and refuses. It
+/// touches no account and places nothing - it checks that what this crate
+/// sends is an order the exchange endpoint understands.
+#[tokio::test]
+#[ignore = "hits Hyperliquid mainnet"]
+async fn an_unapproved_wallets_order_is_refused_by_the_venue() {
+    use std::sync::Arc;
+
+    use pewterdesk_core::{
+        Decimal, KeyError, KeySource, OrderKind, OrderRequest, Side, TradingAccount,
+    };
+    use pewterdesk_exchange_hyperliquid::agent::generate_agent;
+    use zeroize::Zeroizing;
+
+    struct OneKey(String);
+    #[async_trait::async_trait]
+    impl KeySource for OneKey {
+        async fn key(&self, _account: &str) -> Result<Zeroizing<String>, KeyError> {
+            Ok(Zeroizing::new(self.0.clone()))
+        }
+    }
+
+    let (key, address) = generate_agent();
+    let adapter = adapter().with_keys(Arc::new(OneKey(key.to_string())));
+    let account = TradingAccount {
+        address: address.clone(),
+        key: "unused".into(),
+    };
+    let d = |s: &str| Decimal(s.parse().unwrap());
+    for (market, size) in [("BTC", "0.001"), ("xyz:TSLA", "1")] {
+        let request = OrderRequest {
+            market: market.into(),
+            side: Side::Buy,
+            size: d(size),
+            reduce_only: false,
+            collateral: None,
+            client_id: None,
+            take_profit: None,
+            stop_loss: None,
+            kind: OrderKind::Limit {
+                price: d("1"),
+                time_in_force: None,
+            },
+        };
+        let err = adapter.place_order(&account, &request).await.unwrap_err();
+        let VenueError::Rejected(why) = &err else {
+            panic!("{market}: {err:?}");
+        };
+        assert!(why.contains("does not exist"), "{market}: {why}");
+    }
+    let err = adapter
+        .cancel_order(&account, "BTC", "1")
+        .await
+        .unwrap_err();
+    assert!(
+        matches!(&err, VenueError::Rejected(why) if why.contains("does not exist")),
+        "{err:?}"
+    );
+    // A market that isn't listed never gets as far as a signature.
+    let err = adapter
+        .cancel_order(&account, "NOTAMARKET", "1")
+        .await
+        .unwrap_err();
+    assert!(matches!(err, VenueError::InvalidRequest(_)), "{err:?}");
+}

@@ -10,8 +10,13 @@
 //! - Errors are fixed strings, never built from the input.
 //! - Approving an agent ([`ApproveAgent`]) is signed by the user's main
 //!   wallet, never here: this module builds the exact action, and checks the
-//!   wallet's signature recovers to the main address before it's sent. It
-//!   never signs anything itself.
+//!   wallet's signature recovers to the main address before it's sent.
+//! - The agent's key signs one thing: an order or cancel action built by
+//!   `orders.rs` ([`sign_action`], which takes that module's own type, not
+//!   bytes). The key is decoded into `Zeroizing` memory for that call and
+//!   dropped. It never signs an approval, a transfer or a withdrawal -
+//!   those are "user-signed actions" in another EIP-712 domain, which this
+//!   key isn't used in.
 
 use k256::ecdsa::{RecoveryId, Signature, SigningKey, VerifyingKey};
 use pewterdesk_core::{KeyError, VenueError};
@@ -20,6 +25,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha3::{Digest, Keccak256};
 use zeroize::Zeroizing;
+
+use crate::orders::Wire;
 
 /// The name pewterdesk approves its agent under. Approving again under the
 /// same name replaces the previous agent, so reconnecting doesn't pile up
@@ -285,6 +292,78 @@ impl WalletSignature {
     }
 }
 
+/// The domain every agent-signed ("L1") action uses, on either network.
+const L1_DOMAIN_NAME: &str = "Exchange";
+const L1_CHAIN_ID: u64 = 1337;
+const L1_AGENT_TYPE: &str = "Agent(string source,bytes32 connectionId)";
+
+/// What an action's signature commits to: its MessagePack encoding, the
+/// nonce, and "no vault" - the SDK's `action_hash` with no vault address
+/// and no expiry.
+fn action_hash(action: &Wire, nonce: u64) -> [u8; 32] {
+    let mut data = action.packed();
+    data.extend(nonce.to_be_bytes());
+    data.push(0);
+    keccak(&data)
+}
+
+/// The EIP-712 digest for an L1 action: a "phantom agent" whose
+/// `connectionId` is the action's hash and whose `source` names the
+/// network, so a signature for one can't be replayed on the other.
+fn l1_signing_hash(connection_id: &[u8; 32], chain: &str) -> Result<[u8; 32], VenueError> {
+    let source: &[u8] = match chain {
+        "Mainnet" => b"a",
+        "Testnet" => b"b",
+        _ => return Err(VenueError::InvalidRequest("unknown network".into())),
+    };
+    let mut domain = Vec::with_capacity(5 * 32);
+    domain.extend(keccak(DOMAIN_TYPE.as_bytes()));
+    domain.extend(keccak(L1_DOMAIN_NAME.as_bytes()));
+    domain.extend(keccak(b"1"));
+    domain.extend(uint_word(L1_CHAIN_ID));
+    domain.extend(address_word(ZERO_ADDRESS)?);
+
+    let mut message = Vec::with_capacity(3 * 32);
+    message.extend(keccak(L1_AGENT_TYPE.as_bytes()));
+    message.extend(keccak(source));
+    message.extend(connection_id);
+
+    let mut digest = Vec::with_capacity(66);
+    digest.extend([0x19, 0x01]);
+    digest.extend(keccak(&domain));
+    digest.extend(keccak(&message));
+    Ok(keccak(&digest))
+}
+
+/// The agent's signature over `action` (an order or cancel `orders.rs`
+/// built) with `nonce`, as the exchange endpoint takes it. `key` is held
+/// only to make it. Laid out as the official Python SDK's `sign_l1_action`.
+pub(crate) fn sign_action(
+    key: &str,
+    action: &Wire,
+    nonce: u64,
+    chain: &str,
+) -> Result<Value, VenueError> {
+    let hash = l1_signing_hash(&action_hash(action, nonce), chain)?;
+    let bytes = decode_key(key)?;
+    // SigningKey zeroes itself on drop.
+    let signing = SigningKey::from_bytes((&*bytes).into()).map_err(|_| BAD_KEY)?;
+    let (signature, recovery) = signing
+        .sign_prehash_recoverable(&hash)
+        .map_err(|_| VenueError::Key(KeyError::Backend("the order couldn't be signed")))?;
+    let bytes = signature.to_bytes();
+    let mut r = [0u8; 32];
+    let mut s = [0u8; 32];
+    r.copy_from_slice(&bytes[..32]);
+    s.copy_from_slice(&bytes[32..]);
+    Ok(WalletSignature {
+        r,
+        s,
+        v: 27 + recovery.to_byte(),
+    }
+    .to_json())
+}
+
 /// What the exchange endpoint said: `{"status":"ok"}`, or `{"status":"err",
 /// "response":"<why>"}` with the venue's own message.
 pub fn approval_result(body: &Value) -> Result<(), VenueError> {
@@ -307,6 +386,173 @@ mod tests {
     // The well-known example key from the web3.js / ethers docs.
     const KEY: &str = "0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318";
     const ADDRESS: &str = "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23";
+
+    /// The key the official Python SDK's signing tests use, and its
+    /// signatures (`tests/signing_test.py`), zero-padded to 32 bytes.
+    const SDK_KEY: &str = "0x0123456789012345678901234567890123456789012345678901234567890123";
+
+    fn str(s: &str) -> Wire {
+        Wire::Str(s.into())
+    }
+
+    /// One ETH order (asset 1), 100 at 100, as the SDK's tests build it.
+    fn sdk_order(kind: Wire, client_id: Option<&str>) -> Wire {
+        let mut order = vec![
+            ("a", Wire::Uint(1)),
+            ("b", Wire::Bool(true)),
+            ("p", str("100")),
+            ("s", str("100")),
+            ("r", Wire::Bool(false)),
+            ("t", kind),
+        ];
+        if let Some(id) = client_id {
+            order.push(("c", str(id)));
+        }
+        Wire::Map(vec![
+            ("type", str("order")),
+            ("orders", Wire::List(vec![Wire::Map(order)])),
+            ("grouping", str("na")),
+        ])
+    }
+
+    fn gtc() -> Wire {
+        Wire::Map(vec![("limit", Wire::Map(vec![("tif", str("Gtc"))]))])
+    }
+
+    fn signed(action: &Wire, chain: &str) -> (String, String, u64) {
+        let sig = sign_action(SDK_KEY, action, 0, chain).unwrap();
+        (
+            sig["r"].as_str().unwrap().to_owned(),
+            sig["s"].as_str().unwrap().to_owned(),
+            sig["v"].as_u64().unwrap(),
+        )
+    }
+
+    #[test]
+    fn the_action_hash_matches_the_sdks() {
+        // test_phantom_agent_creation_matches_production
+        let action = Wire::Map(vec![
+            ("type", str("order")),
+            (
+                "orders",
+                Wire::List(vec![Wire::Map(vec![
+                    ("a", Wire::Uint(4)),
+                    ("b", Wire::Bool(true)),
+                    ("p", str("1670.1")),
+                    ("s", str("0.0147")),
+                    ("r", Wire::Bool(false)),
+                    (
+                        "t",
+                        Wire::Map(vec![("limit", Wire::Map(vec![("tif", str("Ioc"))]))]),
+                    ),
+                ])]),
+            ),
+            ("grouping", str("na")),
+        ]);
+        let mut hex = String::new();
+        push_hex(&mut hex, &action_hash(&action, 1_677_777_606_040));
+        assert_eq!(
+            hex,
+            "0fcbeda5ae3c4950a548021552a4fea2226858c4453571bf3f24ba017eac2908"
+        );
+    }
+
+    #[test]
+    fn actions_are_signed_as_the_sdk_signs_them() {
+        // test_l1_action_signing_matches
+        let dummy = Wire::Map(vec![
+            ("type", str("dummy")),
+            ("num", Wire::Uint(100_000_000_000)),
+        ]);
+        assert_eq!(
+            signed(&dummy, "Mainnet"),
+            (
+                "0x053749d5b30552aeb2fca34b530185976545bb22d0b3ce6f62e31be961a59298".into(),
+                "0x755c40ba9bf05223521753995abb2f73ab3229be8ec921f350cb447e384d8ed8".into(),
+                27
+            )
+        );
+        assert_eq!(
+            signed(&dummy, "Testnet"),
+            (
+                "0x542af61ef1f429707e3c76c5293c80d01f74ef853e34b76efffcb57e574f9510".into(),
+                "0x17b8b32f086e8cdede991f1e2c529f5dd5297cbe8128500e00cbaf766204a613".into(),
+                28
+            )
+        );
+        // test_l1_action_signing_order_matches
+        let order = sdk_order(gtc(), None);
+        assert_eq!(
+            signed(&order, "Mainnet"),
+            (
+                "0xd65369825a9df5d80099e513cce430311d7d26ddf477f5b3a33d2806b100d78e".into(),
+                "0x2b54116ff64054968aa237c20ca9ff68000f977c93289157748a3162b6ea940e".into(),
+                28
+            )
+        );
+        assert_eq!(
+            signed(&order, "Testnet"),
+            (
+                "0x82b2ba28e76b3d761093aaded1b1cdad4960b3af30212b343fb2e6cdfa4e3d54".into(),
+                "0x6b53878fc99d26047f4d7e8c90eb98955a109f44209163f52d8dc4278cbbd9f5".into(),
+                27
+            )
+        );
+        // test_l1_action_signing_order_with_cloid_matches
+        let with_id = sdk_order(gtc(), Some("0x00000000000000000000000000000001"));
+        assert_eq!(
+            signed(&with_id, "Mainnet"),
+            (
+                "0x041ae18e8239a56cacbc5dad94d45d0b747e5da11ad564077fcac71277a946e3".into(),
+                "0x3c61f667e747404fe7eea8f90ab0e76cc12ce60270438b2058324681a00116da".into(),
+                27
+            )
+        );
+        // test_l1_action_signing_tpsl_order_matches
+        let stop = sdk_order(
+            Wire::Map(vec![(
+                "trigger",
+                Wire::Map(vec![
+                    ("isMarket", Wire::Bool(true)),
+                    ("triggerPx", str("103")),
+                    ("tpsl", str("sl")),
+                ]),
+            )]),
+            None,
+        );
+        assert_eq!(
+            signed(&stop, "Mainnet"),
+            (
+                "0x98343f2b5ae8e26bb2587daad3863bc70d8792b09af1841b6fdd530a2065a3f9".into(),
+                "0x6b5bb6bb0633b710aa22b721dd9dee6d083646a5f8e581a20b545be6c1feb405".into(),
+                27
+            )
+        );
+        assert_eq!(
+            signed(&stop, "Testnet"),
+            (
+                "0x971c554d917c44e0e1b6cc45d8f9404f32172a9d3b3566262347d0302896a2e4".into(),
+                "0x206257b104788f80450f8e786c329daa589aa0b32ba96948201ae556d5637eac".into(),
+                28
+            )
+        );
+    }
+
+    #[test]
+    fn a_different_action_nonce_or_network_is_a_different_signature() {
+        let order = sdk_order(gtc(), None);
+        let base = sign_action(SDK_KEY, &order, 0, "Mainnet").unwrap();
+        assert_ne!(sign_action(SDK_KEY, &order, 1, "Mainnet").unwrap(), base);
+        assert_ne!(sign_action(SDK_KEY, &order, 0, "Testnet").unwrap(), base);
+        let other = sdk_order(gtc(), Some("0x00000000000000000000000000000001"));
+        assert_ne!(sign_action(SDK_KEY, &other, 0, "Mainnet").unwrap(), base);
+        // Nothing is signed for a network that isn't one, or without a key.
+        assert!(sign_action(SDK_KEY, &order, 0, "Devnet").is_err());
+        assert_eq!(
+            sign_action("not a key", &order, 0, "Mainnet").unwrap_err(),
+            BAD_KEY
+        );
+    }
 
     #[test]
     fn derives_the_address_from_a_key() {

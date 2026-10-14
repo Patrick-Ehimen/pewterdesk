@@ -1,7 +1,7 @@
 //! Aster adapter (Aster Chain, an order-book perp L1; deposits bridge in from
-//! BNB Chain, Ethereum, Arbitrum and Solana). Read-only so far: public market
-//! data over the Futures REST API and combined-stream WebSocket, none of which
-//! needs a key.
+//! BNB Chain, Ethereum, Arbitrum and Solana): public market data over the
+//! Futures REST API and combined-stream WebSocket, none of which needs a
+//! key, and an account's state and orders, which do.
 //!
 //! Aster is Binance-style: market ids are its symbols (`BTCUSDT`), and each
 //! stream is seeded over REST before going live, which also turns an unknown
@@ -12,12 +12,19 @@
 //! Aster serves even balances only to a signed request. That API wallet is
 //! the trade-only key because pewterdesk approves it without withdraw or
 //! spot permission, and reads its permissions back before keeping it - see
-//! `agent.rs` and docs/adr/0002-launch-venues.md. Orders aren't placed yet.
+//! `agent.rs` and docs/adr/0002-launch-venues.md.
+//!
+//! Orders are placed and cancelled the same way: `orders.rs` builds the
+//! request's parameters, `agent.rs` signs exactly those, and they're sent as
+//! signed. Both are security-sensitive. Nothing here can withdraw or
+//! transfer: the adapter has no such request, and the API wallet no such
+//! permission.
 
 mod account;
 pub mod agent;
 pub mod constants;
 mod icons;
+mod orders;
 mod tape;
 mod wire;
 mod ws;
@@ -29,8 +36,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use pewterdesk_core::{
     AccountSnapshot, Candle, CandleInterval, Capabilities, Decimal, ExchangeAdapter, FundingRate,
-    KeySource, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest,
-    OrderType, Trade, TradingAccount, VenueError, VenueId,
+    KeySource, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderCategory,
+    OrderKind, OrderRequest, OrderStatus, OrderType, PriceSource, Trade, TradingAccount,
+    VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -162,10 +170,23 @@ impl Rest {
         params: &[(&str, String)],
         key: &str,
     ) -> Result<T, VenueError> {
+        self.signed(reqwest::Method::GET, path, params, key).await
+    }
+
+    /// A request signed by the account's API wallet: the parameters go in
+    /// the URL exactly as they were signed (Aster's docs, "send by url"),
+    /// with no body. If signing fails nothing is sent.
+    async fn signed<T: DeserializeOwned>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        params: &[(&str, String)],
+        key: &str,
+    ) -> Result<T, VenueError> {
         let query = agent::sign_request(key, params, next_nonce())?;
         let response = self
             .http
-            .get(format!("{}{path}?{query}", self.base))
+            .request(method, format!("{}{path}?{query}", self.base))
             .send()
             .await
             .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
@@ -183,6 +204,12 @@ impl Rest {
             .json()
             .await
             .map_err(|e| VenueError::Network(format!("unexpected Aster response: {e}")))
+    }
+
+    /// `market`'s best bid and ask now. Public.
+    async fn quote(&self, market: &str) -> Result<orders::Quote, VenueError> {
+        self.get("/fapi/v3/ticker/bookTicker", &symbol_query(Some(market)))
+            .await
     }
 
     /// The account's margin summary, positions and open orders, signed with
@@ -984,22 +1011,89 @@ impl ExchangeAdapter for AsterAdapter {
 
     async fn place_order(
         &self,
-        _account: &TradingAccount,
-        _request: &OrderRequest,
+        account: &TradingAccount,
+        request: &OrderRequest,
     ) -> Result<Order, VenueError> {
-        Err(VenueError::Unsupported(
-            "order placement (not implemented yet)",
-        ))
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(&request.market)?;
+        // The market's grid as the venue has it now, not as last cached.
+        let info = self.rest.exchange_info().await?;
+        let (tick, step, min_size) = wire::steps(&info, &request.market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{:?} isn't a live Aster market", request.market))
+        })?;
+        let quote = self.rest.quote(&request.market).await?;
+        let params = orders::create(
+            request,
+            orders::Steps {
+                tick,
+                step,
+                min_size,
+            },
+            quote,
+        )?;
+        let placed: orders::Placed = {
+            let key = keys.key(&account.key).await?;
+            self.rest
+                .signed(reqwest::Method::POST, "/fapi/v3/order", &params, &key)
+                .await?
+        };
+        let (status, filled_size) = match placed.outcome()? {
+            orders::Outcome::Open => (OrderStatus::Open, Decimal::default()),
+            orders::Outcome::Filled(size) => (OrderStatus::Filled, size),
+        };
+        let trigger = matches!(request.kind, OrderKind::Trigger { .. });
+        Ok(Order {
+            venue: VenueId::Aster,
+            id: placed.order_id.to_string(),
+            client_id: request.client_id.clone(),
+            market: request.market.clone(),
+            side: request.side,
+            order_type: request.kind.order_type(),
+            size: request.size,
+            filled_size,
+            price: match request.kind {
+                OrderKind::Limit { price, .. } => Some(price),
+                OrderKind::Trigger { limit_price, .. } => limit_price,
+                OrderKind::Market { .. } => None,
+            },
+            trigger_price: match request.kind {
+                OrderKind::Trigger { trigger_price, .. } => Some(trigger_price),
+                _ => None,
+            },
+            reduce_only: request.reduce_only,
+            status,
+            created_at: now_ms(),
+            category: if trigger {
+                OrderCategory::Conditional
+            } else {
+                OrderCategory::Regular
+            },
+            trigger_by: trigger.then_some(PriceSource::Last),
+            take_profit: None,
+            stop_loss: None,
+        })
     }
 
     async fn cancel_order(
         &self,
-        _account: &TradingAccount,
-        _market: &str,
-        _order_id: &str,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
     ) -> Result<(), VenueError> {
-        Err(VenueError::Unsupported(
-            "order cancellation (not implemented yet)",
-        ))
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let params = orders::cancel(market, order_id)?;
+        let key = keys.key(&account.key).await?;
+        let _: Value = self
+            .rest
+            .signed(reqwest::Method::DELETE, "/fapi/v3/order", &params, &key)
+            .await?;
+        Ok(())
     }
 }

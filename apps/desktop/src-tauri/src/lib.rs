@@ -180,6 +180,7 @@ pub fn run() {
             bybit_key::disconnect_bybit_key,
             live_trading::live_trading_accounts,
             live_trading::set_live_trading,
+            live_trading::set_wallet_trading,
             trading_rules::trading_rules,
             trading_rules::set_trading_rules,
             trading_rules::delete_trading_rules,

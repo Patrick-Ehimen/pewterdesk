@@ -47,6 +47,31 @@ impl Meta {
     }
 }
 
+/// Builder-deployed exchanges' markets are numbered from here, 10,000 to an
+/// exchange, in the order the venue lists the exchanges (the SDK's
+/// `perp_dex_to_offset`). The main exchange's are numbered from 0.
+const BUILDER_ASSET_BASE: u32 = 100_000;
+const BUILDER_ASSET_SPAN: u32 = 10_000;
+
+/// The number Hyperliquid knows live market `market` by in an order, and
+/// its size decimals: its place in its exchange's `universe` (delisted
+/// markets keep theirs), offset by the exchange's place in `allPerpMetas`.
+pub fn asset(metas: &[Meta], market: &str) -> Option<(u32, u32)> {
+    metas.iter().enumerate().find_map(|(dex, meta)| {
+        let at = meta.universe.iter().position(|a| a.name == market)?;
+        let found = &meta.universe[at];
+        let (dex, at) = (u32::try_from(dex).ok()?, u32::try_from(at).ok()?);
+        if found.is_delisted || at >= BUILDER_ASSET_SPAN {
+            return None;
+        }
+        let offset = match dex {
+            0 => 0,
+            n => BUILDER_ASSET_BASE.checked_add(n.checked_mul(BUILDER_ASSET_SPAN)?)?,
+        };
+        Some((offset + at, found.sz_decimals))
+    })
+}
+
 /// `spotMeta`, for naming a builder exchange's collateral token.
 #[derive(Clone, Debug, Deserialize)]
 pub struct SpotMeta {
@@ -656,6 +681,38 @@ pub fn account(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn numbers_markets_as_orders_name_them() {
+        let meta = |names: &[(&str, bool)]| Meta {
+            universe: names
+                .iter()
+                .map(|(name, delisted)| AssetMeta {
+                    name: (*name).into(),
+                    sz_decimals: 3,
+                    max_leverage: 10,
+                    is_delisted: *delisted,
+                })
+                .collect(),
+            collateral_token: 0,
+        };
+        let metas = [
+            meta(&[("BTC", false), ("OLD", true), ("ETH", false)]),
+            meta(&[("xyz:XYZ100", false), ("xyz:TSLA", false)]),
+            meta(&[]),
+            meta(&[("vntl:SPACEX", false)]),
+        ];
+        assert_eq!(asset(&metas, "BTC"), Some((0, 3)));
+        // A delisted market keeps its place, so ETH is 2, not 1.
+        assert_eq!(asset(&metas, "ETH"), Some((2, 3)));
+        assert_eq!(asset(&metas, "OLD"), None);
+        // The first builder exchange starts at 110,000, as in the SDK.
+        assert_eq!(asset(&metas, "xyz:TSLA"), Some((110_001, 3)));
+        // An exchange with no markets still counts for the ones after it.
+        assert_eq!(asset(&metas, "vntl:SPACEX"), Some((130_000, 3)));
+        assert_eq!(asset(&metas, "TSLA"), None);
+        assert_eq!(asset(&metas, ""), None);
+    }
     use serde_json::json;
 
     fn dec(s: &str) -> Decimal {
