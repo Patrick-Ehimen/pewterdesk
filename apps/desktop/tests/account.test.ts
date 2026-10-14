@@ -46,6 +46,9 @@ describe("connected accounts", () => {
     expect(canTrade(wallet, [`aster:${A}`])).toBe(false);
     expect(canTrade(wallet, [`hyperliquid:${A}`])).toBe(true);
     expect(canTrade({ venue: "aster", id: A }, [`aster:${A}`])).toBe(true);
+    // Rust keeps addresses in lower case; one stored mixed-case still matches.
+    const mixed = { venue: "hyperliquid", id: `0x${"aB".repeat(20)}` } as const;
+    expect(canTrade(mixed, [`hyperliquid:0x${"ab".repeat(20)}`])).toBe(true);
     expect(canTrade(undefined, ["24617703"])).toBe(false);
   });
 

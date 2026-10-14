@@ -1252,7 +1252,7 @@ export const messages: Messages = {
   "quick.drag": "Faites glisser pour déplacer",
   "quick.close": "Fermer le trade rapide",
   "quick.unavailable":
-    "Le trading n'est pas encore disponible : le passage d'ordres est en cours de développement.",
+    "Pour passer des ordres, connectez un compte sur cette plateforme et activez-y le trading réel.",
   "action.quickTrade": "Trade rapide",
   "theme.dark.name": "Étain",
   "theme.dark.desc": "Étain et laiton sur un quasi-noir",

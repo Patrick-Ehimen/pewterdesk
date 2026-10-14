@@ -481,14 +481,18 @@ export function OrderTicket({
         )}
         {/* Changing either signs a venue action: only where the account can trade. */}
         <Tooltip
-          content={onMarginMode ? t("ticket.changeMargin") : t("quick.unavailable")}
+          content={
+            onMarginMode ? t("ticket.changeMargin") : (unavailableReason ?? t("quick.unavailable"))
+          }
           className={`pd-ticket-chip${onMarginMode ? " pd-ticket-chip-on" : ""}`}
           onClick={onMarginMode && (() => setEditing("margin"))}
         >
           {t(marginMode === "isolated" ? "ticket.isolated" : "ticket.cross")}
         </Tooltip>
         <Tooltip
-          content={onLeverage ? t("ticket.changeLeverage") : t("quick.unavailable")}
+          content={
+            onLeverage ? t("ticket.changeLeverage") : (unavailableReason ?? t("quick.unavailable"))
+          }
           className={`pd-ticket-chip${onLeverage ? " pd-ticket-chip-on" : ""}`}
           onClick={onLeverage && (() => setEditing("leverage"))}
         >

@@ -1235,7 +1235,8 @@ export const messages: Messages = {
   "quick.qtyLabel": "Quantidade em {base}",
   "quick.drag": "Arraste para mover",
   "quick.close": "Fechar negociação rápida",
-  "quick.unavailable": "Ainda não é possível negociar: o envio de ordens está em desenvolvimento.",
+  "quick.unavailable":
+    "Para enviar ordens, conecte uma conta nesta corretora e ative a negociação real para ela.",
   "action.quickTrade": "Negociação rápida",
   "theme.dark.name": "Estanho",
   "theme.dark.desc": "Estanho e latão sobre quase preto",

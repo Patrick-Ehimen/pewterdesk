@@ -1194,7 +1194,7 @@ export const messages: Messages = {
   "quick.qtyLabel": "数量（{base}）",
   "quick.drag": "拖动以移动",
   "quick.close": "关闭快速交易",
-  "quick.unavailable": "暂不支持交易：下单功能仍在开发中。",
+  "quick.unavailable": "要下单，请连接此交易所的账户并为其开启实盘交易。",
   "action.quickTrade": "快速交易",
   "theme.dark.name": "锡灰",
   "theme.dark.desc": "近黑底上的锡灰与黄铜",
