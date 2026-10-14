@@ -388,6 +388,28 @@ trading command: an order, close, cancel or exit goes through the same
 `placeOrder` / `cancelOrder` / `protect`, and only on a second Enter, after
 the panel has printed what would be sent.
 
+## Algos, bots and `pd` (planned)
+
+Not built yet. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
+the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
+research behind it in `docs/research/cli-trading-bots.md`. In short: a new
+`crates/engine` takes over routing, the trading gate (today's
+`live_trading.rs` and `trading_rules.rs`), algo executors (chaser, TWAP,
+scaled...) and bots; it runs inside the app or headless in a daemon (`pdd`),
+which a `pd` CLI and the app reach over a localhost-only protocol.
+
+When working on any of it:
+
+- Follow `docs/bots/plan.md` phase by phase; Phase 0 (extracting the engine
+  with no behaviour change) comes before any new feature. Tick its
+  checkboxes as work lands.
+- `docs/bots/safety.md` is binding: no new signing verbs (the six operations
+  above only), every order through the one gate whatever sent it, keys only
+  via `KeySource`, localhost and paired clients only, fail closed. The new
+  crates it lists join the security-sensitive list above as they're created.
+- Keep `docs/bots/` and the ADR in step with the code; if the plan changes,
+  change the doc in the same PR.
+
 ## Notifications
 
 Anything worth telling the user (an order, a fill, a position change, a fired
