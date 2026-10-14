@@ -43,10 +43,10 @@ export function ChartWindow() {
         summary={data.summaries?.find((s) => s.market === cell.market)}
         onMarket={(market) => change({ market })}
         onInterval={(interval) => change({ interval })}
-        onType={(type) => change({ type })}
-        onIndicators={(indicators) => change({ indicators })}
+        onLayout={(chart) => change({ chart })}
         onSettings={(settings) => change({ settings })}
         markSize={56}
+        maximised
       />
     </div>
   );
