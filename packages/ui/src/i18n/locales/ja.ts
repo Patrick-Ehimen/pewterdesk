@@ -1223,7 +1223,8 @@ export const messages: Messages = {
   "quick.qtyLabel": "数量（{base}）",
   "quick.drag": "ドラッグして移動",
   "quick.close": "クイック取引を閉じる",
-  "quick.unavailable": "まだ取引できません。注文機能は開発中です。",
+  "quick.unavailable":
+    "注文するには、この取引所のアカウントを接続し、ライブ取引をオンにしてください。",
   "action.quickTrade": "クイック取引",
   "theme.dark.name": "ピューター",
   "theme.dark.desc": "黒に近い地にピューターと真鍮",

@@ -52,6 +52,13 @@ export function isAccountId(venue: VenueId, id: string): boolean {
 export const isDemoAccount = (account: { venue: VenueId; id: string }) =>
   account.venue === "bybit" && account.id.startsWith("demo:");
 
+/** How Rust's live-trading list names an account: a Bybit UID, or its venue and address. */
+export const liveId = (account: { venue: VenueId; id: string }) =>
+  account.venue === "bybit"
+    ? account.id
+    : // Rust keeps a wallet's address in lower case, however it was typed.
+      `${account.venue}:${account.id.trim().toLowerCase()}`;
+
 /**
  * Whether orders can be placed for an account: a Bybit demo account, or a
  * live one (Bybit, Hyperliquid, Aster) with live trading turned on
@@ -61,10 +68,7 @@ export const isDemoAccount = (account: { venue: VenueId; id: string }) =>
 export const canTrade = (
   account: { venue: VenueId; id: string } | undefined,
   liveUids: readonly string[],
-) =>
-  account !== undefined &&
-  (isDemoAccount(account) ||
-    liveUids.includes(account.venue === "bybit" ? account.id : `${account.venue}:${account.id}`));
+) => account !== undefined && (isDemoAccount(account) || liveUids.includes(liveId(account)));
 
 const isVenue = (v: unknown): v is VenueId => v === "hyperliquid" || v === "aster" || v === "bybit";
 

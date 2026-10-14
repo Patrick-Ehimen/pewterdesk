@@ -1234,7 +1234,8 @@ export const messages: Messages = {
   "quick.qtyLabel": "Количество, {base}",
   "quick.drag": "Перетащите, чтобы переместить",
   "quick.close": "Закрыть быструю сделку",
-  "quick.unavailable": "Торговля пока недоступна: размещение ордеров ещё в разработке.",
+  "quick.unavailable":
+    "Чтобы торговать, подключите аккаунт на этой бирже и включите для него реальную торговлю.",
   "action.quickTrade": "Быстрая сделка",
   "theme.dark.name": "Олово",
   "theme.dark.desc": "Олово и латунь на почти чёрном",

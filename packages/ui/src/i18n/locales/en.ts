@@ -1173,7 +1173,8 @@ export const en = {
   "quick.qtyLabel": "Quantity in {base}",
   "quick.drag": "Drag to move",
   "quick.close": "Close quick trade",
-  "quick.unavailable": "Trading isn't available yet: order placement is still being built.",
+  "quick.unavailable":
+    "To place orders, connect an account on this venue and turn on live trading for it.",
   "action.quickTrade": "Quick trade",
   "theme.dark.name": "Pewter",
   "theme.dark.desc": "Pewter and brass on near-black",

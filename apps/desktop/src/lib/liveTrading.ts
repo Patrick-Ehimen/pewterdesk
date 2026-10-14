@@ -1,5 +1,8 @@
 import type { VenueId } from "@pewterdesk/core";
 import { bybitKeyClient, walletClient } from "../api/venueClient";
+import { liveId } from "./account";
+
+export { liveId };
 
 // Which live accounts have trading turned on: Bybit accounts by UID, and
 // Hyperliquid and Aster accounts as "<venue>:<address>". Rust keeps the list and
@@ -56,10 +59,6 @@ export async function refreshLiveTrading(): Promise<void> {
     // Not in the app (a browser preview): nothing is on.
   }
 }
-
-/** How Rust's list names an account: a Bybit UID, or its venue and address. */
-export const liveId = (account: { venue: VenueId; id: string }) =>
-  account.venue === "bybit" ? account.id : `${account.venue}:${account.id}`;
 
 /**
  * Turns live trading on or off for a live account. Turning it on has Rust

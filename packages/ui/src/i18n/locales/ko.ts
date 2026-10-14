@@ -1218,7 +1218,7 @@ export const messages: Messages = {
   "quick.qtyLabel": "수량 ({base})",
   "quick.drag": "드래그하여 이동",
   "quick.close": "빠른 거래 닫기",
-  "quick.unavailable": "아직 거래할 수 없습니다. 주문 기능은 개발 중입니다.",
+  "quick.unavailable": "주문하려면 이 거래소의 계정을 연결하고 실거래를 켜세요.",
   "action.quickTrade": "빠른 거래",
   "theme.dark.name": "퓨터",
   "theme.dark.desc": "거의 검은 바탕에 퓨터와 황동",
