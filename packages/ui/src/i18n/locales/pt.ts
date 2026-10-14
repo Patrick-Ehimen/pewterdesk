@@ -1262,6 +1262,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "Um só tom: verde-azulado e menta sobre azul-marinho",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "Ardósia e carmesim sobre cinza-azulado",
+  "theme.cobalt.name": "Cobalto",
+  "theme.cobalt.desc": "Um só tom: azul profundo e gelo sobre preto azulado",
+  "theme.plum.name": "Ameixa",
+  "theme.plum.desc": "Um só tom: violeta e lilás sobre berinjela",
+  "theme.ember.name": "Brasa",
+  "theme.ember.desc": "Um só tom: ferrugem e pêssego sobre marrom escuro",
 
   // Settings page
   "settings.title": "Configurações",

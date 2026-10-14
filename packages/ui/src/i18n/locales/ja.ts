@@ -1250,6 +1250,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "単色:ネイビーにディープティールとミント",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "ブルーグレーにスレートとクリムゾン",
+  "theme.cobalt.name": "コバルト",
+  "theme.cobalt.desc": "単色:ブルーブラックにディープブルーとアイス",
+  "theme.plum.name": "プラム",
+  "theme.plum.desc": "単色:茄子紺にバイオレットとライラック",
+  "theme.ember.name": "エンバー",
+  "theme.ember.desc": "単色:ダークブラウンにラストとピーチ",
 
   // Settings page
   "settings.title": "設定",

@@ -1278,6 +1278,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "Une seule teinte : sarcelle et menthe sur bleu marine",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "Ardoise et cramoisi sur gris-bleu",
+  "theme.cobalt.name": "Cobalt",
+  "theme.cobalt.desc": "Une seule teinte : bleu profond et glace sur noir bleuté",
+  "theme.plum.name": "Prune",
+  "theme.plum.desc": "Une seule teinte : violet et lilas sur aubergine",
+  "theme.ember.name": "Braise",
+  "theme.ember.desc": "Une seule teinte : rouille et pêche sur brun foncé",
 
   // Settings page
   "settings.title": "Réglages",

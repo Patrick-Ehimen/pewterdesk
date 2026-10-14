@@ -1244,6 +1244,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "단일 색조: 네이비에 딥 틸과 민트",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "블루그레이에 슬레이트와 크림슨",
+  "theme.cobalt.name": "코발트",
+  "theme.cobalt.desc": "단일 색조: 블루 블랙에 딥 블루와 아이스",
+  "theme.plum.name": "플럼",
+  "theme.plum.desc": "단일 색조: 가지색에 바이올렛과 라일락",
+  "theme.ember.name": "엠버",
+  "theme.ember.desc": "단일 색조: 짙은 갈색에 녹슨 주황과 피치",
 
   // Settings page
   "settings.title": "설정",

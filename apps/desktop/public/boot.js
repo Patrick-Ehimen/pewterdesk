@@ -21,6 +21,9 @@
         "hyrotrader",
         "bambam",
         "cosku",
+        "cobalt",
+        "plum",
+        "ember",
       ].includes(theme)
     ) {
       root.dataset.theme = theme;

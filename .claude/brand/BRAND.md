@@ -70,6 +70,9 @@ exceptions noted under Contrast.
 | `hyrotrader` | Hyrotrader | Indigo on midnight, mint and rose | #0D0E1B | indigo #4D54F5 |
 | `bambam` | BAMBAM | One hue: deep teal and mint on navy | #202431 | teal #006064 |
 | `cosku` | Cosku | Slate and crimson on blue-grey | #2F3447 | slate #476072 |
+| `cobalt` | Cobalt | One hue: deep blue and ice on blue-black | #1D2232 | blue #2A50B0 |
+| `plum` | Plum | One hue: violet and lilac on aubergine | #262033 | violet #6E35A6 |
+| `ember` | Ember | One hue: rust and peach on dark brown | #2B231F | rust #8A3B12 |
 
 `light` (Porcelain, the light column of the core palette) stays defined in the
 tokens but isn't offered in the picker.
@@ -91,7 +94,10 @@ background of its own where the original's differs from its panel (FTX,
 Cosku). Other themes leave all three at their defaults (the market colours
 and the panel's surface). BAMBAM is one hue by design, so rising and falling
 differ in lightness, not colour: the colourblind market colours are the
-answer for anyone who needs more.
+answer for anyone who needs more. Cobalt, Plum and Ember follow BAMBAM's pattern in
+other hues: a deep shade for falling candles and the accent, a pale one for
+rising candles and buy, on a dark ground of the same hue, with every text
+token at 4.5:1 or better.
 
 Full values are in the tokens file. A new theme defines every `--pd-*` color
 token; check it with a contrast script before adding it here.

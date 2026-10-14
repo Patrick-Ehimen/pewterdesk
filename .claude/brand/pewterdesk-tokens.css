@@ -1,12 +1,13 @@
 /* Pewterdesk color tokens. Pewter (dark) is the bare :root set; the app's
    default theme is Monokai Pro. Set data-theme on
    <html> to dark | graphite | synthwave | monokai | palenight | parchment |
-   bybit | binance | ftx | hyrotrader | bambam | cosku (or light, the brand
+   bybit | binance | ftx | hyrotrader | bambam | cosku | cobalt | plum | ember
+   (or light, the brand
    light palette), and data-market="colorblind" for
    colorblind-safe market colors. The brand themes vary only the neutrals -
    brass is the one accent. The editor-inspired themes (synthwave, monokai,
-   palenight) and the venue-styled ones (bybit, binance, ftx, hyrotrader,
-   bambam, cosku) swap in their own single accent through the --pd-brass tokens;
+   palenight), the venue-styled ones (bybit, binance, ftx, hyrotrader,
+   bambam, cosku) and BAMBAM's one-hue siblings (cobalt, plum, ember) swap in their own single accent through the --pd-brass tokens;
    green/red stay market-only everywhere. Selectors work on any element, so a
    subtree (e.g. a theme preview swatch) can show another theme. Full rules:
    .claude/brand/BRAND.md */
@@ -345,6 +346,84 @@
   --pd-candle-up: #345b63;
   --pd-candle-down: #7d1835;
   --pd-chart-bg: #0e0e14;
+}
+
+/* Cobalt, Plum and Ember: one hue each, as BAMBAM is - a deep shade and a
+   pale one on a dark ground of the same hue. Their candles are those two
+   (--pd-candle-*); the falling colour is lightened for text. */
+[data-theme="cobalt"] {
+  --pd-bg: #1d2232;
+  --pd-surface: #11151f;
+  --pd-surface-raised: #181d2b;
+  --pd-border: #272d40;
+  --pd-border-strong: #3b4560;
+  --pd-text: #e9eefc;
+  --pd-pewter: #a5b1cc;
+  --pd-pewter-dim: #7f8ba6;
+  --pd-brass: #2a50b0;
+  --pd-brass-text: #b5c9fa;
+  --pd-brass-hover: #3560c4;
+  --pd-on-brass: #e9eefc;
+  --pd-buy: #b5c9fa;
+  --pd-on-buy: #0b1633;
+  --pd-buy-tint: rgb(181 201 250 / 0.12);
+  --pd-sell: #6a8bdc;
+  --pd-on-sell: #050c22;
+  --pd-sell-tint: rgb(106 139 220 / 0.13);
+  --pd-warning: #e8c07a;
+  --pd-info: #8fd3e8;
+  --pd-candle-up: #b5c9fa;
+  --pd-candle-down: #2a50b0;
+}
+
+[data-theme="plum"] {
+  --pd-bg: #262033;
+  --pd-surface: #17131f;
+  --pd-surface-raised: #201a2b;
+  --pd-border: #302842;
+  --pd-border-strong: #463c5c;
+  --pd-text: #f4edfb;
+  --pd-pewter: #bcadcf;
+  --pd-pewter-dim: #9384a6;
+  --pd-brass: #6e35a6;
+  --pd-brass-text: #ddc4f5;
+  --pd-brass-hover: #7f42ba;
+  --pd-on-brass: #f4edfb;
+  --pd-buy: #ddc4f5;
+  --pd-on-buy: #22113a;
+  --pd-buy-tint: rgb(221 196 245 / 0.12);
+  --pd-sell: #ad84da;
+  --pd-on-sell: #16072a;
+  --pd-sell-tint: rgb(173 132 218 / 0.13);
+  --pd-warning: #e8c07a;
+  --pd-info: #8fc7e8;
+  --pd-candle-up: #ddc4f5;
+  --pd-candle-down: #6e35a6;
+}
+
+[data-theme="ember"] {
+  --pd-bg: #2b231f;
+  --pd-surface: #1a1411;
+  --pd-surface-raised: #241c18;
+  --pd-border: #372b25;
+  --pd-border-strong: #504037;
+  --pd-text: #fbf0e7;
+  --pd-pewter: #cbb4a5;
+  --pd-pewter-dim: #a08a7c;
+  --pd-brass: #8a3b12;
+  --pd-brass-text: #f6caa9;
+  --pd-brass-hover: #a5491a;
+  --pd-on-brass: #fbf0e7;
+  --pd-buy: #f6caa9;
+  --pd-on-buy: #3a1a08;
+  --pd-buy-tint: rgb(246 202 169 / 0.12);
+  --pd-sell: #dd8a58;
+  --pd-on-sell: #2a0f02;
+  --pd-sell-tint: rgb(221 138 88 / 0.13);
+  --pd-warning: #e8d27a;
+  --pd-info: #8fc7e8;
+  --pd-candle-up: #f6caa9;
+  --pd-candle-down: #8a3b12;
 }
 
 [data-market="colorblind"] {

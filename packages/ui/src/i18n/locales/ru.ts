@@ -1261,6 +1261,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "Один тон: тёмная бирюза и мята на тёмно-синем",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "Сланцевый и малиновый на серо-синем",
+  "theme.cobalt.name": "Кобальт",
+  "theme.cobalt.desc": "Один тон: глубокий синий и ледяной на сине-чёрном",
+  "theme.plum.name": "Слива",
+  "theme.plum.desc": "Один тон: фиолетовый и сиреневый на баклажановом",
+  "theme.ember.name": "Уголёк",
+  "theme.ember.desc": "Один тон: ржавчина и персик на тёмно-коричневом",
 
   // Settings page
   "settings.title": "Настройки",

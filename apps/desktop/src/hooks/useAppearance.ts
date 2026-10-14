@@ -21,6 +21,10 @@ export const THEMES = [
   "hyrotrader",
   "bambam",
   "cosku",
+  // One hue each, as BAMBAM is.
+  "cobalt",
+  "plum",
+  "ember",
 ] as const;
 export type Theme = (typeof THEMES)[number];
 /** Monokai Pro, until a theme is picked. Keep in sync with public/boot.js and tauri.conf.json. */

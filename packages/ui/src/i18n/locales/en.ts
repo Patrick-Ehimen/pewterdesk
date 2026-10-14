@@ -1200,6 +1200,12 @@ export const en = {
   "theme.bambam.desc": "One hue: deep teal and mint on navy",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "Slate and crimson on blue-grey",
+  "theme.cobalt.name": "Cobalt",
+  "theme.cobalt.desc": "One hue: deep blue and ice on blue-black",
+  "theme.plum.name": "Plum",
+  "theme.plum.desc": "One hue: violet and lilac on aubergine",
+  "theme.ember.name": "Ember",
+  "theme.ember.desc": "One hue: rust and peach on dark brown",
 
   // Settings page
   "settings.title": "Settings",

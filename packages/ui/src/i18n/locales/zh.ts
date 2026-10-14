@@ -1220,6 +1220,12 @@ export const messages: Messages = {
   "theme.bambam.desc": "单一色调：深青与薄荷配藏青",
   "theme.cosku.name": "Cosku",
   "theme.cosku.desc": "蓝灰底色配石板灰与深红",
+  "theme.cobalt.name": "钴蓝",
+  "theme.cobalt.desc": "单一色调：深蓝与冰蓝配蓝黑",
+  "theme.plum.name": "梅紫",
+  "theme.plum.desc": "单一色调：紫罗兰与淡紫配茄紫",
+  "theme.ember.name": "余烬",
+  "theme.ember.desc": "单一色调：铁锈与蜜桃配深棕",
 
   // Settings page
   "settings.title": "设置",
