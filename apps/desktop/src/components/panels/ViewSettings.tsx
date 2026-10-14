@@ -211,9 +211,6 @@ export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
   const body: Record<ViewId, () => ReactNode> = {
     chart: () => (
       <>
-        {toggle("chart", "grid", "view.grid")}
-        {toggle("chart", "logScale", "view.chart.log")}
-        {toggle("chart", "countdown", "view.chart.countdown")}
         {toggle("chart", "levels", "view.chart.levels")}
         {toggle("chart", "fills", "view.chart.fills")}
       </>

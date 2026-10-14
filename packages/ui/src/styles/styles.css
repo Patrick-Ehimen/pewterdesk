@@ -1856,6 +1856,101 @@ input {
   pointer-events: auto;
 }
 
+/* The advanced chart (OpenAlgo Charts) fills its panel under the toolbar,
+   with the readout over its top-left corner, past the drawing rail */
+.pd-oachart {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pd-oachart-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+}
+.pd-oachart-chart {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+/* The library's right-click menu, without its rows for alerts */
+.pd-oachart-chart .oac-ctx [data-act*="alert"],
+.pd-oachart-chart .oac-ctx [data-act="chart-alerts"] + .oac-ctx__hr {
+  display: none;
+}
+.pd-oachart-legend {
+  left: 52px;
+  max-width: calc(100% - 150px);
+}
+/* Over the chart until its first candles arrive, so it never shows empty */
+.pd-oachart-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: var(--pd-chart-bg, var(--pd-surface));
+}
+/* Folding the indicator list away, and back */
+.pd-oachart-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 1px 6px 1px 2px;
+  font: inherit;
+  color: var(--pd-pewter);
+  border: 1px solid var(--pd-border);
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.pd-oachart-fold:hover {
+  color: var(--pd-text);
+}
+.pd-ohlc-indicators[hidden] {
+  display: none;
+}
+/* Under the list, shown while the pointer is on the readout */
+.pd-oachart-fold-all {
+  margin-top: 2px;
+}
+.pd-oachart-legend:hover .pd-oachart-fold-all {
+  opacity: 1;
+}
+/* The indicator rows sit straight on the chart, as TradingView's do */
+.pd-oachart-studies > li,
+.pd-oachart-fold {
+  background: none;
+}
+.pd-oachart-study {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: default;
+}
+.pd-oachart-study[data-hidden] {
+  opacity: 0.5;
+}
+.pd-oachart-params {
+  color: var(--pd-pewter-dim);
+}
+.pd-oachart-problem {
+  margin: 4px 0 0;
+  color: var(--pd-warning);
+  font-family: var(--pd-font-sans);
+}
+
 /* Chart toolbar, after TradingView's: intervals, chart styles, indicators, snapshot */
 .pd-chart-toolbar {
   display: flex;

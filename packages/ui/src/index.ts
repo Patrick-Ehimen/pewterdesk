@@ -73,6 +73,7 @@ export { MarketMovement, type MovementVenue } from "./components/trading/MarketM
 export { MarketPicker } from "./components/trading/MarketPicker";
 export { MarketStatsBar } from "./components/trading/MarketStatsBar";
 export { MiniChart } from "./components/trading/MiniChart";
+export { type ChartLink, createChartLink, OpenAlgoChart } from "./components/trading/OpenAlgoChart";
 export { OpenOrdersPanel } from "./components/trading/OpenOrdersPanel";
 export {
   BOOK_GROUPS,
@@ -208,6 +209,7 @@ export {
   mergeLiquidations,
 } from "./lib/liquidations";
 export { RSI_CANDLES, RSI_FRAMES, type RsiFrame, rsiNowAndBefore } from "./lib/marketMaps";
+export type { BarSource } from "./lib/openAlgoChart";
 export {
   closeOrder,
   intervalFor,

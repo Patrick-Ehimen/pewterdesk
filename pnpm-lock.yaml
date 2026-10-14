@@ -125,6 +125,9 @@ importers:
       lightweight-charts:
         specifier: ^5.2.1
         version: 5.2.1
+      openalgo-charts:
+        specifier: 2.6.0
+        version: 2.6.0
       react-icons:
         specifier: ^5.7.0
         version: 5.7.0(react@19.3.0)
@@ -828,6 +831,10 @@ packages:
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
     engines: {node: '>=14.0.0'}
+
+  openalgo-charts@2.6.0:
+    resolution: {integrity: sha512-+6Kx0NCf6An2RKPPGq1fLo6nvahmGB/xT4w7Q2qdJV7Cr9USWPP/ZjSx0Ao/UytVnyNU4rhVkMAp1aVKRHRjvQ==}
+    engines: {node: '>=20'}
 
   ox@0.9.3:
     resolution: {integrity: sha512-KzyJP+fPV4uhuuqrTZyok4DC7vFzi7HLUFiUNEmpbyh59htKWkOC98IONC1zgXJPbHAhQgqs6B0Z6StCGhmQvg==}
@@ -1900,6 +1907,8 @@ snapshots:
       ufo: 1.6.4
 
   on-exit-leak-free@2.1.2: {}
+
+  openalgo-charts@2.6.0: {}
 
   ox@0.9.3(typescript@6.0.3):
     dependencies:
