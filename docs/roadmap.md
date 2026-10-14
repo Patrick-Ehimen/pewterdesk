@@ -65,6 +65,15 @@ From `.claude/prd-rust-desktop-features.md`; none started.
 - **`.claude/commands/security-review.md`** is out of date with the current
   signing surface.
 
+## 5. Algos, bots and the `pd` command line
+
+Planned in `docs/bots/` (decision: ADR 0003, proposed). Phase 0 extracts
+the engine (routing and the trading gate) from the Tauri app with no
+behaviour change; then algo orders in the app (chaser, TWAP, scaled), native
+venue algos and venue-side protection, the `pdd` daemon and `pd` CLI, bots
+with backtesting and paper trading, and later strategy scripts and remote
+use. See `docs/bots/plan.md` for tasks and exit tests.
+
 ## Suggested next steps
 
 1. Live Bybit trading - mostly planned, and it turns the app into a working
