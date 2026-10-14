@@ -473,7 +473,7 @@ const SIDE_KEY: Record<string, MessageKey> = {
 };
 
 /** What a level's tag on the chart says, after the design's "LONG 250 @ 37.912 · +121.50". */
-function levelLabel(level: ChartLevel, decimals: number): string {
+export function levelLabel(level: ChartLevel, decimals: number): string {
   const price = formatNumber(level.price, decimals);
   const pnl = level.pnl === undefined ? "-" : formatSigned(level.pnl);
   const side = level.side ? tr(SIDE_KEY[level.side] as MessageKey) : "";

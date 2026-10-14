@@ -328,3 +328,8 @@
   border-radius: 8px;
   overflow: hidden;
 }
+
+/* A price chart filling the workspace takes the title row's room too */
+.ws-panel[data-expanded] .ws-panel-frame:has([data-chart-fill]) > .ws-panel-head {
+  display: none;
+}

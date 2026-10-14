@@ -193,7 +193,7 @@ const KIND: Record<Fill["effect"], FillKind> = {
  */
 export function fillMarks(
   fills: readonly Fill[],
-  candles: readonly Candle[],
+  candles: readonly Pick<Candle, "openTime">[],
   intervalMs?: number,
 ): FillMark[] {
   const first = candles[0];
@@ -206,10 +206,10 @@ export function fillMarks(
     if (f.time < first.openTime) continue;
     while (lo < hi) {
       const mid = (lo + hi + 1) >> 1;
-      if ((candles[mid] as Candle).openTime <= f.time) lo = mid;
+      if ((candles[mid] as { openTime: number }).openTime <= f.time) lo = mid;
       else hi = mid - 1;
     }
-    const time = (candles[lo] as Candle).openTime;
+    const time = (candles[lo] as { openTime: number }).openTime;
     const isLast = lo === candles.length - 1;
     if (isLast && intervalMs !== undefined && f.time >= time + intervalMs) continue;
     const price = Number(f.price);

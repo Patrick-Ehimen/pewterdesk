@@ -9,15 +9,9 @@ import type {
 } from "@pewterdesk/core";
 import {
   ALL_INTERVALS,
-  CandleChart,
-  type CandleChartHandle,
-  CHART_TYPES,
   ChartSkeleton,
-  ChartToolbar,
   DepthChart,
   DepthView,
-  decimalsOf,
-  EmptyState,
   type ExitKind,
   exitMove,
   FUNDING_RESOLUTIONS,
@@ -25,19 +19,15 @@ import {
   type FundingResolution,
   fundingSeries,
   IconButton,
-  INTERVAL_MS,
+  OpenAlgoChart,
   Tabs,
   t,
 } from "@pewterdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LuFullscreen, LuMaximize2, LuMinimize2, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
-import {
-  type Feed,
-  useAccountFills,
-  useCandles,
-  useFundingHistory,
-} from "../../hooks/useVenueFeeds";
+import { type Feed, useAccountFills, useFundingHistory } from "../../hooks/useVenueFeeds";
+import { venueBarSource } from "../../lib/barSource";
 import {
   type ChartPrefs,
   exportChartImage,
@@ -56,12 +46,9 @@ import { ViewSettings } from "./ViewSettings";
 
 type MarketsTab = "chart" | "overview" | "depth" | "screener" | "watchlist";
 
-/**
- * Which chart the Charts tab shows: candles, the funding history, or
- * TradingView (a placeholder until the advanced chart lands).
- */
-type ChartKind = "standard" | "tradingview" | "funding";
-const CHART_KINDS: readonly ChartKind[] = ["standard", "tradingview", "funding"];
+/** Which chart the Charts tab shows: the price chart, or the funding history. */
+type ChartKind = "standard" | "funding";
+const CHART_KINDS: readonly ChartKind[] = ["standard", "funding"];
 
 interface MarketsPanelProps {
   venue: VenueId;
@@ -127,7 +114,7 @@ export function MarketsPanel({
     setTab("chart");
     setChartKind("standard");
   }, [showChart]);
-  // Chart style, indicators and toolbar favorites, remembered between sessions.
+  // The toolbar's favorite intervals, remembered between sessions.
   const [prefs, setPrefs] = useState(loadChartPrefs);
   const updatePrefs = (change: (p: ChartPrefs) => ChartPrefs) =>
     setPrefs((p) => {
@@ -143,15 +130,19 @@ export function MarketsPanel({
       saveViewPrefs(next);
       return next;
     });
-  const chartRef = useRef<CandleChartHandle>(null);
+  const toggleFavoriteInterval = (i: CandleInterval) =>
+    updatePrefs((p) => ({
+      ...p,
+      favoriteIntervals: inOrder(toggled(p.favoriteIntervals, i), ALL_INTERVALS),
+    }));
+  const chartTitle = [market?.symbol, interval, venueName, market?.listedBy]
+    .filter(Boolean)
+    .join(" · ");
+  const shotName = `pewterdesk-${market?.symbol ?? "chart"}-${interval}.png`;
   const standardChart = tab === "chart" && chartKind === "standard";
+  // The chart asks for its own candles, as it is scrolled back.
+  const barSource = useMemo(() => venueBarSource(venue), [venue]);
   const fundingChart = tab === "chart" && chartKind === "funding";
-  // Each chart only loads while it's showing.
-  const { feed: candles, loadOlder } = useCandles(
-    venue,
-    standardChart ? market?.id : undefined,
-    interval,
-  );
   // The account's trading in this market, over the candles.
   const fills = useAccountFills(venue, address, standardChart && views.chart.fills);
   const allFills = fills.status === "live" ? fills.data : undefined;
@@ -215,66 +206,111 @@ export function MarketsPanel({
     </div>
   );
 
+  // Filling the workspace, the price chart takes all of it: the tab rows
+  // (and the panel's title) give way, their buttons going to its toolbar.
+  const filling = expanded === "full" && tab === "chart" && chartKind === "standard";
+  const panelTools = (
+    <div className="pd-panel-tools">
+      {fundingChart && resolutionPicker}
+      <ViewSettings view={tab} prefs={views} onChange={updateViews} />
+      <IconButton
+        className="pd-kebab"
+        label={t(expanded === "wide" ? "panel.collapse" : "panel.expand")}
+        pressed={expanded === "wide"}
+        onClick={() => onExpand(expanded === "wide" ? undefined : "wide")}
+      >
+        {expanded === "wide" ? (
+          <LuMinimize2 size={15} aria-hidden />
+        ) : (
+          <LuMaximize2 size={15} aria-hidden />
+        )}
+      </IconButton>
+      <IconButton
+        className="pd-kebab"
+        label={t(expanded === "full" ? "panel.exitFull" : "panel.fullView")}
+        pressed={expanded === "full"}
+        onClick={() => onExpand(expanded === "full" ? undefined : "full")}
+      >
+        {expanded === "full" ? (
+          <LuShrink size={15} aria-hidden />
+        ) : (
+          <LuFullscreen size={15} aria-hidden />
+        )}
+      </IconButton>
+    </div>
+  );
+
   return (
     <>
-      <Tabs
-        tabs={[
-          { id: "chart", label: t("tab.chart") },
-          { id: "overview", label: t("tab.overview") },
-          { id: "depth", label: t("tab.depth") },
-          { id: "screener", label: t("tab.screener") },
-          { id: "watchlist", label: t("tab.watchlist") },
-        ]}
-        active={tab}
-        onChange={setTab}
-        aside={
-          <div className="pd-panel-tools">
-            {fundingChart && resolutionPicker}
-            <ViewSettings view={tab} prefs={views} onChange={updateViews} />
-            <IconButton
-              className="pd-kebab"
-              label={t(expanded === "wide" ? "panel.collapse" : "panel.expand")}
-              pressed={expanded === "wide"}
-              onClick={() => onExpand(expanded === "wide" ? undefined : "wide")}
-            >
-              {expanded === "wide" ? (
-                <LuMinimize2 size={15} aria-hidden />
-              ) : (
-                <LuMaximize2 size={15} aria-hidden />
-              )}
-            </IconButton>
-            <IconButton
-              className="pd-kebab"
-              label={t(expanded === "full" ? "panel.exitFull" : "panel.fullView")}
-              pressed={expanded === "full"}
-              onClick={() => onExpand(expanded === "full" ? undefined : "full")}
-            >
-              {expanded === "full" ? (
-                <LuShrink size={15} aria-hidden />
-              ) : (
-                <LuFullscreen size={15} aria-hidden />
-              )}
-            </IconButton>
-          </div>
-        }
-      />
+      {!filling && (
+        <Tabs
+          tabs={[
+            { id: "chart", label: t("tab.chart") },
+            { id: "overview", label: t("tab.overview") },
+            { id: "depth", label: t("tab.depth") },
+            { id: "screener", label: t("tab.screener") },
+            { id: "watchlist", label: t("tab.watchlist") },
+          ]}
+          active={tab}
+          onChange={setTab}
+          aside={panelTools}
+        />
+      )}
       {tab === "chart" ? (
         // The quick trade bar is kept inside this (see App).
-        <div className="app-fill" data-quick-trade-area>
-          <Tabs
-            variant="sub"
-            label={t("chart.kind")}
-            tabs={[
-              { id: "standard", label: t("chart.standard") },
-              { id: "tradingview", label: t("chart.tradingview") },
-              { id: "funding", label: t("chart.funding") },
-            ]}
-            active={chartKind}
-            onChange={setChartKind}
-          />
-          {chartKind === "tradingview" ? (
-            <EmptyState>{t("chart.tvSoon")}</EmptyState>
-          ) : chartKind === "funding" ? (
+        <div className="app-fill" data-quick-trade-area data-chart-fill={filling || undefined}>
+          {!filling && (
+            <Tabs
+              variant="sub"
+              label={t("chart.kind")}
+              tabs={[
+                { id: "standard", label: t("chart.standard") },
+                { id: "funding", label: t("chart.funding") },
+              ]}
+              active={chartKind}
+              onChange={setChartKind}
+            />
+          )}
+          {chartKind === "standard" ? (
+            <div className="app-fill">
+              <FeedView
+                feed={orLoading<Market>(
+                  market ? { status: "live", data: market } : { status: "idle" },
+                )}
+                idle={t("feed.pickMarket")}
+                loading={
+                  <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
+                    <LoadingMark size={48} />
+                  </div>
+                }
+                live={(shown) => (
+                  <OpenAlgoChart
+                    key={venue}
+                    source={barSource}
+                    venue={venue}
+                    markets={marketList}
+                    market={shown}
+                    title={chartTitle}
+                    interval={interval}
+                    onInterval={setInterval}
+                    favoriteIntervals={prefs.favoriteIntervals}
+                    onToggleFavoriteInterval={toggleFavoriteInterval}
+                    onScreenshot={(shot) => exportChartImage(shot, shotName)}
+                    position={views.chart.levels ? position : undefined}
+                    orders={views.chart.levels ? orders : undefined}
+                    fills={views.chart.fills ? marketFills : undefined}
+                    onMoveExit={views.chart.levels ? moveExit : undefined}
+                    tools={filling ? panelTools : undefined}
+                    loading={
+                      <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
+                        <LoadingMark size={48} />
+                      </div>
+                    }
+                  />
+                )}
+              />
+            </div>
+          ) : (
             <div className="app-fill">
               <FeedView
                 feed={orLoading(funding)}
@@ -293,78 +329,6 @@ export function MarketsPanel({
                       points={fundingSeries(rates, resolution)}
                       resolution={resolution}
                       seriesKey={`${market?.id}:${resolution}`}
-                    />
-                  )
-                }
-              />
-            </div>
-          ) : (
-            <div className="app-fill">
-              <ChartToolbar
-                interval={interval}
-                onInterval={setInterval}
-                favoriteIntervals={prefs.favoriteIntervals}
-                onToggleFavoriteInterval={(i) =>
-                  updatePrefs((p) => ({
-                    ...p,
-                    favoriteIntervals: inOrder(toggled(p.favoriteIntervals, i), ALL_INTERVALS),
-                  }))
-                }
-                chartType={prefs.type}
-                onChartType={(type) => updatePrefs((p) => ({ ...p, type }))}
-                favoriteTypes={prefs.favoriteTypes}
-                onToggleFavoriteType={(type) =>
-                  updatePrefs((p) => ({
-                    ...p,
-                    favoriteTypes: inOrder(toggled(p.favoriteTypes, type), CHART_TYPES),
-                  }))
-                }
-                indicators={prefs.indicators}
-                onToggleIndicator={(id) =>
-                  updatePrefs((p) => ({ ...p, indicators: toggled(p.indicators, id) }))
-                }
-                onScreenshot={() =>
-                  exportChartImage(
-                    chartRef.current?.screenshot(),
-                    `pewterdesk-${market?.symbol ?? "chart"}-${interval}.png`,
-                  )
-                }
-              />
-              <FeedView
-                feed={orLoading(candles)}
-                idle={t("feed.pickMarket")}
-                loading={
-                  <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
-                    <LoadingMark size={48} />
-                  </div>
-                }
-                live={(data) =>
-                  data.length === 0 ? (
-                    <p className="pd-empty">{t("chart.empty")}</p>
-                  ) : (
-                    <CandleChart
-                      ref={chartRef}
-                      chartType={prefs.type}
-                      indicators={prefs.indicators}
-                      onRemoveIndicator={(id) =>
-                        updatePrefs((p) => ({ ...p, indicators: toggled(p.indicators, id) }))
-                      }
-                      candles={data}
-                      intervalMs={INTERVAL_MS[interval]}
-                      seriesKey={`${market?.id}:${interval}`}
-                      priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}
-                      market={market}
-                      onNeedOlder={loadOlder}
-                      position={views.chart.levels ? position : undefined}
-                      orders={views.chart.levels ? orders : undefined}
-                      fills={views.chart.fills ? marketFills : undefined}
-                      onMoveExit={views.chart.levels ? moveExit : undefined}
-                      grid={views.chart.grid}
-                      logScale={views.chart.logScale}
-                      countdown={views.chart.countdown}
-                      title={[market?.symbol, interval, venueName, market?.listedBy]
-                        .filter(Boolean)
-                        .join(" · ")}
                     />
                   )
                 }

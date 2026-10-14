@@ -29,7 +29,7 @@ import {
 const GAP = 4;
 
 /** Chart type glyphs, drawn to read like TradingView's at 18px. */
-function TypeIcon({ type }: { type: ChartType }) {
+export function TypeIcon({ type }: { type: ChartType }) {
   const common = {
     width: 18,
     height: 18,
@@ -124,7 +124,7 @@ const intervalText = (i: CandleInterval) =>
  * A menu under its trigger, in a portal so the panel can't clip it. Closes on
  * Escape, on a pick, or on a click outside.
  */
-function usePopover<T extends HTMLElement>(trigger: RefObject<T | null>) {
+export function usePopover<T extends HTMLElement>(trigger: RefObject<T | null>) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number }>();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -198,82 +198,30 @@ function FavoriteStar({ on, name, onToggle }: { on: boolean; name: string; onTog
   );
 }
 
-interface ChartToolbarProps {
+interface IntervalPickerProps {
   interval: CandleInterval;
   onInterval: (interval: CandleInterval) => void;
   /** Intervals with a button of their own; the rest are in the menu. */
   favoriteIntervals?: readonly CandleInterval[];
   /** Offered as a star beside each interval in the menu; none without it. */
   onToggleFavoriteInterval?: (interval: CandleInterval) => void;
-  chartType: ChartType;
-  onChartType: (type: ChartType) => void;
-  favoriteTypes?: readonly ChartType[];
-  onToggleFavoriteType?: (type: ChartType) => void;
-  indicators: readonly IndicatorId[];
-  onToggleIndicator: (id: IndicatorId) => void;
-  /**
-   * Takes the screenshot; resolves to what happened, for the button's label.
-   * No button without it.
-   */
-  onScreenshot?: () => Promise<"copied" | "saved" | "failed">;
-  /**
-   * For a small chart (one of several): only the interval and type in use
-   * show as buttons, and the indicators button is its icon and count.
-   */
-  compact?: boolean;
 }
 
-/**
- * The chart's toolbar, after TradingView's: favorite intervals and the full
- * list, favorite chart types and the full list, indicators, and a
- * screenshot on the right.
- */
-export function ChartToolbar({
+/** The toolbar's intervals: the favorites as buttons, and the full list in a menu. */
+export function IntervalPicker({
   interval,
   onInterval,
   favoriteIntervals = [],
   onToggleFavoriteInterval,
-  chartType,
-  onChartType,
-  favoriteTypes = [],
-  onToggleFavoriteType,
-  indicators,
-  onToggleIndicator,
-  onScreenshot,
-  compact,
-}: ChartToolbarProps) {
+}: IntervalPickerProps) {
   const intervalRef = useRef<HTMLButtonElement>(null);
-  const typeRef = useRef<HTMLButtonElement>(null);
-  const indicatorRef = useRef<HTMLButtonElement>(null);
   const intervalMenu = usePopover(intervalRef);
-  const typeMenu = usePopover(typeRef);
-  const indicatorMenu = usePopover(indicatorRef);
-  const [search, setSearch] = useState("");
-  const [shot, setShot] = useState<"copied" | "saved" | "failed">();
-
-  useEffect(() => {
-    if (!shot) return;
-    const id = setTimeout(() => setShot(undefined), 2000);
-    return () => clearTimeout(id);
-  }, [shot]);
-
   // A pick from the menu that isn't a favorite still shows as a button.
   const quickIntervals = favoriteIntervals.includes(interval)
     ? favoriteIntervals
     : [...favoriteIntervals, interval];
-  const quickTypes = favoriteTypes.includes(chartType)
-    ? favoriteTypes
-    : [...favoriteTypes, chartType];
-  const needle = search.trim().toLowerCase();
-  const matching = INDICATORS.filter((id) => t(INDICATOR_LABEL[id]).toLowerCase().includes(needle));
-
   return (
-    <div
-      className="pd-chart-toolbar"
-      role="toolbar"
-      aria-label={t("chart.toolbar")}
-      data-compact={compact || undefined}
-    >
+    <>
       <div className="pd-chart-group" role="radiogroup" aria-label={t("chart.interval")}>
         {quickIntervals.map((i) => (
           // biome-ignore lint/a11y/useSemanticElements: toolbar-style radio, like the other segmented controls
@@ -329,6 +277,87 @@ export function ChartToolbar({
           </section>
         )),
       )}
+    </>
+  );
+}
+
+interface ChartToolbarProps {
+  interval: CandleInterval;
+  onInterval: (interval: CandleInterval) => void;
+  /** Intervals with a button of their own; the rest are in the menu. */
+  favoriteIntervals?: readonly CandleInterval[];
+  /** Offered as a star beside each interval in the menu; none without it. */
+  onToggleFavoriteInterval?: (interval: CandleInterval) => void;
+  chartType: ChartType;
+  onChartType: (type: ChartType) => void;
+  favoriteTypes?: readonly ChartType[];
+  onToggleFavoriteType?: (type: ChartType) => void;
+  indicators: readonly IndicatorId[];
+  onToggleIndicator: (id: IndicatorId) => void;
+  /**
+   * Takes the screenshot; resolves to what happened, for the button's label.
+   * No button without it.
+   */
+  onScreenshot?: () => Promise<"copied" | "saved" | "failed">;
+  /**
+   * For a small chart (one of several): only the interval and type in use
+   * show as buttons, and the indicators button is its icon and count.
+   */
+  compact?: boolean;
+}
+
+/**
+ * The chart's toolbar, after TradingView's: favorite intervals and the full
+ * list, favorite chart types and the full list, indicators, and a
+ * screenshot on the right.
+ */
+export function ChartToolbar({
+  interval,
+  onInterval,
+  favoriteIntervals = [],
+  onToggleFavoriteInterval,
+  chartType,
+  onChartType,
+  favoriteTypes = [],
+  onToggleFavoriteType,
+  indicators,
+  onToggleIndicator,
+  onScreenshot,
+  compact,
+}: ChartToolbarProps) {
+  const typeRef = useRef<HTMLButtonElement>(null);
+  const indicatorRef = useRef<HTMLButtonElement>(null);
+  const typeMenu = usePopover(typeRef);
+  const indicatorMenu = usePopover(indicatorRef);
+  const [search, setSearch] = useState("");
+  const [shot, setShot] = useState<"copied" | "saved" | "failed">();
+
+  useEffect(() => {
+    if (!shot) return;
+    const id = setTimeout(() => setShot(undefined), 2000);
+    return () => clearTimeout(id);
+  }, [shot]);
+
+  // A pick from the menu that isn't a favorite still shows as a button.
+  const quickTypes = favoriteTypes.includes(chartType)
+    ? favoriteTypes
+    : [...favoriteTypes, chartType];
+  const needle = search.trim().toLowerCase();
+  const matching = INDICATORS.filter((id) => t(INDICATOR_LABEL[id]).toLowerCase().includes(needle));
+
+  return (
+    <div
+      className="pd-chart-toolbar"
+      role="toolbar"
+      aria-label={t("chart.toolbar")}
+      data-compact={compact || undefined}
+    >
+      <IntervalPicker
+        interval={interval}
+        onInterval={onInterval}
+        favoriteIntervals={favoriteIntervals}
+        onToggleFavoriteInterval={onToggleFavoriteInterval}
+      />
 
       <span className="pd-chart-divider" aria-hidden />
 

@@ -264,7 +264,30 @@ mockup in the local, gitignored `design/`): market list, live order book and tra
 ticket). They fill once a Hyperliquid or Aster API wallet is connected (the Connect
 wallet dialog, for the venue on screen; the connected main address is kept
 in `lib/account.ts`), while the ticket can't place orders on either. The Markets panel is tabbed:
-chart (lightweight-charts), depth, screener and watchlist. In `apps/desktop/src/`,
+chart, depth, screener and watchlist; the chart tab has the price chart
+(Standard) and the funding history. The price chart, on the Trade page, the
+Multi-chart page and popped-out charts alike, is OpenAlgo Charts
+(`openalgo-charts`, pinned to an exact version; `OpenAlgoChart` in
+`packages/ui`): the library's engine, drawing rail, indicators and settings
+dialogs, under the app's own toolbar (intervals, chart style, indicators)
+and top-left readout (the market, OHLC, and each indicator with its show /
+hide, minimize, settings and remove buttons; the list folds away). Volume is
+re-registered to draw see-through along the bottom of the price pane, in the
+theme's candle colours, rather than in a pane of its own. The library's top bar, status line,
+symbol search, side panels and alerts are off, and its colours come from the
+theme's tokens. On the Trade page its layout is kept in this machine's
+browser storage; a multi-chart cell keeps its layout in the cell
+(`ChartCell.chart`), so it follows the chart when charts swap or a set is
+saved. Drawings are kept by market in one store every chart shares
+(`pd.drawings:`), and a change on one chart reaches the others showing that
+market. It opens on the latest candle, from this machine's candle cache
+while the venue's history loads. It gets candles only through a `BarSource`
+the app implements over the venue commands (`lib/barSource.ts`), and is
+given no order callback: it draws the position and orders as lines, and a
+TP or SL line dragged only calls back (`onMoveExit`), into the same
+`protect` as the TP / SL editor. Handing the library an order callback
+(`onOrder`, the trade tier) is a security-relevant change. The older
+lightweight-charts chart (`CandleChart`) is still in `packages/ui`, unused. In `apps/desktop/src/`,
 `App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
