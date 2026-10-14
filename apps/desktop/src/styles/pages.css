@@ -1458,6 +1458,9 @@
   border: 1px solid var(--pd-border);
   border-radius: 8px;
 }
+.mc[data-alone] > .mc-bar {
+  display: none;
+}
 .mc-bar h1 {
   margin: 0 6px 0 0;
   font-size: 15px;
@@ -1589,19 +1592,13 @@
   border-bottom: 1px solid var(--pd-border);
   font-size: 13px;
 }
-/* Each chart's own toolbar, tight enough for a third of the page */
-/* The toolbar's row, with the chart's settings at its end */
-.mc-tools {
-  display: flex;
-  flex: none;
-  align-items: center;
-  padding-right: 6px;
-  border-bottom: 1px solid var(--pd-border);
-}
+/* Each chart's own toolbar, tight enough for a third of the page, with the
+   chart's line settings at its end */
 .mc-cell .pd-chart-toolbar {
-  flex: 1;
+  flex: none;
   min-width: 0;
   padding: 2px 6px;
+  border-bottom: 1px solid var(--pd-border);
 }
 /* Buy and sell under a chart: held, not clicked */
 .mc-trade {

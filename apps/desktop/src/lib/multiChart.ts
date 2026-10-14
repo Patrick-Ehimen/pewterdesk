@@ -56,6 +56,11 @@ export interface ChartCell {
   /** In the order added. None to start with: the charts are small. */
   indicators: IndicatorId[];
   settings: CellSettings;
+  /**
+   * The chart's own look as it last gave it (its style, indicators and
+   * settings, as JSON): it goes where the chart goes. None on a new chart.
+   */
+  chart?: string;
 }
 
 export interface MultiChartState {
@@ -90,6 +95,8 @@ const SETS_KEY = "pd.multichart.sets";
 /** Longest name a set is kept under, and how many are kept. */
 export const SET_NAME_MAX = 24;
 const MAX_SETS = 12;
+/** Longest look kept with a chart; a longer one isn't one of ours. */
+const CHART_MAX = 200_000;
 const VENUES: readonly VenueId[] = ["bybit", "hyperliquid", "aster"];
 
 const isInterval = (v: unknown): v is CandleInterval => ALL_INTERVALS.some((i) => i === v);
@@ -146,6 +153,7 @@ export function cellFrom(raw: unknown): ChartCell | undefined {
       ? INDICATORS.filter((id) => (c.indicators as unknown[]).includes(id))
       : [],
     settings: settingsFrom(c.settings),
+    ...(typeof c.chart === "string" && c.chart.length <= CHART_MAX ? { chart: c.chart } : {}),
   };
 }
 
@@ -273,7 +281,7 @@ export function sameCoin(
 export function withCell(
   state: MultiChartState,
   index: number,
-  change: Partial<Pick<ChartCell, "type" | "indicators" | "settings">>,
+  change: Partial<Pick<ChartCell, "type" | "indicators" | "settings" | "chart">>,
 ): MultiChartState {
   return { ...state, cells: state.cells.map((c, i) => (i === index ? { ...c, ...change } : c)) };
 }

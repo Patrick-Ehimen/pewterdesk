@@ -9,25 +9,19 @@ import type {
   VenueId,
 } from "@pewterdesk/core";
 import {
-  CandleChart,
-  type CandleChartHandle,
-  ChartToolbar,
-  type ChartType,
-  decimalsOf,
-  EmptyState,
+  type ChartLink,
+  createChartLink,
   type ExitKind,
   exitMove,
   formatNumber,
   formatSigned,
-  INTERVAL_MS,
-  type IndicatorId,
   MarketSearch,
-  type MessageKey,
+  OpenAlgoChart,
   Select,
   t,
   trendClass,
 } from "@pewterdesk/ui";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   LuCheck,
   LuExternalLink,
@@ -39,7 +33,8 @@ import {
   LuTrash2,
 } from "react-icons/lu";
 import { appClient } from "../../api/appClient";
-import { useCandles, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
+import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
+import { venueBarSource } from "../../lib/barSource";
 import { exportChartImage } from "../../lib/chartPrefs";
 import { isTyping, plainKey } from "../../lib/hotkeys";
 import {
@@ -60,7 +55,6 @@ import {
   saveMultiChart,
   saveSets,
   swapped,
-  toggledIndicator,
   withCell,
   withInterval,
   withMarket,
@@ -173,9 +167,9 @@ interface CellProps {
   onVenue?: (venue: VenueId) => void;
   onMarket: (id: string) => void;
   onInterval: (interval: CandleInterval) => void;
-  onType: (type: ChartType) => void;
-  onIndicators: (indicators: IndicatorId[]) => void;
-  /** This chart's own grid, scale, countdown and position lines. */
+  /** The chart's own look (style, indicators, settings) changed: kept with the cell. */
+  onLayout: (layout: string) => void;
+  /** Whether this chart draws the position's and orders' lines. */
   onSettings: (settings: CellSettings) => void;
   /** Opens this chart's market on the Trade page; no button without it. */
   onTrade?: () => void;
@@ -196,14 +190,8 @@ interface CellProps {
   /** Whether this chart fills the page, and the button that switches it. */
   maximised?: boolean;
   onMaximise?: () => void;
-  /** The pointer's moment on this chart, for the others; unset when not shared. */
-  onCrosshair?: (time: number | undefined) => void;
-  /** Another chart's moment, to mark here. */
-  crosshairTime?: number;
-  /** The dates on screen as this chart is scrolled or zoomed, for the others. */
-  onRange?: (range: { from: number; to: number }) => void;
-  /** Another chart's dates, to show here. */
-  range?: { from: number; to: number };
+  /** The charts whose crosshair and dates move with this one's. */
+  link?: ChartLink;
   /**
    * Dragging this chart by its grip, to swap it with the one it's dropped
    * on; no grip without it.
@@ -226,8 +214,7 @@ export function Cell({
   onVenue,
   onMarket,
   onInterval,
-  onType,
-  onIndicators,
+  onLayout,
   onSettings,
   onTrade,
   onPopOut,
@@ -238,24 +225,20 @@ export function Cell({
   orders,
   maximised = false,
   onMaximise,
-  onCrosshair,
-  crosshairTime,
-  onRange,
-  range,
+  link,
   onDragStart,
   onDragEnd,
   onDragOver,
   onDrop,
   dragging,
 }: CellProps) {
-  const chartRef = useRef<CandleChartHandle>(null);
   const market = markets.find((m) => m.id === cell.market);
-  const { feed, loadOlder } = useCandles(cell.venue, cell.market, cell.interval);
+  // The chart asks for its own candles, as it is scrolled back.
+  const source = useMemo(() => venueBarSource(cell.venue), [cell.venue]);
   const change =
     summary && Number(summary.prevDayPrice) > 0
       ? (Number(summary.markPrice) / Number(summary.prevDayPrice) - 1) * 100
       : undefined;
-  const data = feed.status === "live" || feed.status === "closed" ? feed.data : undefined;
   const name = market?.symbol ?? cell.market;
   const { settings } = cell;
   // Dragging a TP or SL line sets it, as on the Trade page's chart.
@@ -269,13 +252,6 @@ export function Cell({
           return move.price;
         }
       : undefined;
-  const setting = (key: keyof CellSettings, label: MessageKey) => (
-    <SettingSwitch
-      label={t(label)}
-      checked={settings[key]}
-      onChange={(on) => onSettings({ ...settings, [key]: on })}
-    />
-  );
 
   return (
     <section
@@ -374,66 +350,51 @@ export function Cell({
           </button>
         )}
       </header>
-      {/* This chart's own timeframe, style, indicators and settings. */}
-      <div className="mc-tools">
-        <ChartToolbar
-          compact
-          interval={cell.interval}
-          onInterval={onInterval}
-          chartType={cell.type}
-          onChartType={onType}
-          indicators={cell.indicators}
-          onToggleIndicator={(id) => onIndicators(toggledIndicator(cell.indicators, id))}
-          onScreenshot={() =>
-            exportChartImage(
-              chartRef.current?.screenshot(),
-              `pewterdesk-${name}-${cell.interval}.png`,
-            )
-          }
-        />
-        <SettingsPopover
-          className="pd-icon-button"
-          title={t("view.title", { view: t("tab.chart") })}
-          onReset={() => onSettings(DEFAULT_CELL_SETTINGS)}
-        >
-          {setting("grid", "view.grid")}
-          {setting("logScale", "view.chart.log")}
-          {setting("countdown", "view.chart.countdown")}
-          {setting("levels", "view.chart.levels")}
-        </SettingsPopover>
-      </div>
       <div className="mc-chart">
-        {feed.status === "error" ? (
-          <EmptyState>{feed.message}</EmptyState>
-        ) : !data ? (
-          // The app's mark while this chart's candles arrive.
+        {market ? (
+          // Its own timeframe, style, indicators and settings, in its toolbar.
+          <OpenAlgoChart
+            key={cell.venue}
+            compact={!maximised}
+            source={source}
+            venue={cell.venue}
+            markets={markets}
+            market={market}
+            interval={cell.interval}
+            onInterval={onInterval}
+            layout={cell.chart}
+            onLayout={onLayout}
+            link={link}
+            onScreenshot={(shot) =>
+              exportChartImage(shot, `pewterdesk-${name}-${cell.interval}.png`)
+            }
+            position={settings.levels ? position : undefined}
+            orders={settings.levels ? orders : undefined}
+            onMoveExit={moveExit}
+            loading={
+              <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
+                <LoadingMark size={markSize} />
+              </div>
+            }
+            tools={
+              <SettingsPopover
+                className="pd-icon-button"
+                title={t("view.title", { view: t("tab.chart") })}
+                onReset={() => onSettings(DEFAULT_CELL_SETTINGS)}
+              >
+                <SettingSwitch
+                  label={t("view.chart.levels")}
+                  checked={settings.levels}
+                  onChange={(levels) => onSettings({ ...settings, levels })}
+                />
+              </SettingsPopover>
+            }
+          />
+        ) : (
+          // The app's mark while this chart's venue lists its markets.
           <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
             <LoadingMark size={markSize} />
           </div>
-        ) : data.length === 0 ? (
-          <p className="pd-empty">{t("chart.empty")}</p>
-        ) : (
-          <CandleChart
-            ref={chartRef}
-            chartType={cell.type}
-            candles={data}
-            intervalMs={INTERVAL_MS[cell.interval]}
-            seriesKey={`${cell.venue}:${cell.market}:${cell.interval}`}
-            priceDecimals={decimalsOf(data.at(-1)?.close ?? "0")}
-            onNeedOlder={loadOlder}
-            position={settings.levels ? position : undefined}
-            orders={settings.levels ? orders : undefined}
-            grid={settings.grid}
-            logScale={settings.logScale}
-            countdown={settings.countdown}
-            onMoveExit={moveExit}
-            onVisibleRange={onRange}
-            visibleRange={range}
-            onCrosshairTime={onCrosshair}
-            crosshairTime={crosshairTime}
-            indicators={cell.indicators}
-            onRemoveIndicator={(id) => onIndicators(toggledIndicator(cell.indicators, id))}
-          />
         )}
       </div>
       {trade && (
@@ -536,44 +497,14 @@ export function MultiChartPage({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [shownCount]);
-  // The moment under the pointer, and the chart it's on: marked on the rest.
-  const [crosshair, setCrosshair] = useState<{ from: number; time: number }>();
-  // Pointer moves come many times a frame; the other charts follow once per frame.
-  const pending = useRef<{ from: number; time: number | undefined }>(undefined);
-  const frame = useRef(0);
-  useEffect(() => () => cancelAnimationFrame(frame.current), []);
-  const shareCrosshair = (from: number, time: number | undefined) => {
-    pending.current = { from, time };
-    cancelAnimationFrame(frame.current);
-    frame.current = requestAnimationFrame(() => {
-      const next = pending.current;
-      if (!next) return;
-      const at = next.time;
-      setCrosshair((now) =>
-        at === undefined
-          ? // Leaving a chart clears it only if it's still that chart's.
-            now?.from === next.from
-            ? undefined
-            : now
-          : { from: next.from, time: at },
-      );
-    });
-  };
-  // The dates on the chart being scrolled, for the others on its timeframe:
-  // on another, the same dates are a different number of candles.
-  const [range, setRange] = useState<{
-    from: number;
-    interval: CandleInterval;
-    dates: { from: number; to: number };
-  }>();
-  const pendingRange = useRef<typeof range>(undefined);
-  const rangeFrame = useRef(0);
-  useEffect(() => () => cancelAnimationFrame(rangeFrame.current), []);
-  const shareRange = (next: NonNullable<typeof range>) => {
-    pendingRange.current = next;
-    cancelAnimationFrame(rangeFrame.current);
-    rangeFrame.current = requestAnimationFrame(() => setRange(pendingRange.current));
-  };
+  // The charts' crosshairs and dates, moved together by the chart library:
+  // each chart is marked at the same moment, whatever its timeframe.
+  const link = useMemo(createChartLink, []);
+  useEffect(() => () => link.destroy(), [link]);
+  const { syncCrosshair, syncRange } = state;
+  useEffect(() => {
+    link.setOptions({ crosshair: syncCrosshair, viewport: syncRange });
+  }, [link, syncCrosshair, syncRange]);
   // The chart being dragged, and the one it's over.
   const [drag, setDrag] = useState<{ from: number; over?: number }>();
   // Naming a set to save the charts under.
@@ -599,7 +530,9 @@ export function MultiChartPage({
   };
 
   return (
-    <div className="page mc">
+    // A chart given the page takes the layout and sync bar's room too (Esc,
+    // or its own button, gives it back).
+    <div className="page mc" data-alone={alone !== undefined || undefined}>
       <header className="mc-bar">
         <h1>{t("nav.charts")}</h1>
         <div className="mc-seg" role="radiogroup" aria-label={t("multichart.layout")}>
@@ -647,10 +580,7 @@ export function MultiChartPage({
           aria-checked={state.syncCrosshair}
           className="mc-chip"
           title={t("multichart.syncCrosshairHint")}
-          onClick={() => {
-            setCrosshair(undefined);
-            update({ ...state, syncCrosshair: !state.syncCrosshair });
-          }}
+          onClick={() => update({ ...state, syncCrosshair: !state.syncCrosshair })}
         >
           {t("multichart.crosshair")}
         </button>
@@ -661,10 +591,7 @@ export function MultiChartPage({
           aria-checked={state.syncRange}
           className="mc-chip"
           title={t("multichart.syncRangeHint")}
-          onClick={() => {
-            setRange(undefined);
-            update({ ...state, syncRange: !state.syncRange });
-          }}
+          onClick={() => update({ ...state, syncRange: !state.syncRange })}
         >
           {t("multichart.range")}
         </button>
@@ -796,8 +723,7 @@ export function MultiChartPage({
                 }}
                 onMarket={(id) => update(withMarket(state, i, cell.venue, id))}
                 onInterval={(interval) => update(withInterval(state, i, interval))}
-                onType={(type) => update(withCell(state, i, { type }))}
-                onIndicators={(indicators) => update(withCell(state, i, { indicators }))}
+                onLayout={(chart) => update(withCell(state, i, { chart }))}
                 onSettings={(settings) => update(withCell(state, i, { settings }))}
                 onTrade={() => onTrade(cell.venue, cell.market)}
                 onPopOut={() => {
@@ -823,22 +749,7 @@ export function MultiChartPage({
                 orders={mine?.openOrders.filter((o) => o.market === cell.market)}
                 maximised={alone === i}
                 onMaximise={() => setMaximised(alone === i ? undefined : i)}
-                onCrosshair={state.syncCrosshair ? (time) => shareCrosshair(i, time) : undefined}
-                crosshairTime={
-                  state.syncCrosshair && crosshair && crosshair.from !== i
-                    ? crosshair.time
-                    : undefined
-                }
-                onRange={
-                  state.syncRange
-                    ? (dates) => shareRange({ from: i, interval: cell.interval, dates })
-                    : undefined
-                }
-                range={
-                  state.syncRange && range && range.from !== i && range.interval === cell.interval
-                    ? range.dates
-                    : undefined
-                }
+                link={link}
                 onDragStart={() => setDrag({ from: i })}
                 onDragEnd={() => setDrag(undefined)}
                 onDragOver={() =>
