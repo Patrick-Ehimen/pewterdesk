@@ -1,19 +1,23 @@
-//! Hyperliquid adapter. Read-only so far: markets, order books, the trade tape,
-//! market stats and account state over the public info API and WebSocket feed,
-//! none of which need a key.
+//! Hyperliquid adapter: markets, order books, the trade tape, market stats
+//! and account state over the public info API and WebSocket feed, none of
+//! which need a key, and placing and cancelling orders, which do.
 //!
 //! Markets include the builder-deployed perp exchanges (HIP-3). Their ids
 //! carry the exchange ("xyz:TSLA"), which every info request and channel
-//! takes as-is, so only the market list and the summaries treat them apart.
+//! takes as-is, so only the market list, the summaries and an order's asset
+//! number treat them apart.
 //!
-//! Order placement lands next with its signer (EIP-712 over the msgpack action
-//! hash, with an API/agent wallet as the trade-only key) and the `KeySource`
-//! the adapter takes in its constructor. The signer is security-sensitive -
-//! see docs/adr/0001-venues-in-rust.md.
+//! Orders are signed with the account's API (agent) wallet, the trade-only
+//! key, taken from the `KeySource` for the one call: `orders.rs` builds the
+//! action, `agent.rs` signs it (EIP-712 over the msgpack action hash). Both
+//! are security-sensitive - see docs/adr/0001-venues-in-rust.md. Nothing
+//! here can withdraw, transfer or approve: those are other actions, signed
+//! in another domain, which this crate never signs.
 
 pub mod agent;
 pub mod constants;
 mod icons;
+mod orders;
 mod stats;
 mod tape;
 mod wire;
@@ -26,9 +30,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, ExchangeAdapter, Fill, FundingPayment,
-    FundingRate, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderRequest,
-    OrderType, Trade, TradingAccount, VenueError, VenueId,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, Decimal, ExchangeAdapter, Fill,
+    FundingPayment, FundingRate, KeySource, Market, MarketHistory, MarketStats, MarketSummary,
+    Order, OrderBook, OrderCategory, OrderKind, OrderRequest, OrderStatus, OrderType, PriceSource,
+    Trade, TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -135,6 +140,25 @@ pub struct HyperliquidAdapter {
     /// session; failed downloads aren't cached, so they're retried.
     icons: Mutex<HashMap<String, Option<String>>>,
     icon_fetches: Semaphore,
+    /// Where orders take the API wallet's key from; unset, orders are
+    /// `Unsupported`.
+    keys: Option<Arc<dyn KeySource>>,
+}
+
+/// A nonce for a signed action: the time in milliseconds, as Hyperliquid
+/// wants, and never one already handed out (it refuses a reused one).
+fn next_nonce() -> u64 {
+    use std::sync::atomic::AtomicU64;
+    static LAST: AtomicU64 = AtomicU64::new(0);
+    let now = now_ms();
+    let mut last = LAST.load(Ordering::Relaxed);
+    loop {
+        let next = now.max(last + 1);
+        match LAST.compare_exchange_weak(last, next, Ordering::Relaxed, Ordering::Relaxed) {
+            Ok(_) => return next,
+            Err(seen) => last = seen,
+        }
+    }
 }
 
 /// POSTs to the info API. A free function so background tasks (the screener
@@ -184,7 +208,71 @@ impl HyperliquidAdapter {
             assets,
             icons: Mutex::new(HashMap::new()),
             icon_fetches: Semaphore::new(ICON_FETCHES),
+            keys: None,
         })
+    }
+
+    /// Adds the app's `KeySource`, which orders take the stored API wallet's
+    /// key from. Without one, orders are `Unsupported`.
+    pub fn with_keys(mut self, keys: Arc<dyn KeySource>) -> Self {
+        self.keys = Some(keys);
+        self
+    }
+
+    /// Live market `market` as an order names it, from the venue's list now.
+    async fn asset(&self, market: &str) -> Result<orders::Asset, VenueError> {
+        let metas = all_perp_metas(&self.http, self.endpoints).await?;
+        let (id, sz_decimals) = wire::asset(&metas, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Hyperliquid market"))
+        })?;
+        Ok(orders::Asset { id, sz_decimals })
+    }
+
+    /// `market`'s mid price now, for bounding a market order and telling
+    /// which way a trigger fires.
+    async fn mid(&self, market: &str) -> Result<Decimal, VenueError> {
+        let dex = market.split_once(':').map_or("", |(dex, _)| dex);
+        let mids: HashMap<String, Decimal> =
+            self.info(json!({ "type": "allMids", "dex": dex })).await?;
+        mids.get(market)
+            .copied()
+            .ok_or_else(|| VenueError::InvalidRequest(format!("no price for {market}")))
+    }
+
+    /// Signs `action` with `account`'s API wallet and sends it. The key is
+    /// held only to sign. If signing fails nothing is sent.
+    async fn exchange(
+        &self,
+        account: &TradingAccount,
+        action: &orders::Wire,
+    ) -> Result<Value, VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        validate_address(&account.address)?;
+        let nonce = next_nonce();
+        let signature = {
+            let key = keys.key(&account.key).await?;
+            agent::sign_action(&key, action, nonce, self.endpoints.chain)?
+        };
+        let response = self
+            .http
+            .post(format!("{}/exchange", self.endpoints.rest))
+            .json(&json!({
+                "action": action.json(),
+                "nonce": nonce,
+                "signature": signature,
+                "vaultAddress": null,
+            }))
+            .send()
+            .await
+            .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        let status = response.status();
+        response
+            .json()
+            .await
+            .map_err(|_| VenueError::Network(format!("exchange API returned {status}")))
     }
 
     async fn fetch_icon(&self, name: &str) -> Result<Option<String>, VenueError> {
@@ -822,22 +910,68 @@ impl ExchangeAdapter for HyperliquidAdapter {
 
     async fn place_order(
         &self,
-        _account: &TradingAccount,
-        _request: &OrderRequest,
+        account: &TradingAccount,
+        request: &OrderRequest,
     ) -> Result<Order, VenueError> {
-        Err(VenueError::Unsupported(
-            "order placement (not implemented yet)",
-        ))
+        let asset = self.asset(&request.market).await?;
+        // Only a market order and a trigger are priced off the market.
+        let mid = match request.kind {
+            OrderKind::Limit { .. } => Decimal::default(),
+            _ => self.mid(&request.market).await?,
+        };
+        let built = orders::create(request, asset, mid)?;
+        let reply = self.exchange(account, &built.action).await?;
+        let (id, status) = match orders::placed(&reply)? {
+            orders::Placed::Resting(id) => (id, OrderStatus::Open),
+            orders::Placed::Filled(id) => (id, OrderStatus::Filled),
+            orders::Placed::Waiting => (String::new(), OrderStatus::Pending),
+        };
+        let trigger = matches!(request.kind, OrderKind::Trigger { .. });
+        Ok(Order {
+            venue: VenueId::Hyperliquid,
+            id,
+            client_id: request.client_id.clone(),
+            market: request.market.clone(),
+            side: request.side,
+            order_type: request.kind.order_type(),
+            size: request.size,
+            filled_size: match status {
+                OrderStatus::Filled => request.size,
+                _ => Decimal::default(),
+            },
+            price: match request.kind {
+                OrderKind::Market { .. } => None,
+                OrderKind::Trigger {
+                    limit_price: None, ..
+                } => None,
+                _ => Some(built.price),
+            },
+            trigger_price: match request.kind {
+                OrderKind::Trigger { trigger_price, .. } => Some(trigger_price),
+                _ => None,
+            },
+            reduce_only: request.reduce_only,
+            status,
+            created_at: now_ms(),
+            category: if trigger {
+                OrderCategory::Conditional
+            } else {
+                OrderCategory::Regular
+            },
+            trigger_by: trigger.then_some(PriceSource::Mark),
+            take_profit: request.take_profit,
+            stop_loss: request.stop_loss,
+        })
     }
 
     async fn cancel_order(
         &self,
-        _account: &TradingAccount,
-        _market: &str,
-        _order_id: &str,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
     ) -> Result<(), VenueError> {
-        Err(VenueError::Unsupported(
-            "order cancellation (not implemented yet)",
-        ))
+        let asset = self.asset(market).await?;
+        let action = orders::cancel(asset, order_id)?;
+        orders::cancelled(&self.exchange(account, &action).await?)
     }
 }

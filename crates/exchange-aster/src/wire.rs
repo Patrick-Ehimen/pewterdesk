@@ -88,6 +88,28 @@ pub fn meta(info: &ExchangeInfo) -> Meta {
     meta
 }
 
+/// Live market `market`'s tick, size step and smallest size, for checking
+/// an order against. `None` for a market that isn't listed and trading, or
+/// whose grid the venue didn't give.
+pub fn steps(info: &ExchangeInfo, market: &str) -> Option<(Decimal, Decimal, Decimal)> {
+    let symbol = info
+        .symbols
+        .iter()
+        .find(|s| s.symbol == market && s.is_live())?;
+    let mut tick = None;
+    let mut lot = None;
+    for filter in &symbol.filters {
+        match filter {
+            Filter::Price { tick_size } => tick = Some(*tick_size),
+            Filter::Lot { step_size, min_qty } => lot = Some((*step_size, *min_qty)),
+            Filter::Other => {}
+        }
+    }
+    let (tick, (step, min)) = (tick?, lot?);
+    let positive = |d: Decimal| d.0 > RawDecimal::ZERO;
+    (positive(tick) && positive(step)).then_some((tick, step, min))
+}
+
 /// A tick size's decimal places ("0.00010" → 4).
 pub fn price_scale(tick: Decimal) -> u32 {
     tick.0.normalize().scale()

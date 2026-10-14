@@ -1,7 +1,7 @@
 //! Tauri commands exposing the venue adapters - the only way the UI reaches a
-//! venue. Read-only so far: markets, order books, trades, candles, market
-//! stats, summaries and history, funding history, and account state, from
-//! Hyperliquid, Aster and Bybit.
+//! venue: markets, order books, trades, candles, market stats, summaries and
+//! history, funding history and account state from Hyperliquid, Aster and
+//! Bybit, and the trading commands.
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
@@ -11,9 +11,10 @@
 //!   (a position's TP, SL and trailing stop: protective, reduce-only), and
 //!   the trading parameters `set_leverage` and `set_margin_mode` (they move
 //!   no funds and open nothing), nothing else. They build the
-//!   account's key reference themselves and refuse everything but Bybit
-//!   accounts: demo ones, and live ones with live trading turned on
-//!   (`trading_account`, `live_trading`).
+//!   account's key reference themselves, and sign for a Bybit demo account,
+//!   or a live account (Bybit, Hyperliquid, Aster) with live trading turned
+//!   on (`trading_account`, `live_trading`). Hyperliquid and Aster place
+//!   and cancel orders; the rest is Bybit's so far.
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter
@@ -73,7 +74,8 @@ pub struct Venues {
 impl Venues {
     pub fn new() -> Result<Self, VenueError> {
         Ok(Self {
-            hyperliquid: HyperliquidAdapter::new(&MAINNET)?,
+            // Orders take the stored API wallet's key from the keychain.
+            hyperliquid: HyperliquidAdapter::new(&MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             // Account reads take the stored API wallet's key from the keychain.
             aster: AsterAdapter::new(&ASTER_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             // Account reads take the stored API key from the keychain.
@@ -402,10 +404,10 @@ pub async fn subscribe_account(
 /// here from the account id, never taken from the UI, so a call can't pair
 /// an account with another's key.
 ///
-/// Orders are on for Bybit accounts: a demo account (demo funds, on
-/// Bybit's demo host) as soon as it's connected, a live one only once live
-/// trading has been turned on for it (`live_trading`). Other venues are
-/// refused here until they have signing code; lifting that is this match.
+/// A Bybit demo account (demo funds, on Bybit's demo host) trades as soon
+/// as it's connected. Every other account is live - a Bybit live account,
+/// and any Hyperliquid or Aster account - and trades only once live trading
+/// has been turned on for it (`live_trading`).
 fn trading_account(
     venue: VenueId,
     account: &str,
@@ -424,8 +426,19 @@ fn trading_account(
                 key: bybit_auth::key_account(account)?,
             })
         }
+        // Always real funds, so always behind the switch.
         VenueId::Hyperliquid | VenueId::Aster => {
-            Err(VenueError::Unsupported("orders on this venue (not yet)"))
+            let address = crate::wallet::normalize_address(account)?;
+            if !live.is_on(&crate::live_trading::wallet_id(venue, &address)?) {
+                return Err(VenueError::Rejected(
+                    "live trading is off for this account; turn it on in the wallet's details"
+                        .into(),
+                ));
+            }
+            Ok(TradingAccount {
+                key: crate::wallet::key_account(venue, &address),
+                address,
+            })
         }
     }
 }
@@ -634,14 +647,35 @@ mod tests {
             trading_account(VenueId::Bybit, "24617704", &on),
             Err(VenueError::Rejected(_))
         ));
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
-        // No other venue can trade yet, whatever is switched on.
-        let hl = format!("0x{}", "a".repeat(40));
+        // A wallet on Hyperliquid or Aster is always live: refused until
+        // it's on, and then only that venue's account, under its own key.
+        let wallet = format!("0x{}", "a".repeat(40));
+        let other = format!("0x{}", "b".repeat(40));
         for venue in [VenueId::Hyperliquid, VenueId::Aster] {
             assert!(matches!(
-                trading_account(venue, &hl, &on),
-                Err(VenueError::Unsupported(_))
+                trading_account(venue, &wallet, &on),
+                Err(VenueError::Rejected(_))
             ));
         }
+        std::fs::write(&path, format!(r#"["hyperliquid:{wallet}"]"#)).unwrap();
+        let on = LiveTrading::load(Some(path.clone()));
+        // However the page spells the address, the key is the stored one's.
+        let spelled = format!(" 0x{} ", "A".repeat(40));
+        let account = trading_account(VenueId::Hyperliquid, &spelled, &on).unwrap();
+        assert_eq!(account.address, wallet);
+        assert_eq!(account.key, format!("hyperliquid:{wallet}"));
+        assert!(matches!(
+            trading_account(VenueId::Aster, &wallet, &on),
+            Err(VenueError::Rejected(_))
+        ));
+        assert!(matches!(
+            trading_account(VenueId::Hyperliquid, &other, &on),
+            Err(VenueError::Rejected(_))
+        ));
+        assert!(matches!(
+            trading_account(VenueId::Hyperliquid, "24617703", &on),
+            Err(VenueError::InvalidRequest(_))
+        ));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

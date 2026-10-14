@@ -1378,6 +1378,9 @@ export const messages: Messages = {
     "이 계정의 주문은 Bybit의 실제 자금을 사용합니다. 켜면 주문 티켓, 빠른 거래, 플로팅 창, 명령 팔레트에서 주문을 넣고 변경하고 취소하며, TP/SL을 설정하고 레버리지와 마진 모드를 바꿀 수 있습니다. 크기 제한은 없습니다.",
   "live.confirm": "실거래 켜기",
   "live.checking": "Bybit에서 키 확인 중…",
+  "live.warningWallet":
+    "이 계정의 주문은 {venue}의 실제 자금을 사용합니다. 켜면 주문 티켓, 빠른 거래, 플로팅 창, 명령 팔레트에서 주문을 넣고 취소할 수 있습니다. 크기 제한은 없습니다.",
+  "live.checkingWallet": "{venue}에서 API 지갑 확인 중…",
   "live.cancel": "꺼 둔 채로 두기",
   "ticket.liveOff": "이 계정의 실거래가 꺼져 있습니다. 계정 상세에서 켜세요.",
   "ticket.needSize": "수량을 입력하세요",
@@ -1683,7 +1686,7 @@ export const messages: Messages = {
   "wallet.approvedUntil": "승인 만료일",
   "wallet.keyMissing": "이 계정의 키가 키체인에 없습니다. 연결을 해제한 뒤 다시 연결하세요.",
   "wallet.viewOnly":
-    "이제 잔고, 포지션, 주문이 표시됩니다. pewterdesk에서의 주문은 다음 단계입니다.",
+    "이제 잔고, 포지션, 주문이 표시됩니다. pewterdesk에서 주문하려면 아래에서 실거래를 켜세요.",
   "wallet.disconnect": "연결 해제",
   "wallet.disconnectHint":
     "이 기기에서 키를 삭제합니다. 승인까지 끝내려면 {venue}에서 API 지갑을 삭제하세요.",

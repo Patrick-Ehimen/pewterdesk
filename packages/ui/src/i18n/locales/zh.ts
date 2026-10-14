@@ -1348,6 +1348,9 @@ export const messages: Messages = {
     "此账户的订单使用 Bybit 上的真实资金。开启后，下单面板、快捷交易、悬浮窗和命令面板都可以下单、改单和撤单，设置止盈止损，并更改杠杆和保证金模式。没有下单大小限制。",
   "live.confirm": "开启实盘交易",
   "live.checking": "正在向 Bybit 核对密钥…",
+  "live.warningWallet":
+    "此账户的订单使用 {venue} 上的真实资金。开启后，下单面板、快捷交易、悬浮窗和命令面板都可以下单和撤单。没有下单大小限制。",
+  "live.checkingWallet": "正在向 {venue} 核对 API 钱包…",
   "live.cancel": "保持关闭",
   "ticket.liveOff": "此账户的实盘交易已关闭。请在账户详情中开启。",
   "ticket.needSize": "请输入数量",
@@ -1641,7 +1644,7 @@ export const messages: Messages = {
   "wallet.apiWallet": "API 钱包",
   "wallet.approvedUntil": "授权有效期至",
   "wallet.keyMissing": "钥匙串中已没有此账户的密钥。请断开后重新连接。",
-  "wallet.viewOnly": "现在会显示你的余额、仓位和订单。在 pewterdesk 下单将是下一步。",
+  "wallet.viewOnly": "现在会显示你的余额、仓位和订单。要在 pewterdesk 下单，请在下方开启实盘交易。",
   "wallet.disconnect": "断开连接",
   "wallet.disconnectHint": "从此设备删除密钥。如需同时撤销授权，请在 {venue} 删除该 API 钱包。",
   "wallet.wcStart": "显示二维码",

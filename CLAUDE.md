@@ -38,7 +38,7 @@ a key before storing it.
 ## Layout
 
 - `crates/core` - domain types, the `ExchangeAdapter` trait, `KeySource`
-- `crates/exchange-hyperliquid`, `-aster` - one adapter per venue (both read-only so far)
+- `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -157,7 +157,7 @@ discover it on their own. The reasoning behind the rules is in
   `safe_url`. Adding a publisher is a security-relevant change.
 - Signing code in each `crates/exchange-<venue>` - what turns a key into a
   signed venue action. The highest-stakes code in the repo. Hold keys only as
-  `Zeroizing` and only for the signing call. So far only Bybit's:
+  `Zeroizing` and only for the signing call. Bybit's:
   `crates/exchange-bybit/src/orders.rs` builds the create/cancel bodies (every
   field a constant or checked against the live market's tick and step; market
   orders always go as IOC limits at the slippage bound), and `auth.rs` signs
@@ -167,6 +167,19 @@ discover it on their own. The reasoning behind the rules is in
   signed, read-only request (`/v5/asset/exchange/query-coin-list`, only the
   logos are read), and the images from Bybit's image host, `t1.bycsi.com` -
   a listed logo anywhere else is ignored.
+- Hyperliquid's and Aster's order signing: place and cancel only.
+  `crates/exchange-hyperliquid/src/orders.rs` builds the `order` and
+  `cancel` actions (the asset number from the venue's own list, size and
+  prices checked against Hyperliquid's rules, a take-profit and stop-loss
+  as reduce-only orders grouped with the entry) and `agent.rs` signs them
+  with the API wallet (`sign_action`: EIP-712 over the action's msgpack
+  hash, a fresh millisecond nonce; it takes `orders.rs`'s own type, not
+  bytes). Checked against the official Python SDK's signing vectors.
+  `crates/exchange-aster/src/orders.rs` builds the parameters of
+  `POST`/`DELETE /fapi/v3/order`, signed by `agent::sign_request` and sent
+  exactly as signed. Neither crate has a request that withdraws,
+  transfers or approves a key, and the API wallet's key is never used in
+  the domain those are signed in.
 - The `ExchangeAdapter` trait and the Tauri commands that expose it
   (`place_order`, `cancel_order`, `amend_order`, `set_position_protection`,
   `set_leverage`, `set_margin_mode` in `venues.rs`). Together they are the
@@ -178,17 +191,21 @@ discover it on their own. The reasoning behind the rules is in
   Bybit) - nothing else. Never add withdraw,
   transfer, key approval, or anything that signs caller-supplied bytes or
   typed data. The commands build the account's keychain reference themselves
-  (`trading_account`) and accept Bybit accounts only: a demo account as soon
-  as it's connected, a live one only once live trading is turned on for it.
+  (`trading_account`): a Bybit demo account trades as soon as it's
+  connected, every live account (Bybit, Hyperliquid, Aster) only once live
+  trading is turned on for it. Hyperliquid and Aster implement place and
+  cancel; the other four are Bybit's so far.
 - `apps/desktop/src-tauri/src/live_trading.rs` - the per-account switch for
-  live Bybit trading, kept and enforced in Rust (UIDs in `live-trading.json`
-  in the app's config folder; no key material). Off by default. Turning it
-  on asks Bybit again what the stored key may do and refuses anything but
-  that account's own trade-only key, failing closed (offline included);
-  disconnecting a key turns it off. There is no order size cap. It guards
-  against a live order sent by mistake, not against the page itself.
-  Opening trading to another venue, or loosening this switch, is a
-  security-relevant change.
+  live trading, kept and enforced in Rust (Bybit UIDs, and Hyperliquid and
+  Aster accounts as `<venue>:<address>`, in `live-trading.json` in the app's
+  config folder; no key material). Off by default. Turning it on asks the
+  venue again what the stored key may do and refuses anything but that
+  account's own trade-only key (on Hyperliquid and Aster: the API wallet
+  still approved for it - `wallet::verify_trade_only`), failing closed
+  (offline included); disconnecting a key turns it off. There is no order
+  size cap. It guards against a live order sent by mistake, not against
+  the page itself. Opening trading to another venue, or loosening this
+  switch, is a security-relevant change.
 - `apps/desktop/src-tauri/src/trading_rules.rs` - the trader's own rules
   (daily loss, drawdown, risk per trade, position size, trades a day, trading
   hours, a cool-off after losses), kept in `trading-rules.json` in the app's
@@ -251,19 +268,24 @@ every market's summary and hourly history, funding history and account state
 over REST and WS, plus market logos as SVG from its web app's host), including
 the builder-deployed perp exchanges (HIP-3, market ids like `xyz:TSLA`), and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
-it can't place orders yet. `crates/exchange-aster` serves Aster's public market
+it places and cancels orders (limit, market as an IOC limit at the slippage
+bound, trigger, with a take-profit and stop-loss attached) but can't amend
+them, set a position's exits, or change leverage or margin mode yet.
+`crates/exchange-aster` serves Aster's public market
 data the same way (markets, order books, trades, candles, stats, summaries and
 history, funding history), and an account's balances, positions and open
 orders once its wallet is connected: Aster serves those only to requests
 signed by an API wallet (`agent.rs`), and only after the main wallet has
-deposited. Fills, history, leverage settings and orders aren't built for
-Aster yet.
+deposited. It places and cancels orders too (limit, market, trigger; no
+exits attached to an order). Fills, history, leverage settings and the rest
+of order management aren't built for Aster yet.
 
-The desktop frontend is a read-only trading screen (after the main-screen
+The desktop frontend is a trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
 ticket). They fill once a Hyperliquid or Aster API wallet is connected (the Connect
 wallet dialog, for the venue on screen; the connected main address is kept
-in `lib/account.ts`), while the ticket can't place orders on either. The Markets panel is tabbed:
+in `lib/account.ts`); the ticket places orders once live trading is turned on
+for the account, in the same dialog. The Markets panel is tabbed:
 chart, depth, screener and watchlist; the chart tab has the price chart
 (Standard) and the funding history. The price chart, on the Trade page, the
 Multi-chart page and popped-out charts alike, is OpenAlgo Charts
@@ -318,10 +340,15 @@ Rust-side backlog (notifications, deep links, local persistence), not started.
 
 ## Live trading
 
-Orders work on Bybit: demo accounts, and live accounts with live trading
-turned on in the account's details (the API key dialog; `lib/liveTrading.ts`
-mirrors Rust's list for the page). A trading live account shows a "Live"
-badge on the ticket. Hyperliquid and Aster still can't place orders.
+Orders work on Bybit (demo accounts, and live accounts with live trading
+turned on in the account's details - the API key dialog), and on Hyperliquid
+and Aster once live trading is turned on for the connected wallet (the
+Connect wallet dialog; there is no demo there, so every account is live).
+`components/wallet/LiveTradingSwitch.tsx` is the switch in both dialogs, and
+`lib/liveTrading.ts` mirrors Rust's list for the page. A trading live
+account shows a "Live" badge on the ticket. On Hyperliquid and Aster only
+placing and cancelling work: changing an order, a position's TP / SL,
+leverage and margin mode answer "not supported by this venue".
 
 ## Trading rules
 
@@ -331,8 +358,10 @@ top of "Your rules") and shows where the chosen account stands: Rust keeps
 both (`trading_rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
 `Status`), and `hooks/useTradingRules.ts` reads them on a timer, raises the
 notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
-the banner above the workspace. Orders are only placed on Bybit, so that is
-where rules are enforced. The news blackout isn't (there's no calendar yet),
+the banner above the workspace. Rules are checked on any venue's orders, but
+only Bybit serves the fills and closed trades they read: with a rule set on
+for a Hyperliquid or Aster account, an opening order is refused (they fail
+closed) until those reads are built. The news blackout isn't (there's no calendar yet),
 and the ticket's own rule check and locked state from the mockups aren't
 built; `check_trading_rules` is there for them.
 
