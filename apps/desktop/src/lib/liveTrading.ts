@@ -1,6 +1,8 @@
-import { bybitKeyClient } from "../api/venueClient";
+import type { VenueId } from "@pewterdesk/core";
+import { bybitKeyClient, walletClient } from "../api/venueClient";
 
-// Which live Bybit accounts have trading turned on. Rust keeps the list and
+// Which live accounts have trading turned on: Bybit accounts by UID, and
+// Hyperliquid and Aster accounts as "<venue>:<address>". Rust keeps the list and
 // enforces it (`live_trading.rs`): this is its copy for the page, so the
 // ticket knows whether to offer orders. It's mirrored to localStorage only
 // so the app's other windows (the floating one) hear a change.
@@ -29,7 +31,7 @@ function publish(next: readonly string[]) {
   for (const listener of listeners) listener();
 }
 
-/** The live Bybit accounts (UIDs) with trading on, as last heard from Rust. */
+/** The live accounts with trading on (see `liveId`), as last heard from Rust. */
 export const liveTradingUids = () => uids;
 
 export function subscribeLiveTrading(listener: () => void): () => void {
@@ -55,12 +57,21 @@ export async function refreshLiveTrading(): Promise<void> {
   }
 }
 
+/** How Rust's list names an account: a Bybit UID, or its venue and address. */
+export const liveId = (account: { venue: VenueId; id: string }) =>
+  account.venue === "bybit" ? account.id : `${account.venue}:${account.id}`;
+
 /**
- * Turns live trading on or off for Bybit account `uid`. Turning it on has
- * Rust check the stored key with Bybit first; it throws, changing nothing,
+ * Turns live trading on or off for a live account. Turning it on has Rust
+ * check the stored key with the venue first; it throws, changing nothing,
  * if that fails.
  */
-export async function setLiveTrading(uid: string, on: boolean): Promise<void> {
-  await bybitKeyClient.setLive(uid, on);
-  publish(on ? [...uids.filter((u) => u !== uid), uid] : uids.filter((u) => u !== uid));
+export async function setLiveTrading(
+  account: { venue: VenueId; id: string },
+  on: boolean,
+): Promise<void> {
+  if (account.venue === "bybit") await bybitKeyClient.setLive(account.id, on);
+  else await walletClient.setLive(account.venue, account.id, on);
+  const id = liveId(account);
+  publish(on ? [...uids.filter((u) => u !== id), id] : uids.filter((u) => u !== id));
 }

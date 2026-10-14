@@ -342,6 +342,13 @@ export const walletClient = {
     call<void>("disconnect_wallet", { venue, address }),
 
   /**
+   * Turns live trading on or off for a Hyperliquid or Aster account. Turning
+   * it on has Rust check the stored API wallet with the venue again.
+   */
+  setLive: (venue: VenueId, address: string, on: boolean) =>
+    call<void>("set_wallet_trading", { venue, address, on }),
+
+  /**
    * Connecting through a wallet: Rust generates the agent key and returns
    * the approval for the wallet to sign; `finishApproval` hands back the
    * signature, which Rust checks before sending it and storing the key.

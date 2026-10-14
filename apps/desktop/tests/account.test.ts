@@ -39,7 +39,13 @@ describe("connected accounts", () => {
     expect(canTrade(live, ["24617703"])).toBe(true);
     // On for another account isn't on for this one, nor for its demo twin's id.
     expect(canTrade(live, ["24617704", "demo:24617703"])).toBe(false);
-    expect(canTrade({ venue: "hyperliquid", id: A }, [A])).toBe(false);
+    // A wallet is always live, and is switched on per venue.
+    const wallet = { venue: "hyperliquid", id: A } as const;
+    expect(canTrade(wallet, [])).toBe(false);
+    expect(canTrade(wallet, [A])).toBe(false);
+    expect(canTrade(wallet, [`aster:${A}`])).toBe(false);
+    expect(canTrade(wallet, [`hyperliquid:${A}`])).toBe(true);
+    expect(canTrade({ venue: "aster", id: A }, [`aster:${A}`])).toBe(true);
     expect(canTrade(undefined, ["24617703"])).toBe(false);
   });
 

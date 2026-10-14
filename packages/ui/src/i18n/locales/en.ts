@@ -1337,6 +1337,9 @@ export const en = {
     "Orders on this account use real funds on Bybit. Once on, the ticket, quick trade, the floating window and the command palette can place, change and cancel orders, set TP/SL, and change leverage and margin mode. There is no size limit.",
   "live.confirm": "Turn on live trading",
   "live.checking": "Checking the key with Bybit…",
+  "live.warningWallet":
+    "Orders on this account use real funds on {venue}. Once on, the ticket, quick trade, the floating window and the command palette can place and cancel orders. There is no size limit.",
+  "live.checkingWallet": "Checking the API wallet with {venue}…",
   "live.cancel": "Keep it off",
   "ticket.liveOff": "Live trading is off for this account. Turn it on in the account's details.",
   "ticket.needSize": "Enter a size",
@@ -1645,7 +1648,7 @@ export const en = {
   "wallet.keyMissing":
     "The key for this account isn't in the keychain any more. Disconnect and connect again.",
   "wallet.viewOnly":
-    "Your balances, positions and orders show now. Placing orders from pewterdesk comes next.",
+    "Your balances, positions and orders show now. To place orders from pewterdesk, turn on live trading below.",
   "wallet.disconnect": "Disconnect",
   "wallet.disconnectHint":
     "Removes the key from this device. To end its approval too, remove the API wallet on {venue}.",

@@ -358,3 +358,64 @@ async fn approves_an_agent_and_reads_as_it() {
     // The same approval can't be posted twice (its nonce is spent).
     assert!(adapter.approve_agent(&approval, &signature).await.is_err());
 }
+
+/// An order signed by a wallet nobody approved: Aster reads the parameters
+/// and the signature, finds no approval for the signer, and refuses. It
+/// touches no account and places nothing - it checks that an order goes out
+/// in a form the order endpoint reads and can verify.
+#[tokio::test]
+#[ignore = "hits Aster mainnet"]
+async fn an_unapproved_wallets_order_is_refused_by_the_venue() {
+    use std::sync::Arc;
+
+    use pewterdesk_core::{
+        Decimal, KeyError, KeySource, OrderKind, OrderRequest, Side, TradingAccount,
+    };
+    use pewterdesk_exchange_aster::agent::generate_agent;
+    use zeroize::Zeroizing;
+
+    struct OneKey(String);
+    #[async_trait::async_trait]
+    impl KeySource for OneKey {
+        async fn key(&self, _account: &str) -> Result<Zeroizing<String>, KeyError> {
+            Ok(Zeroizing::new(self.0.clone()))
+        }
+    }
+
+    let (key, address) = generate_agent();
+    let adapter = adapter().with_keys(Arc::new(OneKey(key.to_string())));
+    let account = TradingAccount {
+        address,
+        key: "unused".into(),
+    };
+    let d = |s: &str| Decimal(s.parse().unwrap());
+    let request = OrderRequest {
+        market: "BTCUSDT".into(),
+        side: Side::Buy,
+        size: d("0.001"),
+        reduce_only: false,
+        collateral: None,
+        client_id: None,
+        take_profit: None,
+        stop_loss: None,
+        kind: OrderKind::Limit {
+            price: d("1000"),
+            time_in_force: None,
+        },
+    };
+    let err = adapter.place_order(&account, &request).await.unwrap_err();
+    eprintln!("order: {err:?}");
+    assert!(
+        matches!(&err, VenueError::InvalidRequest(why) if why.contains("no longer approved")),
+        "{err:?}"
+    );
+    let err = adapter
+        .cancel_order(&account, "BTCUSDT", "1")
+        .await
+        .unwrap_err();
+    eprintln!("cancel: {err:?}");
+    assert!(
+        matches!(&err, VenueError::InvalidRequest(why) if why.contains("no longer approved")),
+        "{err:?}"
+    );
+}

@@ -1410,6 +1410,9 @@ export const messages: Messages = {
     "Las órdenes de esta cuenta usan fondos reales en Bybit. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar, modificar y cancelar órdenes, fijar TP/SL y cambiar el apalancamiento y el modo de margen. No hay límite de tamaño.",
   "live.confirm": "Activar trading en real",
   "live.checking": "Comprobando la clave con Bybit…",
+  "live.warningWallet":
+    "Las órdenes de esta cuenta usan fondos reales en {venue}. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar y cancelar órdenes. No hay límite de tamaño.",
+  "live.checkingWallet": "Comprobando la wallet de API con {venue}…",
   "live.cancel": "Dejarlo desactivado",
   "ticket.liveOff":
     "El trading en real está desactivado en esta cuenta. Actívalo en los detalles de la cuenta.",
@@ -1722,7 +1725,7 @@ export const messages: Messages = {
   "wallet.keyMissing":
     "La clave de esta cuenta ya no está en el llavero. Desconecta y vuelve a conectar.",
   "wallet.viewOnly":
-    "Ya se muestran tus saldos, posiciones y órdenes. Operar desde pewterdesk llega a continuación.",
+    "Ya se muestran tus saldos, posiciones y órdenes. Para enviar órdenes desde pewterdesk, activa el trading real abajo.",
   "wallet.disconnect": "Desconectar",
   "wallet.disconnectHint":
     "Borra la clave de este dispositivo. Para revocar también su aprobación, elimina la API wallet en {venue}.",

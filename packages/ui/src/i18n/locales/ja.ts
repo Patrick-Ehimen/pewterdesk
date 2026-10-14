@@ -1387,6 +1387,9 @@ export const messages: Messages = {
     "このアカウントの注文はBybitの実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから、注文の発注・変更・取消、TP/SLの設定、レバレッジと証拠金モードの変更ができます。サイズの上限はありません。",
   "live.confirm": "ライブ取引をオンにする",
   "live.checking": "Bybitでキーを確認中…",
+  "live.warningWallet":
+    "このアカウントの注文は{venue}の実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから注文の発注と取消ができます。サイズの上限はありません。",
+  "live.checkingWallet": "{venue}でAPIウォレットを確認中…",
   "live.cancel": "オフのままにする",
   "ticket.liveOff": "このアカウントのライブ取引はオフです。アカウントの詳細でオンにしてください。",
   "ticket.needSize": "数量を入力してください",
@@ -1693,7 +1696,7 @@ export const messages: Messages = {
   "wallet.keyMissing":
     "このアカウントの鍵がキーチェーンにありません。切断してから接続し直してください。",
   "wallet.viewOnly":
-    "残高・ポジション・注文が表示されるようになりました。pewterdesk からの発注は次に対応します。",
+    "残高・ポジション・注文が表示されるようになりました。pewterdesk から発注するには、下のライブ取引をオンにしてください。",
   "wallet.disconnect": "切断",
   "wallet.disconnectHint":
     "この端末から鍵を削除します。承認も取り消すには、{venue} で API ウォレットを削除してください。",
