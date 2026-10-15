@@ -13,8 +13,8 @@
 //!   no funds and open nothing), nothing else. They build the
 //!   account's key reference themselves, and sign for a Bybit demo account,
 //!   or a live account (Bybit, Hyperliquid, Aster) with live trading turned
-//!   on (`trading_account`, `live_trading`). Hyperliquid and Aster place
-//!   and cancel orders; the rest is Bybit's so far.
+//!   on (`trading_account`, `live_trading`). Every venue implements all
+//!   six, except a trailing stop on Hyperliquid and Aster.
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter

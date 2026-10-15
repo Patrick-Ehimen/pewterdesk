@@ -1,33 +1,49 @@
 # Roadmap
 
-What's left to build after v0.2.0 and the work on `main` since (as of
-October 5, 2026). Roughly in priority order within each section.
+What's left to build on `main` (as of October 15, 2026). Roughly in priority
+order within each section.
 
-## 1. Trading on more than demo
+## 1. Trading
 
-Bybit is the only venue an order can be placed on.
+Orders can be placed on all three venues: Bybit (demo accounts, and live
+accounts with live trading turned on), and Hyperliquid and Aster (the
+connected API wallet, once live trading is turned on for it). Rust enforces
+the switch (`live_trading.rs`) and the trader's rules (`trading_rules.rs`).
 
-- **Live Bybit accounts.** Built on the `feat/bybit-live-trading` branch:
-  off by default, turned on per account after a warning, enforced in Rust
-  (`live_trading.rs`), with no size cap and leverage and margin mode
-  allowed. Not yet tried with a real live key; do that with a small order
-  before merging.
-- **Hyperliquid orders.** The adapter is read-only; there is no signing code
-  yet. This is the highest-stakes code in the repo and gets its own review
-  against `.claude/commands/security-review.md`.
-- **Aster.** Public market data only. Account data needs requests signed by
-  an API wallet, and the UI doesn't show Aster yet.
+Every venue now implements all six trading operations (place, cancel and
+change orders, a position's exits, leverage, margin mode), but for a
+trailing stop on Hyperliquid and Aster, and the trading rules check all
+three (Hyperliquid's and Aster's closed trades are built from their fills).
+
+- **Try each venue with a real, small order.** None has placed a live
+  mainnet order from the app yet: not Bybit with a live key, not Hyperliquid,
+  not Aster. Hyperliquid's signing is checked against the official Python
+  SDK's vectors (its leverage and order-change actions too) and Aster's
+  against `eth_account` and its live API, but on each: a place and a
+  cancel, changing an order's price, setting and removing a stop-loss, and
+  changing leverage.
+- **Aster's signed reads** (fills, closed trades, order history, funding)
+  follow its docs but haven't run against Aster: check them with a
+  connected account, and whether its trade fees come signed as the docs
+  show.
+- **Trailing stops on Hyperliquid and Aster.** Hyperliquid has none; Aster's
+  moves by a percentage, which the app's price distance doesn't map onto
+  exactly. Either offer the percentage on Aster or leave it.
+- **Aster can't attach a TP / SL to a new order**; it's set on the position
+  once it's open.
+- **Paper trading** (Hyperliquid and Aster, on the Trade page) only moves
+  while the app runs and the venue is on screen, and fills at the best bid
+  and ask only; trading rules aren't checked on paper orders.
 
 ## 2. Designed screens not built yet
 
 From the local design mockups (`design/screens/`, gitignored).
 
-- **Journal** (18) - still a placeholder page; to be built on the fill
-  history (`fills`).
-- **Command palette** (17).
+- **Journal** (18) - the page exists but isn't in the menu; to be built on
+  the fill history (`fills`).
 - **Funding arbitrage** (20), **smart order routing** (38), **spread
-  trading** (39) - need more than one live venue.
-- **Multi-chart** (22), **venue health** (42), **chain switcher** (44, 45).
+  trading** (39) - possible now that three venues trade.
+- **Venue health** (42), **chain switcher** (44, 45).
 - **To check against the designs:** order ladder / DOM (06), scaled and
   TWAP orders (15), hotkeys (16), liquidation heatmap (19). Some related
   code exists for each; how far it matches the designs hasn't been checked.
@@ -35,7 +51,25 @@ From the local design mockups (`design/screens/`, gitignored).
   funds. The signing surface must never include withdraw or transfer
   (`CLAUDE.md`).
 
-## 3. Desktop features (Rust side)
+Built since the last version of this list: the command palette (17), the
+CLI panel, and Multi-chart (22).
+
+## 3. The price chart
+
+The price chart is OpenAlgo Charts (`openalgo-charts`, `OpenAlgoChart`) on the
+Trade page, every multi-chart cell and popped-out charts.
+
+- **Untried in the running app:** the snapshot button in the Tauri webview,
+  "Fill the workspace", popped-out chart windows, and drawings syncing
+  between two charts of one market.
+- **The library's own dialogs** (indicator settings, chart settings, the
+  indicator picker) are English only; it takes a translation callback.
+- **Loose ends:** the old lightweight-charts `CandleChart` is still in
+  `packages/ui`, unused; the multi-chart cell's saved `type`, `indicators`,
+  `grid`, `logScale` and `countdown` fields are no longer read; the landing
+  page still says "TradingView to come".
+
+## 4. Desktop features (Rust side)
 
 From `.claude/prd-rust-desktop-features.md`; none started.
 
@@ -48,7 +82,7 @@ From `.claude/prd-rust-desktop-features.md`; none started.
 - **Autostart on login** (`tauri-plugin-autostart`) and **auto-update**
   (`tauri-plugin-updater`), the latter now that releases ship.
 
-## 4. Open questions and loose ends
+## 5. Open questions and loose ends
 
 - **Limit orders priced through the market** fill at once, as the exchange
   executes them. Pick one: offer "place as a stop order", drop the warning,
@@ -63,11 +97,17 @@ From `.claude/prd-rust-desktop-features.md`; none started.
   Bybit demo order, and the share buttons.
 - **v0.2.0 release** is a draft with 9 installers; publish or not.
 - **`.claude/commands/security-review.md`** is out of date with the current
-  signing surface.
+  signing surface: it still speaks of place and cancel only, while Bybit
+  also amends, sets a position's protection, leverage and margin mode.
+- **Housekeeping:** an open Dependabot PR, and the local `feat/tealchart`
+  branch with one unmerged trial commit.
 
-## 5. Algos, bots and the `pd` command line
+## 6. Algos, bots and the `pd` command line
 
-Planned in `docs/bots/` (decision: ADR 0003, proposed). Phase 0 extracts
+The Bots page is a UI-only preview of it: bots, backtests on sample
+candles (grid, EMA cross, or the user's own rules) and a week's paper run,
+with nothing reaching a venue. The real thing is planned in `docs/bots/`
+(decision: ADR 0003, proposed). Phase 0 extracts
 the engine (routing and the trading gate) from the Tauri app with no
 behaviour change; then algo orders in the app (chaser, TWAP, scaled), native
 venue algos and venue-side protection, the `pdd` daemon and `pd` CLI, bots
@@ -76,7 +116,6 @@ use. See `docs/bots/plan.md` for tasks and exit tests.
 
 ## Suggested next steps
 
-1. Live Bybit trading - mostly planned, and it turns the app into a working
-   terminal.
-2. The Journal, on the fill history.
-3. The command palette.
+1. A small live order on each venue, from the app: place, change, cancel,
+   a stop-loss set and removed, and a leverage change.
+2. The Journal, on the fill history (now read on all three venues).

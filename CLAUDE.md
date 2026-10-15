@@ -167,17 +167,26 @@ discover it on their own. The reasoning behind the rules is in
   signed, read-only request (`/v5/asset/exchange/query-coin-list`, only the
   logos are read), and the images from Bybit's image host, `t1.bycsi.com` -
   a listed logo anywhere else is ignored.
-- Hyperliquid's and Aster's order signing: place and cancel only.
+- Hyperliquid's and Aster's order signing.
   `crates/exchange-hyperliquid/src/orders.rs` builds the `order` and
   `cancel` actions (the asset number from the venue's own list, size and
   prices checked against Hyperliquid's rules, a take-profit and stop-loss
-  as reduce-only orders grouped with the entry) and `agent.rs` signs them
+  as reduce-only orders grouped with the entry), `batchModify` (a resting
+  limit order's price and size; everything else about it read back from
+  the venue and kept), `updateLeverage` (leverage and margin mode) and a
+  position's exits (reduce-only trigger orders closing all of it; the new
+  one placed before the old is cancelled), and `agent.rs` signs them
   with the API wallet (`sign_action`: EIP-712 over the action's msgpack
   hash, a fresh millisecond nonce; it takes `orders.rs`'s own type, not
   bytes). Checked against the official Python SDK's signing vectors.
   `crates/exchange-aster/src/orders.rs` builds the parameters of
-  `POST`/`DELETE /fapi/v3/order`, signed by `agent::sign_request` and sent
-  exactly as signed. Neither crate has a request that withdraws,
+  `POST`/`DELETE`/`PUT /fapi/v3/order` (`PUT` changes a limit order's price
+  and size only), `/fapi/v3/leverage`, `/fapi/v3/marginType`, and a
+  position's exits (`closePosition` stop and take-profit at market, on the
+  mark), signed by `agent::sign_request` and sent exactly as signed.
+  Neither venue gets a trailing stop: Hyperliquid has none, and Aster's
+  moves by a percentage rather than the distance asked for, so it's
+  refused, not approximated. Neither crate has a request that withdraws,
   transfers or approves a key, and the API wallet's key is never used in
   the domain those are signed in.
 - The `ExchangeAdapter` trait and the Tauri commands that expose it
@@ -193,8 +202,8 @@ discover it on their own. The reasoning behind the rules is in
   typed data. The commands build the account's keychain reference themselves
   (`trading_account`): a Bybit demo account trades as soon as it's
   connected, every live account (Bybit, Hyperliquid, Aster) only once live
-  trading is turned on for it. Hyperliquid and Aster implement place and
-  cancel; the other four are Bybit's so far.
+  trading is turned on for it. Every venue implements all six, but for a
+  trailing stop on Hyperliquid and Aster.
 - `apps/desktop/src-tauri/src/live_trading.rs` - the per-account switch for
   live trading, kept and enforced in Rust (Bybit UIDs, and Hyperliquid and
   Aster accounts as `<venue>:<address>`, in `live-trading.json` in the app's
@@ -246,6 +255,18 @@ discover it on their own. The reasoning behind the rules is in
   buttons that need a 0.4s hold, and a position's TP / SL lines can be
   dragged. Neither adds a command: they go through the same `placeOrder` and
   `protect` as the ticket and the Trade chart, so the same accounts can trade.
+- Paper trading (`lib/paper.ts`, `lib/paperStore.ts`, `hooks/usePaper.ts`,
+  `components/paper/`): on Hyperliquid and Aster (the venues without a demo)
+  the header's Live / Paper switch picks where the Trade page's orders go.
+  In paper mode every order path in `App.tsx` (`placeOrder`, `cancelOrder`,
+  `amend`, `protect`, leverage and margin mode) changes a simulated account
+  kept in this machine's storage, and the venue's own account isn't read;
+  nothing is signed or sent, and the paper code imports no venue client. A
+  live call checks again that its venue hasn't gone to paper since the
+  render, and the floating window (which calls the venue itself) places no
+  order while its venue is in paper mode. Paper results never reach the
+  menu bar, and a paper share card says "Paper". Routing a paper order to a
+  venue, or a live one to the paper account, is a security-relevant change.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
   wallet, Aster API wallet with withdraw off), not the
   user's main wallet key.
@@ -268,17 +289,21 @@ every market's summary and hourly history, funding history and account state
 over REST and WS, plus market logos as SVG from its web app's host), including
 the builder-deployed perp exchanges (HIP-3, market ids like `xyz:TSLA`), and is
 exposed through the Tauri commands in `apps/desktop/src-tauri/src/venues.rs`;
-it places and cancels orders (limit, market as an IOC limit at the slippage
-bound, trigger, with a take-profit and stop-loss attached) but can't amend
-them, set a position's exits, or change leverage or margin mode yet.
+it places, cancels and changes orders (limit, market as an IOC limit at the
+slippage bound, trigger, with a take-profit and stop-loss attached), sets a
+position's take-profit and stop-loss, and changes leverage and margin mode;
+its closed trades are built from its fills (`wire::closed_trades`).
 `crates/exchange-aster` serves Aster's public market
 data the same way (markets, order books, trades, candles, stats, summaries and
 history, funding history), and an account's balances, positions and open
 orders once its wallet is connected: Aster serves those only to requests
 signed by an API wallet (`agent.rs`), and only after the main wallet has
-deposited. It places and cancels orders too (limit, market, trigger; no
-exits attached to an order). Fills, history, leverage settings and the rest
-of order management aren't built for Aster yet.
+deposited. It places, cancels and changes orders too (limit, market,
+trigger; no exits attached to an order), sets a position's take-profit and
+stop-loss, and changes leverage and margin mode. Its fills, closed trades,
+order history and funding come from signed reads (`history.rs`): fills a
+week at a time, on the markets its fee records name, closed trades built
+from them.
 
 The desktop frontend is a trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
@@ -346,9 +371,30 @@ and Aster once live trading is turned on for the connected wallet (the
 Connect wallet dialog; there is no demo there, so every account is live).
 `components/wallet/LiveTradingSwitch.tsx` is the switch in both dialogs, and
 `lib/liveTrading.ts` mirrors Rust's list for the page. A trading live
-account shows a "Live" badge on the ticket. On Hyperliquid and Aster only
-placing and cancelling work: changing an order, a position's TP / SL,
-leverage and margin mode answer "not supported by this venue".
+account shows a "Live" badge on the ticket. Everything works on all three
+but a trailing stop on Hyperliquid and Aster, which answers "not supported
+by this venue"; there, only a resting limit order's price and size can be
+changed.
+
+## Paper trading
+
+Hyperliquid and Aster have no demo, so they get paper trading instead (Bybit
+has its Demo Trading accounts). The Live / Paper switch beside the venue
+chips is per venue; in paper mode a banner over the workspace shows the
+paper balance and P&L, with Funds (add up to 100,000 at a time, or take out
+what isn't held as margin; neither counts as P&L) and Reset (behind a
+confirmation: every position, order and record gone, back to 10,000;
+`components/paper/PaperFundsDialog.tsx`), and the ticket says "Paper". It
+keeps everything in this machine's storage (`pd.paper.<venue>`), so it
+survives a restart. It needs
+no wallet. Orders fill on the venue's live prices (the book's best bid and
+ask for the market on screen, the mark from the summaries for the rest) at
+the venue's own fees: market (within its slippage bound), limit (GTC, IOC,
+post-only; resting ones fill as a maker once the price reaches them),
+trigger, attached and position TP / SL, trailing stops, reduce-only,
+leverage and margin mode, funding at each interval, and liquidation at an
+estimated price. It moves forward once a second while the app runs, for the
+venue on screen only. Trading rules aren't checked on paper orders.
 
 ## Trading rules
 
@@ -358,10 +404,10 @@ top of "Your rules") and shows where the chosen account stands: Rust keeps
 both (`trading_rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
 `Status`), and `hooks/useTradingRules.ts` reads them on a timer, raises the
 notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
-the banner above the workspace. Rules are checked on any venue's orders, but
-only Bybit serves the fills and closed trades they read: with a rule set on
-for a Hyperliquid or Aster account, an opening order is refused (they fail
-closed) until those reads are built. The news blackout isn't (there's no calendar yet),
+the banner above the workspace. Rules are checked on any venue's orders,
+from that venue's fills and closed trades (Hyperliquid's and Aster's are
+built from their fills); if they can't be read, an opening order is refused
+(they fail closed). The news blackout isn't (there's no calendar yet),
 and the ticket's own rule check and locked state from the mockups aren't
 built; `check_trading_rules` is there for them.
 
@@ -397,6 +443,24 @@ research behind it in `docs/research/cli-trading-bots.md`. In short: a new
 `live_trading.rs` and `trading_rules.rs`), algo executors (chaser, TWAP,
 scaled...) and bots; it runs inside the app or headless in a daemon (`pdd`),
 which a `pd` CLI and the app reach over a localhost-only protocol.
+
+The Bots page (`components/pages/BotsPage.tsx`, `components/bots/`, after
+the Bots, Backtest and New bot mockups in `design/`) is a UI-only preview of
+it, in three sections: Bots (cards, each with its path backtest → paper →
+live), Backtests (every run with its verdict) and Paper trading (a week's
+progress against the backtest). A new bot (grid, EMA cross, or custom: the
+user's own entry and exit rules over price, EMA, SMA and RSI, with a
+stop-loss, take-profit and size - `components/bots/CustomRules.tsx`; a
+period preset; limits) and a backtest (overview, trades, analysis,
+comparison, with the readiness verdict on top) open over them with a
+breadcrumb trail back; the page remembers where it was left. It starts
+empty: every bot and run is the user's own, and the backtests run in the
+page on seeded sample candles (`lib/backtest.ts`; a grid around today's
+price, so over 7 to 30 days), kept in this browser's storage
+(`lib/bots.ts`, under `pd.bots`). It calls no command and nothing reaches a venue. A
+bot paper trades for `PAPER_DAYS` (7) before Go live would apply, and Go
+live is disabled. Wiring it to real candles or an engine means following
+the plan below like any other part of it.
 
 When working on any of it:
 

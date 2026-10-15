@@ -72,7 +72,7 @@ export const surface = {
     title: "Can't",
     items: ["Withdraw", "Transfer", "Approve another key", "Sign data a page hands it"],
   },
-  note: "Orders are placed on Bybit only for now. Hyperliquid and Aster are read-only.",
+  note: "All of it on Bybit. On Hyperliquid and Aster, everything but a trailing stop.",
 };
 
 export const live = {

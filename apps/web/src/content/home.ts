@@ -130,7 +130,7 @@ export const status = {
     title: "Works today",
     items: [
       "Market data on Bybit, Hyperliquid and Aster",
-      "Orders on Bybit, demo and live",
+      "Orders on Bybit (demo and live), Hyperliquid and Aster",
       "Balances, positions and open orders on all three",
       "Maps, multi-chart, alerts and trading rules",
     ],
@@ -138,7 +138,7 @@ export const status = {
   notYet: {
     title: "Not yet",
     items: [
-      "Orders on Hyperliquid and Aster",
+      "Trailing stops on Hyperliquid and Aster",
       "TradingView charts",
       "The trade journal",
       "The nine venues listed as coming",
