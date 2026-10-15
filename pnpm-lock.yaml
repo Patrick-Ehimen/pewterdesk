@@ -30,11 +30,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@tauri-apps/api':
-        specifier: ^2.12.1
-        version: 2.12.1
+        specifier: ^2.12.3
+        version: 2.12.3
       '@walletconnect/sign-client':
-        specifier: 2.25.0
-        version: 2.25.0(typescript@6.0.3)
+        specifier: 2.26.0
+        version: 2.26.0(typescript@6.0.3)
       qrcode:
         specifier: 1.5.4
         version: 1.5.4
@@ -45,8 +45,8 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
       react-grid-layout:
-        specifier: ^2.2.4
-        version: 2.2.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        specifier: ^2.3.0
+        version: 2.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react-icons:
         specifier: ^5.7.0
         version: 5.7.0(react@19.3.0)
@@ -355,8 +355,8 @@ packages:
   '@scure/bip39@1.6.0':
     resolution: {integrity: sha512-+lF0BbLiJNwVlev4eKelw1WWLaiKXw7sSl8T6FvBlWkdX+94aGJ4o8XjUdlyhTCjd8c+B3KT3JfS8P0bLRNU6A==}
 
-  '@tauri-apps/api@2.12.1':
-    resolution: {integrity: sha512-DeyFHa3wynpyoqTDikDEDGTJIq4LQ5USfolQGRmGIWT6JMADyxZBTDa5cAdT3tDg73rUXufPaCwN7aXBos4OnQ==}
+  '@tauri-apps/api@2.12.3':
+    resolution: {integrity: sha512-9s0PKw0p4r3kFq92jhpivYSp+cSht15o0gXpZxuQd0+dV9KCexEVkNaLELVoLdJWyoH4KlfQo5h3W2LIM8siJg==}
 
   '@tauri-apps/cli-darwin-arm64@2.12.1':
     resolution: {integrity: sha512-8bMnbpJ2jKO/ufrOPL65EMHC3ptw7fzeraoQkwibyfGLqIl+UCWsC0152kmNbW6r9NvVQduXqAZF5mH1QgTWhw==}
@@ -485,8 +485,8 @@ packages:
   '@vitest/spy@5.0.1':
     resolution: {integrity: sha512-rbto/mF/SGERxEgYOek7Xm6B9b+y+mVoo+f4b2LymYO8zM1b7uB5nHuhVMTP2hxdzgxvGiZYGxGIaMvL5y180Q==}
 
-  '@walletconnect/core@2.25.0':
-    resolution: {integrity: sha512-ZcZauyQtSBhwwIbXIVTojcg/iWf1QLnf06zSJNGqHAJHHvWedg2Hpj+E2hinKRkPEqeaqf/ltkwOBOpF1Lcuzg==}
+  '@walletconnect/core@2.26.0':
+    resolution: {integrity: sha512-lvnqCLEp5Z3DqUFih/FPKbgJHauby5XNAe1clwIf2jYhACFWusRCgUoCK8ULyIopW9FIAqF87ldw/V0Z9v5GAQ==}
     engines: {node: '>=18.20.8'}
 
   '@walletconnect/environment@1.0.1':
@@ -530,8 +530,8 @@ packages:
   '@walletconnect/safe-json@1.0.2':
     resolution: {integrity: sha512-Ogb7I27kZ3LPC3ibn8ldyUr5544t3/STow9+lzz7Sfo808YD7SBWk7SAsdBFlYgP2zDRy2hS3sKRcuSRM0OTmA==}
 
-  '@walletconnect/sign-client@2.25.0':
-    resolution: {integrity: sha512-oOnOZpaoMTjzPlj+PY530zBc0wLKMH1qkFStu+UbfZ162iPQcikE29QXb0bCKiKgqiRZUWacBmsQBdLpYFVhOg==}
+  '@walletconnect/sign-client@2.26.0':
+    resolution: {integrity: sha512-zu15NhOmGp1o0LsV9t6V1w+DFYx0UdljNLspqXu2L0GDJlU0Nv5Z70gadrbQGHn8tN70aQrrbOxfMCB48GTe8Q==}
 
   '@walletconnect/time@1.0.2':
     resolution: {integrity: sha512-uzdd9woDcJ1AaBZRhqy5rNC9laqWGErfc4dxA9a87mPdKOgWMD85mcFo9dIYIts/Jwocfwn07EC6EzclKubk/g==}
@@ -539,8 +539,11 @@ packages:
   '@walletconnect/types@2.25.0':
     resolution: {integrity: sha512-FByWQZ40GiFF4CDlz9jU5AN/Bzafwfj+hxnciukzUNUBhMxWTipCvjO5kcLuxVIqFaXkWut349K4Sofz5aG8uQ==}
 
-  '@walletconnect/utils@2.25.0':
-    resolution: {integrity: sha512-vNjBaO18BTS97F/SIJt6k/d3l0ngk5hGPEnouRNYbeE/KeG8xzQNZB07iAujhFWS2NNlPQ8/jqYz8PVpeFS2fw==}
+  '@walletconnect/types@2.26.0':
+    resolution: {integrity: sha512-XmM6ZFeIvL0oJ+cK8xq8FKk6G9qVXGhXIsWl0lyTZ921Tjvn5eYOd3qIZW34E+8V2alP6uv8c7Fy5GWgz/j7aw==}
+
+  '@walletconnect/utils@2.26.0':
+    resolution: {integrity: sha512-zCpuG8vVvL+vHiX2wE+pChr123prvlQE37lJoHNcRiD2+3RxXFPoHnjJ/zAhN+ivdjK743FHsrP2DRXXqno1fg==}
 
   '@walletconnect/window-getters@1.0.1':
     resolution: {integrity: sha512-vHp+HqzGxORPAN8gY03qnbTMnhqIwjeRJNOMOAzePRg4xVEEE2WvYsI9G2NMjOknA8hnuYbU3/hwLcKbjhc8+Q==}
@@ -889,8 +892,8 @@ packages:
     resolution: {integrity: sha512-RRuzqDtt5Y9h3quz5hWhK+TPnsmVs6WwSU6LkJMeY4HstUEDuYTG8UJSdawMRzmzAtV+KEoG8N3Qg2qLy5vM/A==}
     engines: {node: ^10 || ^12 || >=14}
 
-  process-warning@5.1.0:
-    resolution: {integrity: sha512-jQSaVHsPgtyw60e1rQ/A+/ArPEj/S8pS/vFnyGa/gYFXrKk/6RuDkoqVDQ5NI5MmS01698ltlAk0NoDBNLujRw==}
+  process-warning@5.1.1:
+    resolution: {integrity: sha512-oCkNVj4OKnKEcocVBcDfiIugN1/cE6rgfT3nCtzeqZPA8+rIxMaQ0xXzIkGP8Gj2qUaP1UR7uhJ1VD8lUCpzCg==}
 
   prop-types@15.8.1:
     resolution: {integrity: sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==}
@@ -917,8 +920,8 @@ packages:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
 
-  react-grid-layout@2.2.4:
-    resolution: {integrity: sha512-Eb57FsgOMYOfsUGrMI1ku/FFR+dPNPrE8qo+3hwZubpqVSy4GO9v52DeX50Tl3JDYAlCypP4rmw7Vrqk/zOIvA==}
+  react-grid-layout@2.3.0:
+    resolution: {integrity: sha512-4ofzuR/MlYchp+ixDUVBxH6ybaw+JH51M+rpf675ik/++4Dn0Kax/Vf2Gv/7Z++mV1ZC7mY9UV2sRRycjGjKXQ==}
     peerDependencies:
       react: '>= 16.3.0'
       react-dom: '>= 16.3.0'
@@ -1355,7 +1358,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
-  '@tauri-apps/api@2.12.1': {}
+  '@tauri-apps/api@2.12.3': {}
 
   '@tauri-apps/cli-darwin-arm64@2.12.1':
     optional: true
@@ -1447,7 +1450,7 @@ snapshots:
 
   '@vitest/spy@5.0.1': {}
 
-  '@walletconnect/core@2.25.0(typescript@6.0.3)':
+  '@walletconnect/core@2.26.0(typescript@6.0.3)':
     dependencies:
       '@walletconnect/heartbeat': 1.2.2
       '@walletconnect/jsonrpc-provider': 1.0.14
@@ -1460,8 +1463,8 @@ snapshots:
       '@walletconnect/relay-auth': 1.1.0
       '@walletconnect/safe-json': 1.0.2
       '@walletconnect/time': 1.0.2
-      '@walletconnect/types': 2.25.0
-      '@walletconnect/utils': 2.25.0(typescript@6.0.3)
+      '@walletconnect/types': 2.26.0
+      '@walletconnect/utils': 2.26.0(typescript@6.0.3)
       '@walletconnect/window-getters': 1.0.1
       es-toolkit: 1.45.1
       events: 3.3.0
@@ -1579,14 +1582,14 @@ snapshots:
     dependencies:
       tslib: 1.14.1
 
-  '@walletconnect/sign-client@2.25.0(typescript@6.0.3)':
+  '@walletconnect/sign-client@2.26.0(typescript@6.0.3)':
     dependencies:
-      '@walletconnect/core': 2.25.0(typescript@6.0.3)
+      '@walletconnect/core': 2.26.0(typescript@6.0.3)
       '@walletconnect/jsonrpc-utils': 1.0.8
       '@walletconnect/logger': 3.0.2
       '@walletconnect/time': 1.0.2
-      '@walletconnect/types': 2.25.0
-      '@walletconnect/utils': 2.25.0(typescript@6.0.3)
+      '@walletconnect/types': 2.26.0
+      '@walletconnect/utils': 2.26.0(typescript@6.0.3)
       events: 3.3.0
     transitivePeerDependencies:
       - '@azure/app-configuration'
@@ -1646,7 +1649,36 @@ snapshots:
       - ioredis
       - uploadthing
 
-  '@walletconnect/utils@2.25.0(typescript@6.0.3)':
+  '@walletconnect/types@2.26.0':
+    dependencies:
+      '@walletconnect/events': 1.0.1
+      '@walletconnect/heartbeat': 1.2.2
+      '@walletconnect/jsonrpc-types': 1.0.4
+      '@walletconnect/keyvaluestorage': 1.1.1
+      '@walletconnect/logger': 3.0.2
+      events: 3.3.0
+    transitivePeerDependencies:
+      - '@azure/app-configuration'
+      - '@azure/cosmos'
+      - '@azure/data-tables'
+      - '@azure/identity'
+      - '@azure/keyvault-secrets'
+      - '@azure/storage-blob'
+      - '@capacitor/preferences'
+      - '@deno/kv'
+      - '@netlify/blobs'
+      - '@planetscale/database'
+      - '@react-native-async-storage/async-storage'
+      - '@upstash/redis'
+      - '@vercel/blob'
+      - '@vercel/functions'
+      - '@vercel/kv'
+      - aws4fetch
+      - db0
+      - ioredis
+      - uploadthing
+
+  '@walletconnect/utils@2.26.0(typescript@6.0.3)':
     dependencies:
       '@msgpack/msgpack': 3.1.3
       '@noble/ciphers': 1.3.0
@@ -1659,7 +1691,7 @@ snapshots:
       '@walletconnect/relay-api': 1.0.11
       '@walletconnect/relay-auth': 1.1.0
       '@walletconnect/time': 1.0.2
-      '@walletconnect/types': 2.25.0
+      '@walletconnect/types': 2.26.0
       '@walletconnect/window-getters': 1.0.1
       '@walletconnect/window-metadata': 1.0.1
       blakejs: 1.2.1
@@ -1955,7 +1987,7 @@ snapshots:
       on-exit-leak-free: 2.1.2
       pino-abstract-transport: 2.0.0
       pino-std-serializers: 7.1.0
-      process-warning: 5.1.0
+      process-warning: 5.1.1
       quick-format-unescaped: 4.0.4
       real-require: 0.2.0
       safe-stable-stringify: 2.5.0
@@ -1971,7 +2003,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  process-warning@5.1.0: {}
+  process-warning@5.1.1: {}
 
   prop-types@15.8.1:
     dependencies:
@@ -2001,7 +2033,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
 
-  react-grid-layout@2.2.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
+  react-grid-layout@2.3.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
     dependencies:
       clsx: 2.1.1
       fast-equals: 4.0.3
