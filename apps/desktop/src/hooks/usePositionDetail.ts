@@ -1,4 +1,4 @@
-import type { Candle, FundingPayment, Position, VenueId } from "@pewterdesk/core";
+import type { Candle, Fill, FundingPayment, Position, VenueId } from "@pewterdesk/core";
 import {
   INTERVAL_MS,
   intervalFor,
@@ -27,20 +27,28 @@ export interface PositionDetail {
  * What the position drawer shows beyond the position itself: the fills that
  * built it, the funding it has paid since, and its PnL over that time
  * (from candles fetched once per open; the last point follows the position).
- * Loads only while `position` is set.
+ * Loads only while `position` is set. A paper position brings its own fills
+ * and funding (`paper`), and the venue's account isn't read for them.
  */
 export function usePositionDetail(
   venue: VenueId,
   address: string | undefined,
   position: Position | undefined,
+  paper?: { fills: Fill[]; funding: FundingPayment[] },
 ): PositionDetail {
   const open = position !== undefined;
-  const fillsFeed = useAccountFills(venue, address, open);
-  const fundingFeed = useAccountFunding(venue, address, open);
-  const allFills =
-    fillsFeed.status === "live" || fillsFeed.status === "closed" ? fillsFeed.data : undefined;
-  const allFunding =
-    fundingFeed.status === "live" || fundingFeed.status === "closed" ? fundingFeed.data : undefined;
+  const fillsFeed = useAccountFills(venue, paper ? undefined : address, open);
+  const fundingFeed = useAccountFunding(venue, paper ? undefined : address, open);
+  const allFills = paper
+    ? paper.fills
+    : fillsFeed.status === "live" || fillsFeed.status === "closed"
+      ? fillsFeed.data
+      : undefined;
+  const allFunding = paper
+    ? paper.funding
+    : fundingFeed.status === "live" || fundingFeed.status === "closed"
+      ? fundingFeed.data
+      : undefined;
 
   const fills = useMemo(
     () => (allFills && position ? positionFills(allFills, position) : undefined),

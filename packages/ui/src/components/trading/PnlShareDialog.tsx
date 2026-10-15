@@ -76,6 +76,7 @@ const SITE: Record<ShareTarget, { name: string; icon: ReactNode }> = {
 export function PnlShareDialog({
   card,
   demo,
+  demoText,
   onSave,
   onShare,
   onClose,
@@ -84,6 +85,8 @@ export function PnlShareDialog({
   card: Omit<ShareCard, "demoLabel">;
   /** A demo account's trade: the card says "Demo" unless turned off. */
   demo: boolean;
+  /** What the badge says instead of "Demo" (a paper account's "Paper"). */
+  demoText?: string;
   /** Saves the PNG; resolves to where it went. */
   onSave: (png: Blob) => Promise<string>;
   /** Opens a site's post page with the caption; without it, no share buttons. */
@@ -123,7 +126,10 @@ export function PnlShareDialog({
   }, [card.brandLogo, card.venueLogo]);
 
   const current = slides[Math.min(slide, slides.length - 1)] ?? "pnl";
-  const shown = { ...card, demoLabel: demo && showDemo ? t("share.demo") : undefined };
+  const shown = {
+    ...card,
+    demoLabel: demo && showDemo ? (demoText ?? t("share.demo")) : undefined,
+  };
   const size = SHARE_SIZE[layout];
   // Drawn at exactly the screen's density for the size it shows at, so the
   // browser never resamples it (which is what blurs canvas text).
@@ -132,7 +138,7 @@ export function PnlShareDialog({
     if (!canvasRef.current || !images) return;
     const density = (window.devicePixelRatio || 1) * PREVIEW[layout];
     drawShareCard(canvasRef.current, shown, images, current, layout, density);
-  }, [card, demo, showDemo, images, current, layout]);
+  }, [card, demo, demoText, showDemo, images, current, layout]);
 
   // The saved image is its own, sharper render.
   const png = () =>

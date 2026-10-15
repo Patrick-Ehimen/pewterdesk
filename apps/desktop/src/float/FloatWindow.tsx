@@ -55,6 +55,7 @@ import {
 import { peekSavedIcon } from "../lib/iconCache";
 import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "../lib/liveTrading";
 import { loadIcon } from "../lib/loadIcon";
+import { isPaperMode, subscribePaper } from "../lib/paperStore";
 import { loadMarket } from "../lib/selectedMarket";
 import { playSound, type SoundKind } from "../lib/sound";
 import { loadVenue, VENUES } from "../lib/venues";
@@ -151,7 +152,10 @@ function FloatWidget() {
   useEffect(() => {
     void refreshLiveTrading();
   }, []);
-  const trading = canTrade(active, liveUids) ? active : undefined;
+  // Paper mode is the main window's: this window places orders on the venue
+  // itself, so while the venue is paper trading it places none at all.
+  const paper = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
+  const trading = !paper && canTrade(active, liveUids) ? active : undefined;
   const account = useAccount(venue, active?.id);
   const snapshot =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
@@ -259,6 +263,7 @@ function FloatWidget() {
     try {
       for (const request of requests) {
         last = orderText(request, marketOf(request.market)?.base ?? "");
+        if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
         await venueClient.placeOrder(trading.venue, trading.id, request);
       }
       setResult({ ok: true, title, body: requests.length === 1 ? last : undefined });
@@ -332,6 +337,7 @@ function FloatWidget() {
     setBusy(true);
     try {
       for (const o of orders) {
+        if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
         await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id);
       }
       setResult({
@@ -456,7 +462,13 @@ function FloatWidget() {
     return v === undefined ? "-" : formatNumber(v, s ? decimalsOf(s.markPrice) : 2);
   };
   const upnl = positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
-  const why = !active ? t("float.connect") : !trading ? t("ticket.liveOff") : undefined;
+  const why = paper
+    ? t("paper.floatOff")
+    : !active
+      ? t("float.connect")
+      : !trading
+        ? t("ticket.liveOff")
+        : undefined;
   const sizeLabel =
     Number(size) > 0
       ? `${formatNumber(Number(size), decimalsOf(market?.sizeStep ?? "0"))} ${base}`

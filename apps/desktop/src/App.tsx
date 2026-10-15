@@ -2,6 +2,8 @@ import { logo, venueLogos } from "@pewterdesk/assets";
 import type {
   AccountSnapshot,
   ClosedTrade,
+  Fill,
+  FundingPayment,
   MarginMode,
   Market,
   Order,
@@ -92,6 +94,9 @@ import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
+import { PaperBanner } from "./components/paper/PaperBanner";
+import { type PaperDialogMode, PaperFundsDialog } from "./components/paper/PaperFundsDialog";
+import { PaperSwitch } from "./components/paper/PaperSwitch";
 import {
   pageLabel,
   pageOptions,
@@ -113,6 +118,7 @@ import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
+import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
@@ -173,6 +179,8 @@ import { loadOrderConfirm, type OrderConfirmPrefs, saveOrderConfirm } from "./li
 import { startHistory, stepped, stepTo, visited } from "./lib/pageHistory";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
+import type { PaperState } from "./lib/paper";
+import { isPaperMode, subscribePaper } from "./lib/paperStore";
 import { HISTORY_MS } from "./lib/performance";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
 import {
@@ -250,9 +258,12 @@ function ActivityPanel({
   onAmend,
   onShare,
   onSelectPosition,
+  paper,
 }: {
   venue: VenueId;
   account: Feed<AccountSnapshot>;
+  /** In paper mode, the paper account: its history replaces the venue's. */
+  paper?: PaperState;
   address: string | undefined;
   symbolFor: SymbolFor;
   /** Cancels an open order; unset where the account can't trade. */
@@ -274,10 +285,18 @@ function ActivityPanel({
 }) {
   const [tab, setTab] = useState<ActivityTab>("positions");
   const snapshot = account.status === "live" || account.status === "closed" ? account.data : null;
-  const fills = useAccountFills(venue, address, tab === "fills");
-  const funding = useAccountFunding(venue, address, tab === "funding");
-  const orderHistory = useOrderHistory(venue, address, tab === "orderHistory");
-  const closed = useClosedTrades(venue, address, tab === "closedPnl");
+  // Paper mode reads the paper account's own history, and never the venue's.
+  const from = paper ? undefined : address;
+  const venueFills = useAccountFills(venue, from, tab === "fills");
+  const venueFunding = useAccountFunding(venue, from, tab === "funding");
+  const venueOrders = useOrderHistory(venue, from, tab === "orderHistory");
+  const venueClosed = useClosedTrades(venue, from, tab === "closedPnl");
+  const fills: Feed<Fill[]> = paper ? { status: "live", data: paper.fills } : venueFills;
+  const funding: Feed<FundingPayment[]> = paper
+    ? { status: "live", data: paper.funding }
+    : venueFunding;
+  const orderHistory: Feed<Order[]> = paper ? { status: "live", data: paper.history } : venueOrders;
+  const closed: Feed<ClosedTrade[]> = paper ? { status: "live", data: paper.closed } : venueClosed;
   const loading = <TableSkeleton columns={6} />;
   return (
     <>
@@ -516,23 +535,44 @@ export function App() {
   useEffect(() => {
     void refreshLiveTrading();
   }, []);
-  const trading = canTrade(activeOnVenue, liveUids) ? activeOnVenue : undefined;
+  // Paper trading (Hyperliquid and Aster, which have no demo): the Trade
+  // page trades a simulated account on live prices, and nothing goes to the
+  // venue. Every order path below picks the paper account or the live one
+  // here, once; a live call checks again that the venue hasn't been switched
+  // to paper since.
+  const paperOn = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
+  // The paper account's funds dialog, or its reset confirmation.
+  const [paperDialog, setPaperDialog] = useState<PaperDialogMode>();
+  const live = paperOn ? undefined : canTrade(activeOnVenue, liveUids) ? activeOnVenue : undefined;
+  /** Throws if the venue went to paper after this render: a live call never goes out then. */
+  const stillLive = (v: VenueId) => {
+    if (isPaperMode(v)) throw new Error(t("paper.switched"));
+  };
+  const trading = live;
   /** A live account that's trading: real funds, which the ticket says. */
   const tradingLive = trading !== undefined && !isDemoAccount(trading);
-  const placeOrder = trading
+  /** Where orders go: the paper account, a live (or demo) one, or nowhere. */
+  const route = paperOn ? "paper" : trading ? "live" : undefined;
+  /** "Paper · " in front of what a paper order's notifications say. */
+  const paperTag = (text: string) => (route === "paper" ? `${t("paper.badge")} · ${text}` : text);
+  const placeOrder = route
     ? async (request: OrderRequest) => {
         // Every way of placing one (ticket, quick trade, the drawer) says how
         // it went here, once.
-        const text = orderText(request, baseFor(request.market));
+        const text = paperTag(orderText(request, baseFor(request.market)));
         try {
-          await venueClient.placeOrder(trading.venue, trading.id, request);
-          tradingRules.refresh();
+          if (route === "paper") await paper.place(request);
+          else if (trading) {
+            stillLive(trading.venue);
+            await venueClient.placeOrder(trading.venue, trading.id, request);
+            tradingRules.refresh();
+          }
           notifyEvent({
             type: "order",
             title: t("toast.orderPlaced"),
             body: text,
             sound: "order",
-            venue: trading.venue,
+            venue,
             market: request.market,
           });
         } catch (err) {
@@ -543,22 +583,26 @@ export function App() {
             body: `${text} · ${why}`,
             tone: "warn",
             sound: "error",
-            venue: trading.venue,
+            venue,
             market: request.market,
           });
           throw err;
         }
       }
     : undefined;
-  const cancelOrder = trading
+  const cancelOrder = route
     ? async (order: Order) => {
-        await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+        if (route === "paper") await paper.cancel(order);
+        else if (trading) {
+          stillLive(trading.venue);
+          await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+        }
         notifyEvent({
           type: "order",
           title: t("toast.orderCancelled"),
-          body: orderLine(order),
+          body: paperTag(orderLine(order)),
           sound: "cancel",
-          venue: trading.venue,
+          venue,
           market: order.market,
         });
       }
@@ -637,28 +681,36 @@ export function App() {
       });
     }
   };
-  const amend = trading
+  const amend = route
     ? async (order: Order, change: OrderAmend) => {
-        await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+        if (route === "paper") await paper.amend(order, change);
+        else if (trading) {
+          stillLive(trading.venue);
+          await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+        }
         notifyEvent({
           type: "order",
           title: t("toast.orderChanged"),
-          body: symbolFor(order.market),
+          body: paperTag(symbolFor(order.market)),
           sound: "saved",
-          venue: trading.venue,
+          venue,
           market: order.market,
         });
       }
     : undefined;
-  const protect = trading
+  const protect = route
     ? async (position: Position, protection: PositionProtection) => {
-        await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+        if (route === "paper") await paper.protect(position, protection);
+        else if (trading) {
+          stillLive(trading.venue);
+          await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+        }
         notifyEvent({
           type: "order",
           title: t("toast.protectionSaved"),
-          body: symbolFor(position.market),
+          body: paperTag(symbolFor(position.market)),
           sound: "saved",
-          venue: trading.venue,
+          venue,
           market: position.market,
         });
       }
@@ -861,13 +913,25 @@ export function App() {
       ? (side: "buy" | "sell") => marketOrder(selected, side, Number(quickQty) || 0)
       : undefined;
   // Why orders can't be placed here, where there's a better reason than "not yet".
-  const tradeUnavailable = activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
+  const tradeUnavailable = !paperOn && activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
   // Computed once: a fresh object each render would keep resetting the bar.
   const [quickDefault] = useState(defaultQuickTradePosition);
   const bookData = book.status === "live" || book.status === "closed" ? book.data : undefined;
   const bestBid = bookData?.bids[0]?.price;
   const bestAsk = bookData?.asks[0]?.price;
   const stats = useMarketStats(venue, selected?.id);
+  const barSummaries = useMarketSummaries(venue, true);
+  const paper = usePaper({
+    venue,
+    markets: marketList,
+    summaries:
+      barSummaries.status === "live" || barSummaries.status === "closed"
+        ? barSummaries.data
+        : undefined,
+    selected,
+    bid: bestBid,
+    ask: bestAsk,
+  });
   const statsData = stats.status === "live" || stats.status === "closed" ? stats.data : undefined;
   // The bottom bar's status, from what's actually arriving: offline when the
   // network or a feed goes, connecting while the venue has gone quiet.
@@ -876,9 +940,21 @@ export function App() {
     stats.status === "live" ? stats.data : undefined,
     markets.status === "error" || book.status === "error" || book.status === "closed",
   );
-  const account = useAccount(venue, address);
+  // In paper mode the venue's own account isn't read at all: the panels show the paper one.
+  const venueAccount = useAccount(venue, paperOn ? undefined : address);
+  const account = paperOn ? paper.account : venueAccount;
   // The Portfolio page's history: read only while that page is open.
-  const closedHistory = useClosedHistory(venue, address, HISTORY_MS, page === "portfolio");
+  const venueClosed = useClosedHistory(
+    venue,
+    paperOn ? undefined : address,
+    HISTORY_MS,
+    page === "portfolio",
+  );
+  const closedHistory: Feed<ClosedTrade[]> = paperOn
+    ? { status: "live", data: paper.state.closed }
+    : venueClosed;
+  /** Whose account is on screen: the paper one, or the venue account's. */
+  const accountKey = paperOn ? `paper:${venue}` : address && `${venue}:${address}`;
   // The position open in the drawer, followed live in the account; it goes
   // when the position does (closed), or with a switch of venue or account.
   const [drawerFor, setDrawerFor] = useState<{ market: string; side: Position["side"] }>();
@@ -888,8 +964,25 @@ export function App() {
           (p) => p.market === drawerFor.market && p.side === drawerFor.side,
         )
       : undefined;
-  const drawerDetail = usePositionDetail(venue, address, drawerPosition);
-  const tradeSettings = useTradeSettings(venue, address, selected?.id, trading);
+  const drawerDetail = usePositionDetail(
+    venue,
+    paperOn ? undefined : address,
+    drawerPosition,
+    paperOn ? paper.state : undefined,
+  );
+  const venueSettings = useTradeSettings(
+    venue,
+    paperOn ? undefined : address,
+    selected?.id,
+    trading,
+  );
+  const tradeSettings = paperOn
+    ? {
+        settings: paper.settings,
+        setLeverage: paper.setLeverage,
+        setMarginMode: paper.setMarginMode,
+      }
+    : venueSettings;
   const { setLeverage: applyLeverage, setMarginMode: applyMarginMode } = tradeSettings;
   const changeLeverage =
     applyLeverage &&
@@ -925,8 +1018,8 @@ export function App() {
   const noteSettings = useSyncExternalStore(subscribeNotes, currentNoteSettings);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs per snapshot; the lookups it reads are stable enough
   useEffect(() => {
-    if (!liveAccount || !address) return;
-    const key = `${venue}:${address}`;
+    if (!liveAccount || !accountKey) return;
+    const key = accountKey;
     const prev = lastSnapshot.current;
     lastSnapshot.current = { key, data: liveAccount };
     if (!prev || prev.key !== key) return;
@@ -1067,7 +1160,7 @@ export function App() {
   const unrealized = accountData?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
   // The floating card's PnL: all time (realised over the account's life plus
   // what's open), from its last reset, sampled for its line.
-  const pnlAccount = address ? `${venue}:${address}` : undefined;
+  const pnlAccount = accountKey || undefined;
   // Tagged with its account, so a sample can't land in the previous one's history.
   const [pnlStore, setPnlStore] = useState<{ account?: string; history: PnlHistory }>({
     history: EMPTY_HISTORY,
@@ -1103,7 +1196,6 @@ export function App() {
   };
   const pnlTrend =
     unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
-  const barSummaries = useMarketSummaries(venue, true);
   // Read only while the News page is open.
   // Bybit's, whichever venue is on screen: no other venue publishes any the app can read.
   const announcements = useAnnouncements("bybit", page === "news");
@@ -1119,7 +1211,8 @@ export function App() {
   useTraySync({
     market: selected,
     stats: stats.status === "live" || stats.status === "closed" ? stats.data : undefined,
-    account: accountData,
+    // The menu bar shows real money only: never a paper account's P&L.
+    account: paperOn ? undefined : accountData,
   });
 
   const maxLeverageFor = useCallback(
@@ -1294,6 +1387,7 @@ export function App() {
             onProtect={protect}
             onAmend={amend}
             onShare={openShare}
+            paper={paperOn ? paper.state : undefined}
             onSelectPosition={(p) => {
               showMarket(venue, p.market);
               setChartRequest((n) => n + 1);
@@ -1332,24 +1426,29 @@ export function App() {
               book={bookData}
               account={accountData}
               accountNotice={
-                address === undefined
-                  ? undefined
-                  : account.status === "error"
-                    ? // The venue's reason, without "Invalid request:" in front.
-                      account.message.replace(/^[^:]{1,24}: /, "")
-                    : t("feed.loading")
+                paperOn
+                  ? // Paper needs no wallet: until prices arrive it waits, never "Connect".
+                    t("paper.waiting")
+                  : address === undefined
+                    ? undefined
+                    : account.status === "error"
+                      ? // The venue's reason, without "Invalid request:" in front.
+                        account.message.replace(/^[^:]{1,24}: /, "")
+                      : t("feed.loading")
               }
               fees={selected?.listedBy ? undefined : venueInfo.fees}
               maxSlippage={venueInfo.maxSlippage}
               onConnect={() => openConnect()}
               onSubmit={placeOrder}
-              unavailableReason={activeOnVenue && !trading ? t("ticket.liveOff") : undefined}
+              unavailableReason={tradeUnavailable}
               accountBadge={
-                tradingLive
-                  ? t("apiKey.live")
-                  : activeOnVenue && isDemoAccount(activeOnVenue)
-                    ? t("accounts.demo")
-                    : undefined
+                paperOn
+                  ? t("paper.badge")
+                  : tradingLive
+                    ? t("apiKey.live")
+                    : activeOnVenue && isDemoAccount(activeOnVenue)
+                      ? t("accounts.demo")
+                      : undefined
               }
               accountBadgeTone={tradingLive ? "live" : undefined}
               settings={tradeSettings.settings}
@@ -1462,6 +1561,9 @@ export function App() {
             onChange={(id) => showMarket(id)}
             onSeeAll={() => goTo("venues")}
           />
+          {paper.available && (
+            <PaperSwitch on={paperOn} venue={venueInfo.label} onChange={paper.setOn} />
+          )}
           <div className="app-spacer" />
           {/* The market on screen, beside its watchlist star; opens the market picker. */}
           {selected && (
@@ -1571,7 +1673,7 @@ export function App() {
             closed={closedHistory}
             onShare={(c) => openShare({ closed: c })}
             markets={marketList}
-            venue={venueInfo.label}
+            venue={paperOn ? `${venueInfo.label} · ${t("paper.badge")}` : venueInfo.label}
             connectAuth={venueInfo.auth}
             onConnect={() => openConnect()}
           />
@@ -1726,6 +1828,17 @@ export function App() {
             )}
 
             <ConnectionBanner venue={venueInfo.label} connection={connection} />
+            {paperOn && (
+              <PaperBanner
+                venue={venueInfo.label}
+                quote={selected?.quote ?? "USD"}
+                snapshot={accountData}
+                start={paper.state.start}
+                onFunds={() => setPaperDialog("funds")}
+                onReset={() => setPaperDialog("reset")}
+                onLive={() => paper.setOn(false)}
+              />
+            )}
             <RulesBanner
               rules={tradingRules.view?.rules}
               status={tradingRules.status}
@@ -1935,7 +2048,8 @@ export function App() {
         {shareCard && (
           <PnlShareDialog
             card={shareCard}
-            demo={activeOnVenue !== undefined && isDemoAccount(activeOnVenue)}
+            demo={paperOn || (activeOnVenue !== undefined && isDemoAccount(activeOnVenue))}
+            demoText={paperOn ? t("paper.badge") : undefined}
             onSave={appClient.saveShareImage}
             onShare={appClient.openShare}
             onClose={() => setShareCard(undefined)}
@@ -1943,6 +2057,33 @@ export function App() {
         )}
 
         <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        <PaperFundsDialog
+          mode={paperOn ? paperDialog : undefined}
+          venue={venueInfo.label}
+          quote={selected?.quote ?? "USD"}
+          withdrawable={paper.withdrawable}
+          onAdjust={(amount) => {
+            paper.adjust(amount);
+            notifyEvent({
+              type: "order",
+              title: t(amount > 0 ? "paper.added" : "paper.reduced"),
+              body: `${t("paper.badge")} · ${formatNumber(Math.abs(amount), 2)} ${selected?.quote ?? ""}`.trim(),
+              sound: "saved",
+              venue,
+            });
+          }}
+          onReset={() => {
+            paper.reset();
+            notifyEvent({
+              type: "order",
+              title: t("paper.resetDone"),
+              body: t("paper.badge"),
+              sound: "saved",
+              venue,
+            });
+          }}
+          onClose={() => setPaperDialog(undefined)}
+        />
         <CommandMenu
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
