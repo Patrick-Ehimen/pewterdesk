@@ -23,6 +23,7 @@
 mod account;
 pub mod agent;
 pub mod constants;
+mod history;
 mod icons;
 mod orders;
 mod tape;
@@ -35,10 +36,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, Decimal, ExchangeAdapter, FundingRate,
-    KeySource, Market, MarketHistory, MarketStats, MarketSummary, Order, OrderBook, OrderCategory,
-    OrderKind, OrderRequest, OrderStatus, OrderType, PriceSource, Trade, TradingAccount,
-    VenueError, VenueId,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal, ExchangeAdapter,
+    ExitChange, Fill, FundingPayment, FundingRate, KeySource, MarginMode, Market, MarketHistory,
+    MarketStats, MarketSummary, Order, OrderAmend, OrderBook, OrderCategory, OrderKind,
+    OrderRequest, OrderStatus, OrderType, PositionProtection, PriceSource, Side, Trade,
+    TradeSettings, TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -84,6 +86,15 @@ const LOGO_LIST_PATH: &str = "/bapi/futures/v1/public/future/asset/ae/all-asset-
 
 /// A snapshot of the account is read this often while it's on screen.
 const ACCOUNT_EVERY: Duration = Duration::from_secs(5);
+/// Aster serves an account's trades a week at a time at most.
+const WEEK_MS: u64 = 7 * 24 * 3_600_000;
+/// How far back a closed-trade history reaches at most: 30 days, a week at
+/// a time, so one call makes a bounded number of requests.
+const HISTORY_WEEKS: u64 = 5;
+/// Markets read for fills at once at most, the most recently traded first.
+const TRADED_MARKETS: usize = 20;
+/// Rows Aster returns per history request at most.
+const HISTORY_PAGE: &str = "1000";
 
 /// A nonce for a signed request: the time in microseconds, as Aster wants,
 /// and never one already handed out (two requests can share a microsecond).
@@ -103,6 +114,9 @@ fn next_nonce() -> u64 {
     }
 }
 
+/// What a refusal says when the margin type asked for is already set.
+const SAME_MARGIN_TYPE: &str = "the margin mode is already that";
+
 /// Aster's own words for a refusal, except the ones worth saying plainly.
 fn refusal(body: &str) -> VenueError {
     match serde_json::from_str::<wire::ApiError>(body) {
@@ -110,6 +124,8 @@ fn refusal(body: &str) -> VenueError {
         Ok(e) if e.code == -5050 => VenueError::InvalidRequest(
             "this account hasn't deposited on Aster yet; deposit first, then its balances and positions show".into(),
         ),
+        // Asked for the margin type the market already has: nothing to do.
+        Ok(e) if e.code == -4046 => VenueError::InvalidRequest(SAME_MARGIN_TYPE.into()),
         Ok(e) if e.msg == "No agent found" => VenueError::InvalidRequest(
             "this API wallet is no longer approved on Aster; connect the wallet again".into(),
         ),
@@ -232,6 +248,62 @@ impl Rest {
             orders,
             now_ms(),
         ))
+    }
+
+    /// The markets the account traded between `from` and `to`, from its fee
+    /// records, most recently traded first.
+    async fn traded_markets(
+        &self,
+        key: &str,
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<String>, VenueError> {
+        let incomes: Vec<history::WireIncome> = self
+            .signed_get(
+                "/fapi/v3/income",
+                &[
+                    ("incomeType", "COMMISSION".to_owned()),
+                    ("startTime", from.to_string()),
+                    ("endTime", to.to_string()),
+                    ("limit", HISTORY_PAGE.to_owned()),
+                ],
+                key,
+            )
+            .await?;
+        Ok(history::traded_markets(&incomes, TRADED_MARKETS))
+    }
+
+    /// The account's trades on `markets` between `from` and `to`, a week at
+    /// a time (Aster's widest window), up to a page per market and week.
+    async fn trades(
+        &self,
+        key: &str,
+        markets: &[String],
+        from: u64,
+        to: u64,
+    ) -> Result<Vec<history::WireTrade>, VenueError> {
+        let mut trades = Vec::new();
+        let mut start = from;
+        while start < to {
+            let end = (start + WEEK_MS - 1).min(to);
+            for market in markets {
+                let page: Vec<history::WireTrade> = self
+                    .signed_get(
+                        "/fapi/v3/userTrades",
+                        &[
+                            ("symbol", market.clone()),
+                            ("startTime", start.to_string()),
+                            ("endTime", end.to_string()),
+                            ("limit", HISTORY_PAGE.to_owned()),
+                        ],
+                        key,
+                    )
+                    .await?;
+                trades.extend(page);
+            }
+            start = end + 1;
+        }
+        Ok(trades)
     }
 
     async fn exchange_info(&self) -> Result<wire::ExchangeInfo, VenueError> {
@@ -443,6 +515,29 @@ impl AsterAdapter {
         key: &str,
     ) -> Result<Vec<agent::ApprovedAgent>, VenueError> {
         self.rest.signed_get("/fapi/v3/agent", &[], key).await
+    }
+
+    /// `market`'s grid as the venue has it now.
+    async fn steps(&self, market: &str) -> Result<orders::Steps, VenueError> {
+        let info = self.rest.exchange_info().await?;
+        let (tick, step, min_size) = wire::steps(&info, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Aster market"))
+        })?;
+        Ok(orders::Steps {
+            tick,
+            step,
+            min_size,
+        })
+    }
+
+    /// The API wallet's key for `address`, which Aster wants on every
+    /// account read; held only for the reads of one call.
+    async fn read_key(&self, address: &str) -> Result<zeroize::Zeroizing<String>, VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported(NO_ACCOUNT_DATA))?;
+        Ok(keys.key(&agent::key_account(address)?).await?)
     }
 
     async fn meta(&self) -> Result<Arc<wire::Meta>, VenueError> {
@@ -1009,6 +1104,104 @@ impl ExchangeAdapter for AsterAdapter {
         Ok(rx)
     }
 
+    async fn fills(&self, address: &str) -> Result<Vec<Fill>, VenueError> {
+        let key = self.read_key(address).await?;
+        let to = now_ms();
+        let from = to.saturating_sub(WEEK_MS);
+        let markets = self.rest.traded_markets(&key, from, to).await?;
+        let mut trades = self.rest.trades(&key, &markets, from, to).await?;
+        trades.sort_by_key(|t| std::cmp::Reverse((t.time, t.id)));
+        Ok(trades.into_iter().filter_map(history::fill).collect())
+    }
+
+    async fn closed_trades(&self, address: &str) -> Result<Vec<ClosedTrade>, VenueError> {
+        self.closed_trades_since(address, now_ms().saturating_sub(WEEK_MS))
+            .await
+    }
+
+    async fn closed_trades_since(
+        &self,
+        address: &str,
+        start_time: u64,
+    ) -> Result<Vec<ClosedTrade>, VenueError> {
+        let key = self.read_key(address).await?;
+        let to = now_ms();
+        let from = start_time.max(to.saturating_sub(HISTORY_WEEKS * WEEK_MS));
+        let markets = self.rest.traded_markets(&key, from, to).await?;
+        let trades = self.rest.trades(&key, &markets, from, to).await?;
+        Ok(history::closed_trades(trades))
+    }
+
+    async fn order_history(&self, address: &str) -> Result<Vec<Order>, VenueError> {
+        let key = self.read_key(address).await?;
+        let rows: Vec<history::WireHistoricalOrder> = self
+            .rest
+            .signed_get(
+                "/fapi/v3/allOrders",
+                &[("limit", HISTORY_PAGE.to_owned())],
+                &key,
+            )
+            .await?;
+        let mut orders: Vec<Order> = rows
+            .into_iter()
+            .filter_map(history::historical_order)
+            .collect();
+        orders.sort_by_key(|o| std::cmp::Reverse(o.created_at));
+        Ok(orders)
+    }
+
+    async fn funding_payments(
+        &self,
+        address: &str,
+        start_time: u64,
+    ) -> Result<Vec<FundingPayment>, VenueError> {
+        let key = self.read_key(address).await?;
+        let incomes: Vec<history::WireIncome> = self
+            .rest
+            .signed_get(
+                "/fapi/v3/income",
+                &[
+                    ("incomeType", "FUNDING_FEE".to_owned()),
+                    ("startTime", start_time.to_string()),
+                    ("limit", HISTORY_PAGE.to_owned()),
+                ],
+                &key,
+            )
+            .await?;
+        let mut payments: Vec<FundingPayment> = incomes
+            .into_iter()
+            .filter_map(history::funding_payment)
+            .collect();
+        payments.sort_by_key(|p| std::cmp::Reverse(p.time));
+        Ok(payments)
+    }
+
+    async fn trade_settings(
+        &self,
+        address: &str,
+        market: &str,
+    ) -> Result<TradeSettings, VenueError> {
+        wire::validate_market(market)?;
+        let info = self.rest.exchange_info().await?;
+        let max = wire::max_leverage_of(&info, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Aster market"))
+        })?;
+        let key = self.read_key(address).await?;
+        let rows: Vec<account::WirePosition> = self
+            .rest
+            .signed_get(
+                "/fapi/v3/positionRisk",
+                &[("symbol", market.to_owned())],
+                &key,
+            )
+            .await?;
+        let row = rows
+            .iter()
+            .find(|r| r.symbol == market)
+            .ok_or_else(|| VenueError::Network("Aster sent no settings for this market".into()))?;
+        Ok(history::trade_settings(row, max))
+    }
+
     async fn place_order(
         &self,
         account: &TradingAccount,
@@ -1094,6 +1287,228 @@ impl ExchangeAdapter for AsterAdapter {
             .rest
             .signed(reqwest::Method::DELETE, "/fapi/v3/order", &params, &key)
             .await?;
+        Ok(())
+    }
+
+    /// A limit order's price and size (Aster changes nothing else, and no
+    /// other kind of order). What isn't given is kept, read from the order
+    /// as Aster has it.
+    async fn amend_order(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
+        amend: &OrderAmend,
+    ) -> Result<(), VenueError> {
+        if amend.take_profit != ExitChange::Keep || amend.stop_loss != ExitChange::Keep {
+            return Err(VenueError::Unsupported(
+                "a take-profit or stop-loss on an Aster order",
+            ));
+        }
+        if amend.price.is_none() && amend.size.is_none() {
+            return Err(VenueError::InvalidRequest(
+                "there's nothing to change".into(),
+            ));
+        }
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let steps = self.steps(market).await?;
+        let key = keys.key(&account.key).await?;
+        let current: account::WireOrder = self
+            .rest
+            .signed_get(
+                "/fapi/v3/openOrder",
+                &orders::open_order(market, order_id)?,
+                &key,
+            )
+            .await?;
+        if current.order_type != "LIMIT" || current.symbol != market {
+            return Err(VenueError::InvalidRequest(
+                "only a limit order's price and size can be changed on Aster".into(),
+            ));
+        }
+        let side = match current.side.as_str() {
+            "BUY" => Side::Buy,
+            "SELL" => Side::Sell,
+            _ => {
+                return Err(VenueError::Network(
+                    "Aster sent an order with no side".into(),
+                ))
+            }
+        };
+        let params = orders::amend(
+            market,
+            order_id,
+            side,
+            amend.size.unwrap_or(current.orig_qty),
+            amend.price.unwrap_or(current.price),
+            steps,
+        )?;
+        let _: Value = self
+            .rest
+            .signed(reqwest::Method::PUT, "/fapi/v3/order", &params, &key)
+            .await?;
+        Ok(())
+    }
+
+    /// A whole number from 1 to the market's highest.
+    async fn set_leverage(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        leverage: Decimal,
+    ) -> Result<(), VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let info = self.rest.exchange_info().await?;
+        let max = wire::max_leverage_of(&info, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Aster market"))
+        })?;
+        let params = orders::leverage(market, leverage, max)?;
+        let key = keys.key(&account.key).await?;
+        let _: Value = self
+            .rest
+            .signed(reqwest::Method::POST, "/fapi/v3/leverage", &params, &key)
+            .await?;
+        Ok(())
+    }
+
+    /// Cross or isolated on `market`; asking for the one it has is done.
+    async fn set_margin_mode(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        mode: MarginMode,
+    ) -> Result<(), VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let params = orders::margin_type(market, mode);
+        let key = keys.key(&account.key).await?;
+        let sent: Result<Value, VenueError> = self
+            .rest
+            .signed(reqwest::Method::POST, "/fapi/v3/marginType", &params, &key)
+            .await;
+        match sent {
+            Ok(_) => Ok(()),
+            Err(VenueError::InvalidRequest(m)) if m == SAME_MARGIN_TYPE => Ok(()),
+            Err(e) => Err(e),
+        }
+    }
+
+    /// The position's take-profit and stop-loss, as orders that close it
+    /// whole at market once the mark reaches them. A new one is placed
+    /// before the one it replaces is cancelled, so the position keeps an
+    /// exit in between; if Aster won't hold two of a kind, the old one is
+    /// cancelled first. Aster's trailing stop moves by a percentage, not the
+    /// distance the page gives, so it isn't offered.
+    async fn set_position_protection(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        protection: &PositionProtection,
+    ) -> Result<(), VenueError> {
+        if matches!(protection.trailing_stop, ExitChange::Set(_)) {
+            return Err(VenueError::Unsupported("trailing stops on Aster"));
+        }
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let steps = self.steps(market).await?;
+        let quote = self.rest.quote(market).await?;
+        let key = keys.key(&account.key).await?;
+        let symbol = [("symbol", market.to_owned())];
+        let positions: Vec<account::WirePosition> = self
+            .rest
+            .signed_get("/fapi/v3/positionRisk", &symbol, &key)
+            .await?;
+        let amount = positions
+            .iter()
+            .find(|p| p.symbol == market && !p.position_amt.0.is_zero())
+            .map(|p| p.position_amt.0)
+            .ok_or_else(|| {
+                VenueError::InvalidRequest("there's no open position on this market".into())
+            })?;
+        let long = amount > rust_decimal::Decimal::ZERO;
+        let open: Vec<account::WireOrder> = self
+            .rest
+            .signed_get("/fapi/v3/openOrders", &symbol, &key)
+            .await?;
+        let old = |kind: &str| -> Vec<String> {
+            open.iter()
+                .filter(|o| o.symbol == market && o.close_position && o.order_type == kind)
+                .map(|o| o.order_id.to_string())
+                .collect()
+        };
+        let cancel = |ids: Vec<String>| {
+            let key = &key;
+            async move {
+                for id in ids {
+                    let params = orders::cancel(market, &id)?;
+                    let _: Value = self
+                        .rest
+                        .signed(reqwest::Method::DELETE, "/fapi/v3/order", &params, key)
+                        .await?;
+                }
+                Ok::<(), VenueError>(())
+            }
+        };
+        for (change, exit, kind) in [
+            (
+                &protection.take_profit,
+                orders::Exit::TakeProfit,
+                "TAKE_PROFIT_MARKET",
+            ),
+            (&protection.stop_loss, orders::Exit::StopLoss, "STOP_MARKET"),
+        ] {
+            let replaced = old(kind);
+            match change {
+                ExitChange::Keep => {}
+                ExitChange::Remove => cancel(replaced).await?,
+                ExitChange::Set(price) => {
+                    let params = orders::exit(market, long, exit, *price, steps, quote)?;
+                    let placed: Result<Value, VenueError> = self
+                        .rest
+                        .signed(reqwest::Method::POST, "/fapi/v3/order", &params, &key)
+                        .await;
+                    match placed {
+                        Ok(_) => cancel(replaced).await.map_err(|e| {
+                            VenueError::Rejected(format!(
+                                "the new exit is set, but the one it replaces couldn't be cancelled ({e}); cancel it in Open orders"
+                            ))
+                        })?,
+                        // Refused with an old one still there: take that off, then try again.
+                        Err(_) if !replaced.is_empty() => {
+                            cancel(replaced).await?;
+                            let _: Value = self
+                                .rest
+                                .signed(reqwest::Method::POST, "/fapi/v3/order", &params, &key)
+                                .await?;
+                        }
+                        Err(e) => return Err(e),
+                    }
+                }
+            }
+        }
+        // A trailing stop being removed: Aster's own, if one was set there.
+        if protection.trailing_stop == ExitChange::Remove {
+            let trailing: Vec<String> = open
+                .iter()
+                .filter(|o| o.symbol == market && o.order_type == "TRAILING_STOP_MARKET")
+                .map(|o| o.order_id.to_string())
+                .collect();
+            cancel(trailing).await?;
+        }
         Ok(())
     }
 }

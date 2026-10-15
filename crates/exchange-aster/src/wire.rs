@@ -166,6 +166,14 @@ fn market(s: SymbolInfo) -> Market {
     }
 }
 
+/// Live market `market`'s highest leverage, as `markets` reports it.
+pub fn max_leverage_of(info: &ExchangeInfo, market: &str) -> Option<u32> {
+    info.symbols
+        .iter()
+        .find(|s| s.symbol == market && s.is_live())
+        .map(|s| max_leverage(s.required_margin_percent))
+}
+
 /// The leverage the lowest bracket's initial margin allows (5% → 20x). The
 /// full bracket table needs a signed request, so this is the public figure;
 /// an account's own limit can differ.
