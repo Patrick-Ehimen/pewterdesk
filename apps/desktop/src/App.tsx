@@ -1344,6 +1344,7 @@ export function App() {
             onExpand={(mode) => setExpanded(mode ? { id, mode } : undefined)}
             address={address}
             account={accountData}
+            paperFills={paperOn ? paper.state.fills : undefined}
             onProtect={protect}
             showChart={chartRequest}
           />

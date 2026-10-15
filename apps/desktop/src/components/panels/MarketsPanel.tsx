@@ -1,6 +1,7 @@
 import type {
   AccountSnapshot,
   CandleInterval,
+  Fill,
   Market,
   OrderBook,
   Position,
@@ -69,6 +70,11 @@ interface MarketsPanelProps {
   /** The connected account on this venue, whose trading the chart shows. */
   address?: string;
   account?: AccountSnapshot;
+  /**
+   * In paper mode, the paper account's fills: the chart marks those, and
+   * the venue account's own aren't read.
+   */
+  paperFills?: readonly Fill[];
   /** Sets a position's TP / SL; with it, they can be dragged on the chart. */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
   /** Each new value brings the panel to the chart (e.g. a position was clicked). */
@@ -93,6 +99,7 @@ export function MarketsPanel({
   onExpand,
   address,
   account,
+  paperFills,
   onProtect,
   showChart,
 }: MarketsPanelProps) {
@@ -144,8 +151,12 @@ export function MarketsPanel({
   const barSource = useMemo(() => venueBarSource(venue), [venue]);
   const fundingChart = tab === "chart" && chartKind === "funding";
   // The account's trading in this market, over the candles.
-  const fills = useAccountFills(venue, address, standardChart && views.chart.fills);
-  const allFills = fills.status === "live" ? fills.data : undefined;
+  const fills = useAccountFills(
+    venue,
+    paperFills ? undefined : address,
+    standardChart && views.chart.fills,
+  );
+  const allFills = paperFills ?? (fills.status === "live" ? fills.data : undefined);
   const marketId = market?.id;
   const position = account?.positions.find((p) => p.market === marketId);
   const allOrders = account?.openOrders;
