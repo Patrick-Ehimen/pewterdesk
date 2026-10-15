@@ -4,6 +4,7 @@
 
 import { type Locale, languageName, type MenuOption, type RowMode, t } from "@pewterdesk/ui";
 import {
+  LuBot,
   LuBriefcaseBusiness,
   LuChartCandlestick,
   LuLandmark,
@@ -57,6 +58,7 @@ const PAGE_ICONS = {
   trade: LuChartCandlestick,
   portfolio: LuBriefcaseBusiness,
   charts: LuLayoutGrid,
+  bots: LuBot,
   rules: LuShieldCheck,
   venues: LuLandmark,
   journal: LuNotebookPen,

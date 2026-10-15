@@ -82,6 +82,7 @@ import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
+import { BotsPage } from "./components/pages/BotsPage";
 import { ComingSoonPage } from "./components/pages/ComingSoonPage";
 import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
@@ -1582,6 +1583,19 @@ export function App() {
               showMarket(id);
               openConnect(id);
             }}
+          />
+        ) : page === "bots" ? (
+          <BotsPage
+            venue={venue}
+            venueLabel={(v) => VENUES[v].label}
+            markets={marketList}
+            priceOf={(m) => {
+              const mark = Number(barPrices?.find((s) => s.market === m)?.markPrice);
+              return mark > 0 ? mark : undefined;
+            }}
+            marketLabel={(v, m) =>
+              (v === venue ? marketList.find((x) => x.id === m)?.symbol : undefined) ?? m
+            }
           />
         ) : page === "rules" ? (
           <TradingRulesPage
