@@ -4,12 +4,15 @@
 //! Numbers arrive as JSON strings ("84083.2"), so they parse straight into
 //! `Decimal` without passing through a float.
 
+use std::collections::HashMap;
+
 use pewterdesk_core::{
-    AccountSnapshot, BookLevel, Candle as DomainCandle, CandleInterval, Decimal, Fill, FillEffect,
-    FundingPayment, FundingRate, MarginMode, Market, MarketStats, MarketSummary, Order, OrderBook,
-    OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side, Trade,
-    VenueError, VenueId,
+    AccountSnapshot, BookLevel, Candle as DomainCandle, CandleInterval, ClosedTrade, Decimal, Fill,
+    FillEffect, FundingPayment, FundingRate, MarginMode, Market, MarketStats, MarketSummary, Order,
+    OrderBook, OrderCategory, OrderStatus, OrderType, Position, PositionSide, PriceSource, Side,
+    Trade, TradeSettings, VenueError, VenueId,
 };
+use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal as RawDecimal;
 use serde::Deserialize;
 
@@ -187,6 +190,9 @@ pub struct OpenOrder {
     /// "Limit", "Stop Market", "Take Profit Limit", ...
     pub order_type: String,
     pub cloid: Option<String>,
+    /// "Gtc", "Alo", "Ioc", ...; absent on a trigger.
+    #[serde(default)]
+    pub tif: Option<String>,
 }
 
 /// One entry of a `historicalOrders` response.
@@ -218,6 +224,40 @@ pub struct UserFill {
     pub fee: Decimal,
     pub tid: u64,
     pub fee_token: String,
+    /// The position's signed size before this fill, where the venue sends
+    /// it: what a flip ("Long > Short") closed.
+    #[serde(default)]
+    pub start_position: Option<Decimal>,
+}
+
+/// An `activeAssetData` reply, as far as it's read: the account's leverage
+/// and margin mode on one market.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ActiveAssetData {
+    pub leverage: PerpLeverage,
+}
+
+/// Live market `market`'s highest leverage, from the venue's own list.
+pub fn max_leverage(metas: &[Meta], market: &str) -> Option<u32> {
+    metas
+        .iter()
+        .flat_map(|m| m.universe.iter())
+        .find(|a| a.name == market && !a.is_delisted)
+        .map(|a| a.max_leverage)
+}
+
+/// The account's settings on a market, as the ticket reads them. Margin is
+/// set per market on Hyperliquid.
+pub fn trade_settings(data: ActiveAssetData, max_leverage: u32) -> TradeSettings {
+    TradeSettings {
+        margin_mode: match data.leverage.kind.as_str() {
+            "isolated" => MarginMode::Isolated,
+            _ => MarginMode::Cross,
+        },
+        margin_mode_account_wide: false,
+        leverage: Decimal(RawDecimal::from(data.leverage.value)),
+        max_leverage: Decimal(RawDecimal::from(max_leverage)),
+    }
 }
 
 /// One entry of a `userFunding` response.
@@ -661,6 +701,16 @@ pub fn account(
     state: ClearinghouseState,
     orders: Vec<OpenOrder>,
 ) -> Result<AccountSnapshot, VenueError> {
+    let mut positions: Vec<Position> = state
+        .asset_positions
+        .into_iter()
+        .filter_map(|ap| position(ap.position))
+        .collect();
+    for p in &mut positions {
+        let (take_profit, stop_loss) = exits(p, &orders);
+        p.take_profit = take_profit;
+        p.stop_loss = stop_loss;
+    }
     Ok(AccountSnapshot {
         venue: VenueId::Hyperliquid,
         address: address.to_owned(),
@@ -668,11 +718,7 @@ pub fn account(
         available_margin: state.withdrawable,
         // Hyperliquid keeps no running total in this reply.
         realized_pnl: None,
-        positions: state
-            .asset_positions
-            .into_iter()
-            .filter_map(|ap| position(ap.position))
-            .collect(),
+        positions,
         open_orders: orders.into_iter().map(order).collect::<Result<_, _>>()?,
         time: state.time,
     })
@@ -1131,4 +1177,264 @@ mod tests {
             assert_eq!(historical_order(h(raw)).unwrap().status, want, "{raw}");
         }
     }
+}
+
+/// Whether `o` is one of `position`'s exits: a reduce-only trigger on its
+/// market, on the side that closes it.
+pub fn is_exit(position: &Position, o: &OpenOrder) -> bool {
+    let closing = match position.side {
+        PositionSide::Long => "A",
+        PositionSide::Short => "B",
+    };
+    o.coin == position.market && o.is_trigger && o.reduce_only && o.side == closing
+}
+
+/// A position's take-profit and stop-loss: Hyperliquid keeps them as
+/// reduce-only trigger orders, so they're read off its open orders.
+fn exits(position: &Position, orders: &[OpenOrder]) -> (Option<Decimal>, Option<Decimal>) {
+    let mut take_profit = None;
+    let mut stop_loss = None;
+    for o in orders.iter().filter(|o| is_exit(position, o)) {
+        if o.order_type.starts_with("Take Profit") {
+            take_profit.get_or_insert(o.trigger_px);
+        } else if o.order_type.starts_with("Stop") {
+            stop_loss.get_or_insert(o.trigger_px);
+        }
+    }
+    (take_profit, stop_loss)
+}
+
+/// A closing order's fills, summed up.
+struct Closing {
+    market: String,
+    side: PositionSide,
+    size: RawDecimal,
+    exit_value: RawDecimal,
+    gross: RawDecimal,
+    fees: RawDecimal,
+    time: u64,
+    opened_at: Option<u64>,
+}
+
+/// The account's closed positions, built from its fills as Hyperliquid has
+/// no list of them: each order's closing fills become one closed trade, at
+/// their average exit, with the P&L Hyperliquid realised on them less the
+/// fees, and the average time the closed part was opened (where the fills
+/// reach back that far). Newest first.
+pub fn closed_trades(mut fills: Vec<UserFill>) -> Vec<ClosedTrade> {
+    fills.sort_by_key(|f| (f.time, f.tid));
+    // Per market: the size open, and its size-weighted opening time.
+    let mut open: HashMap<String, (RawDecimal, RawDecimal)> = HashMap::new();
+    let mut by_order: Vec<((u64, String), Closing)> = Vec::new();
+    for f in fills {
+        let size = f.sz.0;
+        if size <= RawDecimal::ZERO {
+            continue;
+        }
+        let started = f.start_position.map(|p| p.0.abs());
+        let (closed_side, closing) = match fill_effect(&f.dir) {
+            FillEffect::CloseLong => (Some(PositionSide::Long), size),
+            FillEffect::CloseShort => (Some(PositionSide::Short), size),
+            FillEffect::LongToShort => {
+                (Some(PositionSide::Long), started.unwrap_or(size).min(size))
+            }
+            FillEffect::ShortToLong => {
+                (Some(PositionSide::Short), started.unwrap_or(size).min(size))
+            }
+            FillEffect::OpenLong | FillEffect::OpenShort => (None, RawDecimal::ZERO),
+            // A liquidation or settlement: closing if it realised anything,
+            // a sell closing a long.
+            FillEffect::Other if !f.closed_pnl.0.is_zero() => {
+                let side = if f.side == "A" {
+                    PositionSide::Long
+                } else {
+                    PositionSide::Short
+                };
+                (Some(side), started.unwrap_or(size).min(size))
+            }
+            FillEffect::Other => continue,
+        };
+        let opening = size - closing;
+        let held = open.entry(f.coin.clone()).or_default();
+        let time = RawDecimal::from(f.time);
+        if let Some(side) = closed_side {
+            let opened_at = (held.0 > RawDecimal::ZERO)
+                .then(|| (held.1 / held.0).round())
+                .and_then(|t| t.to_u64());
+            if held.0 > RawDecimal::ZERO {
+                let avg = held.1 / held.0;
+                held.0 -= closing.min(held.0);
+                held.1 = if held.0.is_zero() {
+                    RawDecimal::ZERO
+                } else {
+                    avg * held.0
+                };
+            }
+            let fee = f.fee.0 * closing / size;
+            let key = (f.oid, f.coin.clone());
+            match by_order.iter_mut().find(|(k, _)| *k == key) {
+                Some((_, c)) => {
+                    c.size += closing;
+                    c.exit_value += f.px.0 * closing;
+                    c.gross += f.closed_pnl.0;
+                    c.fees += fee;
+                    c.time = f.time;
+                }
+                None => by_order.push((
+                    key,
+                    Closing {
+                        market: f.coin.clone(),
+                        side,
+                        size: closing,
+                        exit_value: f.px.0 * closing,
+                        gross: f.closed_pnl.0,
+                        fees: fee,
+                        time: f.time,
+                        opened_at,
+                    },
+                )),
+            }
+        }
+        if opening > RawDecimal::ZERO {
+            held.0 += opening;
+            held.1 += time * opening;
+        }
+    }
+    let mut out: Vec<ClosedTrade> = by_order
+        .into_iter()
+        .filter(|(_, c)| c.size > RawDecimal::ZERO)
+        .map(|(_, c)| {
+            let exit = c.exit_value / c.size;
+            // Long: gross = (exit - entry) * size; short: (entry - exit) * size.
+            let entry = match c.side {
+                PositionSide::Long => exit - c.gross / c.size,
+                PositionSide::Short => exit + c.gross / c.size,
+            };
+            ClosedTrade {
+                venue: VenueId::Hyperliquid,
+                market: c.market,
+                side: c.side,
+                size: Decimal(c.size.normalize()),
+                entry_price: Decimal(entry.round_dp(8).normalize()),
+                exit_price: Decimal(exit.round_dp(8).normalize()),
+                closed_pnl: Decimal((c.gross - c.fees).round_dp(8).normalize()),
+                entry_value: Decimal((entry * c.size).round_dp(8).normalize()),
+                leverage: None,
+                time: c.time,
+                opened_at: c.opened_at,
+            }
+        })
+        .collect();
+    out.sort_by_key(|c| std::cmp::Reverse(c.time));
+    out
+}
+
+#[cfg(test)]
+mod closed_tests {
+    use super::*;
+
+    #[allow(clippy::too_many_arguments)] // a test fixture: one argument per field
+    fn fill(
+        dir: &str,
+        side: &str,
+        px: &str,
+        sz: &str,
+        pnl: &str,
+        fee: &str,
+        time: u64,
+        oid: u64,
+    ) -> UserFill {
+        UserFill {
+            coin: "BTC".into(),
+            px: Decimal(px.parse().unwrap()),
+            sz: Decimal(sz.parse().unwrap()),
+            side: side.into(),
+            time,
+            dir: dir.into(),
+            closed_pnl: Decimal(pnl.parse().unwrap()),
+            oid,
+            crossed: true,
+            fee: Decimal(fee.parse().unwrap()),
+            tid: time,
+            fee_token: "USDC".into(),
+            start_position: None,
+        }
+    }
+
+    fn d(s: &str) -> Decimal {
+        Decimal(s.parse().unwrap())
+    }
+
+    #[test]
+    fn an_order_closing_in_several_fills_is_one_closed_trade() {
+        let fills = vec![
+            fill("Open Long", "B", "100", "1", "0", "0.05", 1_000, 1),
+            fill("Open Long", "B", "110", "1", "0", "0.05", 3_000, 2),
+            fill("Close Long", "A", "120", "1.5", "22.5", "0.1", 5_000, 3),
+            fill("Close Long", "A", "120", "0.5", "7.5", "0.05", 5_001, 3),
+        ];
+        let closed = closed_trades(fills);
+        assert_eq!(closed.len(), 1);
+        let c = &closed[0];
+        assert_eq!(c.side, PositionSide::Long);
+        assert_eq!(c.size, d("2"));
+        assert_eq!(c.entry_price, d("105"));
+        assert_eq!(c.exit_price, d("120"));
+        assert_eq!(c.closed_pnl, d("29.85"));
+        assert_eq!(c.entry_value, d("210"));
+        assert_eq!(c.time, 5_001);
+        assert_eq!(c.opened_at, Some(2_000));
+    }
+
+    #[test]
+    fn a_flip_closes_only_what_was_open() {
+        let mut flip = fill("Long > Short", "A", "90", "3", "-10", "0.3", 2_000, 2);
+        flip.start_position = Some(d("1"));
+        let fills = vec![fill("Open Long", "B", "100", "1", "0", "0", 1_000, 1), flip];
+        let c = &closed_trades(fills)[0];
+        assert_eq!(c.size, d("1"));
+        assert_eq!(c.entry_price, d("100"));
+        assert_eq!(c.closed_pnl, d("-10.1"));
+    }
+
+    #[test]
+    fn a_short_and_newest_first() {
+        let fills = vec![
+            fill("Open Short", "A", "50", "2", "0", "0", 1_000, 1),
+            fill("Close Short", "B", "40", "1", "10", "0", 2_000, 2),
+            fill("Close Short", "B", "45", "1", "5", "0", 3_000, 3),
+        ];
+        let closed = closed_trades(fills);
+        assert_eq!(closed.len(), 2);
+        assert_eq!(closed[0].time, 3_000);
+        assert_eq!(closed[0].entry_price, d("50"));
+        assert_eq!(closed[1].exit_price, d("40"));
+    }
+
+    #[test]
+    fn a_position_opened_before_the_fills_has_no_opening_time() {
+        let c = &closed_trades(vec![fill(
+            "Close Long",
+            "A",
+            "120",
+            "1",
+            "20",
+            "0",
+            5_000,
+            3,
+        )])[0];
+        assert_eq!(c.opened_at, None);
+        assert_eq!(c.entry_price, d("100"));
+    }
+}
+
+/// The account's position on `coin`, signed (negative is short), if it
+/// holds one.
+pub fn position_size(state: &ClearinghouseState, coin: &str) -> Option<RawDecimal> {
+    state
+        .asset_positions
+        .iter()
+        .map(|ap| &ap.position)
+        .find(|p| p.coin == coin && !p.szi.0.is_zero())
+        .map(|p| p.szi.0)
 }

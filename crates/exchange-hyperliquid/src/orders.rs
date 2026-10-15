@@ -1,5 +1,8 @@
-//! Turning an [`OrderRequest`] into Hyperliquid's `order` action, and a
-//! cancel into its `cancel` action. Pure translation: no keys, no network.
+//! Turning an [`OrderRequest`] into Hyperliquid's `order` action, a cancel
+//! into its `cancel` action, a change to a resting limit order into
+//! `batchModify`, leverage and margin mode into `updateLeverage`, and a
+//! position's take-profit and stop-loss into reduce-only trigger orders that
+//! close the whole of it. Pure translation: no keys, no network.
 //! The adapter signs exactly the bytes [`Wire::packed`] gives (`agent.rs`)
 //! and sends the same value as JSON.
 //!
@@ -13,9 +16,10 @@
 //! slippage bound, so there's no unbounded market order.
 //!
 //! The actions are laid out as the official Python SDK's
-//! `order_request_to_order_wire`, `order_wires_to_order_action` and
-//! `bulk_cancel`: field order matters, because the signature is over the
-//! action's MessagePack encoding.
+//! `order_request_to_order_wire`, `order_wires_to_order_action`,
+//! `bulk_cancel`, `bulk_modify_orders_new` and `update_leverage`: field
+//! order matters, because the signature is over the action's MessagePack
+//! encoding.
 
 use pewterdesk_core::{Decimal, OrderKind, OrderRequest, Side, TimeInForce, VenueError};
 use rust_decimal::RoundingStrategy;
@@ -465,6 +469,179 @@ pub(crate) fn cancel(asset: Asset, order_id: &str) -> Result<Wire, VenueError> {
     ]))
 }
 
+/// A resting order as a change keeps it: everything but its price and
+/// size, read from the venue's own list of the account's open orders.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Resting {
+    pub buy: bool,
+    pub reduce_only: bool,
+    /// "Gtc" or "Alo" (post-only): what a resting limit order can be.
+    pub tif: String,
+    pub cloid: Option<String>,
+}
+
+/// The `batchModify` action that changes resting limit order `oid` to
+/// `price` and `size` (what's left of it), keeping the rest, as the SDK's
+/// `bulk_modify_orders_new` lays it out: `oid`, then the whole order.
+pub(crate) fn modify(
+    asset: Asset,
+    oid: u64,
+    resting: &Resting,
+    price: Decimal,
+    size: Decimal,
+) -> Result<Wire, VenueError> {
+    check_price(price, asset, "price")?;
+    check_size(size, asset)?;
+    let tif = match resting.tif.as_str() {
+        tif @ ("Gtc" | "Alo") => tif,
+        _ => {
+            return Err(invalid(
+                "only a resting limit order's price and size can be changed on Hyperliquid",
+            ))
+        }
+    };
+    let cloid = client_id(&resting.cloid)?;
+    Ok(Wire::Map(vec![
+        ("type", Wire::str("batchModify")),
+        (
+            "modifies",
+            Wire::List(vec![Wire::Map(vec![
+                ("oid", Wire::Uint(oid)),
+                (
+                    "order",
+                    order(
+                        asset,
+                        resting.buy,
+                        price,
+                        size,
+                        resting.reduce_only,
+                        limit(tif),
+                        cloid,
+                    ),
+                ),
+            ])]),
+        ),
+    ]))
+}
+
+/// The `updateLeverage` action: `leverage` on `asset`, cross or isolated,
+/// as the SDK's `update_leverage` lays it out. The adapter checks the
+/// leverage against the market's highest first.
+pub(crate) fn update_leverage(asset: Asset, cross: bool, leverage: u32) -> Wire {
+    Wire::Map(vec![
+        ("type", Wire::str("updateLeverage")),
+        ("asset", Wire::Uint(u64::from(asset.id))),
+        ("isCross", Wire::Bool(cross)),
+        ("leverage", Wire::Uint(u64::from(leverage))),
+    ])
+}
+
+/// A position's new take-profit and stop-loss as an order action of their
+/// own: each a trigger on the side that closes it, reduce-only, the
+/// position's whole size, at market once the mark reaches its price. Each
+/// must be on its own side of the price now (`mid`) or it would fire at
+/// once.
+pub(crate) fn position_exits(
+    asset: Asset,
+    long: bool,
+    size: Decimal,
+    take_profit: Option<Decimal>,
+    stop_loss: Option<Decimal>,
+    mid: Decimal,
+) -> Result<Wire, VenueError> {
+    check_size(size, asset)?;
+    if mid.0 <= zero() {
+        return Err(invalid("there's no price for this market right now"));
+    }
+    let exit = |price: Decimal, tpsl: &str| {
+        order(
+            asset,
+            !long,
+            price,
+            size,
+            true,
+            trigger(true, price, tpsl),
+            None,
+        )
+    };
+    let mut orders = Vec::new();
+    if let Some(tp) = take_profit {
+        check_price(tp, asset, "take-profit")?;
+        if (long && tp.0 <= mid.0) || (!long && tp.0 >= mid.0) {
+            return Err(invalid(
+                "the take-profit must be on the profitable side of the price now",
+            ));
+        }
+        orders.push(exit(tp, "tp"));
+    }
+    if let Some(sl) = stop_loss {
+        check_price(sl, asset, "stop-loss")?;
+        if (long && sl.0 >= mid.0) || (!long && sl.0 <= mid.0) {
+            return Err(invalid(
+                "the stop-loss must be on the losing side of the price now",
+            ));
+        }
+        orders.push(exit(sl, "sl"));
+    }
+    if orders.is_empty() {
+        return Err(invalid("there's no exit to set"));
+    }
+    Ok(Wire::Map(vec![
+        ("type", Wire::str("order")),
+        ("orders", Wire::List(orders)),
+        ("grouping", Wire::str("na")),
+    ]))
+}
+
+/// The cancel action for several orders on `asset` at once.
+pub(crate) fn cancel_many(asset: Asset, ids: &[u64]) -> Result<Wire, VenueError> {
+    if ids.is_empty() {
+        return Err(invalid("there's nothing to cancel"));
+    }
+    Ok(Wire::Map(vec![
+        ("type", Wire::str("cancel")),
+        (
+            "cancels",
+            Wire::List(
+                ids.iter()
+                    .map(|id| {
+                        Wire::Map(vec![
+                            ("a", Wire::Uint(u64::from(asset.id))),
+                            ("o", Wire::Uint(*id)),
+                        ])
+                    })
+                    .collect(),
+            ),
+        ),
+    ]))
+}
+
+/// Whether a `batchModify` went through: "ok", and no error among its
+/// orders' statuses where the reply lists them.
+pub(crate) fn modified(body: &Value) -> Result<(), VenueError> {
+    match body["status"].as_str() {
+        Some("ok") => match body["response"]["data"]["statuses"].as_array() {
+            Some(statuses) => match statuses.iter().find_map(|s| s["error"].as_str()) {
+                Some(error) => Err(VenueError::Rejected(error.to_owned())),
+                None => Ok(()),
+            },
+            None => Ok(()),
+        },
+        Some("err") => Err(refusal(body)),
+        _ => Err(VenueError::Network("unexpected exchange response".into())),
+    }
+}
+
+/// Whether an action that answers `{"type": "default"}` went through
+/// (`updateLeverage`).
+pub(crate) fn acknowledged(body: &Value) -> Result<(), VenueError> {
+    match body["status"].as_str() {
+        Some("ok") => Ok(()),
+        Some("err") => Err(refusal(body)),
+        _ => Err(VenueError::Network("unexpected exchange response".into())),
+    }
+}
+
 /// What the exchange endpoint said about an order action: the new order's
 /// id and whether it's resting or already filled, or the venue's refusal.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -567,6 +744,147 @@ mod tests {
 
     fn hex(bytes: &[u8]) -> String {
         bytes.iter().map(|b| format!("{b:02x}")).collect()
+    }
+
+    fn resting(tif: &str) -> Resting {
+        Resting {
+            buy: true,
+            reduce_only: false,
+            tif: tif.into(),
+            cloid: None,
+        }
+    }
+
+    #[test]
+    fn a_change_is_laid_out_as_the_sdk_lays_it() {
+        let wire = modify(ETH, 77, &resting("Alo"), d("1900.5"), d("0.25")).unwrap();
+        assert_eq!(
+            wire.json(),
+            json!({
+                "type": "batchModify",
+                "modifies": [{
+                    "oid": 77,
+                    "order": {
+                        "a": 1, "b": true, "p": "1900.5", "s": "0.25", "r": false,
+                        "t": { "limit": { "tif": "Alo" } },
+                    },
+                }],
+            })
+        );
+        let Wire::Map(fields) = &wire else {
+            panic!("an action is a map");
+        };
+        assert_eq!(
+            fields.iter().map(|f| f.0).collect::<Vec<_>>(),
+            ["type", "modifies"]
+        );
+    }
+
+    #[test]
+    fn a_change_is_checked_like_an_order() {
+        // Too many decimals, too many figures, no size, not a resting limit.
+        assert!(modify(ETH, 1, &resting("Gtc"), d("1900.1234"), d("1")).is_err());
+        assert!(modify(ETH, 1, &resting("Gtc"), d("1900.55"), d("1")).is_err());
+        assert!(modify(ETH, 1, &resting("Gtc"), d("1900"), d("0")).is_err());
+        assert!(modify(ETH, 1, &resting("Ioc"), d("1900"), d("1")).is_err());
+        assert!(modify(ETH, 1, &resting("FrontendMarket"), d("1900"), d("1")).is_err());
+    }
+
+    #[test]
+    fn leverage_is_laid_out_as_the_sdk_lays_it() {
+        let wire = update_leverage(ETH, false, 7);
+        assert_eq!(
+            wire.json(),
+            json!({ "type": "updateLeverage", "asset": 1, "isCross": false, "leverage": 7 })
+        );
+        let Wire::Map(fields) = &wire else {
+            panic!("an action is a map");
+        };
+        assert_eq!(
+            fields.iter().map(|f| f.0).collect::<Vec<_>>(),
+            ["type", "asset", "isCross", "leverage"]
+        );
+    }
+
+    #[test]
+    fn a_positions_exits_close_it_whole_and_only_reduce() {
+        let wire = position_exits(
+            ETH,
+            true,
+            d("1.5"),
+            Some(d("2100")),
+            Some(d("1800")),
+            d("2000"),
+        )
+        .unwrap();
+        assert_eq!(
+            wire.json(),
+            json!({
+                "type": "order",
+                "orders": [
+                    {
+                        "a": 1, "b": false, "p": "2100", "s": "1.5", "r": true,
+                        "t": { "trigger": { "isMarket": true, "triggerPx": "2100", "tpsl": "tp" } },
+                    },
+                    {
+                        "a": 1, "b": false, "p": "1800", "s": "1.5", "r": true,
+                        "t": { "trigger": { "isMarket": true, "triggerPx": "1800", "tpsl": "sl" } },
+                    },
+                ],
+                "grouping": "na",
+            })
+        );
+        // A short's exits buy, on the other sides.
+        let short = position_exits(ETH, false, d("1"), Some(d("1900")), None, d("2000")).unwrap();
+        assert_eq!(short.json()["orders"][0]["b"], json!(true));
+    }
+
+    #[test]
+    fn a_positions_exits_must_be_on_their_own_side() {
+        assert!(position_exits(ETH, true, d("1"), Some(d("1990")), None, d("2000")).is_err());
+        assert!(position_exits(ETH, true, d("1"), None, Some(d("2010")), d("2000")).is_err());
+        assert!(position_exits(ETH, false, d("1"), Some(d("2010")), None, d("2000")).is_err());
+        assert!(position_exits(ETH, false, d("1"), None, Some(d("1990")), d("2000")).is_err());
+        assert!(position_exits(ETH, true, d("1"), None, None, d("2000")).is_err());
+        assert!(position_exits(ETH, true, d("1"), Some(d("2100")), None, d("0")).is_err());
+    }
+
+    #[test]
+    fn cancels_several_at_once() {
+        assert_eq!(
+            cancel_many(ETH, &[5, 6]).unwrap().json(),
+            json!({ "type": "cancel", "cancels": [{ "a": 1, "o": 5 }, { "a": 1, "o": 6 }] })
+        );
+        assert!(cancel_many(ETH, &[]).is_err());
+    }
+
+    #[test]
+    fn reads_whether_a_change_went_through() {
+        assert!(modified(&json!({ "status": "ok", "response": { "type": "default" } })).is_ok());
+        assert!(modified(&json!({
+            "status": "ok",
+            "response": { "type": "order", "data": { "statuses": [{ "resting": { "oid": 9 } }] } }
+        }))
+        .is_ok());
+        assert_eq!(
+            modified(&json!({
+                "status": "ok",
+                "response": { "type": "order", "data": { "statuses": [{ "error": "Order was never placed" }] } }
+            })),
+            Err(VenueError::Rejected("Order was never placed".into()))
+        );
+        assert!(modified(&json!({ "status": "err", "response": "bad" })).is_err());
+    }
+
+    #[test]
+    fn reads_an_acknowledgement() {
+        assert!(
+            acknowledged(&json!({ "status": "ok", "response": { "type": "default" } })).is_ok()
+        );
+        assert_eq!(
+            acknowledged(&json!({ "status": "err", "response": "Invalid leverage value" })),
+            Err(VenueError::Rejected("Invalid leverage value".into()))
+        );
     }
 
     #[test]

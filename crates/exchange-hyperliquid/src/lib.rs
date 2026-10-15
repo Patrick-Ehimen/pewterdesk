@@ -30,10 +30,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use async_trait::async_trait;
 use pewterdesk_core::{
-    AccountSnapshot, Candle, CandleInterval, Capabilities, Decimal, ExchangeAdapter, Fill,
-    FundingPayment, FundingRate, KeySource, Market, MarketHistory, MarketStats, MarketSummary,
-    Order, OrderBook, OrderCategory, OrderKind, OrderRequest, OrderStatus, OrderType, PriceSource,
-    Trade, TradingAccount, VenueError, VenueId,
+    AccountSnapshot, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal, ExchangeAdapter,
+    ExitChange, Fill, FundingPayment, FundingRate, KeySource, MarginMode, Market, MarketHistory,
+    MarketStats, MarketSummary, Order, OrderAmend, OrderBook, OrderCategory, OrderKind,
+    OrderRequest, OrderStatus, OrderType, PositionProtection, PriceSource, Trade, TradeSettings,
+    TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use serde_json::{json, Value};
@@ -70,6 +71,11 @@ const FUNDING_PAGE: usize = 500;
 /// Pages fetched per `funding_history` call at most: 5,000 hourly payments,
 /// about seven months. Bounds the requests one call can make.
 const FUNDING_MAX_PAGES: usize = 10;
+/// `userFillsByTime` answers up to this many fills at once.
+const FILL_PAGE: usize = 2000;
+/// Pages of fills read for a closed-trade history: enough for 30 days of
+/// active trading, and bounded so one call can't run on.
+const FILL_MAX_PAGES: usize = 5;
 /// Least time between refetches of every exchange's market list, when the
 /// all-exchanges feed shows a listing the adapter doesn't know yet.
 const META_REFRESH: Duration = Duration::from_secs(60);
@@ -378,6 +384,44 @@ impl HyperliquidAdapter {
         self.info(json!({ "type": "frontendOpenOrders", "user": address }))
             .await
     }
+
+    /// The account's open orders on `market`'s exchange (the main one, or
+    /// the builder-deployed one its id names), for changing one of them.
+    async fn open_orders_on(
+        &self,
+        address: &str,
+        market: &str,
+    ) -> Result<Vec<OpenOrder>, VenueError> {
+        let dex = market.split_once(':').map_or("", |(dex, _)| dex);
+        self.info(json!({ "type": "frontendOpenOrders", "user": address, "dex": dex }))
+            .await
+    }
+
+    /// The account's leverage and margin mode on `market` now.
+    async fn active_asset(
+        &self,
+        address: &str,
+        market: &str,
+    ) -> Result<wire::ActiveAssetData, VenueError> {
+        validate_address(address)?;
+        self.info(json!({ "type": "activeAssetData", "user": address, "coin": market }))
+            .await
+    }
+}
+
+/// A leverage Hyperliquid takes: a whole number from 1 to the market's highest.
+fn whole_leverage(leverage: Decimal, max: u32) -> Result<u32, VenueError> {
+    let plain = leverage.0.normalize();
+    let value = (plain.scale() == 0)
+        .then(|| u32::try_from(plain.mantissa()).ok())
+        .flatten()
+        .filter(|v| (1..=max).contains(v))
+        .ok_or_else(|| {
+            VenueError::InvalidRequest(format!(
+                "the leverage must be a whole number from 1 to {max} on this market"
+            ))
+        })?;
+    Ok(value)
 }
 
 /// Hyperliquid addresses are 20-byte hex. Checked here so a typo is a clear
@@ -852,6 +896,50 @@ impl ExchangeAdapter for HyperliquidAdapter {
         Ok(payments)
     }
 
+    async fn closed_trades(&self, address: &str) -> Result<Vec<ClosedTrade>, VenueError> {
+        validate_address(address)?;
+        // Hyperliquid keeps no list of closed positions: they're built from
+        // the latest 2,000 fills.
+        let fills: Vec<wire::UserFill> = self
+            .info(json!({ "type": "userFills", "user": address }))
+            .await?;
+        Ok(wire::closed_trades(fills))
+    }
+
+    async fn closed_trades_since(
+        &self,
+        address: &str,
+        start_time: u64,
+    ) -> Result<Vec<ClosedTrade>, VenueError> {
+        validate_address(address)?;
+        // Fills since `start_time`, oldest first, up to 2,000 a page.
+        let mut fills: Vec<wire::UserFill> = Vec::new();
+        let mut from = start_time;
+        for _ in 0..FILL_MAX_PAGES {
+            let page: Vec<wire::UserFill> = self
+                .info(json!({
+                    "type": "userFillsByTime",
+                    "user": address,
+                    "startTime": from,
+                    "aggregateByTime": false,
+                }))
+                .await?;
+            let full = page.len() >= FILL_PAGE;
+            let Some(last) = page.iter().map(|f| f.time).max() else {
+                break;
+            };
+            fills.extend(page);
+            if !full {
+                break;
+            }
+            from = last + 1;
+        }
+        Ok(wire::closed_trades(fills)
+            .into_iter()
+            .filter(|c| c.time >= start_time)
+            .collect())
+    }
+
     async fn order_history(&self, address: &str) -> Result<Vec<Order>, VenueError> {
         validate_address(address)?;
         // Up to the venue's 2,000, which it orders by when their status last
@@ -973,5 +1061,185 @@ impl ExchangeAdapter for HyperliquidAdapter {
         let asset = self.asset(market).await?;
         let action = orders::cancel(asset, order_id)?;
         orders::cancelled(&self.exchange(account, &action).await?)
+    }
+
+    /// A resting limit order's price and size. What the order is otherwise
+    /// (side, reduce-only, time in force, client id) is read from the venue
+    /// and kept; its attached TP and SL can't be changed here.
+    async fn amend_order(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        order_id: &str,
+        amend: &OrderAmend,
+    ) -> Result<(), VenueError> {
+        if amend.take_profit != ExitChange::Keep || amend.stop_loss != ExitChange::Keep {
+            return Err(VenueError::Unsupported(
+                "changing an order's take-profit and stop-loss on Hyperliquid",
+            ));
+        }
+        if amend.price.is_none() && amend.size.is_none() {
+            return Err(VenueError::InvalidRequest(
+                "there's nothing to change".into(),
+            ));
+        }
+        let oid = order_id
+            .parse::<u64>()
+            .ok()
+            .filter(|_| order_id.bytes().all(|b| b.is_ascii_digit()))
+            .ok_or_else(|| {
+                VenueError::InvalidRequest("that isn't a Hyperliquid order id".into())
+            })?;
+        validate_address(&account.address)?;
+        let asset = self.asset(market).await?;
+        let open = self.open_orders_on(&account.address, market).await?;
+        let current = open
+            .into_iter()
+            .find(|o| o.oid == oid && o.coin == market)
+            .ok_or_else(|| VenueError::InvalidRequest("that order isn't open any more".into()))?;
+        if current.is_trigger {
+            return Err(VenueError::InvalidRequest(
+                "only a resting limit order's price and size can be changed on Hyperliquid".into(),
+            ));
+        }
+        let price = amend.price.unwrap_or(current.limit_px);
+        // The page asks for the order's whole size; Hyperliquid takes what's
+        // left of it, so what has filled already comes off.
+        let filled = current.orig_sz.0 - current.sz.0;
+        let total = amend.size.unwrap_or(current.orig_sz);
+        let left = total.0 - filled;
+        if left <= rust_decimal::Decimal::ZERO {
+            return Err(VenueError::InvalidRequest(
+                "the new size must be more than what has already filled".into(),
+            ));
+        }
+        let resting = orders::Resting {
+            buy: current.side == "B",
+            reduce_only: current.reduce_only,
+            tif: current.tif.unwrap_or_default(),
+            cloid: current.cloid,
+        };
+        let action = orders::modify(asset, oid, &resting, price, Decimal(left.normalize()))?;
+        orders::modified(&self.exchange(account, &action).await?)
+    }
+
+    async fn trade_settings(
+        &self,
+        address: &str,
+        market: &str,
+    ) -> Result<TradeSettings, VenueError> {
+        let metas = all_perp_metas(&self.http, self.endpoints).await?;
+        let max = wire::max_leverage(&metas, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Hyperliquid market"))
+        })?;
+        Ok(wire::trade_settings(
+            self.active_asset(address, market).await?,
+            max,
+        ))
+    }
+
+    /// A whole number from 1 to the market's highest, keeping the margin mode.
+    async fn set_leverage(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        leverage: Decimal,
+    ) -> Result<(), VenueError> {
+        let metas = all_perp_metas(&self.http, self.endpoints).await?;
+        let max = wire::max_leverage(&metas, market).ok_or_else(|| {
+            VenueError::InvalidRequest(format!("{market:?} isn't a live Hyperliquid market"))
+        })?;
+        let value = whole_leverage(leverage, max)?;
+        let asset = self.asset(market).await?;
+        let now = self.active_asset(&account.address, market).await?;
+        let cross = now.leverage.kind != "isolated";
+        let action = orders::update_leverage(asset, cross, value);
+        orders::acknowledged(&self.exchange(account, &action).await?)
+    }
+
+    /// Cross or isolated on `market`, keeping the leverage.
+    async fn set_margin_mode(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        mode: MarginMode,
+    ) -> Result<(), VenueError> {
+        let asset = self.asset(market).await?;
+        let now = self.active_asset(&account.address, market).await?;
+        let action = orders::update_leverage(asset, mode == MarginMode::Cross, now.leverage.value);
+        orders::acknowledged(&self.exchange(account, &action).await?)
+    }
+
+    /// The position's take-profit and stop-loss, which Hyperliquid keeps as
+    /// reduce-only trigger orders: new ones are placed first and only then
+    /// are the ones they replace (or that are removed) cancelled, so the
+    /// position isn't left without an exit in between. Hyperliquid has no
+    /// trailing stop.
+    async fn set_position_protection(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        protection: &PositionProtection,
+    ) -> Result<(), VenueError> {
+        if matches!(protection.trailing_stop, ExitChange::Set(_)) {
+            return Err(VenueError::Unsupported("trailing stops on Hyperliquid"));
+        }
+        validate_address(&account.address)?;
+        let asset = self.asset(market).await?;
+        let dex = market.split_once(':').map_or("", |(dex, _)| dex);
+        let state: ClearinghouseState = self
+            .info(json!({ "type": "clearinghouseState", "user": account.address, "dex": dex }))
+            .await?;
+        let size = wire::position_size(&state, market).ok_or_else(|| {
+            VenueError::InvalidRequest("there's no open position on this market".into())
+        })?;
+        let long = size > rust_decimal::Decimal::ZERO;
+        let closing = if long { "A" } else { "B" };
+        let open = self.open_orders_on(&account.address, market).await?;
+        let exits = |kind: &str| -> Vec<u64> {
+            open.iter()
+                .filter(|o| {
+                    o.coin == market
+                        && o.is_trigger
+                        && o.reduce_only
+                        && o.side == closing
+                        && o.order_type.starts_with(kind)
+                })
+                .map(|o| o.oid)
+                .collect()
+        };
+        let set = |change: &ExitChange| match change {
+            ExitChange::Set(price) => Some(*price),
+            _ => None,
+        };
+        let (take_profit, stop_loss) = (set(&protection.take_profit), set(&protection.stop_loss));
+        let mut replaced = Vec::new();
+        if protection.take_profit != ExitChange::Keep {
+            replaced.extend(exits("Take Profit"));
+        }
+        if protection.stop_loss != ExitChange::Keep {
+            replaced.extend(exits("Stop"));
+        }
+        if take_profit.is_some() || stop_loss.is_some() {
+            let mid = self.mid(market).await?;
+            let action = orders::position_exits(
+                asset,
+                long,
+                Decimal(size.abs()),
+                take_profit,
+                stop_loss,
+                mid,
+            )?;
+            orders::cancelled(&self.exchange(account, &action).await?)?;
+        }
+        if replaced.is_empty() {
+            return Ok(());
+        }
+        let action = orders::cancel_many(asset, &replaced)?;
+        orders::cancelled(&self.exchange(account, &action).await?).map_err(|e| {
+            VenueError::Rejected(format!(
+                "the new exit is set, but the one it replaces couldn't be cancelled ({e}); cancel it in Open orders"
+            ))
+        })
     }
 }

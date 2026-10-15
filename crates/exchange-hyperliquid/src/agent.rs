@@ -428,6 +428,67 @@ mod tests {
         )
     }
 
+    /// Leverage and a change to an order, as `orders.rs` builds them,
+    /// signed as the official Python SDK signs the same actions: built with
+    /// its `update_leverage` and `bulk_modify_orders_new` layouts (and its
+    /// `order_request_to_order_wire`), its test key and nonce 0, with
+    /// `sign_l1_action` (hyperliquid-python-sdk, 2026-10).
+    #[test]
+    fn leverage_and_changes_are_signed_as_the_sdk_signs_them() {
+        use crate::orders::{modify, update_leverage, Asset, Resting};
+        use pewterdesk_core::Decimal;
+        let eth = Asset {
+            id: 1,
+            sz_decimals: 4,
+        };
+        let leverage = update_leverage(eth, false, 7);
+        assert_eq!(
+            signed(&leverage, "Mainnet"),
+            (
+                "0xa66b0633bd61470fcf592f09270c4cb16cedcf931bfa93d217e79607bcb55d45".into(),
+                "0x7913189f19ce3bed0f8b005bc204a6d1503f43d6749d7d2d03953011cabefb17".into(),
+                27
+            )
+        );
+        assert_eq!(
+            signed(&leverage, "Testnet"),
+            (
+                "0x51b9b4c8105cfedf243109ef3caae66403ad59a92bee636b6125cd3bfde995e0".into(),
+                "0x775ff12583e352797fa40eef5f041f3572f2e90d92cbee933a4394ba6d8fdad3".into(),
+                27
+            )
+        );
+        let resting = Resting {
+            buy: true,
+            reduce_only: false,
+            tif: "Alo".into(),
+            cloid: None,
+        };
+        let d = |s: &str| Decimal(s.parse().unwrap());
+        let change = modify(eth, 77, &resting, d("1900.5"), d("0.25")).unwrap();
+        assert_eq!(
+            signed(&change, "Mainnet"),
+            (
+                "0xe81da4aaaecde9fa1194957fad521b6b2b8924db61d937d22e153160d13a55c0".into(),
+                "0x2fa056efe96cdb97fa79449d0dab5acd889fab8245ea8982bb023779b1ab748f".into(),
+                28
+            )
+        );
+        assert_eq!(
+            signed(&change, "Testnet"),
+            (
+                "0x4c4bebca893610d17f25651d8357cba8018dac89027a268c5190d38e934493fd".into(),
+                "0x76ced51d27e460662d422d63986be2be065266d15ac5606695aa26dc0d3fed82".into(),
+                27
+            )
+        );
+        // A different leverage signs differently: the value is in what's signed.
+        assert_ne!(
+            signed(&update_leverage(eth, false, 8), "Mainnet"),
+            signed(&leverage, "Mainnet")
+        );
+    }
+
     #[test]
     fn the_action_hash_matches_the_sdks() {
         // test_phantom_agent_creation_matches_production

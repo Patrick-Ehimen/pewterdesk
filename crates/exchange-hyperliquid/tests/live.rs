@@ -274,6 +274,37 @@ async fn fetches_account_history() {
 
 #[tokio::test]
 #[ignore = "hits Hyperliquid mainnet"]
+async fn builds_closed_trades_and_reads_settings() {
+    let adapter = adapter();
+    let closed = adapter.closed_trades(ACTIVE_ACCOUNT).await.unwrap();
+    assert!(
+        closed.windows(2).all(|w| w[0].time >= w[1].time),
+        "closed trades newest first"
+    );
+    for c in &closed {
+        assert!(c.size.0 > rust_decimal::Decimal::ZERO);
+        assert!(c.entry_price.0 > rust_decimal::Decimal::ZERO);
+        assert!(c.exit_price.0 > rust_decimal::Decimal::ZERO);
+    }
+    let day_ago = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64
+        - 24 * 3_600_000;
+    let today = adapter
+        .closed_trades_since(ACTIVE_ACCOUNT, day_ago)
+        .await
+        .unwrap();
+    assert!(today.iter().all(|c| c.time >= day_ago));
+
+    let settings = adapter.trade_settings(ACTIVE_ACCOUNT, "BTC").await.unwrap();
+    assert!(settings.leverage.0 >= rust_decimal::Decimal::ONE);
+    assert!(settings.max_leverage.0 >= settings.leverage.0);
+    assert!(!settings.margin_mode_account_wide);
+}
+
+#[tokio::test]
+#[ignore = "hits Hyperliquid mainnet"]
 async fn streams_account() {
     let mut rx = adapter().subscribe_account(ACTIVE_ACCOUNT).await.unwrap();
     let account = timeout(Duration::from_secs(10), rx.recv())
