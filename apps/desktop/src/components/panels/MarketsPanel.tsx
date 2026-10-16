@@ -41,10 +41,12 @@ import { loadViewPrefs, saveViewPrefs, spanFraction, type ViewPrefs } from "../.
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
 import { LoadingMark } from "../Splash";
+import { type BoardAlerts, WatchlistBoard } from "../watchlist/WatchlistBoard";
 import { CoinOverview } from "./CoinOverview";
 import { ScreenerPanel } from "./ScreenerPanel";
 import { ViewSettings } from "./ViewSettings";
 
+const NO_POSITIONS: readonly Position[] = [];
 type MarketsTab = "chart" | "overview" | "depth" | "screener" | "watchlist";
 
 /** Which chart the Charts tab shows: the price chart, or the funding history. */
@@ -75,6 +77,10 @@ interface MarketsPanelProps {
    * the venue account's own aren't read.
    */
   paperFills?: readonly Fill[];
+  /** The account's open positions on this venue, for the watchlist's cards. */
+  positions?: readonly Position[];
+  /** The app's market alerts, which the watchlist lists and adds to. */
+  alerts?: BoardAlerts;
   /** Sets a position's TP / SL; with it, they can be dragged on the chart. */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
   /** Each new value brings the panel to the chart (e.g. a position was clicked). */
@@ -100,6 +106,8 @@ export function MarketsPanel({
   address,
   account,
   paperFills,
+  positions = NO_POSITIONS,
+  alerts,
   onProtect,
   showChart,
 }: MarketsPanelProps) {
@@ -376,6 +384,17 @@ export function MarketsPanel({
             }
           />
         </div>
+      ) : tab === "watchlist" && alerts ? (
+        <WatchlistBoard
+          venue={venue}
+          markets={marketList}
+          selected={market?.id}
+          onSelect={onSelect}
+          starred={starred}
+          onToggleStar={onToggleStar}
+          positions={positions}
+          alerts={alerts}
+        />
       ) : (
         <ScreenerPanel
           venue={venue}

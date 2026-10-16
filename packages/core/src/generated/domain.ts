@@ -239,6 +239,24 @@ size: Decimal,
 time: number, };
 
 /**
+ * The share of a market's accounts holding longs and shorts at one moment,
+ * from the venue's public positioning data. The two add up to one.
+ */
+export type LongShortPoint = { 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+time: number, 
+/**
+ * Accounts net long, 0 to 1.
+ */
+longRatio: Decimal, 
+/**
+ * Accounts net short, 0 to 1.
+ */
+shortRatio: Decimal, };
+
+/**
  * How a venue margins positions: one pool of collateral backing every
  * position (cross), or each position backed only by its own (isolated).
  */

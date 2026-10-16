@@ -7,9 +7,9 @@ use ts_rs::TS;
 
 use crate::domain::{
     AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
-    Fill, FundingPayment, FundingRate, Liquidation, MarginMode, Market, MarketHistory, MarketStats,
-    MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook, OrderRequest,
-    PositionProtection, Trade, TradeSettings, TradingAccount, VenueId,
+    Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode, Market,
+    MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
+    OrderRequest, PositionProtection, Trade, TradeSettings, TradingAccount, VenueId,
 };
 use crate::keys::KeyError;
 
@@ -133,6 +133,16 @@ pub trait ExchangeAdapter: Send + Sync {
         _hours: u32,
     ) -> Result<Vec<OpenInterestPoint>, VenueError> {
         Err(VenueError::Unsupported("open interest history"))
+    }
+
+    /// The share of `market`'s accounts long and short, an hour apart, over
+    /// the last `hours` hours, oldest first. Public data.
+    async fn long_short_ratio(
+        &self,
+        _market: &str,
+        _hours: u32,
+    ) -> Result<Vec<LongShortPoint>, VenueError> {
+        Err(VenueError::Unsupported("long/short ratio"))
     }
 
     /// Up to `count` of `market`'s candles at `interval` that opened before

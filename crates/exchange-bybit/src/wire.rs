@@ -652,6 +652,23 @@ pub fn open_interest_point(row: &OpenInterestRow) -> Option<pewterdesk_core::Ope
     })
 }
 
+/// A row of `GET /v5/market/account-ratio`.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LongShortRow {
+    pub buy_ratio: String,
+    pub sell_ratio: String,
+    pub timestamp: String,
+}
+
+pub fn long_short_point(row: &LongShortRow) -> Option<pewterdesk_core::LongShortPoint> {
+    Some(pewterdesk_core::LongShortPoint {
+        time: row.timestamp.parse().ok()?,
+        long_ratio: opt_decimal(&row.buy_ratio)?,
+        short_ratio: opt_decimal(&row.sell_ratio)?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -915,5 +932,30 @@ mod tests {
             (point.time, point.open_interest.0.to_string()),
             (1700000000000, "125.5".into())
         );
+    }
+
+    #[test]
+    fn parses_long_short_rows() {
+        let row: LongShortRow = serde_json::from_value(json!({
+            "symbol": "BTCUSDT",
+            "buyRatio": "0.6123",
+            "sellRatio": "0.3877",
+            "timestamp": "1700000000000"
+        }))
+        .unwrap();
+        let point = long_short_point(&row).unwrap();
+        assert_eq!(
+            (
+                point.time,
+                point.long_ratio.0.to_string(),
+                point.short_ratio.0.to_string()
+            ),
+            (1700000000000, "0.6123".into(), "0.3877".into())
+        );
+        let bad: LongShortRow = serde_json::from_value(
+            json!({ "buyRatio": "x", "sellRatio": "0.4", "timestamp": "1" }),
+        )
+        .unwrap();
+        assert!(long_short_point(&bad).is_none());
     }
 }
