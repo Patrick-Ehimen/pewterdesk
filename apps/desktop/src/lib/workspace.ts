@@ -87,6 +87,20 @@ export const PRESETS: readonly SavedLayout[] = [
       place("orderBook", 16, 10, 8, 14),
     ],
   },
+  {
+    // Trading the news: the live wire beside the chart, the week's
+    // calendar under it, the ticket to hand. No order book.
+    name: "Fundamental",
+    layout: [
+      bar(19),
+      place("markets", 0, 2, 11, 15),
+      place("wire", 11, 2, 8, 15),
+      place("trade", 19, 0, 5, 17),
+      place("positions", 0, 17, 11, 7),
+      place("calendar", 11, 17, 8, 7),
+      place("account", 19, 17, 5, 7),
+    ],
+  },
 ];
 
 // biome-ignore lint/style/noNonNullAssertion: PRESETS is a non-empty literal
