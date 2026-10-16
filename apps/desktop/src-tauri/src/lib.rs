@@ -5,11 +5,13 @@ mod browser_connect;
 mod bybit_key;
 mod chart_window;
 mod coin_info;
+mod econ_calendar;
 mod float;
 mod keychain;
 mod live_trading;
 mod menubar;
 mod news_feeds;
+mod news_wire;
 mod notify;
 mod okx_liquidations;
 mod share;
@@ -52,6 +54,8 @@ pub fn run() {
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
         .manage(news_feeds::NewsState::new().expect("failed to set up the news client"))
+        .manage(econ_calendar::CalendarState::new().expect("failed to set up the calendar client"))
+        .manage(news_wire::NewsWireState::new().expect("failed to set up the news wire client"))
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
@@ -153,6 +157,7 @@ pub fn run() {
             venues::subscribe_market_history,
             venues::subscribe_liquidations,
             venues::open_interest_history,
+            venues::long_short_ratio,
             venues::funding_history,
             venues::candles,
             venues::market_icon,
@@ -193,6 +198,12 @@ pub fn run() {
             okx_liquidations::okx_liquidations,
             news_feeds::news_feed,
             news_feeds::open_news_article,
+            econ_calendar::economic_calendar,
+            news_wire::subscribe_news_wire,
+            news_wire::set_news_key,
+            news_wire::news_keys,
+            news_wire::clear_news_key,
+            news_wire::open_wire_link,
             coin_info::open_coin_link,
             coin_info::set_coingecko_key,
             coin_info::has_coingecko_key,

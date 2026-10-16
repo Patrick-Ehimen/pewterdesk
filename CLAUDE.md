@@ -155,6 +155,27 @@ discover it on their own. The reasoning behind the rules is in
   via `open_news_article`, by an id, as a URL Rust itself fetched - https,
   on its publisher's own host, its query string dropped, filtered by
   `safe_url`. Adding a publisher is a security-relevant change.
+- `apps/desktop/src-tauri/src/econ_calendar.rs` - the week's economic
+  calendar, for the Calendar panel, from Forex Factory's public export. A
+  data source, not a venue: no key, nothing signed, one read-only GET to one
+  fixed URL (`FEED`, on `nfs.faireconomy.media`; no redirects followed, a
+  size cap), kept an hour. It reaches the UI as text only (every field
+  through `plain`, bounded), with no links. Changing the source is a
+  security-relevant change.
+- `apps/desktop/src-tauri/src/news_wire.rs` - the live news wire, for the
+  News feed panel: posts from X and headlines from two aggregators, Tree
+  News (Tree of Alpha) and Phoenix News, over their websockets. Data
+  sources, not venues: nothing signed, nothing sent but the login, three
+  fixed addresses (`TREE_WS`, `TREE_HISTORY`, `PHOENIX_WS`; no redirects,
+  message and size caps). Tree works keyless, about 5 seconds behind;
+  Phoenix needs a key. Their keys live in the keychain (`treenews:api`,
+  `phoenix:api`), each sent only to its own source in the login message,
+  never returned (`news_keys` says only whether one is stored). Items reach
+  the UI as bounded text, tickers checked. A link stays in Rust and opens
+  only via `open_wire_link`, by id: https on any host (news links anywhere,
+  so the page shows the host first), filtered by `safe_url`. Adding a
+  source, or letting a link or a ticker do more than open or show, is a
+  security-relevant change.
 - Signing code in each `crates/exchange-<venue>` - what turns a key into a
   signed venue action. The highest-stakes code in the repo. Hold keys only as
   `Zeroizing` and only for the signing call. Bybit's:
@@ -312,7 +333,13 @@ wallet dialog, for the venue on screen; the connected main address is kept
 in `lib/account.ts`); the ticket places orders once live trading is turned on
 for the account, in the same dialog. The Markets panel is tabbed:
 chart, depth, screener and watchlist; the chart tab has the price chart
-(Standard) and the funding history. The price chart, on the Trade page, the
+(Standard) and the funding history. The watchlist tab (after the Watchlist
+mockup in `design/`; `components/watchlist/`, `lib/watchlists.ts`) shows a
+list's markets as cards (price, the day's line and range, funding, OI,
+volume, your position, the nearest price alert) between the lists (the
+starred markets, plus the trader's own named lists, kept on this machine
+under `pd.watchlists`) and the market alerts (`hooks/useAlerts`), with a
+form for a new one; its columns fold away in a narrow panel. The price chart, on the Trade page, the
 Multi-chart page and popped-out charts alike, is OpenAlgo Charts
 (`openalgo-charts`, pinned to an exact version; `OpenAlgoChart` in
 `packages/ui`): the library's engine, drawing rail, indicators and settings
@@ -320,7 +347,11 @@ dialogs, under the app's own toolbar (intervals, chart style, indicators)
 and top-left readout (the market, OHLC, and each indicator with its show /
 hide, minimize, settings and remove buttons; the list folds away). Volume is
 re-registered to draw see-through along the bottom of the price pane, in the
-theme's candle colours, rather than in a pane of its own. The library's top bar, status line,
+theme's candle colours, rather than in a pane of its own. A visible range
+volume profile (`vpvr`, `VisibleRangeProfile.ts`; the sum in
+`lib/volumeProfile.ts`) is a study of the app's own: no plots, its histogram
+drawn by a primitive the chart gives it and recomputed from the bars on
+screen. The library's top bar, status line,
 symbol search, side panels and alerts are off, and its colours come from the
 theme's tokens. On the Trade page its layout is kept in this machine's
 browser storage; a multi-chart cell keeps its layout in the cell
@@ -349,7 +380,19 @@ candles, a market heatmap of coins by sector from CoinGecko, liquidations
 from Bybit's public live feed and OKX's public history whichever venue is
 on screen, and an estimated liquidation heatmap from hourly open interest
 (from volume where a venue publishes no open-interest history) -
-`components/maps/` in `packages/ui`), and Journal, a
+`components/maps/` in `packages/ui`; in five groups - Momentum, Positioning,
+Liquidations, Market, Time - with each group's views as chips beside them.
+The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
+`hooks/useMapData.ts`): performance and volatility from every market's
+hourly history, funding and price spread across all three venues from
+their summaries, open interest against price (Bybit's hourly history, or on
+Hyperliquid and Aster samples the app takes every 5 minutes while it runs,
+the change so far shown until they cover the window - `lib/oiStore.ts`), correlation, a live order-book heatmap, and seasonality
+and sessions from a market's last 30 days of hourly candles; plus Bybit's
+public long / short account ratio (`long_short_ratio`, a read-only market
+data request), whichever venue is on screen. A Crypto / All filter keeps
+stocks and metals out of the rankings, and saved views (`lib/mapViews.ts`,
+`pd.maps.saved`) keep a view with its settings and market under a name), and Journal, a
 placeholder until it's built on the fill history (`fills`).
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
@@ -433,6 +476,32 @@ few lines of its own (`positions`, `orders`, `balance`, `price btc`,
 trading command: an order, close, cancel or exit goes through the same
 `placeOrder` / `cancelOrder` / `protect`, and only on a second Enter, after
 the panel has printed what would be sent.
+
+## Calendar panel
+
+Another panel kind added from the layout editor's palette (`calendar`;
+`components/panels/CalendarPanel.tsx`, `lib/calendar.ts`): this week's
+economic calendar (Forex Factory's, read by `econ_calendar.rs`), by day in
+the machine's time zone, filtered by impact (high, medium and up, all;
+kept under `pd.calendar`), with the next high-impact event counted down.
+This week only: the source publishes no further ahead, and has no actual
+figures, only forecast and previous.
+It's in the Fundamental preset (`lib/workspace.ts`), under the news feed.
+## News feed panel
+
+A panel kind (`wire`; `components/panels/NewsWirePanel.tsx`,
+`lib/newsWire.ts`, `hooks/useLiveNews.ts`), after Tealstreet's news feed:
+Tree News and Phoenix News live (`news_wire.rs`), newest first, Tree's
+recent items filling it on open. Filters for posts or headlines, each
+source, tradable only (a ticker with a market on the venue on screen) and
+a search, kept under `pd.newsWire`; scrolled down, the list holds still and
+counts what's new. A ticker shows its market; it places nothing. The
+sources' keys are set in Settings › Advanced. It's beside the chart in the
+Fundamental preset.
+
+Settings › Layout shows every preset and saved layout as a card
+(`components/layout/LayoutGallery.tsx`), each with a miniature drawn from
+its own grid; the layout editor's "All layouts" opens it.
 
 ## Algos, bots and `pd` (planned)
 

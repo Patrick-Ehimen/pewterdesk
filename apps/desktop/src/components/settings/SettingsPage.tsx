@@ -9,7 +9,7 @@ import {
 } from "@pewterdesk/ui";
 import { type FormEvent, Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
-import { coinClient } from "../../api/venueClient";
+import { coinClient, type WireSource, wireClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import {
@@ -28,6 +28,8 @@ import {
   setNoteSettings,
   subscribeNotes,
 } from "../../lib/notifications";
+import type { SavedLayout } from "../../lib/workspace";
+import { LayoutGallery } from "../layout/LayoutGallery";
 import {
   languageOptions,
   marketColorOptions,
@@ -55,6 +57,7 @@ type SectionId =
   | "hotkeys"
   | "notifications"
   | "appearance"
+  | "layout"
   | "network"
   | "advanced";
 
@@ -66,6 +69,7 @@ const SECTIONS: { id: SectionId; soon?: MessageKey }[] = [
   { id: "hotkeys" },
   { id: "notifications" },
   { id: "appearance" },
+  { id: "layout" },
   { id: "network", soon: "settings.network.desc" },
   { id: "advanced" },
 ];
@@ -160,6 +164,13 @@ export interface SettingsPageProps {
   address: string | undefined;
   onOpenWallet: () => void;
   onResetLayout: () => void;
+  /** The layout on screen, by name, and the trader's own. */
+  activeLayout: string;
+  savedLayouts: readonly SavedLayout[];
+  /** Puts a layout on screen (and goes back to it). */
+  onApplyLayout: (layout: SavedLayout) => void;
+  /** Opens the layout editor on the layout on screen. */
+  onEditLayout: () => void;
   onClearWatchlist: () => void;
   /** Shows the first-run setup again. */
   onRunSetup: () => void;
@@ -215,11 +226,33 @@ export function SettingsPage(props: SettingsPageProps) {
           <HotkeysSection />
         ) : section === "appearance" ? (
           <AppearanceSection {...props} />
+        ) : section === "layout" ? (
+          <LayoutSection {...props} />
         ) : (
           <AdvancedSection {...props} />
         )}
       </main>
     </div>
+  );
+}
+
+/** Every layout as a card to pick from, and the way into the editor. */
+function LayoutSection({
+  activeLayout,
+  savedLayouts,
+  onApplyLayout,
+  onEditLayout,
+}: SettingsPageProps) {
+  return (
+    <>
+      <SectionHead title={navLabel("layout")} description={t("settings.layout.desc")} />
+      <div className="settings-actions">
+        <button type="button" className="settings-button" onClick={onEditLayout}>
+          {t("layout.editCurrent")}
+        </button>
+      </div>
+      <LayoutGallery active={activeLayout} saved={savedLayouts} onApply={onApplyLayout} />
+    </>
   );
 }
 
@@ -515,11 +548,91 @@ function CoinGeckoKey() {
   );
 }
 
+/**
+ * A news aggregator's API key for the News feed panel, kept in the keychain.
+ * Tree's feed works without one (a few seconds behind); Phoenix's needs one.
+ * The key never comes back from Rust.
+ */
+function NewsKey({ source }: { source: WireSource }) {
+  const [saved, setSaved] = useState<boolean>();
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+  const name = t(`wire.source.${source}`);
+
+  useEffect(() => {
+    wireClient.keys().then(
+      (keys) => setSaved(keys[source]),
+      () => setSaved(false),
+    );
+  }, [source]);
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    const pasted = key;
+    setKey("");
+    setBusy(true);
+    setError(undefined);
+    try {
+      await wireClient.setKey(source, pasted);
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const remove = async () => {
+    setError(undefined);
+    try {
+      await wireClient.clearKey(source);
+      setSaved(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    }
+  };
+
+  return (
+    <SettingRow title={t("settings.newsKey", { name })} help={t(`settings.newsKeyHelp.${source}`)}>
+      {saved ? (
+        <div className="settings-actions">
+          <span className="settings-help">{t("settings.newsKeySaved")}</span>
+          <button type="button" className="settings-button" onClick={remove}>
+            {t("settings.coingeckoRemove")}
+          </button>
+        </div>
+      ) : (
+        <form className="settings-key-form" onSubmit={save}>
+          <input
+            type="password"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            aria-label={t("settings.newsKey", { name })}
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+          <button type="submit" className="settings-button" data-primary disabled={busy}>
+            {t("settings.coingeckoSave")}
+          </button>
+        </form>
+      )}
+      {error && (
+        <p className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+    </SettingRow>
+  );
+}
+
 function AdvancedSection({ onResetLayout, onClearWatchlist, onRunSetup }: SettingsPageProps) {
   return (
     <>
       <SectionHead title={navLabel("advanced")} description={t("settings.advanced.desc")} />
       <CoinGeckoKey />
+      <NewsKey source="tree" />
+      <NewsKey source="phoenix" />
       <SettingRow title={t("settings.runSetup")} help={t("settings.runSetupDesc")}>
         <DoneButton onClick={onRunSetup}>{t("settings.runSetup")}</DoneButton>
       </SettingRow>

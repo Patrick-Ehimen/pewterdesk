@@ -92,8 +92,10 @@ import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
+import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
+import { NewsWirePanel } from "./components/panels/NewsWirePanel";
 import { PaperBanner } from "./components/paper/PaperBanner";
 import { type PaperDialogMode, PaperFundsDialog } from "./components/paper/PaperFundsDialog";
 import { PaperSwitch } from "./components/paper/PaperSwitch";
@@ -118,6 +120,7 @@ import { useAlerts } from "./hooks/useAlerts";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
+import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
 import { useStoredChoice } from "./hooks/useStoredChoice";
@@ -1013,6 +1016,8 @@ export function App() {
   // The alerts, with the connected account's positions for the PnL and
   // liquidation-distance ones.
   const alerts = useAlerts(alertsOpen, liveAccount);
+  // Hyperliquid and Aster publish no open-interest history: sample it for the Maps page.
+  useOiRecorder();
   // The notification centre: everything `notifyEvent` has recorded.
   const notes = useSyncExternalStore(subscribeNotes, currentNotes);
   const noteSettings = useSyncExternalStore(subscribeNotes, currentNoteSettings);
@@ -1345,6 +1350,8 @@ export function App() {
             address={address}
             account={accountData}
             paperFills={paperOn ? paper.state.fills : undefined}
+            positions={accountData?.positions}
+            alerts={alerts}
             onProtect={protect}
             showChart={chartRequest}
           />
@@ -1396,6 +1403,21 @@ export function App() {
             }}
           />
         );
+      case "wire":
+        // Tree News and Phoenix, live: text from Rust; a ticker shows its market here.
+        return (
+          <NewsWirePanel
+            markets={marketList}
+            onMarket={(marketId) => showMarket(venue, marketId)}
+            onAddKey={() => {
+              setSettingsSection("advanced");
+              goTo("settings");
+            }}
+          />
+        );
+      case "calendar":
+        // The week's economic calendar: text from Rust, no links.
+        return <CalendarPanel />;
       case "cli":
         // The palette's commands, typed into a panel; nothing is sent until confirmed.
         return (
@@ -1801,6 +1823,16 @@ export function App() {
                 active: DEFAULT_PRESET.name,
               }))
             }
+            activeLayout={workspace.active}
+            savedLayouts={workspace.saved}
+            onApplyLayout={(l) => {
+              setWorkspace((w) => ({ ...w, layout: fillGaps(l.layout), active: l.name }));
+              goTo("trade");
+            }}
+            onEditLayout={() => {
+              setEditing(true);
+              goTo("trade");
+            }}
             onClearWatchlist={watchlist.clear}
             onRunSetup={() => {
               const again = { ...setup, done: false };
@@ -1825,6 +1857,10 @@ export function App() {
                   setWorkspace((w) => ({ ...w, saved: w.saved.filter((s) => s.name !== name) }))
                 }
                 onDone={finishEditing}
+                onBrowse={() => {
+                  setSettingsSection("layout");
+                  goTo("settings");
+                }}
               />
             )}
 
