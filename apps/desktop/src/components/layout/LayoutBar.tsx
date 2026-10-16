@@ -17,6 +17,8 @@ interface LayoutBarProps {
   onNew: (name: string) => void;
   onDelete: (name: string) => void;
   onDone: () => void;
+  /** Opens every layout as a gallery (Settings › Layout). */
+  onBrowse: () => void;
 }
 
 /** The "Editing layout" strip under the header: presets, saved layouts, Save as…, Done. */
@@ -29,6 +31,7 @@ export function LayoutBar({
   onNew,
   onDelete,
   onDone,
+  onBrowse,
 }: LayoutBarProps) {
   // Naming a layout: the one on screen (save as) or a new, empty one.
   const [naming, setNaming] = useState<"saveAs" | "new">();
@@ -119,6 +122,9 @@ export function LayoutBar({
         </form>
       ) : (
         <>
+          <button type="button" className="ws-button" onClick={onBrowse}>
+            {t("layout.browse")}
+          </button>
           <button type="button" className="ws-button" onClick={() => setNaming("new")}>
             {t("layout.new")}
           </button>

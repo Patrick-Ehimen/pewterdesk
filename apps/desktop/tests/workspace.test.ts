@@ -58,6 +58,27 @@ describe("presets", () => {
     }
   });
 
+  it("each say what they're for in the gallery", async () => {
+    await loadLocale("en");
+    for (const preset of PRESETS) {
+      const key = `preset.${preset.name}.desc`;
+      expect(t(key as MessageKey), preset.name).not.toBe(key);
+    }
+  });
+
+  it("puts the news wire beside the chart in Fundamental, the calendar under it", () => {
+    const layout = PRESETS.find((p) => p.name === "Fundamental")?.layout ?? [];
+    const at = (kind: string) => layout.find((p) => panelKindOf(p.i) === kind);
+    const chart = at("markets");
+    const wire = at("wire");
+    const calendar = at("calendar");
+    expect(wire && chart && wire.x).toBe(chart && chart.x + chart.w);
+    expect(wire?.y).toBe(chart?.y);
+    expect(calendar?.x).toBe(wire?.x);
+    expect(calendar?.y).toBe(wire && wire.y + wire.h);
+    for (const p of layout) expect(p.y + p.h, p.i).toBeLessThanOrEqual(GRID.rows);
+  });
+
   it("survive sanitising unchanged", () => {
     for (const preset of PRESETS) expect(sanitizeLayout(preset.layout)).toEqual(preset.layout);
   });
