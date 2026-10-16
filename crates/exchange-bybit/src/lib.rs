@@ -31,10 +31,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use async_trait::async_trait;
 use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, Capabilities, ClosedTrade, Decimal,
-    ExchangeAdapter, Fill, FundingPayment, FundingRate, KeySource, Liquidation, MarginMode, Market,
-    MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
-    OrderRequest, OrderType, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError,
-    VenueId,
+    ExchangeAdapter, Fill, FundingPayment, FundingRate, KeySource, Liquidation, LongShortPoint,
+    MarginMode, Market, MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order,
+    OrderAmend, OrderBook, OrderRequest, OrderType, PositionProtection, Trade, TradeSettings,
+    TradingAccount, VenueError, VenueId,
 };
 use serde::de::DeserializeOwned;
 use tokio::sync::mpsc;
@@ -72,6 +72,8 @@ const FUNDING_PAGE: usize = 200;
 const LIQUIDATION_TOPICS: usize = 50;
 /// The most hourly open-interest rows Bybit sends in one page.
 const OPEN_INTEREST_PAGE: u32 = 200;
+/// The most long/short ratio rows Bybit sends in one page.
+const LONG_SHORT_PAGE: u32 = 500;
 /// Pages fetched per `funding_history` call at most.
 const FUNDING_MAX_PAGES: usize = 10;
 /// The account is re-read this often: five signed requests, well inside
@@ -1133,6 +1135,32 @@ impl ExchangeAdapter for BybitAdapter {
             .list
             .iter()
             .filter_map(wire::open_interest_point)
+            .collect();
+        points.sort_by_key(|p| p.time);
+        Ok(points)
+    }
+
+    async fn long_short_ratio(
+        &self,
+        market: &str,
+        hours: u32,
+    ) -> Result<Vec<LongShortPoint>, VenueError> {
+        self.live_market(market).await?;
+        let page: Page<wire::LongShortRow> = self
+            .rest
+            .get(
+                "/v5/market/account-ratio",
+                &[
+                    ("symbol", market.to_owned()),
+                    ("period", "1h".to_owned()),
+                    ("limit", hours.clamp(1, LONG_SHORT_PAGE).to_string()),
+                ],
+            )
+            .await?;
+        let mut points: Vec<LongShortPoint> = page
+            .list
+            .iter()
+            .filter_map(wire::long_short_point)
             .collect();
         points.sort_by_key(|p| p.time);
         Ok(points)

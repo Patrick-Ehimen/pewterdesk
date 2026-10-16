@@ -7353,3 +7353,737 @@ button.pd-drawer-exit:hover {
   align-items: center;
   gap: 4px;
 }
+
+/* Maps page: the smaller views (performance, volatility, funding, open
+   interest, long / short, correlation, spread, order book, seasonality,
+   sessions) share one frame: a bar of controls, the map, a note. */
+.pd-mx {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  gap: 12px;
+}
+.pd-mx-main,
+.pd-mx-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 12px;
+  background: var(--pd-surface);
+}
+.pd-mx-main {
+  flex: 1;
+  min-width: 0;
+}
+.pd-mx-side {
+  flex: none;
+  width: 280px;
+  overflow-y: auto;
+}
+.pd-mx h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.pd-mx h3 {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-mx-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.pd-mx-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin-left: auto;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.pd-mx-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pd-mx-body > .pd-empty {
+  flex: 1;
+}
+.pd-mx-note {
+  margin: 0;
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.pd-mx-loading {
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.pd-mx-fill {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 6px;
+}
+.pd-mx-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pd-mx-tip {
+  width: 220px;
+}
+.pd-mx-tip-note {
+  margin: 8px 0 0;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+/* The colour scale: a tone mixed into the surface, stronger the bigger */
+[data-heat="up"] {
+  --mx-tone: var(--pd-buy);
+}
+[data-heat="down"] {
+  --mx-tone: var(--pd-sell);
+}
+[data-heat="info"] {
+  --mx-tone: var(--pd-info);
+}
+[data-heat="warn"] {
+  --mx-tone: var(--pd-warning);
+}
+[data-heat="flat"] {
+  --mx-tone: var(--pd-pewter);
+}
+.pd-mx-tile,
+.pd-mx-cell,
+.pd-mx-corr-cell,
+.pd-mx-season-cell {
+  background: color-mix(
+    in srgb,
+    var(--mx-tone, var(--pd-pewter)) var(--mix, 0%),
+    var(--pd-surface-raised)
+  );
+}
+
+/* Performance: a treemap like the liquidations one */
+.pd-mx-tile {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0.5em 0.6em;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  color: var(--pd-text);
+  font-family: inherit;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+  transition: filter 120ms ease;
+}
+.pd-mx-tile:hover {
+  filter: brightness(1.12);
+}
+.pd-mx-tile-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pd-mx-tile-value {
+  font-size: 0.7em;
+  opacity: 0.92;
+}
+
+/* Rows that open a market: volatility, long / short, spread, side lists */
+.pd-mx-bars,
+.pd-mx-ls,
+.pd-mx-spread,
+.pd-mx-list,
+.pd-mx-gaps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-mx-bars button,
+.pd-mx-ls button,
+.pd-mx-spread button,
+.pd-mx-list button,
+.pd-mx-gaps button {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.pd-mx-bars button:hover,
+.pd-mx-ls button:hover:enabled,
+.pd-mx-spread button:hover,
+.pd-mx-list button:hover,
+.pd-mx-gaps button:hover {
+  background: var(--pd-surface-raised);
+}
+.pd-mx-ls button:disabled {
+  cursor: default;
+}
+.pd-mx-bars button {
+  grid-template-columns: 22px 110px minmax(60px, 1fr) 56px 64px 92px;
+}
+.pd-mx-bars button > :nth-child(4),
+.pd-mx-bars button > :nth-child(5) {
+  text-align: right;
+}
+.pd-mx-rank {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  text-align: right;
+}
+.pd-mx-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pd-mx-name .pd-muted {
+  font-weight: 400;
+}
+.pd-mx-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--pd-border);
+  overflow: hidden;
+}
+.pd-mx-fillbar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--mx-tone) 80%, transparent);
+}
+.pd-mx-chip {
+  justify-self: start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--pd-border-strong);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.pd-mx-chip[data-regime="expanding"] {
+  border-color: color-mix(in srgb, var(--pd-warning) 60%, transparent);
+  color: var(--pd-warning);
+}
+.pd-mx-chip[data-regime="contracting"] {
+  border-color: color-mix(in srgb, var(--pd-info) 60%, transparent);
+  color: var(--pd-info);
+}
+.pd-mx-list button {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 4px 6px;
+}
+.pd-mx-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pd-mx-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.pd-mx-stat strong {
+  color: var(--pd-text);
+  font-size: 16px;
+}
+.pd-mx-stat[data-regime="expanding"] strong {
+  color: var(--pd-warning);
+}
+.pd-mx-stat[data-regime="contracting"] strong {
+  color: var(--pd-info);
+}
+
+/* Funding: a table of venues */
+.pd-mx-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 2px;
+  font-size: 12.5px;
+}
+.pd-mx-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 8px;
+  background: var(--pd-surface);
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: right;
+}
+.pd-mx-table th:first-child,
+.pd-mx-td:first-child {
+  text-align: left;
+}
+.pd-mx-td {
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: right;
+  white-space: nowrap;
+}
+.pd-mx-table tbody tr {
+  cursor: pointer;
+}
+.pd-mx-table tbody tr:hover .pd-mx-td:first-child {
+  background: var(--pd-surface-raised);
+}
+.pd-mx-gaps button {
+  grid-template-columns: 1fr;
+  gap: 3px;
+}
+.pd-mx-gap-venues {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.pd-mx-gap-rate {
+  color: var(--pd-text);
+  font-weight: 500;
+}
+
+/* Open interest: a scatter in quadrants */
+.pd-mx-plot {
+  display: block;
+}
+.pd-mx-axis {
+  stroke: var(--pd-border-strong);
+  stroke-dasharray: 3 4;
+}
+.pd-mx-quad-label {
+  fill: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.pd-mx-axis-label {
+  fill: var(--pd-pewter);
+  font-size: 11px;
+}
+.pd-mx-dot {
+  cursor: pointer;
+}
+.pd-mx-dot circle {
+  fill: color-mix(in srgb, var(--mx-tone) 45%, transparent);
+  stroke: var(--mx-tone);
+  stroke-width: 1;
+  transition: fill 120ms ease;
+}
+.pd-mx-dot[data-hover] circle {
+  fill: color-mix(in srgb, var(--mx-tone) 80%, transparent);
+}
+.pd-mx-dot text {
+  fill: var(--pd-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  pointer-events: none;
+  /* A halo, so a name stays readable over a corner label or another dot */
+  paint-order: stroke;
+  stroke: var(--pd-surface);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.pd-mx-quad {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Long / short: one split bar each */
+.pd-mx-ls button {
+  grid-template-columns: 110px 50px minmax(80px, 1fr) 50px 92px;
+}
+.pd-mx-ls button > :nth-child(4),
+.pd-mx-ls button > :nth-child(5) {
+  text-align: right;
+}
+.pd-mx-split {
+  position: relative;
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pd-sell) 55%, var(--pd-surface-raised));
+  overflow: hidden;
+}
+.pd-mx-split-long {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--pd-buy) 70%, var(--pd-surface-raised));
+}
+.pd-mx-split-mid {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--pd-bg);
+}
+
+/* Correlation: a matrix */
+.pd-mx-corr {
+  display: grid;
+  gap: 2px;
+  min-width: max-content;
+  font-size: 10.5px;
+}
+.pd-mx-corr-row {
+  display: contents;
+}
+.pd-mx-corr-col {
+  align-self: end;
+  justify-self: center;
+  padding-bottom: 4px;
+  color: var(--pd-pewter);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+.pd-mx-corr-head {
+  align-self: center;
+  overflow: hidden;
+  color: var(--pd-pewter);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pd-mx-corr-col[data-on],
+.pd-mx-corr-head[data-on] {
+  color: var(--pd-text);
+}
+.pd-mx-corr-cell {
+  display: grid;
+  place-items: center;
+  min-height: 22px;
+  border-radius: 3px;
+  color: var(--pd-text);
+}
+.pd-mx-corr-cell[data-self] {
+  background: var(--pd-border);
+}
+.pd-mx-corr-cell:hover {
+  outline: 1px solid var(--pd-text);
+}
+
+/* Spread: a strip per coin, a mark per venue */
+.pd-mx-spread-axis,
+.pd-mx-spread button {
+  grid-template-columns: 170px minmax(120px, 1fr) 72px;
+}
+.pd-mx-spread-axis {
+  display: grid;
+  gap: 10px;
+  padding: 0 6px 4px;
+}
+.pd-mx-spread-scale {
+  display: flex;
+  justify-content: space-between;
+  color: var(--pd-pewter-dim);
+  font-size: 10.5px;
+}
+.pd-mx-spread button > :last-child {
+  text-align: right;
+}
+.pd-mx-strip {
+  position: relative;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--pd-border);
+}
+.pd-mx-strip-zero {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 50%;
+  width: 1px;
+  background: var(--pd-pewter-dim);
+}
+.pd-mx-venue-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--pd-surface);
+  border-radius: 50%;
+  background: var(--pd-pewter);
+}
+.pd-mx-strip .pd-mx-venue-dot {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+}
+.pd-mx-venue-dot[data-venue="bybit"] {
+  background: var(--pd-warning);
+}
+.pd-mx-venue-dot[data-venue="hyperliquid"] {
+  background: var(--pd-info);
+}
+.pd-mx-venue-dot[data-venue="aster"] {
+  background: var(--pd-brass);
+}
+.pd-mx-venue-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Order book heatmap */
+.pd-mx-book {
+  background: var(--pd-bg);
+}
+.pd-mx-book canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.pd-mx-book-axis {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-left: 1px solid var(--pd-border);
+}
+.pd-mx-book-tick {
+  position: absolute;
+  right: 6px;
+  color: var(--pd-pewter);
+  font-size: 10.5px;
+  transform: translateY(-50%);
+}
+
+/* Seasonality: weekdays by hours */
+.pd-mx-season {
+  display: grid;
+  grid-template-columns: 44px repeat(24, minmax(16px, 1fr));
+  gap: 2px;
+  min-width: 480px;
+  font-size: 11px;
+}
+.pd-mx-season-row {
+  display: contents;
+}
+.pd-mx-season-hour {
+  color: var(--pd-pewter-dim);
+  font-size: 10.5px;
+}
+.pd-mx-season-day {
+  align-self: center;
+  color: var(--pd-pewter);
+}
+.pd-mx-season-row[data-all] .pd-mx-season-day {
+  margin-top: 6px;
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.pd-mx-season-cell {
+  min-height: 26px;
+  border-radius: 3px;
+}
+.pd-mx-season-row[data-all] .pd-mx-season-cell {
+  margin-top: 6px;
+}
+.pd-mx-season-cell[data-now] {
+  outline: 2px solid var(--pd-text);
+  outline-offset: -1px;
+}
+.pd-mx-season-cell:hover {
+  outline: 1px solid var(--pd-pewter);
+}
+
+/* Sessions: an hour bar chart under the session bands */
+.pd-mx-sessions {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pd-mx-bands {
+  position: relative;
+  height: 54px;
+}
+.pd-mx-band {
+  position: absolute;
+  height: 16px;
+  padding: 0 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--pd-text);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+.pd-mx-band[data-session="asia"] {
+  top: 0;
+  background: color-mix(in srgb, var(--pd-info) 30%, var(--pd-surface));
+}
+.pd-mx-band[data-session="europe"] {
+  top: 19px;
+  background: color-mix(in srgb, var(--pd-brass) 30%, var(--pd-surface));
+}
+.pd-mx-band[data-session="us"] {
+  top: 38px;
+  background: color-mix(in srgb, var(--pd-warning) 30%, var(--pd-surface));
+}
+.pd-mx-hours {
+  flex: 1;
+  min-height: 120px;
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+}
+.pd-mx-hour {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 4px;
+}
+.pd-mx-hour[data-sessions="2"] {
+  background: color-mix(in srgb, var(--pd-border) 50%, transparent);
+}
+.pd-mx-hour[data-now] {
+  background: color-mix(in srgb, var(--pd-text) 10%, transparent);
+  box-shadow: inset 0 0 0 1px var(--pd-pewter);
+}
+.pd-mx-hour-bar {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--pd-info) 65%, transparent);
+}
+.pd-mx-hour-dot {
+  position: absolute;
+  left: 50%;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pd-warning);
+  transform: translate(-50%, 50%);
+}
+.pd-mx-hour-labels {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  color: var(--pd-pewter-dim);
+  font-size: 10.5px;
+}
+.pd-mx-legend-row {
+  display: flex;
+  gap: 16px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.pd-mx-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pd-mx-key-bar {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--pd-info) 65%, transparent);
+}
+.pd-mx-key-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pd-warning);
+}
+.pd-mx-session-cards {
+  display: grid;
+  gap: 8px;
+}
+.pd-mx-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.pd-mx-session-card[data-on] {
+  border-color: var(--pd-border-strong);
+  background: var(--pd-surface-raised);
+}
+.pd-mx-session-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  margin: 4px 0 0;
+}
+.pd-mx-session-card dt {
+  color: var(--pd-pewter);
+}
+.pd-mx-session-card dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Narrow: the side column goes under the map */
+@media (max-width: 1100px) {
+  .pd-mx {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .pd-mx-main {
+    min-height: 420px;
+  }
+  .pd-mx-side {
+    width: auto;
+  }
+}

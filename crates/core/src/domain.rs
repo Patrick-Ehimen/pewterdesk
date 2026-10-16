@@ -384,6 +384,21 @@ pub struct OpenInterestPoint {
     pub open_interest: Decimal,
 }
 
+/// The share of a market's accounts holding longs and shorts at one moment,
+/// from the venue's public positioning data. The two add up to one.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = TS_FILE)]
+pub struct LongShortPoint {
+    /// Milliseconds since the Unix epoch.
+    #[ts(type = "number")]
+    pub time: u64,
+    /// Accounts net long, 0 to 1.
+    pub long_ratio: Decimal,
+    /// Accounts net short, 0 to 1.
+    pub short_ratio: Decimal,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = TS_FILE)]

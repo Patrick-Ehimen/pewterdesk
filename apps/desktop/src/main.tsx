@@ -6,6 +6,7 @@ import "./styles/layout.css";
 import "./styles/pages.css";
 import "./styles/bots.css";
 import "./styles/paper.css";
+import "./styles/watchlist.css";
 import "./styles/settings.css";
 import "./styles/tray.css";
 import "./styles/float.css";
