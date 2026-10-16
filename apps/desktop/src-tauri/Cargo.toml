@@ -38,7 +38,11 @@ pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tiny_http = "0.12"
-tokio = { version = "1", features = ["sync", "time"] }
+tokio = { version = "1", features = ["macros", "sync", "time"] }
+# The news aggregators' live feeds (`news_wire.rs`). The same versions the
+# Hyperliquid crate already uses, so nothing new is downloaded.
+tokio-tungstenite = { version = "0.29.0", features = ["rustls-tls-native-roots"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
 zeroize = "1"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
