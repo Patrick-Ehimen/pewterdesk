@@ -28,9 +28,9 @@ use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
-    Fill, FundingPayment, FundingRate, Liquidation, MarginMode, Market, MarketHistory, MarketStats,
-    MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook, OrderRequest,
-    PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
+    Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode, Market,
+    MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
+    OrderRequest, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
 };
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
 use pewterdesk_exchange_bybit::{
@@ -124,7 +124,7 @@ impl Venues {
 
     /// Forwards `rx` to `webview`'s channel until it ends, `unsubscribe` is
     /// called, or that webview loads a new page.
-    fn forward<T>(
+    pub(crate) fn forward<T>(
         &self,
         mut rx: mpsc::Receiver<T>,
         channel: Channel<StreamEvent<T>>,
@@ -344,6 +344,21 @@ pub async fn open_interest_history(
     venues
         .adapter(venue)?
         .open_interest_history(&market, hours)
+        .await
+}
+
+/// The share of a market's accounts long and short, hourly over the last
+/// `hours` hours, oldest first (Bybit only).
+#[tauri::command]
+pub async fn long_short_ratio(
+    venues: State<'_, Venues>,
+    venue: VenueId,
+    market: String,
+    hours: u32,
+) -> Result<Vec<LongShortPoint>, VenueError> {
+    venues
+        .adapter(venue)?
+        .long_short_ratio(&market, hours)
         .await
 }
 

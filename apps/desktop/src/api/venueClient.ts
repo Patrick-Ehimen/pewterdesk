@@ -8,6 +8,7 @@ import type {
   FundingPayment,
   FundingRate,
   Liquidation,
+  LongShortPoint,
   MarginMode,
   Market,
   MarketHistory,
@@ -287,6 +288,9 @@ export const venueClient = {
   /** A market's hourly open interest over the last `hours` hours, oldest first. */
   openInterestHistory: (venue: VenueId, market: string, hours: number) =>
     call<OpenInterestPoint[]>("open_interest_history", { venue, market, hours }),
+  /** The share of a market's accounts long and short, hourly, oldest first (Bybit only). */
+  longShortRatio: (venue: VenueId, market: string, hours: number) =>
+    call<LongShortPoint[]>("long_short_ratio", { venue, market, hours }),
 
   fundingHistory: (venue: VenueId, market: string, startTime: number) =>
     call<FundingRate[]>("funding_history", { venue, market, startTime }),
@@ -516,6 +520,88 @@ export const newsClient = {
   feed: () => call<Article[]>("news_feed", {}),
   /** Opens an article in the browser, by the id `feed` gave it. */
   open: (id: string) => call<void>("open_news_article", { id }),
+};
+
+/** How much a calendar event is expected to move its currency. */
+export type CalendarImpact = "high" | "medium" | "low" | "holiday";
+
+/** A scheduled economic release or event (the week's calendar). Text only. */
+export interface CalendarEvent {
+  title: string;
+  /** The currency it's about ("USD"), or "All". */
+  currency: string;
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+  impact: CalendarImpact;
+  forecast: string | null;
+  previous: string | null;
+}
+
+/** A news aggregator the wire reads. */
+export type WireSource = "tree" | "phoenix";
+
+/** One headline or post from the news wire. Text only; its link stays in Rust. */
+export interface WireItem {
+  /** Names its link to `wireClient.open`. */
+  id: string;
+  source: WireSource;
+  kind: "tweet" | "news";
+  /** The account's display name, or the outlet ("DECRYPT"). */
+  author: string;
+  /** The X handle, without "@". */
+  handle: string | null;
+  text: string;
+  /** Tickers the aggregator found in it. */
+  coins: string[];
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+  flag: "retweet" | "quote" | "reply" | null;
+  important: boolean;
+  /** Where its link goes ("x.com"), if it has one. */
+  linkHost: string | null;
+}
+
+/** A source's connection, as serde sends it. */
+type RawFeedState = "connecting" | "needsKey" | "down" | { live: { delayed: boolean } };
+
+export type FeedState =
+  | { state: "connecting" | "needsKey" | "down" }
+  | { state: "live"; delayed: boolean };
+
+export type WireEvent =
+  | { type: "items"; items: WireItem[] }
+  | { type: "status"; source: WireSource; state: FeedState };
+
+type RawWireEvent =
+  | { type: "items"; items: WireItem[] }
+  | { type: "status"; source: WireSource; state: RawFeedState };
+
+const feedState = (raw: RawFeedState): FeedState =>
+  typeof raw === "string" ? { state: raw } : { state: "live", delayed: raw.live.delayed };
+
+export const wireClient = {
+  /** Tree's recent items, then everything live from both sources, with their states. */
+  subscribe: (handlers: StreamHandlers<WireEvent>) =>
+    subscribe<RawWireEvent>(
+      "subscribe_news_wire",
+      {},
+      {
+        ...handlers,
+        onUpdate: (e) =>
+          handlers.onUpdate(e.type === "status" ? { ...e, state: feedState(e.state) } : e),
+      },
+    ),
+  /** Which sources have an API key stored (never the key). */
+  keys: () => call<Record<WireSource, boolean>>("news_keys", {}),
+  setKey: (source: WireSource, key: string) => call<void>("set_news_key", { source, key }),
+  clearKey: (source: WireSource) => call<void>("clear_news_key", { source }),
+  /** Opens an item's link in the browser, by its id. */
+  open: (id: string) => call<void>("open_wire_link", { id }),
+};
+
+export const calendarClient = {
+  /** This week's economic calendar, soonest first. */
+  events: () => call<CalendarEvent[]>("economic_calendar", {}),
 };
 
 export const coinClient = {

@@ -19,7 +19,9 @@ import { t } from "@pewterdesk/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type Article,
+  type CalendarEvent,
   type CoinInfo,
+  calendarClient,
   coinClient,
   newsClient,
   type StreamHandlers,
@@ -476,6 +478,14 @@ export function useNewsWire(enabled: boolean): Feed<Article[]> {
     () => newsClient.feed(),
     ANNOUNCEMENTS_REFRESH_MS,
   );
+}
+
+/** How often the calendar is asked for; Rust reads it afresh hourly at most. */
+const CALENDAR_REFRESH_MS = 15 * 60_000;
+
+/** This week's economic calendar, soonest first. */
+export function useEconomicCalendar(): Feed<CalendarEvent[]> {
+  return usePolled<CalendarEvent[]>("calendar", () => calendarClient.events(), CALENDAR_REFRESH_MS);
 }
 
 /** A venue's latest announcements, newest first, while `enabled`. */

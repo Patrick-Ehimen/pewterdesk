@@ -183,7 +183,7 @@ fn entity(name: &str) -> Option<char> {
 }
 
 /// `text` with its entities read ("&amp;" to "&").
-fn unescape(text: &str) -> String {
+pub(crate) fn unescape(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     while let Some(at) = rest.find('&') {
@@ -210,7 +210,7 @@ fn unescape(text: &str) -> String {
 
 /// Feed text as plain text: tags dropped, entities read, control characters
 /// removed, runs of spaces closed up, and at most `max` characters.
-fn plain(text: &str, max: usize) -> String {
+pub(crate) fn plain(text: &str, max: usize) -> String {
     // Entities first where the markup itself came escaped ("&lt;p&gt;").
     let text = unescape(text);
     let mut bare = String::with_capacity(text.len());
@@ -235,7 +235,7 @@ fn plain(text: &str, max: usize) -> String {
 }
 
 /// Days from 1970-01-01 to a date (the proleptic Gregorian calendar).
-fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
+pub(crate) fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let y = if month <= 2 { year - 1 } else { year };
     let era = y.div_euclid(400);
     let yoe = y.rem_euclid(400);
