@@ -66,10 +66,17 @@ import {
 } from "../../lib/openAlgoChart";
 import { toastError } from "../../lib/toasts";
 import { type ChartLevel, type ExitKind, fillMarks, tradeLevels } from "../../lib/tradeMarks";
+import type { ProfileRow } from "../../lib/volumeProfile";
 import { levelLabel } from "./CandleChart";
 import { IntervalPicker, TypeIcon, usePopover } from "./ChartToolbar";
 import { type Tokens, tokens, withAlpha } from "./chartTheme";
 import { TokenIcon } from "./TokenIcon";
+import {
+  type Profiles,
+  registerVisibleRangeProfile,
+  syncProfiles,
+  VPVR_ID,
+} from "./VisibleRangeProfile";
 
 // The price chart: OpenAlgo Charts' engine, drawing rail, indicators and
 // dialogs over the app's own candles, under the app's own toolbar and
@@ -458,6 +465,21 @@ function readings(study: IndicatorApi, index: number | undefined, decimals: numb
   return out.join("  ");
 }
 
+/** A volume profile row's up, down and total volume, as TradingView's readout gives them. */
+function ProfileReading({ row }: { row?: ProfileRow }) {
+  return (
+    <span className="pd-ohlc-indicator-values">
+      {row && (
+        <>
+          <span className="pd-up">{formatCompact(row.up)}</span>{" "}
+          <span className="pd-down">{formatCompact(row.down)}</span>{" "}
+          {formatCompact(row.up + row.down)}
+        </>
+      )}
+    </span>
+  );
+}
+
 /**
  * The top-left readout, as on the standard chart: the market, then the
  * candle under the crosshair (or the latest), then each study with its
@@ -471,6 +493,7 @@ function Legend({
   index,
   decimals,
   problem,
+  profileRow,
   onChange,
 }: {
   widget: Widget;
@@ -480,6 +503,8 @@ function Legend({
   index?: number;
   decimals: number;
   problem?: string;
+  /** A volume profile's row under the cursor (its point of control without one). */
+  profileRow: (study: IndicatorApi) => ProfileRow | undefined;
   onChange: () => void;
 }) {
   const change = bar ? bar.close - bar.open : 0;
@@ -564,13 +589,17 @@ function Legend({
                 <span className="pd-ohlc-indicator-name">{name}</span>
                 {row?.params && <span className="pd-oachart-params">{row.params}</span>}
               </button>
-              <span
-                className="pd-ohlc-indicator-values"
-                // Volume's bars follow the candles; its reading stays neutral.
-                style={{ color: study.indicatorId === "volume" ? undefined : row?.color }}
-              >
-                {shown ? readings(study, index, decimals) : ""}
-              </span>
+              {study.indicatorId === VPVR_ID ? (
+                <ProfileReading row={shown ? profileRow(study) : undefined} />
+              ) : (
+                <span
+                  className="pd-ohlc-indicator-values"
+                  // Volume's bars follow the candles; its reading stays neutral.
+                  style={{ color: study.indicatorId === "volume" ? undefined : row?.color }}
+                >
+                  {shown ? readings(study, index, decimals) : ""}
+                </span>
+              )}
               <button
                 type="button"
                 className="pd-ohlc-remove"
@@ -733,7 +762,7 @@ export function OpenAlgoChart({
   // Counts the times the candles loaded changed (not each live tick).
   const [loaded, reloaded] = useReducer((n: number) => n + 1, 0);
   const [settled, settle] = useReducer((n: number) => n + 1, 0);
-  const [hover, setHover] = useState<{ bar: Bar; index?: number }>();
+  const [hover, setHover] = useState<{ bar?: Bar; index?: number; price?: number }>();
   const [latest, setLatest] = useState<Bar>();
   const [problem, setProblem] = useState<string>();
   // The loading mark waits a moment: a chart drawn from candles already held
@@ -756,12 +785,15 @@ export function OpenAlgoChart({
    */
   const zoom = useRef<number>(undefined);
   const kept = onLayout !== undefined;
+  /** The visible range volume profiles drawn, by study. */
+  const profiles = useRef<Profiles>(new Map());
 
   // Create once per venue; restyle whenever the theme or market colors change.
   useLayoutEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     const store = kept ? null : storage();
+    registerVisibleRangeProfile();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
       feed: barFeed(source, () => latestProps.current.markets),
@@ -820,6 +852,7 @@ export function OpenAlgoChart({
       volumeOnPrice(made);
       styleVolume(made, tokens(host));
       for (const study of chart.indicators()) study.legend()?.setOptions({ visible: false });
+      syncProfiles(chart, profiles.current);
       redraw();
       layoutChanged();
     };
@@ -897,9 +930,16 @@ export function OpenAlgoChart({
       chart.on("paneCollapsed", redraw),
       chart.on("state:restore:end", studiesChanged),
       chart.on("layout:change", layoutChanged),
-      chart.on("crosshair:move", (e) =>
-        setHover(e.bar ? { bar: e.bar, index: e.index ?? undefined } : undefined),
-      ),
+      chart.on("crosshair:move", (e) => {
+        // A price only on the price pane: a volume profile's row is read there,
+        // past the latest candle too.
+        const price = e.paneIndex === chart.primaryPaneIndex() ? (e.price ?? undefined) : undefined;
+        setHover(
+          e.bar || price !== undefined
+            ? { bar: e.bar ?? undefined, index: e.bar ? (e.index ?? undefined) : undefined, price }
+            : undefined,
+        );
+      }),
       chart.on("data:update", candlesChanged),
       chart.on("data:range", candlesChanged),
       // The venue's history replacing the cached candles comes this way.
@@ -960,6 +1000,7 @@ export function OpenAlgoChart({
       attributeFilter: ["data-theme", "data-market"],
     });
     const drawn = lines.current;
+    const drawnProfiles = profiles.current;
     return () => {
       observer.disconnect();
       clearTimeout(saving);
@@ -969,6 +1010,7 @@ export function OpenAlgoChart({
       drawingsListeners.delete(otherDrawings);
       for (const off of offs) off();
       drawn.clear();
+      drawnProfiles.clear();
       held.current = undefined;
       keptRef.current = undefined;
       setWidget(null);
@@ -1120,7 +1162,12 @@ export function OpenAlgoChart({
             index={hover?.index}
             decimals={decimals}
             problem={problem}
-            onChange={redraw}
+            profileRow={(study) => profiles.current.get(study.id)?.rowAt(hover?.price)}
+            onChange={() => {
+              // A profile hidden or shown draws again; the library doesn't tell it.
+              syncProfiles(widget.chart, profiles.current);
+              redraw();
+            }}
           />
         )}
       </div>
