@@ -55,6 +55,7 @@ export function SizeCalculator({
   leverage: ticketLeverage,
   available,
   onUse,
+  folded = true,
 }: {
   market?: Market;
   /** The book's mid, the entry when none is typed. */
@@ -66,9 +67,12 @@ export function SizeCalculator({
   leverage: number;
   /** The connected account's free margin, used when no balance is typed. */
   available?: number;
-  onUse: (size: string) => void;
+  /** Copies "max open" into the ticket; without it there's no button. */
+  onUse?: (size: string) => void;
+  /** Folded away behind its title until opened (in the ticket); otherwise always open. */
+  folded?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!folded);
   const [tab, setTab] = useState<CalcTab>("pnl");
   const [side, setSide] = useState<TicketSide>(ticketSide);
   const [leverage, setLeverage] = useState(String(ticketLeverage));
@@ -128,20 +132,22 @@ export function SizeCalculator({
   );
 
   return (
-    <div className="pd-calc">
-      <button
-        type="button"
-        className="pd-calc-toggle"
-        aria-expanded={open}
-        aria-controls={bodyId}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className="pd-calc-title">
-          <LuCalculator size={14} aria-hidden />
-          {t("calc.title")}
-        </span>
-        <LuChevronDown size={14} aria-hidden data-open={open || undefined} />
-      </button>
+    <div className="pd-calc" data-folded={folded || undefined}>
+      {folded && (
+        <button
+          type="button"
+          className="pd-calc-toggle"
+          aria-expanded={open}
+          aria-controls={bodyId}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span className="pd-calc-title">
+            <LuCalculator size={14} aria-hidden />
+            {t("calc.title")}
+          </span>
+          <LuChevronDown size={14} aria-hidden data-open={open || undefined} />
+        </button>
+      )}
       {open && (
         <div id={bodyId} className="pd-calc-body">
           <div className="pd-calc-tabs" role="tablist" aria-label={t("calc.tabs")}>
@@ -275,7 +281,7 @@ export function SizeCalculator({
             </p>
           )}
 
-          {tab === "maxOpen" && (
+          {tab === "maxOpen" && onUse && (
             <button
               type="button"
               className="pd-calc-use"

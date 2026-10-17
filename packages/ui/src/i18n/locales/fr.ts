@@ -745,7 +745,6 @@ export const messages: Messages = {
     "Les règles plus strictes s’appliquent tout de suite. Les plus souples, et leur désactivation, attendent 00:00 UTC.",
   "rules.pendingAt":
     "Un changement est en attente : il s’applique le {time} (00:00 UTC). D’ici là, les règles actuelles tiennent.",
-  "rules.newsSoon": "pas encore appliqué : il n’y a pas de calendrier économique à lire",
   "rules.locked": "Verrouillé",
   "rules.offNote": "Les règles sont désactivées. Modifiez-les pour les activer.",
   "rules.chartSoon": "La courbe commence dès qu’un deuxième jour est enregistré.",
@@ -855,8 +854,24 @@ export const messages: Messages = {
   "rules.minN": "min {days}",
   "rules.needsStop": "Stop requis",
   "rules.news": "Pause actualités",
-  "rules.newsNote":
-    "Aucun nouveau trade non plus {minutes} min avant et après les actualités à fort impact.",
+  "rules.newsHint":
+    "de part et d'autre d'une publication à fort impact en USD (IPC, FOMC, emploi), d'après le calendrier économique",
+  "rules.block.news":
+    "Dans une fenêtre de blocage : une publication à fort impact en USD est trop proche.",
+  "rules.block.newsUnchecked":
+    "Le calendrier économique n'a pas pu être lu pour vérifier le blocage des actualités.",
+  "rules.newsActive": "Blocage",
+  "rules.newsClear": "Libre",
+  "rules.newsNow": "{title} à {time} : pas de nouvelle position",
+  "rules.newsNext": "Prochaine : {title} à {time}, dans {left}",
+  "rules.newsNone": "Plus de publication à fort impact en USD cette semaine",
+  "rules.newsLimit": "±{minutes} min",
+  "rules.note.news": "Blocage actualités : {title}",
+  "rules.note.newsBody":
+    "Pas de nouvelle position {minutes} min avant et après la publication. Clôturer et les sorties fonctionnent toujours.",
+  "rules.ticketBlocked": "Vos règles de trading refusent cet ordre.",
+  "rules.ticketRefuses": "Vos règles le refusent :",
+  "rules.ticketWarns": "Vos règles avertissent :",
   "rules.noTimeLimit": "Sans limite de temps",
   "rules.noTrades": "Aucun trade aujourd’hui.",
   "rules.notTracked": "Pas encore suivi",
@@ -951,6 +966,9 @@ export const messages: Messages = {
   "multichart.syncRangeHint":
     "Faire défiler ou zoomer un graphique place les autres de même unité de temps sur les mêmes dates",
   "multichart.popOut": "Ouvrir {symbol} dans sa propre fenêtre",
+  "multichart.calcFor": "Calculatrice pour {market}",
+  "multichart.calcClose": "Fermer la calculatrice",
+  "multichart.calcHint": "Cliquez sur un autre graphique pour passer dessus.",
   "multichart.tradeBar": "Trader",
   "multichart.tradeBarHint":
     "Boutons d’achat et de vente sous chaque graphique : ordres au marché, envoyés en maintenant le bouton",
@@ -2822,6 +2840,132 @@ export const messages: Messages = {
   "mapx.vol.regimes": "Régime",
   "mapx.vol.median": "Médiane {measure}",
   "mapx.vol.quietest": "Les plus calmes",
+  "maphelp.open": "À propos de {view}",
+  "maphelp.close": "Fermer",
+  "maphelp.part.what": "Ce que ça montre",
+  "maphelp.part.how": "Comment ça marche",
+  "maphelp.part.read": "Comment le lire",
+  "maphelp.part.caveats": "À garder en tête",
+  "maphelp.foot":
+    "Une carte décrit ce que le marché a fait, pas ce qu'il fera. Utilisez-la avec votre propre analyse, pas comme un signal à elle seule.",
+  "maphelp.rsi.what":
+    "Le RSI (indice de force relative) de chaque marché sur l'unité de temps choisie, placé selon sa valeur, de la survente en bas au surachat en haut.",
+  "maphelp.rsi.how":
+    "Le RSI(14) est calculé à partir des bougies de chaque marché : le gain moyen des 14 dernières clôtures face à la perte moyenne, sur une échelle de 0 à 100. Les zones suivent les bandes de Coinglass : 70 et plus surachat, 60–70 fort, 40–60 neutre, 30–40 faible, moins de 30 survente. Le RSI d'une bougie plus tôt est aussi conservé, pour voir dans quel sens il va.",
+  "maphelp.rsi.read":
+    "Un groupe près de 70 signifie qu'une grande partie du marché a monté vite ; près de 30, qu'il a fortement baissé. Un marché loin des autres suit sa propre histoire. Le RSI moyen donne une idée rapide de la tension de tout le marché.",
+  "maphelp.rsi.caveats":
+    "Surachat n'est pas un signal de vente : dans une tendance forte, le RSI peut rester au-dessus de 70 longtemps, et sous 30 lors d'un krach. Une unité de temps courte change vite et est bruitée ; une longue bouge lentement. Les marchés peu échangés donnent des lectures plus heurtées.",
+  "maphelp.perf.what":
+    "La variation de prix de chaque marché sur la fenêtre choisie (de 1 heure à 7 jours), en tuiles dimensionnées par le volume du jour et colorées selon l'ampleur du mouvement.",
+  "maphelp.perf.how":
+    "Chaque variation compare le dernier prix à la clôture d'il y a une fenêtre, à partir des bougies horaires du marché. La taille d'une tuile est son volume sur 24 heures : les marchés les plus actifs prennent le plus de place. La couleur atteint sa pleine intensité quand le mouvement atteint une taille fixe pour la fenêtre.",
+  "maphelp.perf.read":
+    "Une carte surtout verte ou surtout rouge montre si le mouvement est large ou étroit. Une grande tuile très colorée est un marché majeur en mouvement ; une petite tuile vive, un petit marché qui fait un grand mouvement. Comparer les fenêtres montre si un mouvement est récent (1h, 4h) ou s'installe (7j).",
+  "maphelp.perf.caveats":
+    "Les petits marchés peuvent beaucoup varier avec peu de volume. Les grands mouvements s'inversent souvent en partie. La carte se remplit à mesure que l'historique de chaque marché arrive.",
+  "maphelp.vol.what":
+    "Les marchés classés selon leurs mouvements : volatilité réalisée sur le dernier jour ou la dernière semaine, ou l'amplitude horaire moyenne (ATR). Chacun est marqué en expansion, stable ou en contraction.",
+  "maphelp.vol.how":
+    "La volatilité réalisée est l'écart type des rendements horaires, annualisé pour comparer les fenêtres. L'ATR est l'amplitude vraie moyenne des 14 dernières heures, en part du prix. Le régime compare la volatilité du jour à celle de la semaine : 25 % ou plus au-dessus, c'est l'expansion ; 20 % ou plus en dessous, la contraction ; sinon, stable. Le filtre et le nombre de lignes ne changent que la liste ; les comptes par régime et les plus calmes couvrent toujours tous les marchés classés.",
+  "maphelp.vol.read":
+    "Une forte volatilité signifie de plus grandes oscillations : de la place pour de grands mouvements dans les deux sens, et des stops plus larges. L'expansion suit souvent une nouvelle ou une cassure ; la contraction, un range calme qui peut précéder un mouvement brusque. La liste des plus calmes montre les marchés qui se sont figés.",
+  "maphelp.vol.caveats":
+    "La volatilité dit combien un marché bouge, pas dans quel sens. Les chiffres annualisés paraissent grands, c'est voulu. Un seul pic peut gonfler le chiffre du jour, et les marchés peu liquides paraissent plus volatils qu'ils ne s'échangent.",
+  "maphelp.funding.what":
+    "Le taux de financement actuel de chaque plateforme pour la même crypto, côte à côte, avec les plus grands écarts entre plateformes.",
+  "maphelp.funding.how":
+    "Les plateformes règlent le financement à des intervalles différents (certaines toutes les heures, d'autres toutes les 4 ou 8 heures), donc chaque taux est ramené à la même base : par 8 heures, ou en APR annuel. Positif : les longs paient les shorts ; négatif : les shorts paient les longs.",
+  "maphelp.funding.read":
+    "Un financement très positif signifie des longs encombrés qui paient pour rester ; très négatif, des shorts encombrés. Les extrêmes précèdent souvent les squeezes. Un large écart entre deux plateformes est la base de l'arbitrage de financement : long là où c'est bon marché, short là où ça rapporte.",
+  "maphelp.funding.caveats":
+    "Les taux changent à chaque intervalle, et le taux actuel est une estimation jusqu'au paiement. Un arbitrage implique aussi des frais, des écarts de prix entre plateformes et un risque de liquidation d'un côté.",
+  "maphelp.oi.what":
+    "La variation de prix de chaque marché actif face à sa variation d'intérêt ouvert sur la fenêtre, en points répartis sur quatre quadrants.",
+  "maphelp.oi.how":
+    "L'intérêt ouvert est le nombre de contrats ouverts. Bybit publie un historique horaire ; sur Hyperliquid et Aster, l'app l'échantillonne toutes les 5 minutes tant qu'elle tourne, et montre la variation jusqu'ici tant que la fenêtre n'est pas couverte. Les points sont dimensionnés par l'intérêt ouvert.",
+  "maphelp.oi.read":
+    "Prix en hausse et intérêt ouvert en hausse : de nouveaux longs s'ouvrent. Prix en hausse et intérêt en baisse : des shorts se ferment (un squeeze). Prix en baisse et intérêt en hausse : de nouveaux shorts. Les deux en baisse : des longs se ferment ou sont liquidés. Les mouvements portés par de nouvelles positions vont souvent plus loin que ceux causés par des fermetures.",
+  "maphelp.oi.caveats":
+    "L'intérêt ouvert ne dit pas qui est long ou short, seulement combien est ouvert. Les quadrants sont une lecture, pas un fait sur un trader. Sur les plateformes échantillonnées par l'app, l'historique commence au lancement de l'app.",
+  "maphelp.ls.what":
+    "La part des comptes Bybit en position longue ou courte sur ses marchés les plus actifs, maintenant et il y a un jour.",
+  "maphelp.ls.how":
+    "Bybit publie le ratio des comptes longs face aux comptes courts pour chaque marché. Il est lu chez Bybit quelle que soit la plateforme à l'écran, car les autres ne le publient pas. Il compte des comptes, pas des tailles de position.",
+  "maphelp.ls.read":
+    "Une très forte part de comptes longs signifie que la foule penche d'un côté, ce que les traders lisent souvent à l'envers : le côté encombré peut être pris en squeeze. Un grand changement sur la journée montre un sentiment qui tourne.",
+  "maphelp.ls.caveats":
+    "Un gros compte avec une grosse position compte autant qu'un petit compte : cela montre le sentiment de la foule, pas où est l'argent. Ne couvre que Bybit.",
+  "maphelp.liquidations.what":
+    "Les liquidations du marché au moment où elles se produisent, et les totaux de la fenêtre : combien de longs et de shorts ont été forcés de sortir, et sur quelles cryptos.",
+  "maphelp.liquidations.how":
+    "Ce sont des données de marché, les mêmes quelle que soit la plateforme à l'écran. Les dernières 24 heures viennent de l'historique public des liquidations d'OKX ; tant que la vue est ouverte, les nouvelles arrivent du flux public en direct de Bybit, qui couvre tous ses marchés. Les totaux sont faits sur la fenêtre choisie, de 1 à 24 heures.",
+  "maphelp.liquidations.read":
+    "Une rafale de liquidations de longs signifie qu'une baisse a forcé des longs à effet de levier à sortir, et que la vente s'est nourrie d'elle-même ; une rafale de shorts, l'inverse. Les gros groupes marquent souvent la fin d'un mouvement brusque, quand la vente ou l'achat forcé s'épuise.",
+  "maphelp.liquidations.caveats":
+    "Les flux publics ne signalent pas toutes les liquidations (certains n'en envoient qu'un échantillon), et ce sont celles de deux plateformes, pas de toutes. Utilisez-le pour la forme de ce qui s'est passé, pas pour des totaux exacts.",
+  "maphelp.liqmap.what":
+    "Pour un marché, les niveaux de prix où des positions à effet de levier seraient, selon une estimation, liquidées, en carte de chaleur derrière le prix.",
+  "maphelp.liqmap.how":
+    "C'est une estimation, pas une donnée publiée. Le nouvel intérêt ouvert de chaque heure est supposé ouvert au prix de cette heure, moitié long et moitié short, avec un levier de 10x à 100x. Chacun donne un prix de liquidation ; les niveaux que le prix a déjà traversés sont retirés. Si une plateforme ne publie pas d'historique d'intérêt ouvert, celui du jour est réparti sur les heures passées selon le volume.",
+  "maphelp.liqmap.read":
+    "Les bandes vives sont là où beaucoup de positions seraient fermées de force. Le prix est souvent attiré vers les gros groupes, car les liquidations y alimentent le mouvement, et il peut les traverser vite.",
+  "maphelp.liqmap.caveats":
+    "Les vrais traders utilisent de nombreux leviers, et les positions s'ouvrent et se ferment d'une manière que le modèle ne voit pas. Voyez les bandes comme des zones probables, pas des prix exacts.",
+  "maphelp.book.what":
+    "Le carnet d'ordres en direct d'un marché au fil du temps : où les ordres d'achat et de vente attendent autour du prix, une colonne par seconde.",
+  "maphelp.book.how":
+    "Tant que la vue est ouverte, l'app lit le carnet chaque seconde et dessine la taille posée à chaque prix dans la plage choisie (de 0,5 % à 2 % autour du prix). Plus vif signifie plus de taille. Il est gardé pour cette vue seulement, et recommence quand le prix sort de la plage.",
+  "maphelp.book.read":
+    "Les lignes horizontales vives sont de gros ordres en attente, qui peuvent servir de support ou de résistance. Regardez si le prix s'y arrête ou les traverse, et s'ils bougent ou disparaissent quand le prix approche.",
+  "maphelp.book.caveats":
+    "Les ordres peuvent être retirés à tout moment, et de gros ordres sont parfois placés uniquement pour tromper (spoofing). Le carnet montre des intentions, pas des transactions.",
+  "maphelp.heatmap.what":
+    "Les plus grandes cryptos du secteur choisi, en tuiles dimensionnées par capitalisation ou volume sur 24 heures et colorées selon leur variation de prix.",
+  "maphelp.heatmap.how":
+    "Les cryptos et leurs chiffres viennent de CoinGecko, pour tout le marché sur l'ensemble des plateformes, pas seulement celle-ci. L'app demande le secteur que vous indiquez et montre ses 10, 20 ou 50 premières cryptos sur 1 heure, 24 heures ou 7 jours.",
+  "maphelp.heatmap.read":
+    "Elle montre où l'argent circule entre les secteurs : un secteur surtout vert quand les autres sont rouges a la cote. Dans un secteur, on voit si ce sont les leaders ou les petites cryptos qui mènent le mouvement.",
+  "maphelp.heatmap.caveats":
+    "Les prix de CoinGecko sont des prix spot multi-plateformes et peuvent différer du perpétuel d'une plateforme. Une crypto de la carte n'est pas forcément négociable sur la plateforme à l'écran.",
+  "maphelp.corr.what":
+    "À quel point les marchés les plus actifs bougent ensemble, en grille où chaque case est une paire.",
+  "maphelp.corr.how":
+    "Pour chaque paire, la corrélation de leurs rendements horaires sur la fenêtre (24 heures ou 7 jours) : 1 signifie qu'ils bougent ensemble, 0 sans lien, −1 en sens inverse. La grille couvre les 10, 20 ou 30 marchés les plus actifs, et le côté liste les marchés les plus et les moins liés au plus actif.",
+  "maphelp.corr.read":
+    "Une corrélation élevée partout signifie qu'une seule chose (souvent BTC) mène tout, et que détenir plusieurs cryptos diversifie peu. Un marché peu corrélé suit sa propre histoire, ce qui peut valoir la peine d'être tradé seul ou utilisé en couverture.",
+  "maphelp.corr.caveats":
+    "Les corrélations changent, et sautent souvent vers 1 lors d'une chute, justement quand la diversification compte le plus. Une fenêtre courte est bruitée.",
+  "maphelp.spread.what":
+    "Le prix de chaque crypto sur toutes les plateformes qui la listent, face à sa médiane entre ces plateformes.",
+  "maphelp.spread.how":
+    "Le prix de marque de chaque plateforme est comparé à la médiane de toutes pour cette crypto, en points de base (1 pb = 0,01 %). Les prix en USDT et en USDC sont comparés tels quels, sans conversion.",
+  "maphelp.spread.read":
+    "Une plateforme toujours au-dessus ou en dessous des autres montre une demande locale ou une prime. Un large écart peut être une occasion d'arbitrage, en achetant sur la moins chère et en vendant sur la plus chère.",
+  "maphelp.spread.caveats":
+    "Les frais, le financement, les délais de retrait et le petit écart entre USDT et USDC peuvent absorber un écart. Les marchés peu profonds montrent des écarts qu'on ne peut pas trader en taille.",
+  "maphelp.season.what":
+    "Le rendement moyen d'un marché pour chaque heure de chaque jour de la semaine, sur les 30 derniers jours.",
+  "maphelp.season.how":
+    "Chaque bougie horaire des 30 derniers jours est regroupée par jour de la semaine et heure UTC. Chaque case montre le rendement moyen de ce créneau, la fréquence de clôture en hausse et le nombre d'heures prises en compte.",
+  "maphelp.season.read":
+    "Des cases toujours de la même couleur suggèrent un motif récurrent, par exemple autour de l'ouverture d'une session ou du week-end. Les meilleures et pires heures sont résumées en haut.",
+  "maphelp.season.caveats":
+    "Trente jours ne donnent à chaque case que quatre ou cinq heures à moyenner : la plupart des motifs sont du bruit. Prenez-le comme une piste à vérifier, jamais comme une règle.",
+  "maphelp.sessions.what":
+    "Comment l'activité d'un marché se répartit dans la journée : la part de volume, l'amplitude moyenne et la dérive de chaque heure UTC, avec les sessions Asie, Europe et États-Unis marquées.",
+  "maphelp.sessions.how":
+    "À partir des bougies horaires des 30 derniers jours, on calcule pour chaque heure UTC la part de volume, l'amplitude moyenne entre haut et bas et la variation moyenne. Les sessions sont Asie 00:00–08:00, Europe 07:00–16:00 et États-Unis 13:00–21:00 UTC ; elles se chevauchent, donc leurs parts dépassent 100 % au total.",
+  "maphelp.sessions.read":
+    "Les heures les plus actives sont en général celles des plus grands mouvements et des écarts les plus serrés ; les heures calmes bougent moins et peuvent être plus minces. Savoir quand un marché se réveille aide à choisir le moment d'entrer et à placer ses stops.",
+  "maphelp.sessions.caveats":
+    "Les jours fériés, les changements d'heure et les grandes nouvelles modifient le motif. Trente jours, c'est un petit échantillon.",
+  "mapx.vol.filter": "Régime",
+  "mapx.vol.allRegimes": "Tous",
+  "mapx.rows": "Lignes",
+  "mapx.rowsAll": "Toutes",
+  "mapx.vol.shown": "{shown} sur {ranked}",
+  "mapx.vol.noneInRegime": "Aucun marché n'est dans ce régime en ce moment.",
   "mapx.vol.note":
     "Volatilité réalisée des rendements horaires, annualisée ; l'ATR est l'amplitude horaire moyenne sur 14 heures, en part du prix. En hausse : la volatilité du jour dépasse celle de la semaine d'un quart ou plus.",
   "mapx.funding.title": "Financement par plateforme",

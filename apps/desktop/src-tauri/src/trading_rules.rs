@@ -1,6 +1,7 @@
 //! Trading rules: the trader's own limits (daily loss, drawdown, risk per
-//! trade, position size, trades a day, trading hours, a cool-off after
-//! losses), kept here and checked here before an order is signed.
+//! trade, position size, trades a day, trading hours, a news blackout, a
+//! cool-off after losses), kept here and checked here before an order is
+//! signed.
 //!
 //! Security-relevant - review any change against
 //! `.claude/commands/security-review.md`: this sits on the signing path.
@@ -10,7 +11,9 @@
 //!   (`venues.rs`), against the venue's own account, fills and closed trades,
 //!   whatever window, hotkey or script asked. The page only mirrors it.
 //! - It fails closed: an opening order is refused when the account can't be
-//!   read to check it.
+//!   read to check it, or (with the news blackout on) the economic calendar
+//!   has never been read. A calendar read once is kept and used until the
+//!   next read succeeds.
 //! - Each account has its own rules (a prop firm's, a venue's), checked only
 //!   against that account's orders.
 //! - Loosening a rule or turning rules off has no immediate command: it is
@@ -33,6 +36,7 @@ use pewterdesk_core::{
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
+use crate::econ_calendar::{CalendarEvent, CalendarState, Impact};
 use crate::venues::Venues;
 
 /// The file the rules and their progress are kept in, in the app's config folder.
@@ -55,6 +59,9 @@ const MAX_SETS: usize = 20;
 const NAME_MAX: usize = 40;
 /// The trades whose sizes the dashboard shows.
 const RECENT_SIZES: usize = 5;
+/// The currencies whose high-impact releases the news blackout covers. Crypto
+/// trades on the dollar's: rate decisions, inflation, jobs.
+const NEWS_CURRENCIES: [&str; 1] = ["USD"];
 
 fn num(d: Decimal) -> f64 {
     d.0.to_string().parse().unwrap_or(0.0)
@@ -155,10 +162,40 @@ pub struct Hours {
     pub to: String,
 }
 
+/// No new positions this many minutes either side of a high-impact release.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct News {
     pub on: bool,
     pub minutes: f64,
+}
+
+/// A release the news blackout covers.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct NewsEvent {
+    pub title: String,
+    pub currency: String,
+    pub at: u64,
+}
+
+/// The calendar's releases the blackout covers: high impact, in `NEWS_CURRENCIES`.
+fn blackout_news(events: &[CalendarEvent]) -> Vec<NewsEvent> {
+    events
+        .iter()
+        .filter(|e| e.impact == Impact::High && NEWS_CURRENCIES.contains(&e.currency.as_str()))
+        .map(|e| NewsEvent {
+            title: e.title.clone(),
+            currency: e.currency.clone(),
+            at: e.time,
+        })
+        .collect()
+}
+
+/// The release nearest `now` (before or after), and how far it is in ms.
+fn nearest_news(events: &[NewsEvent], now: u64) -> Option<(&NewsEvent, u64)> {
+    events
+        .iter()
+        .map(|e| (e, e.at.abs_diff(now)))
+        .min_by_key(|(_, away)| *away)
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -329,8 +366,10 @@ impl Rules {
         let (c, o) = (&self.challenge, &old.challenge);
         let days_wider =
             self.hours.days == HourDays::EveryDay && old.hours.days == HourDays::Weekdays;
+        let news_shorter = old.news.on && (!self.news.on || self.news.minutes < old.news.minutes);
         self.restarts(old)
             || self.breach < old.breach
+            || news_shorter
             || c.daily_pct > o.daily_pct
             || c.daily_from != o.daily_from
             || c.max_pct > o.max_pct
@@ -529,6 +568,9 @@ struct Facts {
     entries: Vec<Entry>,
     /// Closed trades over the history window, oldest first.
     closed: Vec<Closed>,
+    /// The releases the news blackout covers, when the rule is on and the
+    /// calendar has been read; `None` otherwise.
+    news: Option<Vec<NewsEvent>>,
 }
 
 impl Facts {
@@ -604,6 +646,7 @@ impl Facts {
             positions,
             entries,
             closed,
+            news: None,
         }
     }
 
@@ -744,6 +787,40 @@ pub struct Status {
     /// Whether that share has reached the warning (where the rules warn first).
     pub daily_warned: bool,
     pub hours_open: bool,
+    /// With the news blackout on: the next release it covers (or the one
+    /// whose window is open now).
+    pub news: Option<Blackout>,
+}
+
+/// The news blackout around one release, for the page.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Blackout {
+    pub title: String,
+    pub currency: String,
+    pub at: u64,
+    /// Inside its window now: opening orders are refused.
+    pub active: bool,
+}
+
+/// The release whose blackout is open now, or the next one to open.
+fn blackout(rules: &Rules, facts: &Facts) -> Option<Blackout> {
+    if !rules.news.on {
+        return None;
+    }
+    let half = (rules.news.minutes * MINUTE_MS as f64) as u64;
+    facts
+        .news
+        .as_ref()?
+        .iter()
+        .filter(|e| e.at.saturating_add(half) >= facts.now)
+        .min_by_key(|e| e.at)
+        .map(|e| Blackout {
+            title: e.title.clone(),
+            currency: e.currency.clone(),
+            at: e.at,
+            active: e.at.abs_diff(facts.now) <= half,
+        })
 }
 
 /// The floor the overall drawdown is measured from.
@@ -963,6 +1040,7 @@ fn observe(rules: &Rules, progress: &mut Progress, facts: &Facts) -> Status {
         daily_used,
         daily_warned: rules.breach == Breach::WarnLock && daily_used >= WARN_AT,
         hours_open: rules.open_at(facts.now),
+        news: blackout(rules, facts),
     }
 }
 
@@ -1028,6 +1106,20 @@ fn check(rules: &Rules, status: &Status, facts: &Facts, asked: &Asked) -> Vec<Ch
         push(rule, false, 0.0, 0.0);
     }
     push("hours", status.hours_open, 0.0, 0.0);
+    if rules.news.on {
+        // Minutes to the nearest release covered, against the blackout's.
+        match facts.news.as_deref() {
+            None => push("newsUnchecked", false, 0.0, rules.news.minutes),
+            Some(events) => match nearest_news(events, facts.now) {
+                Some((_, ms)) => {
+                    let away = ms as f64 / MINUTE_MS as f64;
+                    push("news", away > rules.news.minutes, away, rules.news.minutes);
+                }
+                // Nothing covered on the calendar this week.
+                None => push("news", true, 0.0, rules.news.minutes),
+            },
+        }
+    }
     push(
         "coolOff",
         status.cool_off_until.is_none(),
@@ -1310,11 +1402,13 @@ impl TradingRules {
 
     /// Reads what the rules need from the venue: the account now, and its
     /// fills and closed trades (reused for a few seconds between checks).
+    /// With `calendar` (the news blackout is on), the releases it covers too.
     async fn facts(
         &self,
         venues: &Venues,
         venue: VenueId,
         account: &str,
+        calendar: Option<&CalendarState>,
     ) -> Result<Facts, VenueError> {
         let adapter = venues.adapter(venue)?;
         let who = Account {
@@ -1373,7 +1467,11 @@ impl TradingRules {
         let start = now / DAY_MS * DAY_MS;
         let mut closed: Vec<ClosedTrade> = history.into_iter().filter(|c| c.time < start).collect();
         closed.extend(today);
-        Ok(Facts::from_venue(now, &snapshot, &fills, &closed))
+        let mut facts = Facts::from_venue(now, &snapshot, &fills, &closed);
+        if let Some(calendar) = calendar {
+            facts.news = calendar.kept().await.map(|events| blackout_news(&events));
+        }
+        Ok(facts)
     }
 
     /// Where `facts` leave `account`, with its progress brought up to date and kept.
@@ -1401,6 +1499,7 @@ impl TradingRules {
     pub async fn guard_order(
         &self,
         venues: &Venues,
+        calendar: &CalendarState,
         venue: VenueId,
         account: &str,
         request: &OrderRequest,
@@ -1412,7 +1511,7 @@ impl TradingRules {
             return Ok(());
         }
         let checks = self
-            .order_checks(venues, venue, account, &rules, request)
+            .order_checks(venues, calendar, venue, account, &rules, request)
             .await?;
         if rules.breach == Breach::Warn {
             return Ok(());
@@ -1426,13 +1525,18 @@ impl TradingRules {
     async fn order_checks(
         &self,
         venues: &Venues,
+        calendar: &CalendarState,
         venue: VenueId,
         account: &str,
         rules: &Rules,
         request: &OrderRequest,
     ) -> Result<Vec<Check>, VenueError> {
         let unread = |_| VenueError::Blocked("unchecked".into());
-        let facts = self.facts(venues, venue, account).await.map_err(unread)?;
+        let news = rules.news.on.then_some(calendar);
+        let facts = self
+            .facts(venues, venue, account, news)
+            .await
+            .map_err(unread)?;
         let price = match &request.kind {
             OrderKind::Limit { price, .. } => num(*price),
             OrderKind::Trigger {
@@ -1498,7 +1602,10 @@ impl TradingRules {
         if order.reduce_only || num(size) <= num(order.size) {
             return Ok(());
         }
-        let facts = self.facts(venues, venue, account).await.map_err(unread)?;
+        let facts = self
+            .facts(venues, venue, account, None)
+            .await
+            .map_err(unread)?;
         match self.stand(venue, account, &rules, &facts).lock {
             Some(_) => Err(VenueError::Blocked("lockedAmend".into())),
             None => Ok(()),
@@ -1522,7 +1629,10 @@ impl TradingRules {
             return Ok(());
         }
         let unread = |_| VenueError::Blocked("unchecked".into());
-        let facts = self.facts(venues, venue, account).await.map_err(unread)?;
+        let facts = self
+            .facts(venues, venue, account, None)
+            .await
+            .map_err(unread)?;
         if self.stand(venue, account, &rules, &facts).lock.is_none() {
             return Ok(());
         }
@@ -1589,13 +1699,15 @@ pub fn delete_trading_rules(
 pub async fn trading_rules_status(
     state: State<'_, TradingRules>,
     venues: State<'_, Venues>,
+    calendar: State<'_, CalendarState>,
     venue: VenueId,
     account: String,
 ) -> Result<Option<Status>, VenueError> {
     let Some(rules) = state.in_force(venue, &account) else {
         return Ok(None);
     };
-    let facts = state.facts(&venues, venue, &account).await?;
+    let news = rules.news.on.then_some(&*calendar);
+    let facts = state.facts(&venues, venue, &account, news).await?;
     Ok(Some(state.stand(venue, &account, &rules, &facts)))
 }
 
@@ -1605,6 +1717,7 @@ pub async fn trading_rules_status(
 pub async fn check_trading_rules(
     state: State<'_, TradingRules>,
     venues: State<'_, Venues>,
+    calendar: State<'_, CalendarState>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
@@ -1616,7 +1729,7 @@ pub async fn check_trading_rules(
         return Ok(Vec::new());
     }
     state
-        .order_checks(&venues, venue, &account, &rules, &request)
+        .order_checks(&venues, &calendar, venue, &account, &rules, &request)
         .await
 }
 
@@ -2186,5 +2299,118 @@ mod tests {
         assert!(saved.sets[0].on);
         assert_eq!(saved.sets[0].progress.peak, 10_500.0);
         assert!(Saved::read(b"not json").sets.is_empty());
+    }
+
+    fn release(title: &str, currency: &str, impact: Impact, from_noon_min: i64) -> CalendarEvent {
+        CalendarEvent {
+            title: title.into(),
+            currency: currency.into(),
+            time: (NOON as i64 + from_noon_min * MINUTE_MS as i64) as u64,
+            impact,
+            forecast: None,
+            previous: None,
+        }
+    }
+
+    fn with_news(minutes: f64) -> Rules {
+        Rules {
+            news: News { on: true, minutes },
+            ..Rules::default()
+        }
+    }
+
+    #[test]
+    fn the_blackout_covers_high_impact_dollar_releases_only() {
+        let week = [
+            release("CPI m/m", "USD", Impact::High, 10),
+            release("Retail Sales", "USD", Impact::Medium, 5),
+            release("ECB rate", "EUR", Impact::High, 2),
+            release("Bank Holiday", "USD", Impact::Holiday, 1),
+        ];
+        let covered = blackout_news(&week);
+        assert_eq!(covered.len(), 1);
+        assert_eq!(covered[0].title, "CPI m/m");
+    }
+
+    #[test]
+    fn no_new_positions_either_side_of_a_release() {
+        let rules = with_news(15.0);
+        let mut progress = Progress::default();
+        let mut now = facts(10_000.0);
+        let order = buy("BTC", 0.01, 100_000.0, Some(99_500.0));
+        let ask = |now: &Facts, progress: &mut Progress| {
+            let status = observe(&rules, progress, now);
+            failed(&check(&rules, &status, now, &order))
+        };
+        // Ten minutes before CPI: inside the 15-minute window.
+        now.news = Some(blackout_news(&[release(
+            "CPI m/m",
+            "USD",
+            Impact::High,
+            10,
+        )]));
+        assert_eq!(ask(&now, &mut progress), ["news"]);
+        // Ten minutes after it, still inside.
+        now.now = NOON + 20 * MINUTE_MS;
+        assert_eq!(ask(&now, &mut progress), ["news"]);
+        // Sixteen minutes after, outside; and a week with nothing covered.
+        now.now = NOON + 26 * MINUTE_MS;
+        assert!(ask(&now, &mut progress).is_empty());
+        now.news = Some(Vec::new());
+        assert!(ask(&now, &mut progress).is_empty());
+    }
+
+    #[test]
+    fn the_blackout_fails_closed_without_a_calendar_and_lets_risk_off() {
+        let rules = with_news(15.0);
+        let mut progress = Progress::default();
+        let now = facts(10_000.0);
+        let status = observe(&rules, &mut progress, &now);
+        let order = buy("BTC", 0.01, 100_000.0, Some(99_500.0));
+        // Never read: the calendar can't say it's clear, so an opening order waits.
+        assert_eq!(
+            failed(&check(&rules, &status, &now, &order)),
+            ["newsUnchecked"]
+        );
+        // An order that only reduces is never checked.
+        let close = Asked {
+            reduce_only: true,
+            ..order.clone()
+        };
+        assert!(check(&rules, &status, &now, &close).is_empty());
+        // And with the rule off there's no news check at all.
+        let off = Rules::default();
+        let status = observe(&off, &mut progress, &now);
+        let checks = check(&off, &status, &now, &order);
+        assert!(!checks.iter().any(|c| c.rule.starts_with("news")));
+    }
+
+    #[test]
+    fn the_status_shows_the_next_blackout() {
+        let rules = with_news(15.0);
+        let mut progress = Progress::default();
+        let mut now = facts(10_000.0);
+        now.news = Some(blackout_news(&[
+            release("FOMC", "USD", Impact::High, -30),
+            release("CPI m/m", "USD", Impact::High, 40),
+        ]));
+        // FOMC's window closed 15 minutes ago: CPI is next, not yet open.
+        let next = observe(&rules, &mut progress, &now).news.unwrap();
+        assert_eq!((next.title.as_str(), next.active), ("CPI m/m", false));
+        now.now = NOON + 30 * MINUTE_MS;
+        let next = observe(&rules, &mut progress, &now).news.unwrap();
+        assert_eq!((next.title.as_str(), next.active), ("CPI m/m", true));
+        assert!(observe(&Rules::default(), &mut progress, &now)
+            .news
+            .is_none());
+    }
+
+    #[test]
+    fn shortening_or_ending_the_blackout_waits_for_tomorrow() {
+        let old = with_news(15.0);
+        assert!(Rules::default().looser_than(&old), "off");
+        assert!(with_news(5.0).looser_than(&old), "shorter");
+        assert!(!with_news(30.0).looser_than(&old), "longer");
+        assert!(!old.looser_than(&Rules::default()), "turning it on");
     }
 }

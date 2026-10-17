@@ -59,6 +59,8 @@ const BLOCK_TEXT: Record<string, MessageKey> = {
   lockedDailyLoss: "rules.block.lockedDailyLoss",
   lockedMaxDrawdown: "rules.block.lockedMaxDrawdown",
   hours: "rules.block.hours",
+  news: "rules.block.news",
+  newsUnchecked: "rules.block.newsUnchecked",
   coolOff: "rules.block.coolOff",
   revenge: "rules.block.revenge",
   tradesPerDay: "rules.block.tradesPerDay",

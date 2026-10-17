@@ -58,8 +58,12 @@ export {
   type MapTop,
   PerformanceMap,
   type PerfTile,
+  VOL_FILTERS,
+  VOL_ROW_COUNTS,
   VolatilityMap,
+  type VolFilter,
   type VolRow,
+  type VolRows,
 } from "./components/maps/MomentumMaps";
 export {
   FUNDING_SORTS,
@@ -129,7 +133,7 @@ export {
   type RowMode,
   usePriceTrend,
 } from "./components/trading/OrderBookView";
-export { OrderTicket } from "./components/trading/OrderTicket";
+export { OrderTicket, type TicketRuleNote } from "./components/trading/OrderTicket";
 export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
 export {
   PnlShareDialog,
@@ -156,6 +160,7 @@ export {
   type ScreenerDisplay,
 } from "./components/trading/Screener";
 export { SignalsFeed } from "./components/trading/SignalsFeed";
+export { SizeCalculator } from "./components/trading/SizeCalculator";
 export {
   ChartSkeleton,
   OrderBookSkeleton,

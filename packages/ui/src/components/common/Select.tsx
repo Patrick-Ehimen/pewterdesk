@@ -4,6 +4,8 @@ import { LuCheck, LuChevronDown } from "react-icons/lu";
 export interface SelectOption<V extends string> {
   value: V;
   label: string;
+  /** An image (a venue's logo) shown before the label, or in its place with `iconOnly`. */
+  icon?: string;
 }
 
 interface SelectProps<V extends string> {
@@ -15,6 +17,23 @@ interface SelectProps<V extends string> {
   /** For a visible `<label htmlFor>`. */
   id?: string;
   className?: string;
+  /**
+   * Options with an icon show only it, in the trigger and the list; the
+   * label stays as the tooltip and for screen readers.
+   */
+  iconOnly?: boolean;
+}
+
+/** An option's face: its icon and label, or the icon alone. */
+function Face({ option, iconOnly }: { option?: SelectOption<string>; iconOnly?: boolean }) {
+  if (!option) return null;
+  if (!option.icon) return <span>{option.label}</span>;
+  return (
+    <>
+      <img className="pd-select-icon" src={option.icon} alt="" />
+      <span className={iconOnly ? "pd-visually-hidden" : undefined}>{option.label}</span>
+    </>
+  );
 }
 
 /**
@@ -30,6 +49,7 @@ export function Select<V extends string>({
   label,
   id,
   className,
+  iconOnly,
 }: SelectProps<V>) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -124,13 +144,14 @@ export function Select<V extends string>({
         type="button"
         className="pd-select-trigger"
         aria-label={label}
+        title={iconOnly ? options[selectedIndex]?.label : undefined}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => (open ? close() : show())}
         onKeyDown={onButtonKeyDown}
       >
-        <span>{options[selectedIndex]?.label}</span>
+        <Face option={options[selectedIndex]} iconOnly={iconOnly} />
         <LuChevronDown size={13} className="pd-select-chevron" aria-hidden />
       </button>
       {open && (
@@ -155,13 +176,14 @@ export function Select<V extends string>({
               aria-selected={o.value === value}
               data-active={i === active || undefined}
               className="pd-select-option"
+              title={iconOnly ? o.label : undefined}
               onPointerEnter={() => setActive(i)}
               onClick={() => pick(i)}
             >
               <span className="pd-select-check">
                 {o.value === value && <LuCheck size={13} aria-hidden />}
               </span>
-              {o.label}
+              <Face option={o} iconOnly={iconOnly} />
             </div>
           ))}
         </div>

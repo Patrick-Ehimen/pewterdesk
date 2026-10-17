@@ -53,7 +53,7 @@ export interface TradingRules {
   tradesPerDay: number;
   /** UTC, "HH:MM". */
   hours: { days: HourDays; from: string; to: string };
-  /** No new trades this long either side of high-impact news. */
+  /** No new positions this long either side of a high-impact USD release (the economic calendar's). */
   news: { on: boolean; minutes: number };
   coolOff: { losses: number; minutes: number };
   tilt: {
@@ -308,6 +308,18 @@ export interface RulesStatus {
   /** Whether that share has reached the warning. */
   dailyWarned: boolean;
   hoursOpen: boolean;
+  /** With the news blackout on: the next release it covers, or the one whose window is open. */
+  news: Blackout | null;
+}
+
+/** The news blackout around one release. */
+export interface Blackout {
+  title: string;
+  currency: string;
+  /** When it's released, in ms. */
+  at: number;
+  /** Inside its window now: opening orders are refused. */
+  active: boolean;
 }
 
 /** The account the rules are checked against. */

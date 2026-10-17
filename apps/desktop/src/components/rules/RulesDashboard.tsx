@@ -505,8 +505,33 @@ export function RulesDashboard({
                   })
             }
             limit={`${hour(rules.hours.from)}–${hour(rules.hours.to)} UTC`}
-            note={rules.news.on ? t("rules.newsNote", { minutes: rules.news.minutes }) : undefined}
           />
+          {rules.news.on && (
+            <RuleRow
+              title={t("rules.news")}
+              badge={
+                status?.news?.active ? (
+                  <Badge tone="warn">{t("rules.newsActive")}</Badge>
+                ) : (
+                  <Badge tone="ok">{t("rules.newsClear")}</Badge>
+                )
+              }
+              value={
+                !status
+                  ? none
+                  : status.news
+                    ? t(status.news.active ? "rules.newsNow" : "rules.newsNext", {
+                        title: `${status.news.currency} ${status.news.title}`,
+                        time: clockTime(status.news.at),
+                        left: span(
+                          Math.max(0, Math.round((status.news.at - now.getTime()) / 60_000)),
+                        ),
+                      })
+                    : t("rules.newsNone")
+              }
+              limit={t("rules.newsLimit", { minutes: rules.news.minutes })}
+            />
+          )}
           <RuleRow
             title={t("rules.coolOff")}
             badge={

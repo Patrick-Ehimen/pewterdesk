@@ -82,9 +82,14 @@ export function useTradingRules(venue: VenueId, account: string | undefined) {
   const { status, error } = useRulesStatus(here, view?.on === true, tick);
 
   // What was already said, so each thing is said once as it happens.
-  const said = useRef<{ warned: boolean; lock?: string; coolOff?: number; revenges: number }>(
-    undefined,
-  );
+  const said = useRef<{
+    warned: boolean;
+    lock?: string;
+    coolOff?: number;
+    revenges: number;
+    /** The release whose blackout is open, by its time. */
+    blackout?: number;
+  }>(undefined);
   const rules = view?.rules;
   useEffect(() => {
     if (!status || !rules) {
@@ -96,6 +101,7 @@ export function useTradingRules(venue: VenueId, account: string | undefined) {
       lock: status.lock?.reason,
       coolOff: status.coolOffUntil ?? undefined,
       revenges: status.revenge?.count ?? 0,
+      blackout: status.news?.active ? status.news.at : undefined,
     };
     const before = said.current;
     said.current = now;
@@ -131,6 +137,16 @@ export function useTradingRules(venue: VenueId, account: string | undefined) {
         type: "risk",
         title: t("rules.note.coolOff", { minutes: rules.coolOff.minutes }),
         body: t("rules.block.coolOff"),
+        tone: "warn",
+        sound: "alert",
+        venue,
+      });
+    }
+    if (status.news && now.blackout !== undefined && now.blackout !== before.blackout) {
+      notifyEvent({
+        type: "risk",
+        title: t("rules.note.news", { title: `${status.news.currency} ${status.news.title}` }),
+        body: t("rules.note.newsBody", { minutes: rules.news.minutes }),
         tone: "warn",
         sound: "alert",
         venue,

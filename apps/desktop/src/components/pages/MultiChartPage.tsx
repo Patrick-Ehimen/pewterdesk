@@ -1,3 +1,4 @@
+import { venueLogos } from "@pewterdesk/assets";
 import type {
   AccountSnapshot,
   CandleInterval,
@@ -23,6 +24,7 @@ import {
 } from "@pewterdesk/ui";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  LuCalculator,
   LuCheck,
   LuExternalLink,
   LuGripVertical,
@@ -67,6 +69,7 @@ import { VENUES } from "../../lib/venues";
 import { HoldButton } from "../HoldButton";
 import { SettingSwitch, SettingsPopover } from "../panels/ViewSettings";
 import { LoadingMark } from "../Splash";
+import { ChartCalculator } from "./ChartCalculator";
 
 /** A venue's markets and their prices, while it's wanted. */
 export function useVenueData(venue: VenueId, enabled: boolean) {
@@ -175,6 +178,12 @@ interface CellProps {
   onTrade?: () => void;
   /** Opens this chart in a window of its own; no button without it. */
   onPopOut?: () => void;
+  /** Opens the calculator on this chart. */
+  onCalculator?: () => void;
+  /** The calculator is open on this chart. */
+  calculating?: boolean;
+  /** The calculator is open (on any chart): a click on this one moves it here. */
+  onPick?: () => void;
   /**
    * Sets the position's take-profit or stop-loss, as the TP / SL editor
    * would; with it, their lines on the chart can be dragged.
@@ -218,6 +227,9 @@ export function Cell({
   onSettings,
   onTrade,
   onPopOut,
+  onCalculator,
+  calculating = false,
+  onPick,
   onProtect,
   trade,
   markSize,
@@ -258,6 +270,9 @@ export function Cell({
       className="mc-cell"
       aria-label={name}
       data-dragging={dragging}
+      data-calculating={calculating || undefined}
+      // Captured, not stopped: the click still reaches the chart (drawing, the crosshair).
+      onPointerDownCapture={onPick}
       onDragOver={
         onDragOver &&
         ((e) => {
@@ -297,8 +312,9 @@ export function Cell({
             className="mc-venue"
             label={t("portfolio.col.venue")}
             value={cell.venue}
-            options={venues.map((v) => ({ value: v.id, label: v.label }))}
+            options={venues.map((v) => ({ value: v.id, label: v.label, icon: venueLogos[v.id] }))}
             onChange={onVenue}
+            iconOnly
           />
         )}
         <MarketSearch
@@ -325,6 +341,18 @@ export function Cell({
             ) : (
               <LuMaximize2 size={14} aria-hidden />
             )}
+          </button>
+        )}
+        {onCalculator && (
+          <button
+            type="button"
+            className="pd-icon-button"
+            aria-label={t("multichart.calcFor", { market: name })}
+            title={t("multichart.calcFor", { market: name })}
+            aria-pressed={calculating}
+            onClick={onCalculator}
+          >
+            <LuCalculator size={14} aria-hidden />
           </button>
         )}
         {onPopOut && (
@@ -481,6 +509,8 @@ export function MultiChartPage({
 
   // The chart given the whole page, by its place in the grid.
   const [maximised, setMaximised] = useState<number>();
+  /** The chart the calculator is set to, while it's open. */
+  const [calculator, setCalculator] = useState<number>();
   // 1 to 9 give that chart the page (again to give it back); Esc restores the grid.
   const shownCount = Math.min(state.cells.length, GRID[state.layout].charts);
   useEffect(() => {
@@ -726,6 +756,11 @@ export function MultiChartPage({
                 onLayout={(chart) => update(withCell(state, i, { chart }))}
                 onSettings={(settings) => update(withCell(state, i, { settings }))}
                 onTrade={() => onTrade(cell.venue, cell.market)}
+                onCalculator={() => setCalculator(calculator === i ? undefined : i)}
+                calculating={calculator === i}
+                onPick={
+                  calculator !== undefined && calculator !== i ? () => setCalculator(i) : undefined
+                }
                 onPopOut={() => {
                   leavePopout(cell);
                   void appClient.openChartWindow(cell.venue, cell.market, cell.interval);
@@ -765,6 +800,21 @@ export function MultiChartPage({
           })}
         </div>
       )}
+      {(() => {
+        const cell = calculator === undefined ? undefined : shown[calculator];
+        const market = cell && (data[cell.venue].markets ?? []).find((m) => m.id === cell.market);
+        if (!cell || !market) return null;
+        const summary = data[cell.venue].summaries?.find((s) => s.market === cell.market);
+        return (
+          <ChartCalculator
+            venue={cell.venue}
+            market={market}
+            price={summary ? Number(summary.markPrice) : 0}
+            available={account?.venue === cell.venue ? Number(account.availableMargin) : undefined}
+            onClose={() => setCalculator(undefined)}
+          />
+        );
+      })()}
     </div>
   );
 }

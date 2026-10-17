@@ -198,8 +198,12 @@ export interface VolRow {
   change24h?: number;
 }
 
-/** Rows in the ranking. */
-const VOL_ROWS = 40;
+/** How many of the ranking's rows are listed: the top 40, the top 100, or every one. */
+export type VolRows = "40" | "100" | "all";
+export const VOL_ROW_COUNTS: readonly VolRows[] = ["40", "100", "all"];
+/** Which markets the ranking lists, by how the day's volatility compares with the week's. */
+export type VolFilter = "all" | VolRegime;
+export const VOL_FILTERS: readonly VolFilter[] = ["all", "expanding", "steady", "contracting"];
 
 /**
  * Markets ranked by how much they move (realised volatility over the day or
@@ -210,6 +214,10 @@ export function VolatilityMap({
   rows,
   measure,
   onMeasure,
+  rowCount,
+  onRowCount,
+  filter,
+  onFilter,
   progress,
   loader,
   extra,
@@ -218,6 +226,10 @@ export function VolatilityMap({
   rows: readonly VolRow[];
   measure: VolMeasure;
   onMeasure: (m: VolMeasure) => void;
+  rowCount: VolRows;
+  onRowCount: (rows: VolRows) => void;
+  filter: VolFilter;
+  onFilter: (filter: VolFilter) => void;
   progress: { done: number; total: number };
   loader?: ReactNode;
   /** More controls after the view's own (the Crypto / All filter). */
@@ -228,6 +240,9 @@ export function VolatilityMap({
     .map((r) => ({ ...r, value: r[measure], regime: volRegime(r.vol24h, r.vol7d) }))
     .filter((r): r is typeof r & { value: number } => r.value !== undefined);
   const ranked = [...valued].sort((a, b) => b.value - a.value);
+  // The regimes and the quietest stay the whole market's; the list follows the filter.
+  const listed = filter === "all" ? ranked : ranked.filter((r) => r.regime === filter);
+  const shown = rowCount === "all" ? listed : listed.slice(0, Number(rowCount));
   const max = ranked[0]?.value ?? 0;
   const count = (regime: VolRegime) => valued.filter((r) => r.regime === regime).length;
   const label = (m: VolMeasure) => t(`mapx.vol.${m}`);
@@ -246,10 +261,33 @@ export function VolatilityMap({
             label={t("mapx.measure")}
             text={label}
           />
+          <Seg
+            options={VOL_FILTERS}
+            value={filter}
+            onChange={onFilter}
+            label={t("mapx.vol.filter")}
+            text={(f) => (f === "all" ? t("mapx.vol.allRegimes") : t(`mapx.vol.${f}`))}
+          />
+          <Seg
+            options={VOL_ROW_COUNTS}
+            value={rowCount}
+            onChange={onRowCount}
+            label={t("mapx.rows")}
+            text={(n) => (n === "all" ? t("mapx.rowsAll") : t("mapx.topN", { count: n }))}
+          />
           {extra}
         </>
       }
-      legend={ranked.length > 0 && <HistoryProgress {...progress} />}
+      legend={
+        ranked.length > 0 && (
+          <>
+            <span className="pd-num">
+              {t("mapx.vol.shown", { shown: shown.length, ranked: listed.length })}
+            </span>
+            <HistoryProgress {...progress} />
+          </>
+        )
+      }
       note={t("mapx.vol.note")}
       state={ranked.length === 0 ? <MapState loader={loader} progress={progress} /> : undefined}
       side={
@@ -288,8 +326,9 @@ export function VolatilityMap({
       }
     >
       <div className="pd-mx-scroll">
+        {shown.length === 0 && <MapState message={t("mapx.vol.noneInRegime")} />}
         <ol className="pd-mx-bars">
-          {ranked.slice(0, VOL_ROWS).map((r, i) => (
+          {shown.map((r, i) => (
             <li key={r.market.id}>
               <button type="button" onClick={() => onTrade(r.market)}>
                 <span className="pd-mx-rank pd-num">{i + 1}</span>
