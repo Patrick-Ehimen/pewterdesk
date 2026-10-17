@@ -46,6 +46,8 @@ futures-util = { version = "0.3.34", default-features = false, features = ["sink
 zeroize = "1"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
+# A second launch hands over to the running app instead of starting another.
+tauri-plugin-single-instance = "2"
 
 # The tray's coloured title (green/red) is an AppKit attributed string; these
 # are the same bindings the tray itself uses, so nothing new is downloaded.

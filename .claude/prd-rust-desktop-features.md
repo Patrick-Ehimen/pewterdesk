@@ -1,9 +1,11 @@
 # PRD: Rust-side desktop features (backlog)
 
-Status: in progress - 1 (keychain storage, `src-tauri/src/keychain.rs`) and 3
-(system tray, `src-tauri/src/tray.rs`, as a custom panel rather than a
-right-click menu) are built; the rest is not started. The context below
-predates both.
+Status: in progress. Built: 1 (keychain storage, `src-tauri/src/keychain.rs`),
+2 (native notifications, `notify.rs`), 3 (system tray, `src-tauri/src/tray.rs`,
+as a custom panel rather than a right-click menu), the single-instance half
+of 4 (`tauri-plugin-single-instance`, in `lib.rs`), and 6's global shortcut
+(the floating window's). Not started: deep linking, local persistence,
+autostart and the updater. The context below predates all of it.
 
 Context: the Tauri shell (`apps/desktop/src-tauri`) currently only has the
 default boilerplate `main.rs` - no custom Rust commands, plugins, or business
