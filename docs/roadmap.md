@@ -1,6 +1,6 @@
 # Roadmap
 
-What's left to build on `main` (as of October 15, 2026). Roughly in priority
+What's left to build on `main` (as of October 17, 2026). Roughly in priority
 order within each section.
 
 ## 1. Trading
@@ -39,8 +39,6 @@ three (Hyperliquid's and Aster's closed trades are built from their fills).
 
 From the local design mockups (`design/screens/`, gitignored).
 
-- **Journal** (18) - the page exists but isn't in the menu; to be built on
-  the fill history (`fills`).
 - **Funding arbitrage** (20), **smart order routing** (38), **spread
   trading** (39) - possible now that three venues trade.
 - **Venue health** (42), **chain switcher** (44, 45).
@@ -52,7 +50,8 @@ From the local design mockups (`design/screens/`, gitignored).
   (`CLAUDE.md`).
 
 Built since the last version of this list: the command palette (17), the
-CLI panel, and Multi-chart (22).
+CLI panel, and Multi-chart (22). Dropped: the Journal (18) won't be built,
+and its placeholder page is gone.
 
 ## 3. The price chart
 
@@ -64,17 +63,13 @@ Trade page, every multi-chart cell and popped-out charts.
   between two charts of one market.
 - **The library's own dialogs** (indicator settings, chart settings, the
   indicator picker) are English only; it takes a translation callback.
-- **Loose ends:** the old lightweight-charts `CandleChart` is still in
-  `packages/ui`, unused; the multi-chart cell's saved `type`, `indicators`,
-  `grid`, `logScale` and `countdown` fields are no longer read; the landing
-  page still says "TradingView to come".
 
 ## 4. Desktop features (Rust side)
 
-From `.claude/prd-rust-desktop-features.md`; none started.
+From `.claude/prd-rust-desktop-features.md`. Built: keychain storage,
+native notifications, the tray, single instance and the floating window's
+global shortcut.
 
-- **Single instance** - launching the app twice focuses the open window
-  (`tauri-plugin-single-instance`).
 - **Deep links** - `pewterdesk://` URLs, e.g. shareable position links
   (`tauri-plugin-deep-link`).
 - **Local persistence** - trade history, watchlists and settings in SQLite
@@ -96,11 +91,9 @@ From `.claude/prd-rust-desktop-features.md`; none started.
   native notifications, the liquidation notice's placement, TP/SL on a new
   Bybit demo order, and the share buttons.
 - **v0.2.0 release** is a draft with 9 installers; publish or not.
-- **`.claude/commands/security-review.md`** is out of date with the current
-  signing surface: it still speaks of place and cancel only, while Bybit
-  also amends, sets a position's protection, leverage and margin mode.
-- **Housekeeping:** an open Dependabot PR, and the local `feat/tealchart`
-  branch with one unmerged trial commit.
+- **Housekeeping:** two open Dependabot PRs (#48, #50), both green; #48
+  takes TypeScript from 6 to 7. And the local `feat/tealchart` branch, a
+  trial OpenAlgo Charts replaced, can go.
 
 ## 6. Algos, bots and the `pd` command line
 
@@ -118,4 +111,3 @@ use. See `docs/bots/plan.md` for tasks and exit tests.
 
 1. A small live order on each venue, from the app: place, change, cancel,
    a stop-loss set and removed, and a leverage change.
-2. The Journal, on the fill history (now read on all three venues).

@@ -367,8 +367,7 @@ the app implements over the venue commands (`lib/barSource.ts`), and is
 given no order callback: it draws the position and orders as lines, and a
 TP or SL line dragged only calls back (`onMoveExit`), into the same
 `protect` as the TP / SL editor. Handing the library an order callback
-(`onOrder`, the trade tier) is a security-relevant change. The older
-lightweight-charts chart (`CandleChart`) is still in `packages/ui`, unused. In `apps/desktop/src/`,
+(`onOrder`, the trade tier) is a security-relevant change. In `apps/desktop/src/`,
 `App.tsx` and `main.tsx` sit at the root; `api/venueClient.ts` wraps the Tauri
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
@@ -395,8 +394,7 @@ and sessions from a market's last 30 days of hourly candles; plus Bybit's
 public long / short account ratio (`long_short_ratio`, a read-only market
 data request), whichever venue is on screen. A Crypto / All filter keeps
 stocks and metals out of the rankings, and saved views (`lib/mapViews.ts`,
-`pd.maps.saved`) keep a view with its settings and market under a name), and Journal, a
-placeholder until it's built on the fill history (`fills`).
+`pd.maps.saved`) keep a view with its settings and market under a name).
 
 What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up, plus
