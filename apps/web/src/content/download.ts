@@ -5,7 +5,7 @@ import { REPO_URL, VERSION } from "../site";
 export const head = {
   label: "Download",
   title: "Get the desk.",
-  lede: `Version ${VERSION}, a pre-release of an app still in development. Free, open source, and yours to build.`,
+  lede: `Version ${VERSION}, an early release of an app still in development. Free, open source, and yours to build.`,
 };
 
 export const installers = {
