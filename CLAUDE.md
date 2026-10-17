@@ -41,6 +41,7 @@ a key before storing it.
   and how accounts and their keychain entries are named (`accounts`)
 - `crates/engine` - the router and the trading gate (live-trading switch,
   trading rules); the only caller of an adapter's trading methods
+- `crates/store` - the engine's event log (SQLite)
 - `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
 - `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
@@ -228,10 +229,21 @@ discover it on their own. The reasoning behind the rules is in
   transfer, key approval, or anything that signs caller-supplied bytes or
   typed data. The router builds the account's keychain reference itself
   (`trading_account`, from `core::accounts`) and is the only caller of an
-  adapter's trading methods: a Bybit demo account trades as soon as it's
+  adapter's trading methods. It logs every command with its origin (`Origin`,
+  where in the app it came from - a label that grants nothing; the frontend
+  passes it with each trading command), the gate's decision and the venue's
+  answer, and gives every order a client order id of its own (`0x` + the
+  log's engine id + the command's sequence number), written to the log
+  before the order is sent. An opening order whose id can't be logged is
+  refused (`Blocked("unrecorded")`); reduce-only orders, cancels and the
+  rest still go through: a Bybit demo account trades as soon as it's
   connected, every live account (Bybit, Hyperliquid, Aster) only once live
   trading is turned on for it. Every venue implements all six, but for a
   trailing stop on Hyperliquid and Aster.
+- `crates/store` - the event log (`events.sqlite3` in the app's data
+  folder; SQLite, WAL, append-only): every routed command, gate decision,
+  client order id and venue result. Never key material - not a key, a
+  signature, a signed payload or a keychain reference.
 - `crates/engine/src/live.rs` (its commands in
   `apps/desktop/src-tauri/src/live_trading.rs`) - the per-account switch for
   live trading, kept and enforced in Rust (Bybit UIDs, and Hyperliquid and
@@ -523,8 +535,9 @@ its own grid; the layout editor's "All layouts" opens it.
 Being built. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
 the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
 research behind it in `docs/research/cli-trading-bots.md`. In short:
-`crates/engine` takes over routing and the trading gate (done: the router,
-`live.rs` and `rules.rs`), then algo executors (chaser, TWAP, scaled...) and
+`crates/engine` takes over routing and the trading gate (Phase 0, done: the
+router, `live.rs` and `rules.rs`, the event log in `crates/store`, and client
+order ids), then algo executors (chaser, TWAP, scaled...) and
 bots; it runs inside the app or headless in a daemon (`pdd`),
 which a `pd` CLI and the app reach over a localhost-only protocol.
 
