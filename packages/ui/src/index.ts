@@ -92,7 +92,6 @@ export {
   accountTotals,
 } from "./components/trading/AccountSummary";
 export { type AlertDraft, AlertsPopover, firedAlertText } from "./components/trading/AlertsPopover";
-export { CandleChart, type CandleChartHandle } from "./components/trading/CandleChart";
 export { ChartToolbar } from "./components/trading/ChartToolbar";
 export {
   BAND,
