@@ -5,8 +5,10 @@ description: Focused review checklist for changes touching signing, key storage,
 The diff for this task touches signing, key handling, or exchange auth code
 (e.g. signing code in a `crates/exchange-<venue>`, the `ExchangeAdapter`
 trait or the Tauri commands exposing it, `KeySource` or the keychain bridge,
-the webview CSP, or anything that constructs or transmits an authenticated
-request). Review it against this checklist before considering the task done -
+onboarding, the live-trading switch or the trading rules, a data source's
+module, the webview CSP, or anything that constructs or transmits an
+authenticated request). The full list of security-sensitive files is in
+`CLAUDE.md`. Review it against this checklist before considering the task done -
 go through each point explicitly rather than skimming for "looks fine". The
 rules come from `docs/adr/0001-venues-in-rust.md`.
 
@@ -20,26 +22,50 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    nothing from networking code beyond the minimal types needed to describe
    what's being signed. If this boundary got blurred by the change, flag it.
 3. **The signing surface doesn't grow.** `ExchangeAdapter` and the Tauri
-   commands that expose it place and cancel orders, nothing else. Nothing
-   signs caller-supplied bytes, hashes or typed data; withdrawals, transfers
-   and key approvals are absent.
+   commands that expose it (`place_order`, `cancel_order`, `amend_order`,
+   `set_position_protection`, `set_leverage`, `set_margin_mode` in
+   `venues.rs`) are six operations and nothing else: place, cancel and amend
+   orders (an open order's price, size or attached TP/SL - never its market,
+   side or kind), a position's protective, reduce-only exits, leverage (1 to
+   the market's maximum) and margin mode. Nothing signs caller-supplied
+   bytes, hashes or typed data; withdrawals, transfers and key approvals are
+   absent. A new window, panel, palette or CLI command adds no command of
+   its own: it goes through the same calls as the order ticket.
 4. **Hosts stay pinned, and the CSP isn't widened.** A venue crate connects
    only to its own hosts and explicitly configured RPC endpoints - never a
    wildcard or a URL taken from a command argument.
 5. **The signed payload matches the venue's documented spec exactly** -
-   domain, types, and action shape for EIP-712 (both launch venues sign
-   EIP-712 typed data). A subtly
-   wrong field can produce a signature that's valid-looking but authorizes
+   domain, types, and action shape for EIP-712 (Hyperliquid over the
+   action's msgpack hash, Aster over the exact parameter string sent), and
+   for Bybit an HMAC over exactly the bytes sent. Every field of an order is
+   a constant or checked against the live market's rules. A subtly wrong
+   field can produce a signature that's valid-looking but authorizes
    something other than what the user intended.
 6. **Nonce / replay handling is correct** - no reused nonce, no way for a
    captured signed action to be replayed by an attacker.
 7. **Errors fail closed.** If signing or auth fails, the order/action does
    NOT get sent in some partially-authenticated fallback path - it just
    fails.
-8. **Tests exist for the signing logic in isolation** (not just via an
+8. **The trading gate holds.** Every one of the six commands builds the
+   account's keychain reference itself (`trading_account`) and is refused
+   unless live trading is on for that account (`live_trading.rs`; a Bybit
+   demo account excepted), then passes the trader's rules
+   (`trading_rules.rs`) before anything is signed. The rules only ever
+   refuse: an order that reduces a position, a cancel and a stop moved
+   closer always pass, and anything the rules can't read (the account, its
+   fills, the calendar for the news blackout) refuses an opening order.
+   Loosening a rule waits for the next 00:00 UTC. Paper orders never reach
+   a venue, and live ones never reach the paper account.
+9. **Data sources stay data.** A data source (CoinGecko, OKX, news feeds,
+   the news wire, the economic calendar) gets nothing signed and no venue
+   key, reaches only its fixed hosts (no redirects, size caps), and its text
+   reaches the UI bounded and plain. A link opens only through Rust, by id,
+   as a URL Rust itself fetched, filtered by `safe_url` - never a URL from
+   the UI. Adding a source or a host is security-relevant.
+10. **Tests exist for the signing logic in isolation** (not just via an
    end-to-end flow), checked against known vectors from the venue's official
    SDK, covering at least one wrong-input case, not only the happy path.
-9. **The PR description calls this out explicitly** under a
+11. **The PR description calls this out explicitly** under a
    "Security-relevant changes" heading - don't leave a reviewer to discover
    this touches signing on their own.
 
