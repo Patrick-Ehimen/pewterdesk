@@ -65,9 +65,14 @@ import {
   marketOfSymbol,
 } from "../../lib/openAlgoChart";
 import { toastError } from "../../lib/toasts";
-import { type ChartLevel, type ExitKind, fillMarks, tradeLevels } from "../../lib/tradeMarks";
+import {
+  type ChartLevel,
+  type ExitKind,
+  fillMarks,
+  levelLabel,
+  tradeLevels,
+} from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
-import { levelLabel } from "./CandleChart";
 import { IntervalPicker, TypeIcon, usePopover } from "./ChartToolbar";
 import { type Tokens, tokens, withAlpha } from "./chartTheme";
 import { TokenIcon } from "./TokenIcon";

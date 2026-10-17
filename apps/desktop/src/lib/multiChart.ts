@@ -1,11 +1,5 @@
 import type { CandleInterval, Market, VenueId } from "@pewterdesk/core";
-import {
-  ALL_INTERVALS,
-  CHART_TYPES,
-  type ChartType,
-  INDICATORS,
-  type IndicatorId,
-} from "@pewterdesk/ui";
+import { ALL_INTERVALS } from "@pewterdesk/ui";
 
 // The Multi-chart page's state: how many charts, what each one shows, and
 // what moves together. Each chart carries its own venue, so one page can
@@ -28,20 +22,16 @@ export const GRID: Record<Layout, { cols: number; rows: number; charts: number }
 /** The most charts any layout shows: every cell is kept, shown or not. */
 export const MAX_CELLS = 9;
 
-/** How one chart is drawn: the Trade chart's settings, kept per chart here. */
+/**
+ * The app's own settings for one chart; the rest of its look (style,
+ * indicators, grid, scale) is the chart's own, in `ChartCell.chart`.
+ */
 export interface CellSettings {
-  grid: boolean;
-  logScale: boolean;
-  /** The time left on the latest candle, under the last price. */
-  countdown: boolean;
   /** The position's and open orders' lines. */
   levels: boolean;
 }
 
 export const DEFAULT_CELL_SETTINGS: CellSettings = {
-  grid: true,
-  logScale: false,
-  countdown: true,
   levels: true,
 };
 
@@ -51,10 +41,6 @@ export interface ChartCell {
   /** `Market::id` on that venue. */
   market: string;
   interval: CandleInterval;
-  /** Candles, a line, bars and so on. */
-  type: ChartType;
-  /** In the order added. None to start with: the charts are small. */
-  indicators: IndicatorId[];
   settings: CellSettings;
   /**
    * The chart's own look as it last gave it (its style, indicators and
@@ -102,13 +88,11 @@ const VENUES: readonly VenueId[] = ["bybit", "hyperliquid", "aster"];
 const isInterval = (v: unknown): v is CandleInterval => ALL_INTERVALS.some((i) => i === v);
 const isVenue = (v: unknown): v is VenueId => VENUES.some((id) => id === v);
 
-/** A chart on `market`, as new ones start: 15m candles, no indicators. */
+/** A chart on `market`, as new ones start: 15m, the chart's own default look. */
 const fresh = (venue: VenueId, market: string): ChartCell => ({
   venue,
   market,
   interval: DEFAULT_INTERVAL,
-  type: "candles",
-  indicators: [],
   settings: DEFAULT_CELL_SETTINGS,
 });
 
@@ -117,12 +101,7 @@ function settingsFrom(raw: unknown): CellSettings {
   const s = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const flag = (key: keyof CellSettings) =>
     typeof s[key] === "boolean" ? s[key] : DEFAULT_CELL_SETTINGS[key];
-  return {
-    grid: flag("grid"),
-    logScale: flag("logScale"),
-    countdown: flag("countdown"),
-    levels: flag("levels"),
-  };
+  return { levels: flag("levels") };
 }
 
 /**
@@ -148,10 +127,6 @@ export function cellFrom(raw: unknown): ChartCell | undefined {
     venue: c.venue,
     market: c.market,
     interval: isInterval(c.interval) ? c.interval : DEFAULT_INTERVAL,
-    type: CHART_TYPES.find((type) => type === c.type) ?? "candles",
-    indicators: Array.isArray(c.indicators)
-      ? INDICATORS.filter((id) => (c.indicators as unknown[]).includes(id))
-      : [],
     settings: settingsFrom(c.settings),
     ...(typeof c.chart === "string" && c.chart.length <= CHART_MAX ? { chart: c.chart } : {}),
   };
@@ -281,7 +256,7 @@ export function sameCoin(
 export function withCell(
   state: MultiChartState,
   index: number,
-  change: Partial<Pick<ChartCell, "type" | "indicators" | "settings" | "chart">>,
+  change: Partial<Pick<ChartCell, "settings" | "chart">>,
 ): MultiChartState {
   return { ...state, cells: state.cells.map((c, i) => (i === index ? { ...c, ...change } : c)) };
 }
@@ -318,14 +293,6 @@ export function withPositions(
     syncSymbol: false,
     cells: state.cells.map((c, i) => ({ ...c, ...(order[i] ?? {}) })),
   };
-}
-
-/** `indicators` with `id` added at the end, or taken out. */
-export function toggledIndicator(
-  indicators: readonly IndicatorId[],
-  id: IndicatorId,
-): IndicatorId[] {
-  return indicators.includes(id) ? indicators.filter((x) => x !== id) : [...indicators, id];
 }
 
 /**

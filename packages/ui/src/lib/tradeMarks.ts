@@ -9,7 +9,8 @@ import type {
   PositionSide,
   Side,
 } from "@pewterdesk/core";
-import { onTick } from "./format";
+import { type MessageKey, t } from "../i18n";
+import { formatNumber, formatSigned, onTick } from "./format";
 
 // The account's trading drawn over the price chart: its position's levels
 // as lines across the chart, and its fills as marks on the candles they
@@ -257,4 +258,39 @@ export function scaleWithLevels(
     if (price > max && price <= max + reach) hi = Math.max(hi, price);
   }
   return { min: lo, max: hi };
+}
+
+const SIDE_KEY: Record<string, MessageKey> = {
+  long: "side.long",
+  short: "side.short",
+  buy: "side.buy",
+  sell: "side.sell",
+};
+
+/** What a level's tag on the chart says, after the design's "LONG 250 @ 37.912 · +121.50". */
+export function levelLabel(level: ChartLevel, decimals: number): string {
+  const price = formatNumber(level.price, decimals);
+  const pnl = level.pnl === undefined ? "-" : formatSigned(level.pnl);
+  const side = level.side ? t(SIDE_KEY[level.side] as MessageKey) : "";
+  const size = level.size === undefined ? "" : formatNumber(level.size);
+  switch (level.kind) {
+    case "position":
+      return t("chart.trade.position", { side, size, price, pnl });
+    case "takeProfit":
+      return t("chart.trade.takeProfit", { price, pnl });
+    case "stopLoss":
+      return t("chart.trade.stopLoss", { price, pnl });
+    case "liquidation":
+      return t("chart.trade.liquidation", {
+        price,
+        distance: level.distance === undefined ? "-" : `${formatSigned(level.distance * 100, 1)}%`,
+      });
+    default:
+      return t("chart.trade.order", {
+        side,
+        size,
+        price,
+        type: t(`orderType.${level.orderType ?? "limit"}` as MessageKey),
+      });
+  }
 }

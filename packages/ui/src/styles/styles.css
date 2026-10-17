@@ -1597,91 +1597,10 @@ input {
   color: var(--pd-brass-text);
 }
 
-/* Candle chart - lightweight-charts draws into this; it reads colors from
-   the tokens itself */
-.pd-candle-chart {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  /* Over the plot; the axes set their own resize cursors */
-  cursor: crosshair;
-}
+/* The price chart's canvas host, filling its frame */
 .pd-candle-host {
   position: absolute;
   inset: 0;
-}
-/* The account's levels (position, TP/SL, liquidation, orders): tags on their
-   lines at the plot's right edge, positioned from the chart (see CandleChart) */
-.pd-chart-levels {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: 1;
-}
-.pd-chart-level {
-  position: absolute;
-  top: 0;
-  right: 12px;
-  padding: 1px 6px;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  background: var(--pd-surface);
-  font-size: 11px;
-  line-height: 14px;
-  white-space: nowrap;
-  color: var(--pd-brass);
-}
-.pd-chart-level[data-kind="position"][data-side="long"],
-.pd-chart-level[data-kind="takeProfit"] {
-  color: var(--pd-buy);
-}
-.pd-chart-level[data-kind="position"][data-side="short"],
-.pd-chart-level[data-kind="stopLoss"] {
-  color: var(--pd-sell);
-}
-.pd-chart-level[data-kind="liquidation"] {
-  color: var(--pd-warning);
-}
-/* A TP or SL kept on the position: grab its tag or line to move it */
-.pd-chart-level[data-movable] {
-  pointer-events: auto;
-  cursor: ns-resize;
-}
-.pd-chart-level[data-busy] {
-  opacity: 0.6;
-}
-.pd-candle-chart[data-grab],
-.pd-candle-chart[data-dragging] {
-  cursor: ns-resize;
-}
-/* A hovered TP or SL line's details, beside the pointer and kept inside
-   the chart (CandleChart places it, flipping sides near an edge) */
-.pd-chart-tip {
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 220px;
-  padding: 10px 12px;
-  border: 1px solid var(--pd-border-strong);
-  border-radius: 8px;
-  background: var(--pd-surface-raised);
-  box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--pd-bg) 80%, transparent);
-  color: var(--pd-pewter);
-  font: 12px / 1.45 var(--pd-font-sans);
-  pointer-events: none;
-}
-.pd-chart-tip-hint {
-  padding-top: 6px;
-  border-top: 1px solid var(--pd-border);
-  font-size: 11.5px;
 }
 
 /* Funding chart: a legend row (rate left, running total right) over the plot */
@@ -4549,31 +4468,6 @@ fieldset.pd-alerts-chips {
   color: var(--pd-warning);
   font-size: 11.5px;
   white-space: normal;
-}
-
-/* The time left on the latest candle, hung under the last price's label on
-   the price scale (positioned from the chart, see CandleChart) */
-.pd-candle-countdown {
-  position: absolute;
-  top: 0;
-  right: 0;
-  z-index: 2;
-  padding: 1px 0 2px;
-  border-radius: 0 0 2px 2px;
-  font-size: 11px;
-  line-height: 14px;
-  text-align: center;
-  pointer-events: none;
-  background: var(--pd-surface-raised);
-  color: var(--pd-text);
-}
-.pd-candle-countdown[data-trend="up"] {
-  background: var(--pd-buy);
-  color: var(--pd-on-buy);
-}
-.pd-candle-countdown[data-trend="down"] {
-  background: var(--pd-sell);
-  color: var(--pd-on-sell);
 }
 
 /* The PnL card's resize grip: drag the corner to scale the whole card */

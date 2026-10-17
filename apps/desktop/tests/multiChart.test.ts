@@ -14,7 +14,6 @@ import {
   sameCoin,
   setsFrom,
   swapped,
-  toggledIndicator,
   withCell,
   withInterval,
   withMarket,
@@ -47,7 +46,7 @@ describe("multi-chart state", () => {
     expect(cells.slice(0, 4).map((c) => c.market)).toEqual(["BTC", "ETH", "A", "B"]);
     expect(new Set(cells.map((c) => c.market)).size).toBe(MAX_CELLS);
     expect(cells.every((c) => c.venue === "bybit" && c.interval === "15m")).toBe(true);
-    expect(cells.every((c) => c.type === "candles" && c.indicators.length === 0)).toBe(true);
+    expect(cells.every((c) => c.chart === undefined)).toBe(true);
   });
 
   it("restores what was saved, each chart with its own venue", () => {
@@ -59,12 +58,13 @@ describe("multi-chart state", () => {
           venue: "bybit",
           market: "C",
           interval: "1h",
+          // Its own settings and look; fields no longer kept are dropped.
+          settings: { levels: false, logScale: true },
           type: "line",
-          indicators: ["rsi", "nope"],
-          // Its own settings; what doesn't read keeps its default.
-          settings: { logScale: true, grid: false, countdown: "yes" },
+          chart: "{}",
         },
-        { venue: "hyperliquid", market: "BTC", interval: "nope" },
+        // A setting that doesn't read keeps its default.
+        { venue: "hyperliquid", market: "BTC", interval: "nope", settings: { levels: "no" } },
         // Not charts: no venue, an unknown venue, no market.
         { market: "ETH" },
         { venue: "kraken", market: "ETH" },
@@ -78,16 +78,13 @@ describe("multi-chart state", () => {
         venue: "bybit",
         market: "C",
         interval: "1h",
-        type: "line",
-        indicators: ["rsi"],
-        settings: { ...DEFAULT_CELL_SETTINGS, logScale: true, grid: false },
+        settings: { levels: false },
+        chart: "{}",
       },
       {
         venue: "hyperliquid",
         market: "BTC",
         interval: "15m",
-        type: "candles",
-        indicators: [],
         settings: DEFAULT_CELL_SETTINGS,
       },
     ]);
@@ -147,14 +144,13 @@ describe("multi-chart state", () => {
         (c) => c.venue === "aster" && c.market === "X",
       ),
     ).toBe(true);
-    const styled = withCell(state, 1, { type: "line", indicators: toggledIndicator([], "rsi") });
-    expect(styled.cells[1]).toMatchObject({ type: "line", indicators: ["rsi"] });
+    const styled = withCell(state, 1, { chart: '{"style":"line"}' });
+    expect(styled.cells[1]?.chart).toBe('{"style":"line"}');
     // A chart's settings are its own too.
-    const logged = withCell(state, 1, { settings: { ...DEFAULT_CELL_SETTINGS, logScale: true } });
-    expect(logged.cells[1]?.settings.logScale).toBe(true);
-    expect(logged.cells[0]?.settings).toEqual(DEFAULT_CELL_SETTINGS);
+    const bare = withCell(state, 1, { settings: { levels: false } });
+    expect(bare.cells[1]?.settings.levels).toBe(false);
+    expect(bare.cells[0]?.settings).toEqual(DEFAULT_CELL_SETTINGS);
     expect(styled.cells[0]).toEqual(state.cells[0]);
-    expect(toggledIndicator(["rsi", "ema"], "rsi")).toEqual(["ema"]);
   });
 
   it("finds the same coin on another venue", () => {
@@ -167,7 +163,7 @@ describe("multi-chart state", () => {
   });
 
   it("swaps two charts, everything about them going along", () => {
-    const state = withCell(base(), 0, { type: "line" });
+    const state = withCell(base(), 0, { chart: "line" });
     const next = swapped(state, 0, 3);
     expect(next.cells[3]).toEqual(state.cells[0]);
     expect(next.cells[0]).toEqual(state.cells[3]);
@@ -177,14 +173,14 @@ describe("multi-chart state", () => {
   });
 
   it("puts the markets held first, keeping the rest in order", () => {
-    const state = withMarket(withCell(base(), 0, { type: "line" }), 5, "hyperliquid", "HYPE");
+    const state = withMarket(withCell(base(), 0, { chart: "line" }), 5, "hyperliquid", "HYPE");
     const next = withPositions({ ...state, syncSymbol: true }, "bybit", ["H", "ETH"]);
     expect(next.cells.slice(0, 5).map((c) => c.market)).toEqual(["H", "ETH", "BTC", "A", "B"]);
     expect(next.cells.slice(0, 2).every((c) => c.venue === "bybit")).toBe(true);
     // The Hyperliquid chart moved along with the rest, still Hyperliquid's.
     expect(next.cells.find((c) => c.market === "HYPE")?.venue).toBe("hyperliquid");
-    // The first chart is still a line chart, and markets are their own again.
-    expect(next.cells[0]?.type).toBe("line");
+    // The first chart keeps its look, and markets are their own again.
+    expect(next.cells[0]?.chart).toBe("line");
     expect(next.syncSymbol).toBe(false);
     expect(withPositions(state, "bybit", []).cells).toEqual(state.cells);
   });
@@ -214,7 +210,7 @@ describe("multi-chart state", () => {
 
 describe("saved sets", () => {
   it("keeps the charts under a name, and brings them back", () => {
-    const state = { ...withCell(base(), 0, { type: "area" }), layout: "1x3" as const };
+    const state = { ...withCell(base(), 0, { chart: "area" }), layout: "1x3" as const };
     const sets = withSet([], "  My   majors ", state);
     expect(sets.map((s) => s.name)).toEqual(["My majors"]);
     expect(currentSet(sets, state)?.name).toBe("My majors");
@@ -254,8 +250,6 @@ describe("saved sets", () => {
             venue: "bybit",
             market: "BTC",
             interval: "15m",
-            type: "candles",
-            indicators: [],
             settings: DEFAULT_CELL_SETTINGS,
           },
         ],
@@ -270,24 +264,19 @@ describe("saved sets", () => {
       venue: "hyperliquid",
       market: "xyz:TSLA",
       interval: "1h",
-      type: "line",
-      indicators: ["rsi"],
-      settings: { logScale: true },
+      settings: { levels: false },
+      chart: "line",
     };
     // What was left for it, when it's the same chart.
-    expect(popoutCell(hash, left)).toMatchObject({
-      type: "line",
-      indicators: ["rsi"],
-      settings: { ...DEFAULT_CELL_SETTINGS, logScale: true },
-    });
+    expect(popoutCell(hash, left)).toMatchObject({ settings: { levels: false }, chart: "line" });
     // Another chart's leftovers: a fresh one on the named market.
     expect(popoutCell(hash, { ...left, market: "BTC" })).toMatchObject({
       venue: "hyperliquid",
       market: "xyz:TSLA",
       interval: "1h",
-      type: "candles",
-      indicators: [],
+      settings: DEFAULT_CELL_SETTINGS,
     });
+    expect(popoutCell(hash, { ...left, market: "BTC" })?.chart).toBeUndefined();
     expect(popoutCell("#chart?venue=kraken&market=BTC&interval=1h", null)).toBeUndefined();
     expect(popoutCell("#chart", null)).toBeUndefined();
   });
