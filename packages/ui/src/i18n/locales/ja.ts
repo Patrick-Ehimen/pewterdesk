@@ -756,6 +756,8 @@ export const messages: Messages = {
   "rules.block.needsStop": "ルールにより、すべての新規注文にストップロスが必要です。",
   "rules.block.unchecked":
     "ルールを確認するための口座情報を取得できず、注文は送信されませんでした。決済は可能です。",
+  "rules.block.unrecorded":
+    "注文をアプリのイベントログに記録できなかったため、送信していません。ポジションの決済と縮小は引き続き可能です。",
   "rules.block.lockedAmend": "新規注文はロック中です:注文を大きくすることはできません。",
   "rules.block.lockedStop":
     "新規注文はロック中です:ストップは近づけることはできますが、遠ざけたり外したりはできません。",

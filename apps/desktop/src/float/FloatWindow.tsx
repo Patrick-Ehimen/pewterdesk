@@ -197,7 +197,13 @@ function FloatWidget() {
       : undefined;
   const closes = useCloses(venue, market?.id);
   const position = positions.find((p) => p.market === marketId);
-  const { settings, setLeverage } = useTradeSettings(venue, active?.id, market?.id, trading);
+  const { settings, setLeverage } = useTradeSettings(
+    venue,
+    active?.id,
+    market?.id,
+    trading,
+    "float",
+  );
   const leverage = settings ? Number(settings.leverage) : Number(position?.leverage) || 10;
   const maxLeverage = Math.max(
     1,
@@ -264,7 +270,7 @@ function FloatWidget() {
       for (const request of requests) {
         last = orderText(request, marketOf(request.market)?.base ?? "");
         if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
-        await venueClient.placeOrder(trading.venue, trading.id, request);
+        await venueClient.placeOrder(trading.venue, trading.id, request, "float");
       }
       setResult({ ok: true, title, body: requests.length === 1 ? last : undefined });
       setSize("");
@@ -338,7 +344,7 @@ function FloatWidget() {
     try {
       for (const o of orders) {
         if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
-        await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id);
+        await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id, "float");
       }
       setResult({
         ok: true,

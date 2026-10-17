@@ -65,7 +65,7 @@ fn num(d: Decimal) -> f64 {
     d.0.to_string().parse().unwrap_or(0.0)
 }
 
-fn now_ms() -> u64 {
+pub(crate) fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_millis() as u64)

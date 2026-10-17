@@ -530,6 +530,13 @@ export type OrderStatus = "pending" | "open" | "filled" | "cancelled" | "rejecte
 
 export type OrderType = "market" | "limit" | "trigger";
 
+/**
+ * Where a trading command came from in the app, recorded with it in the
+ * engine's event log. Only a label: it grants nothing, and every origin
+ * goes through the same gate.
+ */
+export type Origin = "ticket" | "quick-trade" | "palette" | "cli-panel" | "float" | "multichart" | "chart" | "activity" | "drawer" | "app";
+
 export type Position = { venue: VenueId, market: string, side: PositionSide, 
 /**
  * In base units, always positive; direction is `side`.

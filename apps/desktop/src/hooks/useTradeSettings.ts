@@ -1,4 +1,4 @@
-import type { MarginMode, TradeSettings, VenueId } from "@pewterdesk/core";
+import type { MarginMode, Origin, TradeSettings, VenueId } from "@pewterdesk/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { venueClient } from "../api/venueClient";
 
@@ -18,13 +18,15 @@ export interface TradeSettingsState {
  * on screen, and changeable only through `trading` (an account Rust lets
  * trade). Re-read after each change, every few seconds, and when the window
  * comes back into focus, so the ticket shows what the venue has - including
- * a leverage or margin mode changed on the venue's own site.
+ * a leverage or margin mode changed on the venue's own site. `origin` is
+ * where a change is logged as coming from (the ticket, the floating window).
  */
 export function useTradeSettings(
   venue: VenueId,
   address: string | undefined,
   market: string | undefined,
   trading: { venue: VenueId; id: string } | undefined,
+  origin: Origin,
 ): TradeSettingsState {
   const key = address && market ? `${venue}:${address}:${market}` : undefined;
   const [state, setState] = useState<{ key: string; settings: TradeSettings }>();
@@ -74,18 +76,18 @@ export function useTradeSettings(
   const setLeverage = useCallback(
     async (leverage: number) => {
       if (!tradingId || !tradingVenue || !market) return;
-      await venueClient.setLeverage(tradingVenue, tradingId, market, String(leverage));
+      await venueClient.setLeverage(tradingVenue, tradingId, market, String(leverage), origin);
       setVersion((v) => v + 1);
     },
-    [tradingId, tradingVenue, market],
+    [tradingId, tradingVenue, market, origin],
   );
   const setMarginMode = useCallback(
     async (mode: MarginMode) => {
       if (!tradingId || !tradingVenue || !market) return;
-      await venueClient.setMarginMode(tradingVenue, tradingId, market, mode);
+      await venueClient.setMarginMode(tradingVenue, tradingId, market, mode, origin);
       setVersion((v) => v + 1);
     },
-    [tradingId, tradingVenue, market],
+    [tradingId, tradingVenue, market, origin],
   );
 
   const canChange = trading !== undefined && trading.id === address && market !== undefined;

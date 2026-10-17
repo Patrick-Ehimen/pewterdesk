@@ -43,6 +43,9 @@ fn float_shortcut(app: &tauri::App) {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// The engine's event log, in the app's data folder.
+const EVENT_LOG: &str = "events.sqlite3";
+
 pub fn run() {
     let venues = venues::Venues::new().expect("failed to set up venue adapters");
 
@@ -67,9 +70,16 @@ pub fn run() {
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
             // The engine's router and its gate: which live accounts may
-            // trade, and the trader's own rules, kept in the config folder.
+            // trade, and the trader's own rules, kept in the config folder;
+            // and its event log, in the data folder. Without the log no
+            // opening order is sent (the engine refuses it).
             let config = app.path().app_config_dir().ok();
-            app.manage(pewterdesk_engine::Engine::load(config.as_deref()));
+            let log = app
+                .path()
+                .app_data_dir()
+                .ok()
+                .and_then(|dir| pewterdesk_engine::EventLog::open(&dir.join(EVENT_LOG)).ok());
+            app.manage(pewterdesk_engine::Engine::load(config.as_deref(), log));
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
