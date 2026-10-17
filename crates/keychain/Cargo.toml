@@ -1,0 +1,20 @@
+[package]
+name = "pewterdesk-keychain"
+version = "0.0.0"
+description = "The OS keychain as a KeySource: the only place key material is stored"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+async-trait = "0.1.92"
+keyring = "4"
+pewterdesk-core = { path = "../core" }
+serde = { version = "1.0.229", features = ["derive"] }
+# Keychain calls block (and can wait on a prompt), so they run on tokio's
+# blocking pool - the runtime the app's commands already run on.
+tokio = { version = "1.53.1", default-features = false, features = ["rt"] }
+zeroize = "1.9.0"
+
+[dev-dependencies]
+serde_json = "1.0.151"
