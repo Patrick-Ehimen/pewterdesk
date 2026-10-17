@@ -37,7 +37,11 @@ a key before storing it.
 
 ## Layout
 
-- `crates/core` - domain types, the `ExchangeAdapter` trait, `KeySource`
+- `crates/core` - domain types, the `ExchangeAdapter` trait, `KeySource`,
+  and how accounts and their keychain entries are named (`accounts`)
+- `crates/engine` - the router and the trading gate (live-trading switch,
+  trading rules); the only caller of an adapter's trading methods
+- `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
 - `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
@@ -70,8 +74,8 @@ pnpm and cargo, so it can't drift from the underlying scripts.
   Dev" certificate that `make dev` signs the app with (`scripts/dev-run.sh`),
   so keychain "Always Allow" survives rebuilds instead of prompting each time
 - `make dev-ui` - desktop frontend in a browser only, no Rust
-- `cargo test -p pewterdesk -- --ignored` - the keychain tests that touch the
-  real OS store, skipped by default
+- `cargo test -p pewterdesk-keychain -- --ignored` - the keychain tests that
+  touch the real OS store, skipped by default
 - `make rust-live` - read-only tests against Hyperliquid and Aster mainnet
   (needs the network, no key), one at a time so they stay inside rate limits
 
@@ -91,7 +95,8 @@ description under a "Security-relevant changes" heading - don't leave a reviewer
 discover it on their own. The reasoning behind the rules is in
 `docs/adr/0001-venues-in-rust.md`.
 
-- `apps/desktop/src-tauri/src/keychain.rs` - the OS keychain bridge, and the
+- `crates/keychain` (with the app's commands over it in
+  `apps/desktop/src-tauri/src/keychain.rs`) - the OS keychain bridge, and the
   only place key material is stored. Keys never touch disk, env vars, or logs.
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
@@ -210,22 +215,25 @@ discover it on their own. The reasoning behind the rules is in
   refused, not approximated. Neither crate has a request that withdraws,
   transfers or approves a key, and the API wallet's key is never used in
   the domain those are signed in.
-- The `ExchangeAdapter` trait and the Tauri commands that expose it
-  (`place_order`, `cancel_order`, `amend_order`, `set_position_protection`,
-  `set_leverage`, `set_margin_mode` in `venues.rs`). Together they are the
-  entire signing surface: place, cancel and amend orders (an open order's
+- The `ExchangeAdapter` trait, the engine's router that calls it
+  (`crates/engine/src/router.rs`, `Engine`), and the Tauri commands that
+  wrap the router (`place_order`, `cancel_order`, `amend_order`,
+  `set_position_protection`, `set_leverage`, `set_margin_mode` in
+  `venues.rs`). Together they are the entire signing surface: place, cancel and amend orders (an open order's
   price, size or attached TP/SL - never its market, side or kind), set a
   position's take-profit, stop-loss and trailing stop (protective,
   reduce-only, closing the whole position), and set the leverage (1 to the
   market's maximum) and margin mode (cross or isolated; account-wide on
   Bybit) - nothing else. Never add withdraw,
   transfer, key approval, or anything that signs caller-supplied bytes or
-  typed data. The commands build the account's keychain reference themselves
-  (`trading_account`): a Bybit demo account trades as soon as it's
+  typed data. The router builds the account's keychain reference itself
+  (`trading_account`, from `core::accounts`) and is the only caller of an
+  adapter's trading methods: a Bybit demo account trades as soon as it's
   connected, every live account (Bybit, Hyperliquid, Aster) only once live
   trading is turned on for it. Every venue implements all six, but for a
   trailing stop on Hyperliquid and Aster.
-- `apps/desktop/src-tauri/src/live_trading.rs` - the per-account switch for
+- `crates/engine/src/live.rs` (its commands in
+  `apps/desktop/src-tauri/src/live_trading.rs`) - the per-account switch for
   live trading, kept and enforced in Rust (Bybit UIDs, and Hyperliquid and
   Aster accounts as `<venue>:<address>`, in `live-trading.json` in the app's
   config folder; no key material). Off by default. Turning it on asks the
@@ -236,12 +244,13 @@ discover it on their own. The reasoning behind the rules is in
   size cap. It guards against a live order sent by mistake, not against
   the page itself. Opening trading to another venue, or loosening this
   switch, is a security-relevant change.
-- `apps/desktop/src-tauri/src/trading_rules.rs` - the trader's own rules
+- `crates/engine/src/rules.rs` (its commands in
+  `apps/desktop/src-tauri/src/trading_rules.rs`) - the trader's own rules
   (daily loss, drawdown, risk per trade, position size, trades a day, trading
   hours, a news blackout, a cool-off after losses), kept in `trading-rules.json` in the app's
-  config folder (rules and equity figures, no key material) and checked in
-  `place_order`, `amend_order` and `set_position_protection` before anything
-  is signed. It only ever refuses, with `VenueError::Blocked` and a rule's
+  config folder (rules and equity figures, no key material) and checked by
+  the router's `place_order`, `amend_order` and `set_position_protection`
+  before anything is signed. It only ever refuses, with `VenueError::Blocked` and a rule's
   code: an order that reduces a position, a cancel and a stop moved closer
   always pass. It reads the venue's own account, fills and closed trades, and
   fails closed (an opening order is refused when they can't be read). The
@@ -447,7 +456,7 @@ venue on screen only. Trading rules aren't checked on paper orders.
 The Trading rules page (`components/rules/`, after the Rules mockups in
 `design/`) edits each account's rules (one set per account, picked at the
 top of "Your rules") and shows where the chosen account stands: Rust keeps
-both (`trading_rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
+both (`crates/engine/src/rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
 `Status`), and `hooks/useTradingRules.ts` reads them on a timer, raises the
 notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
 the banner above the workspace. Rules are checked on any venue's orders,
@@ -511,12 +520,12 @@ its own grid; the layout editor's "All layouts" opens it.
 
 ## Algos, bots and `pd` (planned)
 
-Not built yet. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
+Being built. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
 the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
-research behind it in `docs/research/cli-trading-bots.md`. In short: a new
-`crates/engine` takes over routing, the trading gate (today's
-`live_trading.rs` and `trading_rules.rs`), algo executors (chaser, TWAP,
-scaled...) and bots; it runs inside the app or headless in a daemon (`pdd`),
+research behind it in `docs/research/cli-trading-bots.md`. In short:
+`crates/engine` takes over routing and the trading gate (done: the router,
+`live.rs` and `rules.rs`), then algo executors (chaser, TWAP, scaled...) and
+bots; it runs inside the app or headless in a daemon (`pdd`),
 which a `pd` CLI and the app reach over a localhost-only protocol.
 
 The Bots page (`components/pages/BotsPage.tsx`, `components/bots/`, after
