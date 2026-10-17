@@ -954,10 +954,6 @@ export const messages: Messages = {
   "multichart.maximise": "このチャートをページ全体に表示",
   "multichart.restore": "すべてのチャートに戻る",
 
-  "nav.journal": "ジャーナル",
-
-  "nav.journalDesc": "取引にタグを付けて振り返る",
-
   "nav.news": "ニュース",
 
   "nav.newsDesc": "取引所・オンチェーン・マクロのヘッドライン",
@@ -1171,11 +1167,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "この端末にのみ保存 · アップロードしません",
-
-  "journal.soon":
-    "ジャーナルは各約定をタグとメモとともに記録し、純損益、勝率、銘柄別・時間帯別の損益を表示します。約定履歴が必要で、注文機能と同時に提供予定です。",
 
   "news.subtitle": "アプリがお使いの端末で取得 · Pewterdesk のサーバーは使いません",
   "news.live": "ライブ",

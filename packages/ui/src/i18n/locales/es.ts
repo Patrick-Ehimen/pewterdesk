@@ -979,10 +979,6 @@ export const messages: Messages = {
   "multichart.maximise": "Ampliar este gráfico a toda la página",
   "multichart.restore": "Volver a todos los gráficos",
 
-  "nav.journal": "Diario",
-
-  "nav.journalDesc": "Tus operaciones, etiquetadas y revisadas",
-
   "nav.news": "Noticias",
 
   "nav.newsDesc": "Titulares de exchanges, on-chain y macro",
@@ -1196,11 +1192,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "Guardado solo en este dispositivo · nunca se sube",
-
-  "journal.soon":
-    "El diario registrará cada ejecución con tus etiquetas y notas, y mostrará PnL neto, tasa de acierto y PnL por mercado y por hora. Necesita el historial de ejecuciones, que llega con la colocación de órdenes.",
 
   "news.subtitle": "Lo obtiene la app en tu equipo · sin servidor de Pewterdesk",
   "news.live": "En vivo",

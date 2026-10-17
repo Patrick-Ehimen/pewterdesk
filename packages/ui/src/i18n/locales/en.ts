@@ -964,8 +964,6 @@ export const en = {
   "multichart.noPositions": "No open positions",
   "multichart.maximise": "Fill the page with this chart",
   "multichart.restore": "Back to all charts",
-  "nav.journal": "Journal",
-  "nav.journalDesc": "Your trades, tagged and reviewed",
   "nav.news": "News",
   "nav.newsDesc": "Venue, on-chain and macro headlines",
   "nav.maps": "Maps",
@@ -1155,9 +1153,6 @@ export const en = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-  "journal.subtitle": "Stored locally on this device · never uploaded",
-  "journal.soon":
-    "The journal will record each fill with your tags and notes, then show net PnL, win rate, and PnL by market and by hour. It needs fill history, which comes with order placement.",
   "news.subtitle": "Fetched by the app on your machine · no Pewterdesk server",
   "news.live": "Live",
   "news.search": "Search headlines, tickers, tags",

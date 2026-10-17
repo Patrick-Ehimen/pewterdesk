@@ -1,4 +1,4 @@
-/* Full pages (Portfolio, Journal, News), after the design's page screens.
+/* Full pages (Portfolio, News, Maps), after the design's page screens.
    Colors only from --pd-* tokens. */
 
 .page {
@@ -143,9 +143,8 @@
   color: var(--pd-pewter);
 }
 
-/* Empty and not-built states */
-.page-empty,
-.page-soon {
+/* Empty states */
+.page-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -157,8 +156,7 @@
   color: var(--pd-pewter);
   text-align: center;
 }
-.page-empty p,
-.page-soon p {
+.page-empty p {
   max-width: 560px;
   margin: 0;
   font-size: 14px;

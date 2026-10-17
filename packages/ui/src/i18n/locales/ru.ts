@@ -967,10 +967,6 @@ export const messages: Messages = {
   "multichart.maximise": "Развернуть этот график на всю страницу",
   "multichart.restore": "Вернуться ко всем графикам",
 
-  "nav.journal": "Журнал",
-
-  "nav.journalDesc": "Ваши сделки с тегами и разбором",
-
   "nav.news": "Новости",
 
   "nav.newsDesc": "Заголовки бирж, ончейн и макро",
@@ -1184,11 +1180,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "Хранится только на этом устройстве · никуда не загружается",
-
-  "journal.soon":
-    "Журнал будет записывать каждое исполнение с вашими тегами и заметками и показывать чистый PnL, долю прибыльных сделок и PnL по рынкам и часам. Для этого нужна история исполнений - она появится вместе с выставлением заявок.",
 
   "news.subtitle": "Загружается приложением на вашем устройстве · без сервера Pewterdesk",
   "news.live": "В эфире",
