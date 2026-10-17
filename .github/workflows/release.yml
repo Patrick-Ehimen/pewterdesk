@@ -79,10 +79,20 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: PewterDesk ${{ github.ref_name }}
           releaseBody: |
-            Early pre-release. Live market data from Hyperliquid and Bybit; connect
-            a Hyperliquid API wallet or a Bybit API key to see your account.
-            Orders can be placed on Bybit Demo Trading accounts only: live accounts
-            are read-only for now.
+            Early pre-release. Market data, accounts and trading on Hyperliquid,
+            Aster and Bybit. Connect a Hyperliquid or Aster API wallet (trade-only,
+            it can't withdraw) or a Bybit API key. Orders work on Bybit Demo
+            Trading accounts as soon as they're connected; on a live account,
+            only once you turn live trading on for it. Hyperliquid and Aster
+            also have paper trading.
+
+            New since v0.2.0: Aster, live trading on all three venues, paper
+            trading, your own trading rules (daily loss, drawdown, risk per trade,
+            a news blackout and more) checked before an order is sent, the
+            Portfolio, Maps and Multi-chart pages, a news feed and economic
+            calendar, and the command palette.
+
+            Live trading is new: start with a small order.
 
             Requires macOS 13 (Ventura) or later, Windows 10 or later, or Linux with
             WebKitGTK 4.1 (Ubuntu 22.04 or newer).
