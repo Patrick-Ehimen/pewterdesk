@@ -928,10 +928,6 @@ export const messages: Messages = {
   "multichart.maximise": "让此图表占满页面",
   "multichart.restore": "返回全部图表",
 
-  "nav.journal": "交易日志",
-
-  "nav.journalDesc": "为你的交易打标签并复盘",
-
   "nav.news": "资讯",
 
   "nav.newsDesc": "交易所、链上与宏观消息",
@@ -1140,11 +1136,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "仅保存在本设备 · 从不上传",
-
-  "journal.soon":
-    "交易日志会记录每笔成交以及你的标签和备注，并展示净盈亏、胜率，以及按市场和按小时的盈亏。它需要成交历史，将随下单功能一同推出。",
 
   "news.subtitle": "由应用在你的设备上获取 · 不经过 Pewterdesk 服务器",
   "news.live": "实时",

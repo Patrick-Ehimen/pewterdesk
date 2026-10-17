@@ -86,7 +86,6 @@ import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { BotsPage } from "./components/pages/BotsPage";
-import { ComingSoonPage } from "./components/pages/ComingSoonPage";
 import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
@@ -1753,12 +1752,6 @@ export function App() {
             onSave={tradingRules.save}
             onRemove={tradingRules.remove}
             onConnect={() => openConnect()}
-          />
-        ) : page === "journal" ? (
-          <ComingSoonPage
-            title="nav.journal"
-            subtitle="journal.subtitle"
-            description="journal.soon"
           />
         ) : page === "news" ? (
           <NewsPage

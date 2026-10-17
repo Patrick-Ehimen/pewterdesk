@@ -54,7 +54,6 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   bots: "nav.bots",
   rules: "nav.rules",
   venues: "nav.venues",
-  journal: "nav.journal",
   news: "nav.news",
   maps: "nav.maps",
   settings: "settings.title",

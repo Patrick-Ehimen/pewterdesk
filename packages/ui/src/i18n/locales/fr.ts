@@ -982,10 +982,6 @@ export const messages: Messages = {
   "multichart.maximise": "Afficher ce graphique en pleine page",
   "multichart.restore": "Revenir à tous les graphiques",
 
-  "nav.journal": "Journal",
-
-  "nav.journalDesc": "Vos trades, tagués et analysés",
-
   "nav.news": "Actualités",
 
   "nav.newsDesc": "Titres des plateformes, on-chain et macro",
@@ -1201,11 +1197,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "Stocké uniquement sur cet appareil · jamais envoyé",
-
-  "journal.soon":
-    "Le journal enregistrera chaque exécution avec vos tags et notes, puis affichera le PnL net, le taux de réussite et le PnL par marché et par heure. Il lui faut l'historique des exécutions, qui arrive avec le passage d'ordres.",
 
   "news.subtitle": "Récupéré par l'application sur votre machine · aucun serveur Pewterdesk",
   "news.live": "En direct",

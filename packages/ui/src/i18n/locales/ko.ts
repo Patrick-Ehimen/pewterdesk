@@ -951,10 +951,6 @@ export const messages: Messages = {
   "multichart.maximise": "이 차트를 페이지 전체로 보기",
   "multichart.restore": "모든 차트로 돌아가기",
 
-  "nav.journal": "저널",
-
-  "nav.journalDesc": "거래에 태그를 달고 되돌아보기",
-
   "nav.news": "뉴스",
 
   "nav.newsDesc": "거래소, 온체인, 거시 헤드라인",
@@ -1166,11 +1162,6 @@ export const messages: Messages = {
   "portfolio.bucket.gain": "0% ~ 200%",
   "portfolio.bucket.loss": "0% ~ -50%",
   "portfolio.bucket.under50": "< -50%",
-
-  "journal.subtitle": "이 기기에만 저장 · 업로드하지 않음",
-
-  "journal.soon":
-    "저널은 각 체결을 태그와 메모와 함께 기록하고, 순손익, 승률, 마켓별·시간대별 손익을 보여줍니다. 체결 내역이 필요하며, 주문 기능과 함께 제공됩니다.",
 
   "news.subtitle": "앱이 내 기기에서 가져옴 · Pewterdesk 서버 없음",
   "news.live": "실시간",
