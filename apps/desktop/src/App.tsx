@@ -51,6 +51,7 @@ import {
   type SymbolFor,
   TableSkeleton,
   Tabs,
+  type TicketRuleNote,
   Toasts,
   TokenIcon,
   TokenIconProvider,
@@ -71,7 +72,7 @@ import {
 } from "react";
 import { LuPlus, LuWallet, LuX } from "react-icons/lu";
 import { appClient } from "./api/appClient";
-import { venueClient } from "./api/venueClient";
+import { blockText, venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
 import { CommandMenu } from "./components/CommandMenu";
 import { ConnectionBanner } from "./components/ConnectionBanner";
@@ -558,6 +559,22 @@ export function App() {
   const route = paperOn ? "paper" : trading ? "live" : undefined;
   /** "Paper · " in front of what a paper order's notifications say. */
   const paperTag = (text: string) => (route === "paper" ? `${t("paper.badge")} · ${text}` : text);
+  /**
+   * The rules' answer for the ticket's order before it's sent, for a live
+   * (or demo) account with rules on; paper orders aren't checked. Only what
+   * fails is returned: refusing, or a warning where the rules only warn.
+   */
+  const rulesOn = tradingRules.view?.on === true;
+  const checkRules =
+    route === "live" && trading && rulesOn
+      ? async (request: OrderRequest): Promise<TicketRuleNote[]> => {
+          const checks = await venueClient.checkTradingRules(trading.venue, trading.id, request);
+          const warnOnly = tradingRules.view?.rules.breach === "warn";
+          return checks
+            .filter((c) => !c.ok)
+            .map((c) => ({ rule: c.rule, message: blockText(c.rule), refuses: !warnOnly }));
+        }
+      : undefined;
   const placeOrder = route
     ? async (request: OrderRequest) => {
         // Every way of placing one (ticket, quick trade, the drawer) says how
@@ -1481,6 +1498,7 @@ export function App() {
               confirmSkipUnder={orderConfirm.skipUnder}
               onConfirmSkipUnder={(skipUnder) => updateOrderConfirm({ enabled: true, skipUnder })}
               fallbackPrice={statsData ? Number(statsData.markPrice) || undefined : undefined}
+              checkRules={checkRules}
             />
           </div>
         );

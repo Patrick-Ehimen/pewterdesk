@@ -43,6 +43,7 @@ use tauri::ipc::Channel;
 use tauri::{State, Webview};
 use tokio::sync::mpsc;
 
+use crate::econ_calendar::CalendarState;
 use crate::keychain::KeychainKeySource;
 use crate::live_trading::LiveTrading;
 use crate::trading_rules::TradingRules;
@@ -465,6 +466,7 @@ pub async fn place_order(
     venues: State<'_, Venues>,
     live: State<'_, LiveTrading>,
     rules: State<'_, TradingRules>,
+    calendar: State<'_, CalendarState>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
@@ -472,7 +474,7 @@ pub async fn place_order(
     let trading = trading_account(venue, &account, &live)?;
     // The trader's own rules, before anything is signed.
     rules
-        .guard_order(&venues, venue, &account, &request)
+        .guard_order(&venues, &calendar, venue, &account, &request)
         .await?;
     venues.adapter(venue)?.place_order(&trading, &request).await
 }

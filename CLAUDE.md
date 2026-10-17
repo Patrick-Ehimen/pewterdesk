@@ -238,13 +238,16 @@ discover it on their own. The reasoning behind the rules is in
   switch, is a security-relevant change.
 - `apps/desktop/src-tauri/src/trading_rules.rs` - the trader's own rules
   (daily loss, drawdown, risk per trade, position size, trades a day, trading
-  hours, a cool-off after losses), kept in `trading-rules.json` in the app's
+  hours, a news blackout, a cool-off after losses), kept in `trading-rules.json` in the app's
   config folder (rules and equity figures, no key material) and checked in
   `place_order`, `amend_order` and `set_position_protection` before anything
   is signed. It only ever refuses, with `VenueError::Blocked` and a rule's
   code: an order that reduces a position, a cancel and a stop moved closer
   always pass. It reads the venue's own account, fills and closed trades, and
-  fails closed (an opening order is refused when they can't be read).
+  fails closed (an opening order is refused when they can't be read). The
+  news blackout (no new positions N minutes either side of a high-impact USD
+  release) reads the economic calendar through `econ_calendar.rs`'s cached
+  copy: it fails closed only while the calendar has never been read.
   Each account has its own set (a prop firm's, a venue's), checked only
   against that account's orders. Loosening a rule or turning a set off waits
   for the next 00:00 UTC; tightening applies at once. Deleting a set is
@@ -399,7 +402,9 @@ What does work end to end: both apps build (`vite build`), and `apps/desktop`'s
 Tauri shell runs with the keychain and read-only venue commands wired up, plus
 the menu-bar (tray) item and macOS menu bar (`src-tauri/src/tray.rs`,
 `menubar.rs`); closing the window keeps the app running in the tray on macOS
-and Windows. Fills, position changes, market alerts and liquidation warnings
+and Windows. Only one copy runs (`tauri-plugin-single-instance`): opening
+the app again brings the running one forward and ignores what the launch
+was given. Fills, position changes, market alerts and liquidation warnings
 also show as desktop notifications while the app isn't in front (`notify.rs`,
 via `tauri-plugin-notification`, called from Rust only). The floating window (`float.rs`, `src/float/`) opens from the
 tray panel, the Window menu, the header, or Control+Option+Space (a global
@@ -450,9 +455,12 @@ notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
 the banner above the workspace. Rules are checked on any venue's orders,
 from that venue's fills and closed trades (Hyperliquid's and Aster's are
 built from their fills); if they can't be read, an opening order is refused
-(they fail closed). The news blackout isn't (there's no calendar yet),
-and the ticket's own rule check and locked state from the mockups aren't
-built; `check_trading_rules` is there for them.
+(they fail closed). The news blackout reads the economic calendar
+(high-impact USD releases only, `NEWS_CURRENCIES`), and the dashboard shows
+the next one. The order ticket asks `check_trading_rules` as an order is
+filled in (`checkRules` on `OrderTicket`, for a live or demo account with
+rules on, never a paper one) and shows what would refuse it, or only warn,
+before it's sent; Rust's own check in `place_order` still decides.
 
 ## Command palette
 

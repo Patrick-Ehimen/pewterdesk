@@ -8,6 +8,7 @@
 //! The export is somebody else's text, so it's treated as text: every field
 //! goes through `plain` and is bounded, and nothing in it is a link.
 
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use pewterdesk_core::VenueError;
@@ -197,9 +198,15 @@ struct Cache {
 }
 
 pub struct CalendarState {
+    inner: Arc<Inner>,
+}
+
+struct Inner {
     http: reqwest::Client,
     /// Held across a read, so two callers don't both fetch.
     cache: tokio::sync::Mutex<Cache>,
+    /// The last calendar read, for `kept`: readable while a read holds `cache`.
+    latest: std::sync::Mutex<Option<(Instant, Vec<CalendarEvent>)>>,
 }
 
 impl CalendarState {
@@ -213,9 +220,61 @@ impl CalendarState {
             .build()
             .map_err(|e| VenueError::Network(e.to_string()))?;
         Ok(Self {
-            http,
-            cache: tokio::sync::Mutex::new(Cache::default()),
+            inner: Arc::new(Inner {
+                http,
+                cache: tokio::sync::Mutex::new(Cache::default()),
+                latest: std::sync::Mutex::new(None),
+            }),
         })
+    }
+
+    /// This week's calendar, soonest first: the copy kept, read again once
+    /// it's an hour old. A read that fails keeps the last copy, which beats
+    /// none at all; `None` only until the calendar has been read once.
+    pub(crate) async fn read(&self) -> Option<Vec<CalendarEvent>> {
+        self.inner.read().await
+    }
+
+    /// The calendar for an order's check (the trading rules' news
+    /// blackout): the copy kept, at once, never waiting on the network, with
+    /// a read started in the background once it's an hour old. It waits only
+    /// for the very first read, when there's no copy to answer from.
+    pub(crate) async fn kept(&self) -> Option<Vec<CalendarEvent>> {
+        let latest = self.inner.latest.lock().unwrap().clone();
+        match latest {
+            Some((at, events)) => {
+                if at.elapsed() >= FRESH_FOR {
+                    let inner = Arc::clone(&self.inner);
+                    tauri::async_runtime::spawn(async move {
+                        inner.read().await;
+                    });
+                }
+                Some(events)
+            }
+            None => self.inner.read().await,
+        }
+    }
+}
+
+impl Inner {
+    async fn read(&self) -> Option<Vec<CalendarEvent>> {
+        let mut cache = self.cache.lock().await;
+        let fresh = cache
+            .events
+            .as_ref()
+            .is_some_and(|(at, _)| at.elapsed() < FRESH_FOR);
+        let resting = cache.failed.is_some_and(|at| at.elapsed() < RETRY_AFTER);
+        if !fresh && !resting {
+            match fetch(&self.http).await.map(|json| events(&json)) {
+                Some(Ok(read)) => {
+                    *self.latest.lock().unwrap() = Some((Instant::now(), read.clone()));
+                    cache.events = Some((Instant::now(), read));
+                    cache.failed = None;
+                }
+                _ => cache.failed = Some(Instant::now()),
+            }
+        }
+        cache.events.as_ref().map(|(_, events)| events.clone())
     }
 }
 
@@ -224,26 +283,10 @@ impl CalendarState {
 pub async fn economic_calendar(
     state: State<'_, CalendarState>,
 ) -> Result<Vec<CalendarEvent>, VenueError> {
-    let mut cache = state.cache.lock().await;
-    let fresh = cache
-        .events
-        .as_ref()
-        .is_some_and(|(at, _)| at.elapsed() < FRESH_FOR);
-    let resting = cache.failed.is_some_and(|at| at.elapsed() < RETRY_AFTER);
-    if !fresh && !resting {
-        match fetch(&state.http).await.map(|json| events(&json)) {
-            Some(Ok(read)) => {
-                cache.events = Some((Instant::now(), read));
-                cache.failed = None;
-            }
-            _ => cache.failed = Some(Instant::now()),
-        }
-    }
-    // The last calendar read, if there is one, beats none at all.
-    match cache.events.as_ref() {
-        Some((_, events)) => Ok(events.clone()),
-        None => Err(VenueError::Network("the calendar couldn't be read".into())),
-    }
+    state
+        .read()
+        .await
+        .ok_or_else(|| VenueError::Network("the calendar couldn't be read".into()))
 }
 
 #[cfg(test)]
@@ -320,7 +363,7 @@ mod tests {
     #[ignore]
     fn reads_the_live_calendar() {
         let state = CalendarState::new().unwrap();
-        let json = tauri::async_runtime::block_on(fetch(&state.http)).expect("no answer");
+        let json = tauri::async_runtime::block_on(fetch(&state.inner.http)).expect("no answer");
         let read = events(&json).unwrap();
         assert!(read.len() >= 20, "{} events", read.len());
         let high = read.iter().filter(|e| e.impact == Impact::High).count();

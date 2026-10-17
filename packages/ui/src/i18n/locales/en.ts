@@ -738,7 +738,6 @@ export const en = {
     "Tighter rules apply at once. Looser ones, and turning rules off, wait until 00:00 UTC.",
   "rules.pendingAt":
     "A change is waiting: it applies at {time} (00:00 UTC). Until then the current rules hold.",
-  "rules.newsSoon": "not enforced yet: there's no economic calendar to read",
   "rules.locked": "Locked",
   "rules.offNote": "Rules are off. Edit them to turn them on.",
   "rules.chartSoon": "The line begins once a second day is recorded.",
@@ -843,7 +842,22 @@ export const en = {
   "rules.minN": "min {days}",
   "rules.needsStop": "Needs a stop",
   "rules.news": "News blackout",
-  "rules.newsNote": "Also no new trades {minutes} min either side of high-impact news.",
+  "rules.newsHint":
+    "either side of a high-impact USD release (CPI, FOMC, payrolls), from the economic calendar",
+  "rules.block.news": "Inside a news blackout: a high-impact USD release is too close.",
+  "rules.block.newsUnchecked": "The economic calendar couldn't be read to check the news blackout.",
+  "rules.newsActive": "Blackout",
+  "rules.newsClear": "Clear",
+  "rules.newsNow": "{title} at {time}: no new positions",
+  "rules.newsNext": "Next: {title} at {time}, in {left}",
+  "rules.newsNone": "No high-impact USD release left this week",
+  "rules.newsLimit": "±{minutes} min",
+  "rules.note.news": "News blackout: {title}",
+  "rules.note.newsBody":
+    "No new positions for {minutes} min either side of the release. Closing and exits still work.",
+  "rules.ticketBlocked": "Your trading rules refuse this order.",
+  "rules.ticketRefuses": "Your rules refuse this:",
+  "rules.ticketWarns": "Your rules warn:",
   "rules.noTimeLimit": "No time limit",
   "rules.noTrades": "No trades today.",
   "rules.notTracked": "Not tracked yet",
@@ -935,6 +949,9 @@ export const en = {
   "multichart.syncRangeHint":
     "Scrolling or zooming one chart moves the others on the same timeframe to the same dates",
   "multichart.popOut": "Open {symbol} in its own window",
+  "multichart.calcFor": "Calculator for {market}",
+  "multichart.calcClose": "Close the calculator",
+  "multichart.calcHint": "Click another chart to switch to it.",
   "multichart.tradeBar": "Trade",
   "multichart.tradeBarHint":
     "Buy and sell buttons under each chart: market orders, sent once the button is held",
@@ -2708,6 +2725,132 @@ export const en = {
   "mapx.vol.regimes": "Regime",
   "mapx.vol.median": "Median {measure}",
   "mapx.vol.quietest": "Quietest",
+  "maphelp.open": "About {view}",
+  "maphelp.close": "Close",
+  "maphelp.part.what": "What it shows",
+  "maphelp.part.how": "How it works",
+  "maphelp.part.read": "How to read it",
+  "maphelp.part.caveats": "Keep in mind",
+  "maphelp.foot":
+    "A map describes what the market has done, not what it will do. Use it alongside your own analysis, not as a signal on its own.",
+  "maphelp.rsi.what":
+    "Every market's RSI (relative strength index) on the timeframe you pick, placed by its value, from oversold at the bottom to overbought at the top.",
+  "maphelp.rsi.how":
+    "RSI(14) is worked out from each market's own candles: the average gain over the last 14 closes against the average loss, scaled from 0 to 100. The zones follow Coinglass's bands: 70 and above overbought, 60–70 strong, 40–60 neutral, 30–40 weak, under 30 oversold. Each market's RSI one candle earlier is kept too, so you can see which way it's moving.",
+  "maphelp.rsi.read":
+    "A cluster near 70 means much of the market has run up quickly; near 30, it has sold off hard. A market far from the rest is moving on its own story. The average RSI is a quick gauge of how stretched the whole market is.",
+  "maphelp.rsi.caveats":
+    "Overbought isn't a sell signal: in a strong trend RSI can stay above 70 for a long time, and below 30 in a crash. A short timeframe changes fast and is noisy; a long one moves slowly. Markets with little trading give jumpier readings.",
+  "maphelp.perf.what":
+    "Every market's price change over the window you pick (1 hour to 7 days), as tiles sized by the day's trading volume and coloured by how much they moved.",
+  "maphelp.perf.how":
+    "Each change is the latest price against the close one window ago, from the market's hourly candles. A tile's size is its 24-hour volume, so the busiest markets take the most room. Colour is at full strength once the move reaches a set size for the window.",
+  "maphelp.perf.read":
+    "Mostly green or mostly red shows whether the move is broad or narrow. A big tile with a strong colour is a major market moving; a small bright tile is a smaller market making a large move. Comparing windows shows whether a move is new (1h, 4h) or has been building (7d).",
+  "maphelp.perf.caveats":
+    "Small markets can swing a lot on little volume. Big moves often partly reverse. The map fills in as each market's history loads.",
+  "maphelp.vol.what":
+    "Markets ranked by how much they move: realised volatility over the last day or week, or the average hourly range (ATR). Each is marked expanding, steady or contracting.",
+  "maphelp.vol.how":
+    "Realised volatility is the standard deviation of hourly returns, annualised so different windows can be compared. ATR is the average true range of the last 14 hours as a share of price. The regime compares the day's volatility with the week's: 25% or more above is expanding, 20% or more below is contracting, otherwise steady. The filter and row count change only the list; the regime counts and the quietest markets always cover every market ranked.",
+  "maphelp.vol.read":
+    "High volatility means bigger swings: room for larger moves either way, and wider stops needed. Expanding often follows news or a breakout; contracting, a quiet range that can come before a sharp move. The quietest list shows markets that have gone still.",
+  "maphelp.vol.caveats":
+    "Volatility says how much a market moves, not which way. Annualised figures look large on purpose. A single spike can push a day's figure up, and illiquid markets read higher than they trade.",
+  "maphelp.funding.what":
+    "Each venue's current funding rate for the same coin side by side, with the widest gaps between venues.",
+  "maphelp.funding.how":
+    "Venues settle funding on different intervals (some every hour, others every 4 or 8 hours), so each rate is put on the same basis: per 8 hours, or a yearly APR. Positive means longs pay shorts; negative, shorts pay longs.",
+  "maphelp.funding.read":
+    "High positive funding means longs are crowded and paying to stay in; strongly negative, shorts are. Extremes often come before squeezes. A wide gap between two venues is the basis of funding arbitrage: long where it's cheap, short where it pays.",
+  "maphelp.funding.caveats":
+    "Rates change every interval, and the current rate is an estimate until it's paid. An arbitrage also carries fees, price differences between venues and the risk of being liquidated on one side.",
+  "maphelp.oi.what":
+    "Each busy market's change in price against its change in open interest over the window, as dots in four quadrants.",
+  "maphelp.oi.how":
+    "Open interest is the number of contracts open. Bybit publishes an hourly history; on Hyperliquid and Aster the app samples open interest every 5 minutes while it runs, and shows the change so far until the window is covered. Dots are sized by open interest.",
+  "maphelp.oi.read":
+    "Price up with open interest up: new longs opening. Price up with it down: shorts closing (a squeeze). Price down with it up: new shorts. Both down: longs closing or being liquidated. Moves backed by new positions tend to carry further than ones made by positions closing.",
+  "maphelp.oi.caveats":
+    "Open interest doesn't say who is long or short, only how much is open. The quadrants are a reading, not a fact about any trader. On venues sampled by the app, the history starts when the app starts.",
+  "maphelp.ls.what":
+    "The share of Bybit accounts holding long or short positions on its busiest markets, now and a day ago.",
+  "maphelp.ls.how":
+    "Bybit publishes the ratio of accounts long against accounts short for each market. It's read from Bybit whichever venue is on screen, since the other venues don't publish it. It counts accounts, not position sizes.",
+  "maphelp.ls.read":
+    "A very high share of long accounts means the crowd is leaning one way, which traders often read the other way: a crowded side can be squeezed. A big shift over the day shows sentiment turning.",
+  "maphelp.ls.caveats":
+    "One large account with a big position counts the same as one small account, so this shows crowd sentiment, not where the money is. It covers Bybit only.",
+  "maphelp.liquidations.what":
+    "Liquidations across the market as they happen, and the totals for the window: how many longs and shorts were forced out, and in which coins.",
+  "maphelp.liquidations.how":
+    "These are market data, the same whichever venue is on screen. The last 24 hours come from OKX's public liquidation history; while the view is open, new ones arrive from Bybit's public live feed, which covers every Bybit market. Totals are added up for the window you pick, 1 to 24 hours.",
+  "maphelp.liquidations.read":
+    "A burst of long liquidations means a drop forced leveraged longs out, and selling fed on itself; a burst of shorts, the opposite. Large clusters often mark the end of a sharp move, once the forced selling or buying runs out.",
+  "maphelp.liquidations.caveats":
+    "Public feeds don't report every liquidation (some send only a sample), and these are two exchanges' liquidations, not every venue's. Use it for the shape of what happened, not exact totals.",
+  "maphelp.liqmap.what":
+    "For one market, price levels where leveraged positions are estimated to be liquidated, as a heatmap behind the price.",
+  "maphelp.liqmap.how":
+    "It's an estimate, not reported data. Each hour's new open interest is assumed to have opened at that hour's price, half long and half short, at leverage from 10x to 100x. Each gives a liquidation price; levels the price has since passed through are removed. Where a venue publishes no open-interest history, today's open interest is spread over past hours by volume.",
+  "maphelp.liqmap.read":
+    "Bright bands are where many positions would be forced closed. Price is often drawn toward large clusters, since liquidations there add fuel to a move, and it can move quickly through them.",
+  "maphelp.liqmap.caveats":
+    "Real traders use many leverages and positions open and close in ways the model can't see. Treat the bands as likely areas, not exact prices.",
+  "maphelp.book.what":
+    "One market's live order book over time: where buy and sell orders rest around the price, one column per second.",
+  "maphelp.book.how":
+    "While the view is open, the app reads the book every second and draws how much size rests at each price within the range you pick (0.5% to 2% around the price). Brighter means more size. It's kept for this view only, and starts again when the price leaves the range.",
+  "maphelp.book.read":
+    "Bright horizontal lines are large resting orders, which can act as support or resistance. Watch whether price stops at them or runs through, and whether they move or disappear as price gets close.",
+  "maphelp.book.caveats":
+    "Orders can be pulled at any moment, and large ones are sometimes placed only to mislead (spoofing). The book shows intent, not trades.",
+  "maphelp.heatmap.what":
+    "The largest coins of a sector you pick, as tiles sized by market cap or 24-hour volume and coloured by their price change.",
+  "maphelp.heatmap.how":
+    "The coins and their figures come from CoinGecko, for the whole market across exchanges, not only this venue. The app asks for the sector you name and shows its top 10, 20 or 50 coins over 1 hour, 24 hours or 7 days.",
+  "maphelp.heatmap.read":
+    "It shows where money is moving between sectors: a sector mostly green while others are red is in favour. Within a sector, you can see whether the leaders or the smaller coins are driving the move.",
+  "maphelp.heatmap.caveats":
+    "CoinGecko's prices are spot prices across exchanges and can differ from a venue's perpetual. A coin on the map may not be tradable on the venue on screen.",
+  "maphelp.corr.what":
+    "How closely the busiest markets move together, as a grid where each cell is one pair.",
+  "maphelp.corr.how":
+    "For each pair, the correlation of their hourly returns over the window (24 hours or 7 days): 1 means they move together, 0 unrelated, −1 opposite. The grid covers the 10, 20 or 30 busiest markets, and the side lists the markets most and least tied to the busiest one.",
+  "maphelp.corr.read":
+    "High correlation across the board means one thing (usually BTC) is driving everything, and holding several coins adds little diversification. A market with low correlation is moving on its own story, which can be worth trading on its own or using as a hedge.",
+  "maphelp.corr.caveats":
+    "Correlations shift, and often jump toward 1 in a sell-off, exactly when diversification is needed most. A short window is noisy.",
+  "maphelp.spread.what":
+    "Each coin's price on every venue that lists it, against the coin's median across those venues.",
+  "maphelp.spread.how":
+    "Each venue's mark price is compared with the median of all of them for that coin, in basis points (1 bp = 0.01%). USDT and USDC prices are compared as they are, without converting between them.",
+  "maphelp.spread.read":
+    "A venue consistently above or below the others shows local demand or a premium. A wide spread can be an arbitrage chance, buying on the cheaper venue and selling on the dearer one.",
+  "maphelp.spread.caveats":
+    "Fees, funding, withdrawal times and the small gap between USDT and USDC can eat a spread. Thin markets show spreads you can't actually trade at size.",
+  "maphelp.season.what":
+    "One market's average return for each hour of each weekday, over the last 30 days.",
+  "maphelp.season.how":
+    "Every hourly candle of the last 30 days is grouped by weekday and UTC hour. Each cell shows that slot's average return, how often it closed up, and how many hours went into it.",
+  "maphelp.season.read":
+    "Cells that are consistently one colour hint at a recurring pattern, for example around a session's open or the weekend. The best and worst hours are summarised at the top.",
+  "maphelp.season.caveats":
+    "Thirty days gives each cell only four or five hours to average, so most patterns are noise. Treat it as a hint to check, never as a rule.",
+  "maphelp.sessions.what":
+    "How one market's trading is spread over the day: each UTC hour's share of volume, average range and drift, with the Asia, Europe and US sessions marked.",
+  "maphelp.sessions.how":
+    "From the last 30 days of hourly candles, each UTC hour's volume share, average high-to-low range and average change are worked out. The sessions are Asia 00:00–08:00, Europe 07:00–16:00 and US 13:00–21:00 UTC; they overlap, so their shares add up to more than 100%.",
+  "maphelp.sessions.read":
+    "The busiest hours are usually when moves are largest and spreads tightest; the quiet hours move less and can be thinner. Knowing when a market wakes up helps with timing entries and setting stops.",
+  "maphelp.sessions.caveats":
+    "Holidays, daylight-saving changes and major news shift the pattern. Thirty days is a short sample.",
+  "mapx.vol.filter": "Regime",
+  "mapx.vol.allRegimes": "All",
+  "mapx.rows": "Rows",
+  "mapx.rowsAll": "All",
+  "mapx.vol.shown": "{shown} of {ranked}",
+  "mapx.vol.noneInRegime": "No market is in this regime right now.",
   "mapx.vol.note":
     "Realised volatility from hourly returns, annualised; ATR is the average hourly range over 14 hours, as a share of price. Expanding: the day's volatility is a quarter or more above the week's.",
   "mapx.funding.title": "Funding across venues",

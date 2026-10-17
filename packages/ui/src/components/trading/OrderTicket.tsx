@@ -7,7 +7,7 @@ import type {
   TradeSettings,
 } from "@pewterdesk/core";
 import { useEffect, useId, useRef, useState } from "react";
-import { LuArrowUpDown, LuChevronDown, LuTriangleAlert } from "react-icons/lu";
+import { LuArrowUpDown, LuChevronDown, LuShieldAlert, LuTriangleAlert } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
 import { decimalsOf, formatNumber, formatSigned, onTick, trendClass } from "../../lib/format";
 import {
@@ -61,6 +61,19 @@ const SKIP_UNDER = 10_000;
 /** Leverage assumed when there's no position to read it from. */
 const DEFAULT_LEVERAGE = 10;
 
+/** What one of the trader's rules says about the order on the ticket. */
+export interface TicketRuleNote {
+  rule: string;
+  message: string;
+  /** Sending it would be refused (otherwise the rule only warns). */
+  refuses: boolean;
+}
+
+/** How long the ticket waits after a change before asking the rules again. */
+const RULES_DEBOUNCE_MS = 400;
+/** The rules are asked again this often, as their clock (hours, news) moves on. */
+const RULES_REFRESH_MS = 30_000;
+
 interface OrderTicketProps {
   market?: Market;
   book?: OrderBook;
@@ -102,6 +115,12 @@ interface OrderTicketProps {
   confirmSkipUnder?: number;
   /** The confirmation's "don't confirm orders under…" was ticked, with that amount. */
   onConfirmSkipUnder?: (amount: number) => void;
+  /**
+   * What the trader's rules say about an order before it's sent: the rules
+   * it breaks, each refusing or only warning. Rejects when it can't be
+   * checked (which also refuses). Unset where no rules apply.
+   */
+  checkRules?: (request: OrderRequest) => Promise<TicketRuleNote[]>;
 }
 
 /**
@@ -129,6 +148,7 @@ export function OrderTicket({
   confirmOrders,
   confirmSkipUnder,
   onConfirmSkipUnder,
+  checkRules,
 }: OrderTicketProps) {
   const [confirming, setConfirming] = useState<OrderRequest>();
   const [editing, setEditing] = useState<"leverage" | "margin">();
@@ -255,6 +275,50 @@ export function OrderTicket({
       })
     : undefined;
   const blocked = built && "blocked" in built ? BLOCKED[built.blocked] : undefined;
+
+  // The trader's rules, asked about the order as it's filled in: shortly
+  // after it stops changing, and again as time passes. The rules are
+  // checked again in Rust when it's sent; this only says so sooner.
+  const draft = built && "request" in built ? built.request : undefined;
+  const draftKey = draft ? JSON.stringify(draft) : "";
+  const askRules = useRef(checkRules);
+  askRules.current = checkRules;
+  const [ruleNotes, setRuleNotes] = useState<{ key: string; notes: TicketRuleNote[] }>();
+  const checking = checkRules !== undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `draftKey` stands for `draft`
+  useEffect(() => {
+    setRuleNotes(undefined);
+    if (!draft || !checking) return;
+    let current = true;
+    const ask = () => {
+      const check = askRules.current;
+      if (!check) return;
+      check(draft).then(
+        (notes) => current && setRuleNotes({ key: draftKey, notes }),
+        (err: unknown) =>
+          current &&
+          setRuleNotes({
+            key: draftKey,
+            notes: [
+              {
+                rule: "unchecked",
+                message: err instanceof Error ? err.message : t("error.failed"),
+                refuses: true,
+              },
+            ],
+          }),
+      );
+    };
+    const first = setTimeout(ask, RULES_DEBOUNCE_MS);
+    const again = setInterval(ask, RULES_REFRESH_MS);
+    return () => {
+      current = false;
+      clearTimeout(first);
+      clearInterval(again);
+    };
+  }, [draftKey, checking]);
+  const rules = ruleNotes?.key === draftKey ? ruleNotes.notes : [];
+  const refusing = rules.find((n) => n.refuses);
   const checks = market
     ? ticketChecks({
         market,
@@ -364,10 +428,14 @@ export function OrderTicket({
     ? "quick.unavailable"
     : !market
       ? "ticket.needSize"
-      : (blocked ?? (errors > 0 ? "check.fix" : undefined));
+      : (blocked ?? (errors > 0 ? "check.fix" : refusing ? "rules.ticketBlocked" : undefined));
   const unavailable = reason !== undefined || sending;
   const reasonText =
-    reason === "quick.unavailable" && unavailableReason ? unavailableReason : reason && t(reason);
+    reason === "quick.unavailable" && unavailableReason
+      ? unavailableReason
+      : reason === "rules.ticketBlocked" && refusing
+        ? refusing.message
+        : reason && t(reason);
 
   const send = async (request: OrderRequest) => {
     if (!onSubmit || sending) return;
@@ -382,7 +450,7 @@ export function OrderTicket({
     }
   };
   const submit = () => {
-    if (!onSubmit || !built || !("request" in built) || sending || errors > 0) return;
+    if (!onSubmit || !built || !("request" in built) || sending || errors > 0 || refusing) return;
     const small =
       confirmSkipUnder !== undefined && orderValue !== undefined && orderValue < confirmSkipUnder;
     if (confirmOrders && !small) setConfirming(built.request);
@@ -739,6 +807,24 @@ export function OrderTicket({
       {account ? (
         <>
           {errors > 0 && onSubmit && <p className="pd-ticket-blocked">{t("check.fix")}</p>}
+          {rules.length > 0 && onSubmit && (
+            <div className="pd-ticket-rules" aria-live="polite">
+              {rules.map((n) => (
+                <p
+                  key={n.rule}
+                  className="pd-ticket-note"
+                  data-level={n.refuses ? "error" : "warn"}
+                  role={n.refuses ? "alert" : undefined}
+                >
+                  <LuShieldAlert className="pd-ticket-note-icon" size={13} aria-hidden />
+                  <span>
+                    <strong>{t(n.refuses ? "rules.ticketRefuses" : "rules.ticketWarns")}</strong>{" "}
+                    {n.message}
+                  </span>
+                </p>
+              ))}
+            </div>
+          )}
           <button
             ref={submitRef}
             type="button"

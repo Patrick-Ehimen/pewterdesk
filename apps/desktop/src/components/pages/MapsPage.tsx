@@ -55,7 +55,9 @@ import {
   sessionStats,
   Tabs,
   t,
+  VOL_FILTERS,
   VOL_MEASURES,
+  VOL_ROW_COUNTS,
   VolatilityMap,
   type VolRow,
 } from "@pewterdesk/ui";
@@ -89,6 +91,7 @@ import {
 import { loadOi } from "../../lib/oiStore";
 import { loadRsiOrder, saveRsiOrder } from "../../lib/rsiStore";
 import { VENUE_IDS, VENUES } from "../../lib/venues";
+import { MapHelp } from "../maps/MapHelp";
 import { SavedViews } from "../maps/SavedViews";
 import { LoadingMark } from "../Splash";
 
@@ -152,7 +155,7 @@ const isCrypto = (m: Market) => !m.category || m.category === "innovation";
 const VIEW_SETTINGS: Record<View, readonly string[]> = {
   rsi: ["frame", "scope", "rsiView"],
   perf: ["perfWindow", "perfTop", "mapScope"],
-  vol: ["volMeasure", "mapScope"],
+  vol: ["volMeasure", "volFilter", "volRows", "mapScope"],
   funding: ["fundingUnit", "fundingSort"],
   oi: ["oiWindow"],
   ls: ["lsSort"],
@@ -267,6 +270,8 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [perfWindow, setPerfWindow] = useStoredChoice("pd.maps.perfWindow", PERF_WINDOWS, "24h");
   const [perfTop, setPerfTop] = useStoredChoice("pd.maps.perfTop", MAP_TOPS, "60");
   const [volMeasure, setVolMeasure] = useStoredChoice("pd.maps.volMeasure", VOL_MEASURES, "vol24h");
+  const [volFilter, setVolFilter] = useStoredChoice("pd.maps.volFilter", VOL_FILTERS, "all");
+  const [volRowCount, setVolRowCount] = useStoredChoice("pd.maps.volRows", VOL_ROW_COUNTS, "40");
   const [fundingUnit, setFundingUnit] = useStoredChoice("pd.maps.fundingUnit", FUNDING_UNITS, "8h");
   const [fundingSort, setFundingSort] = useStoredChoice(
     "pd.maps.fundingSort",
@@ -523,6 +528,8 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     perfTop: choice(perfTop, setPerfTop, MAP_TOPS),
     mapScope: choice(mapScope, setMapScope, MAP_SCOPES),
     volMeasure: choice(volMeasure, setVolMeasure, VOL_MEASURES),
+    volFilter: choice(volFilter, setVolFilter, VOL_FILTERS),
+    volRows: choice(volRowCount, setVolRowCount, VOL_ROW_COUNTS),
     fundingUnit: choice(fundingUnit, setFundingUnit, FUNDING_UNITS),
     fundingSort: choice(fundingSort, setFundingSort, FUNDING_SORTS),
     oiWindow: choice(oiWindow, setOiWindow, OI_WINDOWS),
@@ -714,6 +721,10 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             rows={volRows}
             measure={volMeasure}
             onMeasure={setVolMeasure}
+            rowCount={volRowCount}
+            onRowCount={setVolRowCount}
+            filter={volFilter}
+            onFilter={setVolFilter}
             progress={historyProgress}
             loader={<LoadingMark size={44} />}
             extra={scopeSeg}
@@ -902,6 +913,7 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             }
           />
         )}
+        <MapHelp view={view} title={t(VIEW_LABEL[view])} />
       </section>
     </div>
   );

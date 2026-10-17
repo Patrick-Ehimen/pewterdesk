@@ -4058,6 +4058,13 @@ fieldset.pd-alerts-chips {
   white-space: nowrap;
   cursor: pointer;
 }
+.pd-select-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: contain;
+}
 .pd-select-option[data-active] {
   background: var(--pd-border);
 }

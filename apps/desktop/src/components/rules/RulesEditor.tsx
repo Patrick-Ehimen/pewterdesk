@@ -373,15 +373,20 @@ export function RulesEditor({
             ))}
           </Row>
           <Row label={t("rules.news")}>
+            <Switch
+              label={t("rules.news")}
+              checked={draft.news.on}
+              onChange={(on) => set({ news: { ...draft.news, on } })}
+            />
             <NumberField
               whole
               label={t("rules.news")}
               value={draft.news.minutes}
               unit={t("rules.min")}
-              disabled
+              disabled={!draft.news.on}
               onChange={(minutes) => set({ news: { ...draft.news, minutes } })}
             />
-            <Hint>{t("rules.newsSoon")}</Hint>
+            <Hint>{t("rules.newsHint")}</Hint>
           </Row>
           <Row label={t("rules.coolOffShort")}>
             <NumberField
