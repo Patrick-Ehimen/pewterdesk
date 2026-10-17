@@ -25,6 +25,18 @@ pub fn reveal_main<R: Runtime>(app: &AppHandle<R>) {
     let _ = splash.close();
 }
 
+/// Brings the app forward (opening it a second time does): the splash while
+/// the app is still starting, otherwise the main window, from the menu bar
+/// or the Dock if it was closed or minimised there.
+pub fn bring_forward<R: Runtime>(app: &AppHandle<R>) {
+    match app.get_webview_window(SPLASH_LABEL) {
+        Some(splash) => {
+            let _ = splash.set_focus();
+        }
+        None => crate::tray::show_main(app),
+    }
+}
+
 /// Reveals the main window after `FALLBACK` if the page hasn't by then.
 pub fn arm_fallback<R: Runtime>(app: &AppHandle<R>) {
     let app = app.clone();

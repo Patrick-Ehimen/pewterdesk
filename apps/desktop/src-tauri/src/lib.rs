@@ -47,6 +47,13 @@ pub fn run() {
     let venues = venues::Venues::new().expect("failed to set up venue adapters");
 
     tauri::Builder::default()
+        // First, so a second launch hands over before anything else is set
+        // up: two copies would each keep their own venue streams and
+        // keychain prompts. Opening the app again just brings this one
+        // forward; what the launch was given is ignored, never acted on.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            splash::bring_forward(app);
+        }))
         // Used from Rust only (`notify::notify`): the page is granted none of
         // the plugin's own commands.
         .plugin(tauri_plugin_notification::init())
