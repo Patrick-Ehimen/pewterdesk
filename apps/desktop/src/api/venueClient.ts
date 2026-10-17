@@ -19,6 +19,7 @@ import type {
   OrderAmend,
   OrderBook,
   OrderRequest,
+  Origin,
   PositionProtection,
   Trade,
   TradeSettings,
@@ -72,6 +73,9 @@ const BLOCK_TEXT: Record<string, MessageKey> = {
   unchecked: "rules.block.unchecked",
   lockedAmend: "rules.block.lockedAmend",
   lockedStop: "rules.block.lockedStop",
+  // Not a rule: the engine couldn't record the order in its event log, so
+  // it didn't send it.
+  unrecorded: "rules.block.unrecorded",
 };
 
 /** What a trading rule's code means, in words. */
@@ -216,11 +220,18 @@ export const venueClient = {
   checkTradingRules: (venue: VenueId, account: string, request: OrderRequest) =>
     call<RuleCheck[]>("check_trading_rules", { venue, account, request }),
 
-  placeOrder: (venue: VenueId, account: string, request: OrderRequest) =>
-    call<Order>("place_order", { venue, account, request }),
+  // The trading commands. `origin` says where in the app each came from,
+  // for the engine's event log; it grants nothing.
+  placeOrder: (venue: VenueId, account: string, request: OrderRequest, origin: Origin = "app") =>
+    call<Order>("place_order", { venue, account, request, origin }),
 
-  cancelOrder: (venue: VenueId, account: string, market: string, orderId: string) =>
-    call<void>("cancel_order", { venue, account, market, orderId }),
+  cancelOrder: (
+    venue: VenueId,
+    account: string,
+    market: string,
+    orderId: string,
+    origin: Origin = "app",
+  ) => call<void>("cancel_order", { venue, account, market, orderId, origin }),
 
   /** Changes an open order's price, size or attached TP/SL. */
   amendOrder: (
@@ -229,7 +240,8 @@ export const venueClient = {
     market: string,
     orderId: string,
     amend: OrderAmend,
-  ) => call<void>("amend_order", { venue, account, market, orderId, amend }),
+    origin: Origin = "app",
+  ) => call<void>("amend_order", { venue, account, market, orderId, amend, origin }),
 
   /** Changes a position's TP, SL and trailing stop; each kept, removed or set. */
   setProtection: (
@@ -237,7 +249,8 @@ export const venueClient = {
     account: string,
     market: string,
     protection: PositionProtection,
-  ) => call<void>("set_position_protection", { venue, account, market, protection }),
+    origin: Origin = "app",
+  ) => call<void>("set_position_protection", { venue, account, market, protection, origin }),
 
   /** The venue's latest announcements, newest first. */
   announcements: (venue: VenueId) => call<Announcement[]>("announcements", { venue }),
@@ -246,11 +259,21 @@ export const venueClient = {
   tradeSettings: (venue: VenueId, address: string, market: string) =>
     call<TradeSettings>("trade_settings", { venue, address, market }),
 
-  setLeverage: (venue: VenueId, account: string, market: string, leverage: string) =>
-    call<void>("set_leverage", { venue, account, market, leverage }),
+  setLeverage: (
+    venue: VenueId,
+    account: string,
+    market: string,
+    leverage: string,
+    origin: Origin = "app",
+  ) => call<void>("set_leverage", { venue, account, market, leverage, origin }),
 
-  setMarginMode: (venue: VenueId, account: string, market: string, mode: MarginMode) =>
-    call<void>("set_margin_mode", { venue, account, market, mode }),
+  setMarginMode: (
+    venue: VenueId,
+    account: string,
+    market: string,
+    mode: MarginMode,
+    origin: Origin = "app",
+  ) => call<void>("set_margin_mode", { venue, account, market, mode, origin }),
 
   subscribeOrderBook: (venue: VenueId, market: string, handlers: StreamHandlers<OrderBook>) =>
     subscribe("subscribe_order_book", { venue, market }, handlers),

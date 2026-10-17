@@ -737,6 +737,7 @@ export const messages: Messages = {
   "rules.block.dailyLeft": "此订单的风险超过今日亏损限额的剩余额度。",
   "rules.block.needsStop": "你的规则要求每个开仓订单都设止损。",
   "rules.block.unchecked": "无法读取账户以检查交易规则，订单未发送。仍可平仓。",
+  "rules.block.unrecorded": "无法将订单记入应用的事件日志，因此未发送。仍可平仓和减仓。",
   "rules.block.lockedAmend": "开仓订单已锁定：无法加大订单。",
   "rules.block.lockedStop": "开仓订单已锁定：止损只能移近，不能移远或移除。",
   "rules.block.other": "已被你的交易规则拒绝。",

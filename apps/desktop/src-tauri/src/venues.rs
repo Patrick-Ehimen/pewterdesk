@@ -31,7 +31,7 @@ use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
     Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode, Market,
     MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
-    OrderRequest, PositionProtection, Trade, TradeSettings, VenueError, VenueId,
+    OrderRequest, Origin, PositionProtection, Trade, TradeSettings, VenueError, VenueId,
 };
 use pewterdesk_engine::{Adapters, Engine};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
@@ -422,8 +422,9 @@ impl Adapters for Venues {
 
 // The trading commands: thin wrappers around the engine's router, which
 // builds the account's key reference, checks the live-trading switch and
-// the trader's rules, and only then calls the adapter. See the module's
-// invariants and `pewterdesk_engine`.
+// the trader's rules, logs each step, and only then calls the adapter. See
+// the module's invariants and `pewterdesk_engine`. `origin` says where in
+// the app the command came from, for the event log only: it grants nothing.
 
 /// Places an order for `account`.
 #[tauri::command]
@@ -434,9 +435,11 @@ pub async fn place_order(
     venue: VenueId,
     account: String,
     request: OrderRequest,
+    origin: Option<Origin>,
 ) -> Result<Order, VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .place_order(&*venues, &*calendar, venue, &account, &request)
+        .place_order(&*venues, &*calendar, origin, venue, &account, &request)
         .await
 }
 
@@ -448,14 +451,18 @@ pub async fn cancel_order(
     account: String,
     market: String,
     order_id: String,
+    origin: Option<Origin>,
 ) -> Result<(), VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .cancel_order(&*venues, venue, &account, &market, &order_id)
+        .cancel_order(&*venues, origin, venue, &account, &market, &order_id)
         .await
 }
 
 /// Changes `account`'s open order `order_id`: price, size, or attached TP/SL.
 #[tauri::command]
+// Tauri hands each piece of state and each argument in separately.
+#[allow(clippy::too_many_arguments)]
 pub async fn amend_order(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
@@ -464,9 +471,13 @@ pub async fn amend_order(
     market: String,
     order_id: String,
     amend: OrderAmend,
+    origin: Option<Origin>,
 ) -> Result<(), VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .amend_order(&*venues, venue, &account, &market, &order_id, &amend)
+        .amend_order(
+            &*venues, origin, venue, &account, &market, &order_id, &amend,
+        )
         .await
 }
 
@@ -480,9 +491,11 @@ pub async fn set_position_protection(
     account: String,
     market: String,
     protection: PositionProtection,
+    origin: Option<Origin>,
 ) -> Result<(), VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .set_position_protection(&*venues, venue, &account, &market, &protection)
+        .set_position_protection(&*venues, origin, venue, &account, &market, &protection)
         .await
 }
 
@@ -520,9 +533,11 @@ pub async fn set_leverage(
     account: String,
     market: String,
     leverage: Decimal,
+    origin: Option<Origin>,
 ) -> Result<(), VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .set_leverage(&*venues, venue, &account, &market, leverage)
+        .set_leverage(&*venues, origin, venue, &account, &market, leverage)
         .await
 }
 
@@ -536,9 +551,11 @@ pub async fn set_margin_mode(
     account: String,
     market: String,
     mode: MarginMode,
+    origin: Option<Origin>,
 ) -> Result<(), VenueError> {
+    let origin = origin.unwrap_or(Origin::App);
     engine
-        .set_margin_mode(&*venues, venue, &account, &market, mode)
+        .set_margin_mode(&*venues, origin, venue, &account, &market, mode)
         .await
 }
 

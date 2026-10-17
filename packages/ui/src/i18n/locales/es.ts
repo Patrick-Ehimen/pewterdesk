@@ -772,6 +772,8 @@ export const messages: Messages = {
   "rules.block.needsStop": "Tus reglas exigen un stop-loss en cada orden de apertura.",
   "rules.block.unchecked":
     "No se pudo leer tu cuenta para comprobar tus reglas, así que la orden no se envió. Cerrar sigue funcionando.",
+  "rules.block.unrecorded":
+    "No se pudo registrar la orden en el registro de eventos de la app, así que no se envió. Aún puedes cerrar y reducir posiciones.",
   "rules.block.lockedAmend":
     "Las órdenes de apertura están bloqueadas: no se puede ampliar una orden.",
   "rules.block.lockedStop":

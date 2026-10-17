@@ -27,7 +27,8 @@ pub mod live;
 mod router;
 pub mod rules;
 
-pub use router::{trading_account, Engine};
+pub use pewterdesk_store::EventLog;
+pub use router::{client_id, trading_account, Engine};
 
 /// Each venue's adapter, as the host has set it up.
 pub trait Adapters: Send + Sync {
