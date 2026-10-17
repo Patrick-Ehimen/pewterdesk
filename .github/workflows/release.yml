@@ -2,7 +2,9 @@ name: Release
 
 # Pushing a version tag (v0.1.0) builds the desktop app on every platform and
 # attaches the installers to a draft GitHub release, to check and publish by
-# hand. Running it manually builds the same installers without a release, as
+# hand; once published it's a full release, marked Latest. (For a test build
+# that shouldn't be Latest, tick "Set as a pre-release" when publishing.)
+# Running it manually builds the same installers without a release, as
 # a dry run; they're kept as workflow artifacts.
 on:
   push:
@@ -79,7 +81,7 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: PewterDesk ${{ github.ref_name }}
           releaseBody: |
-            Early pre-release. Market data, accounts and trading on Hyperliquid,
+            Early release, still in development. Market data, accounts and trading on Hyperliquid,
             Aster and Bybit. Connect a Hyperliquid or Aster API wallet (trade-only,
             it can't withdraw) or a Bybit API key. Orders work on Bybit Demo
             Trading accounts as soon as they're connected; on a live account,
@@ -102,7 +104,7 @@ jobs:
               and choose Open Anyway next to PewterDesk.
             - Windows: in SmartScreen, choose More info, then Run anyway.
           releaseDraft: true
-          prerelease: true
+          prerelease: false
 
       - name: Keep the installers (dry run)
         if: github.ref_type != 'tag'

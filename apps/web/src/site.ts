@@ -39,7 +39,7 @@ export const nav: readonly { href: string; label: string; page?: PageId }[] = [
 export const masthead = [
   "Desktop terminal for crypto perps",
   "Open source · MIT",
-  `v${VERSION} · pre-release`,
+  `v${VERSION} · early release`,
 ] as const;
 
 export const ISSUES_URL = `${REPO_URL}/issues`;
@@ -48,7 +48,7 @@ export const ISSUES_URL = `${REPO_URL}/issues`;
 // page should read as if it were.
 export const notice = {
   label: "In development",
-  text: "Pewterdesk is pre-release software. Features are still landing and things can break.",
+  text: "Pewterdesk is early software. Features are still landing and things can break.",
   link: "See what works today",
   href: `${base}#status`,
 };
