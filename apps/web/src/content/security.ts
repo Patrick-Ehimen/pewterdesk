@@ -88,7 +88,7 @@ export const limits = {
   label: "§ 06 — Limits",
   title: "What this doesn't protect you from.",
   items: [
-    "This is pre-release software. Start on a demo account.",
+    "This is early software. Start on a demo account or paper trading.",
     "A trade-only key can still lose money by trading. Size accordingly.",
     "Trading rules guard you against yourself inside the app. An order placed on the venue's own site isn't stopped by them.",
     "Alerts are checked while the app runs. Nothing fires once it's quit.",

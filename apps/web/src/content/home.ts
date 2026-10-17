@@ -9,7 +9,7 @@ export const hero = {
   how: "Chart, read the book and trade crypto perps on centralised and on-chain venues from one window. Keys sign locally and requests go straight to the venue.",
   download: `Download v${VERSION}`,
   source: "Build from source",
-  note: "Pre-release · still in development",
+  note: "Early release · still in development",
 };
 
 export const figure = {
@@ -123,7 +123,7 @@ export const venues = {
 export const status = {
   headline: "Still being built.",
   body: [
-    "Pewterdesk is under active development and every release so far is a pre-release. Things change between versions, and some of them will break.",
+    "Pewterdesk is under active development and still early. Things change between versions, and some of them will break.",
     "Use a demo account until you trust it, keep sizes small when you go live, and tell us what goes wrong.",
   ],
   works: {
@@ -145,6 +145,6 @@ export const status = {
 export const install = {
   lede: "Download the app, or build it from the source that signs your orders.",
   download: `Download v${VERSION}`,
-  note: "Pre-release, still in development. macOS 13+, Windows 10+, Linux with WebKitGTK 4.1.",
+  note: "Early release, still in development. macOS 13+, Windows 10+, Linux with WebKitGTK 4.1.",
   commands: [`git clone ${REPO_URL}`, "cd pewterdesk && make install", "make dev"],
 };
