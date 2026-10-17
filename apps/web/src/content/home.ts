@@ -27,7 +27,7 @@ export const callouts = [
   },
   {
     title: "Charts, depth, screener",
-    body: "Standard charts today, TradingView to come, plus depth, screener and watchlist tabs.",
+    body: "Full charting with drawings and indicators, plus depth, screener and watchlist tabs.",
   },
   {
     title: "Book with imbalance",
@@ -137,12 +137,7 @@ export const status = {
   },
   notYet: {
     title: "Not yet",
-    items: [
-      "Trailing stops on Hyperliquid and Aster",
-      "TradingView charts",
-      "The trade journal",
-      "The nine venues listed as coming",
-    ],
+    items: ["Trailing stops on Hyperliquid and Aster", "The nine venues listed as coming"],
   },
   report: "Report a problem",
 };
