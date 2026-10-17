@@ -28,8 +28,8 @@ use tauri::State;
 use zeroize::Zeroizing;
 
 use crate::keychain::{self, KeychainKeySource};
-use crate::live_trading::LiveTrading;
 use crate::venues::Venues;
+use pewterdesk_engine::Engine;
 
 /// A connected Bybit key, as the UI shows it. No key material.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -187,10 +187,10 @@ pub(crate) async fn verify_trade_only(venues: &Venues, uid: &str) -> Result<(), 
 /// key itself stays live on Bybit until the user deletes it there.
 #[tauri::command]
 pub async fn disconnect_bybit_key(
-    live: State<'_, LiveTrading>,
+    engine: State<'_, Engine>,
     uid: String,
 ) -> Result<(), VenueError> {
-    live.forget(&uid);
+    engine.live().forget(&uid);
     keychain::delete_key(key_account(&uid)?)
         .await
         .map_err(|e| VenueError::Key(e.into()))

@@ -66,20 +66,10 @@ pub fn run() {
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .setup(|app| {
-            // Which live accounts may trade, kept in the app's config folder.
-            let kept = app
-                .path()
-                .app_config_dir()
-                .ok()
-                .map(|dir| dir.join(live_trading::FILE));
-            app.manage(live_trading::LiveTrading::load(kept));
-            // The trader's own rules and their progress, kept beside it.
-            let kept = app
-                .path()
-                .app_config_dir()
-                .ok()
-                .map(|dir| dir.join(trading_rules::FILE));
-            app.manage(trading_rules::TradingRules::load(kept));
+            // The engine's router and its gate: which live accounts may
+            // trade, and the trader's own rules, kept in the config folder.
+            let config = app.path().app_config_dir().ok();
+            app.manage(pewterdesk_engine::Engine::load(config.as_deref()));
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;

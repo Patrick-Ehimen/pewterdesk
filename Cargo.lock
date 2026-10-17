@@ -3113,6 +3113,7 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "pewterdesk-core",
+ "pewterdesk-engine",
  "pewterdesk-exchange-aster",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
@@ -3143,6 +3144,17 @@ dependencies = [
  "tokio",
  "ts-rs",
  "zeroize",
+]
+
+[[package]]
+name = "pewterdesk-engine"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "pewterdesk-core",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
