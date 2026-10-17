@@ -11,7 +11,9 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use async_trait::async_trait;
 use pewterdesk_core::VenueError;
+use pewterdesk_engine as engine;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -239,7 +241,7 @@ impl CalendarState {
     /// blackout): the copy kept, at once, never waiting on the network, with
     /// a read started in the background once it's an hour old. It waits only
     /// for the very first read, when there's no copy to answer from.
-    pub(crate) async fn kept(&self) -> Option<Vec<CalendarEvent>> {
+    async fn kept_events(&self) -> Option<Vec<CalendarEvent>> {
         let latest = self.inner.latest.lock().unwrap().clone();
         match latest {
             Some((at, events)) => {
@@ -275,6 +277,31 @@ impl Inner {
             }
         }
         cache.events.as_ref().map(|(_, events)| events.clone())
+    }
+}
+
+/// The trading rules' news blackout reads the calendar through this: the
+/// copy kept, never waiting on the network once it has been read.
+#[async_trait]
+impl engine::Calendar for CalendarState {
+    async fn kept(&self) -> Option<Vec<engine::CalendarEvent>> {
+        let events = self.kept_events().await?;
+        Some(
+            events
+                .into_iter()
+                .map(|e| engine::CalendarEvent {
+                    title: e.title,
+                    currency: e.currency,
+                    time: e.time,
+                    impact: match e.impact {
+                        Impact::High => engine::Impact::High,
+                        Impact::Medium => engine::Impact::Medium,
+                        Impact::Low => engine::Impact::Low,
+                        Impact::Holiday => engine::Impact::Holiday,
+                    },
+                })
+                .collect(),
+        )
     }
 }
 

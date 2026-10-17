@@ -10,11 +10,12 @@
 //!   price, size or attached TP/SL), `set_position_protection`
 //!   (a position's TP, SL and trailing stop: protective, reduce-only), and
 //!   the trading parameters `set_leverage` and `set_margin_mode` (they move
-//!   no funds and open nothing), nothing else. They build the
-//!   account's key reference themselves, and sign for a Bybit demo account,
-//!   or a live account (Bybit, Hyperliquid, Aster) with live trading turned
-//!   on (`trading_account`, `live_trading`). Every venue implements all
-//!   six, except a trailing stop on Hyperliquid and Aster.
+//!   no funds and open nothing), nothing else. Each is a thin wrapper
+//!   around the engine's router (`pewterdesk_engine::Engine`), which builds
+//!   the account's key reference itself and signs only for a Bybit demo
+//!   account, or a live account (Bybit, Hyperliquid, Aster) with live
+//!   trading turned on, once the trader's rules pass. Every venue
+//!   implements all six, except a trailing stop on Hyperliquid and Aster.
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter
@@ -30,12 +31,11 @@ use pewterdesk_core::{
     AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
     Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode, Market,
     MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
-    OrderRequest, PositionProtection, Trade, TradeSettings, TradingAccount, VenueError, VenueId,
+    OrderRequest, PositionProtection, Trade, TradeSettings, VenueError, VenueId,
 };
+use pewterdesk_engine::{Adapters, Engine};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
-use pewterdesk_exchange_bybit::{
-    auth as bybit_auth, constants::MAINNET as BYBIT_MAINNET, BybitAdapter,
-};
+use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
 use tauri::async_runtime::{self, JoinHandle};
@@ -45,8 +45,6 @@ use tokio::sync::mpsc;
 
 use crate::econ_calendar::CalendarState;
 use crate::keychain::KeychainKeySource;
-use crate::live_trading::LiveTrading;
-use crate::trading_rules::TradingRules;
 
 /// One message on a subscription's channel. `closed` is final: the venue ended
 /// the stream (e.g. it rejected the market), and nothing more will arrive.
@@ -416,130 +414,75 @@ pub async fn subscribe_account(
     Ok(venues.forward(rx, on_event, &webview))
 }
 
-/// Who an order is for, and which keychain entry holds its key - built
-/// here from the account id, never taken from the UI, so a call can't pair
-/// an account with another's key.
-///
-/// A Bybit demo account (demo funds, on Bybit's demo host) trades as soon
-/// as it's connected. Every other account is live - a Bybit live account,
-/// and any Hyperliquid or Aster account - and trades only once live trading
-/// has been turned on for it (`live_trading`).
-fn trading_account(
-    venue: VenueId,
-    account: &str,
-    live: &LiveTrading,
-) -> Result<TradingAccount, VenueError> {
-    match venue {
-        VenueId::Bybit => {
-            let (demo, uid) = bybit_auth::parse_account(account)?;
-            if !demo && !live.is_on(uid) {
-                return Err(VenueError::Rejected(
-                    "live trading is off for this account; turn it on under Accounts".into(),
-                ));
-            }
-            Ok(TradingAccount {
-                address: account.to_owned(),
-                key: bybit_auth::key_account(account)?,
-            })
-        }
-        // Always real funds, so always behind the switch.
-        VenueId::Hyperliquid | VenueId::Aster => {
-            let address = crate::wallet::normalize_address(account)?;
-            if !live.is_on(&crate::live_trading::wallet_id(venue, &address)?) {
-                return Err(VenueError::Rejected(
-                    "live trading is off for this account; turn it on in the wallet's details"
-                        .into(),
-                ));
-            }
-            Ok(TradingAccount {
-                key: crate::wallet::key_account(venue, &address),
-                address,
-            })
-        }
+impl Adapters for Venues {
+    fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
+        Venues::adapter(self, venue)
     }
 }
 
-/// Places an order for `account`. With `cancel_order`, the only commands
-/// that sign a venue action: see the module's invariants.
+// The trading commands: thin wrappers around the engine's router, which
+// builds the account's key reference, checks the live-trading switch and
+// the trader's rules, and only then calls the adapter. See the module's
+// invariants and `pewterdesk_engine`.
+
+/// Places an order for `account`.
 #[tauri::command]
 pub async fn place_order(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
-    rules: State<'_, TradingRules>,
+    engine: State<'_, Engine>,
     calendar: State<'_, CalendarState>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
 ) -> Result<Order, VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    // The trader's own rules, before anything is signed.
-    rules
-        .guard_order(&venues, &calendar, venue, &account, &request)
-        .await?;
-    venues.adapter(venue)?.place_order(&trading, &request).await
+    engine
+        .place_order(&*venues, &*calendar, venue, &account, &request)
+        .await
 }
 
 #[tauri::command]
 pub async fn cancel_order(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     account: String,
     market: String,
     order_id: String,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    venues
-        .adapter(venue)?
-        .cancel_order(&trading, &market, &order_id)
+    engine
+        .cancel_order(&*venues, venue, &account, &market, &order_id)
         .await
 }
 
 /// Changes `account`'s open order `order_id`: price, size, or attached TP/SL.
-/// Behind the same gate as orders (`trading_account`).
 #[tauri::command]
-// Tauri hands each piece of state and each argument in separately.
-#[allow(clippy::too_many_arguments)]
 pub async fn amend_order(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
-    rules: State<'_, TradingRules>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     account: String,
     market: String,
     order_id: String,
     amend: OrderAmend,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    rules
-        .guard_amend(&venues, venue, &account, &order_id, &amend)
-        .await?;
-    venues
-        .adapter(venue)?
-        .amend_order(&trading, &market, &order_id, &amend)
+    engine
+        .amend_order(&*venues, venue, &account, &market, &order_id, &amend)
         .await
 }
 
 /// Sets the take-profit, stop-loss and trailing stop on `account`'s
-/// position in `market`, all at once (`None` removes one). Protective only;
-/// behind the same gate as orders (`trading_account`).
+/// position in `market`, all at once (`None` removes one). Protective only.
 #[tauri::command]
 pub async fn set_position_protection(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
-    rules: State<'_, TradingRules>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     account: String,
     market: String,
     protection: PositionProtection,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    rules
-        .guard_protection(&venues, venue, &account, &market, &protection)
-        .await?;
-    venues
-        .adapter(venue)?
-        .set_position_protection(&trading, &market, &protection)
+    engine
+        .set_position_protection(&*venues, venue, &account, &market, &protection)
         .await
 }
 
@@ -568,38 +511,34 @@ pub async fn trade_settings(
 }
 
 /// Sets `account`'s leverage on `market` (checked against the market's
-/// maximum by the adapter). Behind the same gate as orders.
+/// maximum by the adapter).
 #[tauri::command]
 pub async fn set_leverage(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     account: String,
     market: String,
     leverage: Decimal,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    venues
-        .adapter(venue)?
-        .set_leverage(&trading, &market, leverage)
+    engine
+        .set_leverage(&*venues, venue, &account, &market, leverage)
         .await
 }
 
 /// Switches `account` between cross and isolated margin (account-wide on
-/// Bybit). Behind the same gate as orders.
+/// Bybit).
 #[tauri::command]
 pub async fn set_margin_mode(
     venues: State<'_, Venues>,
-    live: State<'_, LiveTrading>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     account: String,
     market: String,
     mode: MarginMode,
 ) -> Result<(), VenueError> {
-    let trading = trading_account(venue, &account, &live)?;
-    venues
-        .adapter(venue)?
-        .set_margin_mode(&trading, &market, mode)
+    engine
+        .set_margin_mode(&*venues, venue, &account, &market, mode)
         .await
 }
 
@@ -636,63 +575,5 @@ mod tests {
         let tray = subs.remove(&3).unwrap();
         assert!(!tray.task.inner().is_finished());
         tray.task.abort();
-    }
-
-    #[test]
-    fn a_live_account_trades_only_once_its_turned_on() {
-        let path = std::env::temp_dir()
-            .join(format!("pewterdesk-gate-{}", std::process::id()))
-            .join(crate::live_trading::FILE);
-        let live = LiveTrading::load(Some(path.clone()));
-        // Demo accounts need no switch.
-        let demo = trading_account(VenueId::Bybit, "demo:24617703", &live).unwrap();
-        assert_eq!(demo.address, "demo:24617703");
-        assert_eq!(demo.key, "bybit:demo:24617703");
-        assert!(trading_account(VenueId::Bybit, "demo:x", &live).is_err());
-        // A live one is refused until it's on, and only that account is let through.
-        assert!(matches!(
-            trading_account(VenueId::Bybit, "24617703", &live),
-            Err(VenueError::Rejected(_))
-        ));
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, br#"["24617703"]"#).unwrap();
-        let on = LiveTrading::load(Some(path.clone()));
-        let account = trading_account(VenueId::Bybit, "24617703", &on).unwrap();
-        assert_eq!(account.address, "24617703");
-        assert_eq!(account.key, "bybit:24617703");
-        assert!(matches!(
-            trading_account(VenueId::Bybit, "24617704", &on),
-            Err(VenueError::Rejected(_))
-        ));
-        // A wallet on Hyperliquid or Aster is always live: refused until
-        // it's on, and then only that venue's account, under its own key.
-        let wallet = format!("0x{}", "a".repeat(40));
-        let other = format!("0x{}", "b".repeat(40));
-        for venue in [VenueId::Hyperliquid, VenueId::Aster] {
-            assert!(matches!(
-                trading_account(venue, &wallet, &on),
-                Err(VenueError::Rejected(_))
-            ));
-        }
-        std::fs::write(&path, format!(r#"["hyperliquid:{wallet}"]"#)).unwrap();
-        let on = LiveTrading::load(Some(path.clone()));
-        // However the page spells the address, the key is the stored one's.
-        let spelled = format!(" 0x{} ", "A".repeat(40));
-        let account = trading_account(VenueId::Hyperliquid, &spelled, &on).unwrap();
-        assert_eq!(account.address, wallet);
-        assert_eq!(account.key, format!("hyperliquid:{wallet}"));
-        assert!(matches!(
-            trading_account(VenueId::Aster, &wallet, &on),
-            Err(VenueError::Rejected(_))
-        ));
-        assert!(matches!(
-            trading_account(VenueId::Hyperliquid, &other, &on),
-            Err(VenueError::Rejected(_))
-        ));
-        assert!(matches!(
-            trading_account(VenueId::Hyperliquid, "24617703", &on),
-            Err(VenueError::InvalidRequest(_))
-        ));
-        let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }
