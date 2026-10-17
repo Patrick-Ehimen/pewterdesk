@@ -14,7 +14,8 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
 
 1. **No key material leaves Rust.** No private key, seed, or
    signed-but-unsent payload is written to disk, logged (including error
-   logs, `Debug` impls and `console.*`), returned to JS, put in a
+   logs, `Debug` impls, `console.*` and the engine's event log in
+   `crates/store`, which keeps no keychain reference either), returned to JS, put in a
    `VenueError`, sent over network to anywhere other than the intended venue
    endpoint, or stored anywhere but the OS keychain. Keys are held as
    `Zeroizing` and only for the signing call.
