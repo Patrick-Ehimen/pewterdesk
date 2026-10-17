@@ -218,24 +218,12 @@ fn held_permissions(info: &ApiKeyInfo) -> Vec<String> {
 
 /// The prefix of a demo account's id: `demo:{uid}`. Demo accounts trade on
 /// Bybit's demo host with demo funds, under keys made in its Demo Trading.
-pub const DEMO_PREFIX: &str = "demo:";
+pub use pewterdesk_core::accounts::BYBIT_DEMO_PREFIX as DEMO_PREFIX;
 
 /// A Bybit account id: its UID (digits, as Bybit numbers its accounts),
 /// with `demo:` in front for a demo account. Returns whether it's demo, and
-/// the UID.
-pub fn parse_account(id: &str) -> Result<(bool, &str), VenueError> {
-    let (demo, uid) = match id.strip_prefix(DEMO_PREFIX) {
-        Some(uid) => (true, uid),
-        None => (false, id),
-    };
-    if !uid.is_empty() && uid.len() <= 20 && uid.bytes().all(|b| b.is_ascii_digit()) {
-        Ok((demo, uid))
-    } else {
-        Err(VenueError::InvalidRequest(
-            "a Bybit account is its UID (digits), or demo: and its UID".into(),
-        ))
-    }
-}
+/// the UID. The rule is `core`'s, shared with onboarding and the engine.
+pub use pewterdesk_core::accounts::bybit_account as parse_account;
 
 /// The account id for `uid`, live or demo.
 pub fn account_id(uid: u64, demo: bool) -> String {
@@ -249,10 +237,7 @@ pub fn account_id(uid: u64, demo: bool) -> String {
 /// The keychain entry the API key for Bybit account `id` lives under -
 /// shared by onboarding, which stores it, and the adapter, which reads it:
 /// `bybit:{uid}`, or `bybit:demo:{uid}` for a demo account.
-pub fn key_account(id: &str) -> Result<String, VenueError> {
-    parse_account(id)?;
-    Ok(format!("bybit:{id}"))
-}
+pub use pewterdesk_core::accounts::bybit_key_entry as key_account;
 
 /// Bybit's auth failures, said plainly. Other codes keep the venue's message.
 pub(crate) fn auth_error(code: i64, message: String) -> VenueError {
