@@ -37,8 +37,8 @@ use tauri::State;
 use zeroize::Zeroizing;
 
 use crate::keychain::{self, KeychainKeySource};
-use crate::live_trading::LiveTrading;
 use crate::venues::Venues;
+use pewterdesk_engine::Engine;
 
 /// A connected account, as the UI shows it. Public addresses only.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -67,27 +67,9 @@ fn now_micros() -> u64 {
         .map_or(0, |d| d.as_micros() as u64)
 }
 
-/// Lowercase `0x` + 40 hex, or an error saying what an address looks like.
-pub(crate) fn normalize_address(address: &str) -> Result<String, VenueError> {
-    let address = address.trim().to_ascii_lowercase();
-    let hex = address.strip_prefix("0x").unwrap_or("");
-    if hex.len() == 40 && hex.bytes().all(|b| b.is_ascii_hexdigit()) {
-        Ok(address)
-    } else {
-        Err(VenueError::InvalidRequest(
-            "an address is 0x followed by 40 hex characters".into(),
-        ))
-    }
-}
-
-/// The keychain entry a venue account's key lives under.
-pub(crate) fn key_account(venue: VenueId, address: &str) -> String {
-    match venue {
-        VenueId::Hyperliquid => format!("hyperliquid:{address}"),
-        VenueId::Aster => format!("aster:{address}"),
-        VenueId::Bybit => format!("bybit:{address}"),
-    }
-}
+// How addresses are kept and which keychain entry an account's key lives
+// under: `core`'s rules, shared with the adapters and the engine.
+pub(crate) use pewterdesk_core::accounts::{normalize_address, wallet_key_entry as key_account};
 
 /// Pasting an API wallet's key is Hyperliquid's alone: there the venue can
 /// say whether a key is an approved agent before it's stored.
@@ -261,12 +243,12 @@ pub(crate) async fn verify_trade_only(
 /// approval on the venue stays until the user revokes it there.
 #[tauri::command]
 pub async fn disconnect_wallet(
-    live: State<'_, LiveTrading>,
+    engine: State<'_, Engine>,
     venue: VenueId,
     address: String,
 ) -> Result<(), VenueError> {
     let address = normalize_address(&address)?;
-    live.forget_wallet(venue, &address);
+    engine.live().forget_wallet(venue, &address);
     keychain::delete_key(key_account(venue, &address))
         .await
         .map_err(|e| VenueError::Key(e.into()))

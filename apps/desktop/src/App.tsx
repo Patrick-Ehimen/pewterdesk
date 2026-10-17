@@ -10,6 +10,7 @@ import type {
   OrderAmend,
   OrderBook,
   OrderRequest,
+  Origin,
   Position,
   PositionProtection,
   VenueId,
@@ -574,8 +575,10 @@ export function App() {
             .map((c) => ({ rule: c.rule, message: blockText(c.rule), refuses: !warnOnly }));
         }
       : undefined;
+  // Each order function takes where in the app it was called from, which
+  // the engine logs with the command (it grants nothing).
   const placeOrder = route
-    ? async (request: OrderRequest) => {
+    ? async (request: OrderRequest, origin?: Origin) => {
         // Every way of placing one (ticket, quick trade, the drawer) says how
         // it went here, once.
         const text = paperTag(orderText(request, baseFor(request.market)));
@@ -583,7 +586,7 @@ export function App() {
           if (route === "paper") await paper.place(request);
           else if (trading) {
             stillLive(trading.venue);
-            await venueClient.placeOrder(trading.venue, trading.id, request);
+            await venueClient.placeOrder(trading.venue, trading.id, request, origin);
             tradingRules.refresh();
           }
           notifyEvent({
@@ -610,11 +613,11 @@ export function App() {
       }
     : undefined;
   const cancelOrder = route
-    ? async (order: Order) => {
+    ? async (order: Order, origin?: Origin) => {
         if (route === "paper") await paper.cancel(order);
         else if (trading) {
           stillLive(trading.venue);
-          await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id);
+          await venueClient.cancelOrder(trading.venue, trading.id, order.market, order.id, origin);
         }
         notifyEvent({
           type: "order",
@@ -701,11 +704,18 @@ export function App() {
     }
   };
   const amend = route
-    ? async (order: Order, change: OrderAmend) => {
+    ? async (order: Order, change: OrderAmend, origin?: Origin) => {
         if (route === "paper") await paper.amend(order, change);
         else if (trading) {
           stillLive(trading.venue);
-          await venueClient.amendOrder(trading.venue, trading.id, order.market, order.id, change);
+          await venueClient.amendOrder(
+            trading.venue,
+            trading.id,
+            order.market,
+            order.id,
+            change,
+            origin,
+          );
         }
         notifyEvent({
           type: "order",
@@ -718,11 +728,17 @@ export function App() {
       }
     : undefined;
   const protect = route
-    ? async (position: Position, protection: PositionProtection) => {
+    ? async (position: Position, protection: PositionProtection, origin?: Origin) => {
         if (route === "paper") await paper.protect(position, protection);
         else if (trading) {
           stillLive(trading.venue);
-          await venueClient.setProtection(trading.venue, trading.id, position.market, protection);
+          await venueClient.setProtection(
+            trading.venue,
+            trading.id,
+            position.market,
+            protection,
+            origin,
+          );
         }
         notifyEvent({
           type: "order",
@@ -734,6 +750,16 @@ export function App() {
         });
       }
     : undefined;
+  /** The order functions as called from `origin`, for the engine's log. */
+  const from = (origin: Origin) => ({
+    place: placeOrder && ((request: OrderRequest) => placeOrder(request, origin)),
+    cancel: cancelOrder && ((order: Order) => cancelOrder(order, origin)),
+    amend: amend && ((order: Order, change: OrderAmend) => amend(order, change, origin)),
+    protect:
+      protect &&
+      ((position: Position, protection: PositionProtection) =>
+        protect(position, protection, origin)),
+  });
   /** "Buy 120 BTC @ 80,000": an open order in a line. */
   const orderLine = (order: Order) =>
     `${t(order.side === "buy" ? "side.buy" : "side.sell")} ${formatNumber(order.size)} ${baseFor(order.market)}${
@@ -907,7 +933,7 @@ export function App() {
   // market's step, the venue's slippage bound): the quick trade bar's, and
   // the Multi-chart page's buttons.
   const marketOrder = placeOrder
-    ? async (market: Market, side: "buy" | "sell", sizeBase: number) => {
+    ? async (market: Market, side: "buy" | "sell", sizeBase: number, origin?: Origin) => {
         const built = ticketOrder({
           market,
           type: "market",
@@ -924,12 +950,12 @@ export function App() {
           // Not placed: what's typed is kept.
           throw new Error(t("ticket.needSize"));
         }
-        await placeOrder(built.request);
+        await placeOrder(built.request, origin);
       }
     : undefined;
   const quickOrder =
     marketOrder && selected
-      ? (side: "buy" | "sell") => marketOrder(selected, side, Number(quickQty) || 0)
+      ? (side: "buy" | "sell") => marketOrder(selected, side, Number(quickQty) || 0, "quick-trade")
       : undefined;
   // Why orders can't be placed here, where there's a better reason than "not yet".
   const tradeUnavailable = !paperOn && activeOnVenue && !trading ? t("ticket.liveOff") : undefined;
@@ -994,6 +1020,7 @@ export function App() {
     paperOn ? undefined : address,
     selected?.id,
     trading,
+    "ticket",
   );
   const tradeSettings = paperOn
     ? {
@@ -1368,7 +1395,7 @@ export function App() {
             paperFills={paperOn ? paper.state.fills : undefined}
             positions={accountData?.positions}
             alerts={alerts}
-            onProtect={protect}
+            onProtect={from("chart").protect}
             showChart={chartRequest}
           />
         );
@@ -1404,12 +1431,12 @@ export function App() {
             account={account}
             address={address}
             symbolFor={symbolFor}
-            onCancel={cancelOrder}
+            onCancel={from("activity").cancel}
             quoteFor={quoteFor}
             baseFor={baseFor}
             tickFor={tickFor}
-            onProtect={protect}
-            onAmend={amend}
+            onProtect={from("activity").protect}
+            onAmend={from("activity").amend}
             onShare={openShare}
             paper={paperOn ? paper.state : undefined}
             onSelectPosition={(p) => {
@@ -1448,9 +1475,9 @@ export function App() {
             }
             account={liveAccount}
             maxSlippageBps={slippageBps(venueInfo.maxSlippage)}
-            place={placeOrder}
-            cancel={cancelOrder}
-            protect={protect}
+            place={from("cli-panel").place}
+            cancel={from("cli-panel").cancel}
+            protect={from("cli-panel").protect}
             onMarket={(marketId) => showMarket(venue, marketId)}
             onPage={goTo}
           />
@@ -1478,7 +1505,7 @@ export function App() {
               fees={selected?.listedBy ? undefined : venueInfo.fees}
               maxSlippage={venueInfo.maxSlippage}
               onConnect={() => openConnect()}
-              onSubmit={placeOrder}
+              onSubmit={from("ticket").place}
               unavailableReason={tradeUnavailable}
               accountBadge={
                 paperOn
@@ -1781,8 +1808,8 @@ export function App() {
               showMarket(v, id);
               setPage("trade");
             }}
-            onProtect={protect}
-            onOrder={marketOrder}
+            onProtect={from("multichart").protect}
+            onOrder={marketOrder && ((m, side, size) => marketOrder(m, side, size, "multichart"))}
             tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
           />
         ) : page === "maps" ? (
@@ -2086,8 +2113,8 @@ export function App() {
             funding={drawerDetail.funding}
             pnlHistory={drawerDetail.pnl}
             maxSlippage={venueInfo.maxSlippage}
-            onProtect={protect && ((protection) => protect(drawerPosition, protection))}
-            onPlace={placeOrder}
+            onProtect={protect && ((protection) => protect(drawerPosition, protection, "drawer"))}
+            onPlace={from("drawer").place}
             onShare={() => openShare({ position: drawerPosition })}
             onClose={() => setDrawerFor(undefined)}
           />
@@ -2145,9 +2172,9 @@ export function App() {
           positions={liveAccount?.positions ?? []}
           orders={liveAccount?.openOrders ?? []}
           maxSlippageBps={slippageBps(venueInfo.maxSlippage)}
-          place={placeOrder}
-          cancel={cancelOrder}
-          protect={protect}
+          place={from("palette").place}
+          cancel={from("palette").cancel}
+          protect={from("palette").protect}
           themes={themeOptions()}
           onTheme={(theme) => {
             const next = THEMES.find((th) => th === theme);

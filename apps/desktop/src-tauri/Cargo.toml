@@ -26,12 +26,13 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-api"] }
 async-trait = "0.1"
 getrandom = "0.2"
-keyring = "4"
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "query", "gzip"] }
 # RSS, for the News page's publisher feeds (`news_feeds.rs`). Already in the
 # tree (the plist crate), so nothing new is downloaded.
 quick-xml = "0.42"
 pewterdesk-core = { path = "../../../crates/core" }
+pewterdesk-engine = { path = "../../../crates/engine" }
+pewterdesk-keychain = { path = "../../../crates/keychain" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
 pewterdesk-exchange-bybit = { path = "../../../crates/exchange-bybit" }
 pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid" }

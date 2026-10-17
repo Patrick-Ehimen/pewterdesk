@@ -789,6 +789,53 @@ pub struct AccountSnapshot {
     pub time: u64,
 }
 
+/// Where a trading command came from in the app, recorded with it in the
+/// engine's event log. Only a label: it grants nothing, and every origin
+/// goes through the same gate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "kebab-case")]
+#[ts(export, export_to = TS_FILE)]
+pub enum Origin {
+    /// The order ticket (and its leverage and margin controls).
+    Ticket,
+    /// The quick trade bar's buy and sell buttons.
+    QuickTrade,
+    /// The command palette.
+    Palette,
+    /// The CLI panel.
+    CliPanel,
+    /// The floating window.
+    Float,
+    /// The Multi-chart page: its buy and sell buttons, and dragged TP / SL lines.
+    Multichart,
+    /// The Trade page's price chart: a dragged TP / SL line.
+    Chart,
+    /// The account panels: open orders and positions.
+    Activity,
+    /// The position drawer.
+    Drawer,
+    /// Anywhere else in the app, or a caller that didn't say.
+    App,
+}
+
+impl Origin {
+    /// The name it's logged under, as it's spelled on the wire.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Ticket => "ticket",
+            Self::QuickTrade => "quick-trade",
+            Self::Palette => "palette",
+            Self::CliPanel => "cli-panel",
+            Self::Float => "float",
+            Self::Multichart => "multichart",
+            Self::Chart => "chart",
+            Self::Activity => "activity",
+            Self::Drawer => "drawer",
+            Self::App => "app",
+        }
+    }
+}
+
 /// Who is trading, for calls that need a signature.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

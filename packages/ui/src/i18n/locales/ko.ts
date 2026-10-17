@@ -754,6 +754,8 @@ export const messages: Messages = {
   "rules.block.needsStop": "규칙상 모든 신규 주문에 스탑로스가 필요합니다.",
   "rules.block.unchecked":
     "규칙 확인을 위한 계정 정보를 읽지 못해 주문을 보내지 않았습니다. 청산은 가능합니다.",
+  "rules.block.unrecorded":
+    "주문을 앱의 이벤트 로그에 기록하지 못해 전송하지 않았습니다. 포지션 청산과 축소는 계속 가능합니다.",
   "rules.block.lockedAmend": "신규 주문이 잠겨 있습니다: 주문을 키울 수 없습니다.",
   "rules.block.lockedStop":
     "신규 주문이 잠겨 있습니다: 스탑은 가깝게만 옮길 수 있고, 멀리 옮기거나 제거할 수 없습니다.",

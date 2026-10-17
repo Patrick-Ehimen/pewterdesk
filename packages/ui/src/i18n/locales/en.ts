@@ -767,6 +767,8 @@ export const en = {
   "rules.block.needsStop": "Your rules need a stop-loss on every opening order.",
   "rules.block.unchecked":
     "Your account couldn't be read to check your trading rules, so the order wasn't sent. Closing still works.",
+  "rules.block.unrecorded":
+    "The order couldn't be recorded in the app's event log, so it wasn't sent. You can still close and reduce positions.",
   "rules.block.lockedAmend": "Opening orders are locked: an order can't be made larger.",
   "rules.block.lockedStop":
     "Opening orders are locked: a stop can be moved closer, not further away or removed.",
