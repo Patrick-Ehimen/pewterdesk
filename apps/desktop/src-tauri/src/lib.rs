@@ -1,6 +1,7 @@
 use tauri::Manager;
 
 mod about;
+mod algos;
 mod browser_connect;
 mod bybit_key;
 mod chart_window;
@@ -80,6 +81,9 @@ pub fn run() {
                 .ok()
                 .and_then(|dir| pewterdesk_engine::EventLog::open(&dir.join(EVENT_LOG)).ok());
             app.manage(pewterdesk_engine::Engine::load(config.as_deref(), log));
+            // Algos run on the engine here; any the app closed on are dealt
+            // with now.
+            algos::install(app.handle());
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
@@ -198,6 +202,13 @@ pub fn run() {
             trading_rules::delete_trading_rules,
             trading_rules::trading_rules_status,
             trading_rules::check_trading_rules,
+            algos::start_algo,
+            algos::algos,
+            algos::algo_history,
+            algos::pause_algo,
+            algos::resume_algo,
+            algos::stop_algo,
+            algos::halt_algos,
             coin_info::coin_info,
             coin_info::coin_logo,
             coin_info::coin_markets,

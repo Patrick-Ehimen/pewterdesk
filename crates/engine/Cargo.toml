@@ -13,8 +13,12 @@ publish = false
 async-trait = "0.1.92"
 pewterdesk-core = { path = "../core" }
 pewterdesk-store = { path = "../store" }
+rust_decimal = "1.43.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+# Algos run as tasks on the host's tokio runtime (the app's, later the daemon's).
+tokio = { version = "1.53.1", default-features = false, features = ["rt", "sync", "time", "macros"] }
 
 [dev-dependencies]
-tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }
+pewterdesk-sim = { path = "../sim" }
+tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt", "test-util"] }

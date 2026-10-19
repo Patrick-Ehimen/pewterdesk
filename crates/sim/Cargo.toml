@@ -1,0 +1,16 @@
+[package]
+name = "pewterdesk-sim"
+version = "0.0.0"
+description = "SimVenue: an ExchangeAdapter fed recorded order books, for testing algos (and later paper trading and backtests)"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+async-trait = "0.1.92"
+pewterdesk-core = { path = "../core" }
+rust_decimal = "1.43.0"
+tokio = { version = "1.53.1", default-features = false, features = ["sync"] }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt"] }

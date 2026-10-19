@@ -25,6 +25,133 @@ realizedPnl?: Decimal, positions: Array<Position>, openOrders: Array<Order>,
 time: number, };
 
 /**
+ * Which algo, with its own settings.
+ */
+export type AlgoKind = { "kind": "chaser", 
+/**
+ * Only ever rest (a maker order); on by default.
+ */
+postOnly: boolean, 
+/**
+ * Give up once the price is this far from where it started, in
+ * basis points; unset to chase without a limit.
+ */
+giveUpBps?: number, 
+/**
+ * On giving up, send what's left at market rather than stop.
+ */
+finishAtMarket: boolean, } | { "kind": "twap", durationMs: number, slices: number, 
+/**
+ * Spread the slices' times a little, so they're harder to spot.
+ */
+randomize: boolean, style: SliceStyle, unfilled: Unfilled, } | { "kind": "scaled", 
+/**
+ * The near end of the range.
+ */
+from: Decimal, 
+/**
+ * The far end.
+ */
+to: Decimal, count: number, distribution: Distribution, postOnly: boolean, };
+
+/**
+ * An algo as the page starts it.
+ */
+export type AlgoSpec = { venue: VenueId, 
+/**
+ * The account, as the trading commands name it.
+ */
+account: string, 
+/**
+ * `Market::id`.
+ */
+market: string, side: Side, 
+/**
+ * In base units.
+ */
+size: Decimal, reduceOnly: boolean, 
+/**
+ * The bound for anything it sends at market, in basis points.
+ */
+maxSlippageBps: number, 
+/**
+ * Use the venue's own version where it has one (it keeps running while
+ * this machine sleeps). On unless the page says otherwise.
+ */
+preferNative: boolean, } & ({ "kind": "chaser", 
+/**
+ * Only ever rest (a maker order); on by default.
+ */
+postOnly: boolean, 
+/**
+ * Give up once the price is this far from where it started, in
+ * basis points; unset to chase without a limit.
+ */
+giveUpBps?: number, 
+/**
+ * On giving up, send what's left at market rather than stop.
+ */
+finishAtMarket: boolean, } | { "kind": "twap", durationMs: number, slices: number, 
+/**
+ * Spread the slices' times a little, so they're harder to spot.
+ */
+randomize: boolean, style: SliceStyle, unfilled: Unfilled, } | { "kind": "scaled", 
+/**
+ * The near end of the range.
+ */
+from: Decimal, 
+/**
+ * The far end.
+ */
+to: Decimal, count: number, distribution: Distribution, postOnly: boolean, });
+
+export type AlgoStatus = "running" | "paused" | "finished" | "stopped" | "failed";
+
+/**
+ * An algo as the page shows it.
+ */
+export type AlgoView = { id: string, spec: AlgoSpec, origin: Origin, status: AlgoStatus, 
+/**
+ * Why it's paused, stopped or failed: a code the page puts into words
+ * (`stale`, `disconnected`, `refused`, `venueError`, `gaveUp`, `halted`,
+ * `appClosed`, `user`, `unfilled`).
+ */
+reason?: string, 
+/**
+ * The venue's or the gate's own words, where there are some.
+ */
+detail?: string, runsOn: RunsOn, 
+/**
+ * Filled so far, in base units.
+ */
+filled: Decimal, avgPrice?: Decimal, 
+/**
+ * Fees paid on its fills so far, in the quote asset (negative for a
+ * rebate).
+ */
+fees?: Decimal, 
+/**
+ * The price when it started (mid of the book), for slippage.
+ */
+startPrice?: Decimal, 
+/**
+ * Its orders open on the venue now.
+ */
+openOrders: number, 
+/**
+ * Milliseconds since the Unix epoch.
+ */
+startedAt: number, 
+/**
+ * When it's due to end (a TWAP).
+ */
+endsAt?: number | undefined, 
+/**
+ * When it next sends something (a TWAP's next slice).
+ */
+nextAt?: number | undefined, updatedAt: number, };
+
+/**
  * Something a venue published: a listing, a delisting, maintenance, news.
  * Text only: the venue's link isn't carried, so nothing here can be opened.
  */
@@ -121,6 +248,11 @@ openedAt?: number, };
  * value that went through a JS `number` can't silently reach a signed order.
  */
 export type Decimal = string;
+
+/**
+ * How a scaled ladder spreads its size over its prices.
+ */
+export type Distribution = "flat" | "moreFar" | "moreNear";
 
 /**
  * What to do with one of a position's exits.
@@ -474,7 +606,11 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 /**
  * Omit for a market order once triggered.
  */
-limitPrice?: Decimal, };
+limitPrice?: Decimal, } | { "type": "twap", minutes: number, 
+/**
+ * Spread the slices' times a little.
+ */
+randomize: boolean, };
 
 /**
  * Venue-agnostic order intent. Adapters translate it - into two steps where
@@ -519,7 +655,11 @@ maxSlippageBps: number, } | { "type": "limit", price: Decimal, timeInForce?: Tim
 /**
  * Omit for a market order once triggered.
  */
-limitPrice?: Decimal, });
+limitPrice?: Decimal, } | { "type": "twap", minutes: number, 
+/**
+ * Spread the slices' times a little.
+ */
+randomize: boolean, });
 
 /**
  * `Pending` means accepted but not yet live - waiting on a keeper, an
@@ -528,14 +668,14 @@ limitPrice?: Decimal, });
  */
 export type OrderStatus = "pending" | "open" | "filled" | "cancelled" | "rejected";
 
-export type OrderType = "market" | "limit" | "trigger";
+export type OrderType = "market" | "limit" | "trigger" | "twap";
 
 /**
  * Where a trading command came from in the app, recorded with it in the
  * engine's event log. Only a label: it grants nothing, and every origin
  * goes through the same gate.
  */
-export type Origin = "ticket" | "quick-trade" | "palette" | "cli-panel" | "float" | "multichart" | "chart" | "activity" | "drawer" | "app";
+export type Origin = "ticket" | "quick-trade" | "palette" | "cli-panel" | "float" | "multichart" | "chart" | "activity" | "drawer" | "app" | "algo" | "engine";
 
 export type Position = { venue: VenueId, market: string, side: PositionSide, 
 /**
@@ -605,7 +745,22 @@ export type PositionSide = "long" | "short";
  */
 export type PriceSource = "last" | "mark" | "index";
 
+/**
+ * Where an algo runs.
+ */
+export type RunsOn = "venue" | "local";
+
 export type Side = "buy" | "sell";
+
+/**
+ * How a TWAP slice is sent.
+ */
+export type SliceStyle = "market" | "chaser";
+
+/**
+ * How to stop an algo.
+ */
+export type StopMode = "cancel" | "finishAtMarket";
 
 export type TimeInForce = "gtc" | "ioc" | "postOnly";
 
@@ -661,6 +816,11 @@ address: string,
  * Keychain account holding this venue's trade-only key for it.
  */
 key: string, };
+
+/**
+ * What a TWAP does with a chased slice still unfilled when its window ends.
+ */
+export type Unfilled = "market" | "skip" | "stop";
 
 /**
  * Crosses IPC to the frontend, so details must never carry key material -
