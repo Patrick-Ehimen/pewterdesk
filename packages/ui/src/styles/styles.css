@@ -486,14 +486,19 @@ input {
   gap: 12px;
 }
 .pd-account dt {
+  min-width: 0;
   color: var(--pd-pewter);
 }
+/* A figure stays on one line; a long label wraps, left-aligned, instead */
 .pd-account dd {
+  flex: none;
   margin: 0;
   font-family: var(--pd-font-mono);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .pd-account-hint.pd-tip-trigger {
+  text-align: left;
   color: var(--pd-pewter);
   text-decoration: underline dashed;
   text-underline-offset: 4px;
