@@ -89,7 +89,9 @@ export function orderText(request: OrderRequest, base: string): string {
       ? t("toast.kindMarket")
       : request.type === "limit"
         ? t("toast.kindLimit", { price: formatNumber(request.price) })
-        : t("toast.kindTrigger", { price: formatNumber(request.triggerPrice) });
+        : request.type === "twap"
+          ? t("toast.kindTwap", { minutes: String(request.minutes) })
+          : t("toast.kindTrigger", { price: formatNumber(request.triggerPrice) });
   const exits = [
     request.takeProfit && `TP ${formatNumber(request.takeProfit)}`,
     request.stopLoss && `SL ${formatNumber(request.stopLoss)}`,

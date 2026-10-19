@@ -1,5 +1,7 @@
 import type {
   AccountSnapshot,
+  AlgoSpec,
+  AlgoView,
   Announcement,
   Candle,
   CandleInterval,
@@ -21,6 +23,7 @@ import type {
   OrderRequest,
   Origin,
   PositionProtection,
+  StopMode,
   Trade,
   TradeSettings,
   VenueError,
@@ -251,6 +254,38 @@ export const venueClient = {
     protection: PositionProtection,
     origin: Origin = "app",
   ) => call<void>("set_position_protection", { venue, account, market, protection, origin }),
+
+  // Algo orders (`algos.rs`): every order an algo sends goes through the
+  // engine's router and gate, like the trading commands above.
+
+  /** Starts an algo; refused at once if the account can't trade. */
+  startAlgo: (spec: AlgoSpec, origin: Origin = "app") =>
+    call<AlgoView>("start_algo", { spec, origin }),
+
+  /** This session's algos, newest first. */
+  algos: () => call<AlgoView[]>("algos", {}),
+
+  /** Algos that are over, newest first. */
+  algoHistory: (limit = 50) => call<AlgoView[]>("algo_history", { limit }),
+
+  pauseAlgo: (id: string) => call<void>("pause_algo", { id }),
+
+  resumeAlgo: (id: string) => call<void>("resume_algo", { id }),
+
+  /** Stops an algo: cancels what it has open, then at market the rest if asked. */
+  stopAlgo: (id: string, mode: StopMode) => call<void>("stop_algo", { id, mode }),
+
+  /** Stops every algo and cancels what they placed; how many it stopped. */
+  haltAlgos: () => call<number>("halt_algos", {}),
+
+  /** Every change to an algo, as it happens. Returns a function that stops listening. */
+  onAlgo: (handler: (view: AlgoView) => void): (() => void) => {
+    if (!isTauri()) return () => {};
+    const unlisten = listen<AlgoView>("algo", (e) => handler(e.payload));
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  },
 
   /** The venue's latest announcements, newest first. */
   announcements: (venue: VenueId) => call<Announcement[]>("announcements", { venue }),

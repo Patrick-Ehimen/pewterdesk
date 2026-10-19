@@ -24,7 +24,7 @@ import {
   Tabs,
   t,
 } from "@pewterdesk/ui";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { LuFullscreen, LuMaximize2, LuMinimize2, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { type Feed, useAccountFills, useFundingHistory } from "../../hooks/useVenueFeeds";
@@ -85,6 +85,8 @@ interface MarketsPanelProps {
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
   /** Each new value brings the panel to the chart (e.g. a position was clicked). */
   showChart?: number;
+  /** Drawn over the price chart: the algos running on the market on screen. */
+  chartOverlay?: ReactNode;
 }
 
 /**
@@ -110,6 +112,7 @@ export function MarketsPanel({
   alerts,
   onProtect,
   showChart,
+  chartOverlay,
 }: MarketsPanelProps) {
   const [tab, setTab] = useState<MarketsTab>("chart");
   const [interval, setInterval] = useStoredChoice<CandleInterval>(
@@ -291,7 +294,8 @@ export function MarketsPanel({
             />
           )}
           {chartKind === "standard" ? (
-            <div className="app-fill">
+            <div className="app-fill markets-chart">
+              {chartOverlay}
               <FeedView
                 feed={orLoading<Market>(
                   market ? { status: "live", data: market } : { status: "idle" },

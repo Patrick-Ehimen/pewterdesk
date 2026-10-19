@@ -251,3 +251,52 @@ describe("palette extras", () => {
     expect(order).toMatchObject({ kind: "order", market: { id: "SOLUSDT" } });
   });
 });
+
+describe("algo commands", () => {
+  it("reads a chaser, with a give-up distance and finishing at market", () => {
+    expect(parseCommand("chase buy 0.5 eth", ctx)).toMatchObject({
+      kind: "chase",
+      side: "buy",
+      size: "0.50",
+      market: { id: "ETHUSDT" },
+      finish: false,
+    });
+    expect(parseCommand("chase sell eth 1 to 0.5% then market", ctx)).toMatchObject({
+      kind: "chase",
+      side: "sell",
+      giveUpPct: 0.5,
+      finish: true,
+    });
+    // Finishing at market needs a distance to give up at; and a side.
+    expect(parseCommand("chase buy 1 eth then market", ctx)).toBeUndefined();
+    expect(parseCommand("chase 1 eth", ctx)).toBeUndefined();
+    expect(parseCommand("chase buy 1 eth to 80%", ctx)).toBeUndefined();
+  });
+
+  it("reads a TWAP over a time, with slices and chasing", () => {
+    expect(parseCommand("twap sell 10 eth over 30m", ctx)).toMatchObject({
+      kind: "twap",
+      side: "sell",
+      size: "10.00",
+      durationMs: 30 * 60_000,
+      chase: false,
+    });
+    expect(parseCommand("twap buy 2 btc 1h30m x6 chase", ctx)).toMatchObject({
+      kind: "twap",
+      market: { id: "BTCUSDT" },
+      durationMs: 90 * 60_000,
+      slices: 6,
+      chase: true,
+    });
+    // No time, too short, too long, or no size.
+    expect(parseCommand("twap sell 10 eth", ctx)).toBeUndefined();
+    expect(parseCommand("twap sell 10 eth 5s", ctx)).toBeUndefined();
+    expect(parseCommand("twap sell 10 eth 8d", ctx)).toBeUndefined();
+    expect(parseCommand("twap sell eth 30m", ctx)).toBeUndefined();
+  });
+
+  it("halts on the one word", () => {
+    expect(parseCommand("halt", ctx)).toEqual({ kind: "halt" });
+    expect(parseCommand("halt eth", ctx)).toBeUndefined();
+  });
+});

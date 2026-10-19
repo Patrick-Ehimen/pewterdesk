@@ -1,5 +1,6 @@
 import type {
   AccountSnapshot,
+  AlgoSpec,
   Market,
   MarketSummary,
   Order,
@@ -9,6 +10,8 @@ import type {
 } from "@pewterdesk/core";
 import { formatNumber, formatSigned, type MessageKey, t } from "@pewterdesk/ui";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import type { AlgoTarget } from "../../lib/algos";
+import { algoLine, algoWhere } from "../../lib/algoText";
 import {
   actionFor,
   type CliAction,
@@ -40,6 +43,9 @@ const HELP: readonly [string, MessageKey][] = [
   ["sl eth 2400", "cli.help.protect"],
   ["close eth", "cli.help.close"],
   ["cancel all", "cli.help.cancel"],
+  ["chase buy 0.01 btc to 0.5%", "cli.help.chase"],
+  ["twap sell 1 eth over 30m x6", "cli.help.twap"],
+  ["halt", "cli.help.halt"],
   ["positions", "cli.help.positions"],
   ["orders", "cli.help.orders"],
   ["balance", "cli.help.balance"],
@@ -65,6 +71,12 @@ interface CliPanelProps {
   place?: (request: OrderRequest) => Promise<void>;
   cancel?: (order: Order) => Promise<void>;
   protect?: (position: Position, protection: PositionProtection) => Promise<void>;
+  /** Starts an algo; unset where none can be (no account that may trade, or paper). */
+  startAlgo?: (spec: AlgoSpec) => Promise<void>;
+  /** Who an algo trades for. */
+  algoTarget?: AlgoTarget;
+  /** Stops every algo and cancels what they placed. */
+  halt?: () => Promise<void>;
   onMarket: (marketId: string) => void;
   onPage: (page: Page) => void;
 }
@@ -87,6 +99,9 @@ export function CliPanel({
   place,
   cancel,
   protect,
+  startAlgo,
+  algoTarget,
+  halt,
   onMarket,
   onPage,
 }: CliPanelProps) {
@@ -143,6 +158,11 @@ export function CliPanel({
   /** A trading line in words, as the palette puts it. */
   const describe = (intent: Intent, action: CliAction): string => {
     switch (intent.kind) {
+      case "chase":
+      case "twap":
+        return algoLine(intent);
+      case "halt":
+        return t("cmd.halt");
       case "order": {
         // By its symbol: a coin can have more than one market.
         const head = `${sideWord(intent.side)} ${formatNumber(intent.size)} ${intent.market.symbol}`;
@@ -237,6 +257,10 @@ export function CliPanel({
         }),
         `${t("account.upnl")} ${formatSigned(p.unrealizedPnl)}`,
       );
+    } else if (action.kind === "algo" && action.spec) {
+      out.push(algoWhere(action.spec));
+    } else if (intent.kind === "halt") {
+      out.push(t("cmd.haltDetail"));
     } else if (intent.kind === "cancel") {
       out.push(
         ...intent.orders
@@ -264,6 +288,10 @@ export function CliPanel({
         const done = await Promise.allSettled(action.orders.map((o) => cancel?.(o)));
         const failed = done.find((d) => d.status === "rejected");
         if (failed?.status === "rejected") throw failed.reason;
+      } else if (action.kind === "algo") {
+        if (action.spec) await startAlgo?.(action.spec);
+      } else if (action.kind === "halt") {
+        await halt?.();
       } else {
         await protect?.(action.position, action.protection);
       }
@@ -288,8 +316,17 @@ export function CliPanel({
       answer(line);
       return false;
     }
-    const action = actionFor(line.intent, maxSlippageBps);
-    const can = action.kind === "orders" ? place : action.kind === "cancel" ? cancel : protect;
+    const action = actionFor(line.intent, maxSlippageBps, algoTarget);
+    const can =
+      action.kind === "orders"
+        ? place
+        : action.kind === "cancel"
+          ? cancel
+          : action.kind === "algo"
+            ? action.spec && startAlgo
+            : action.kind === "halt"
+              ? halt
+              : protect;
     print(["out", describe(line.intent, action)]);
     if (!can) {
       print(["warn", t("cmd.noTrading")]);

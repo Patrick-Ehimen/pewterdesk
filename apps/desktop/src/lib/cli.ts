@@ -1,5 +1,13 @@
-import type { Market, Order, OrderRequest, Position, PositionProtection } from "@pewterdesk/core";
+import type {
+  AlgoSpec,
+  Market,
+  Order,
+  OrderRequest,
+  Position,
+  PositionProtection,
+} from "@pewterdesk/core";
 import { closeOrder } from "@pewterdesk/ui";
+import { type AlgoTarget, chaserSpec, twapSpec } from "./algos";
 import {
   type CommandContext,
   findMarket,
@@ -73,15 +81,53 @@ export function parseLine(text: string, ctx: CommandContext): CliCommand | undef
 export type CliAction =
   | { kind: "orders"; requests: OrderRequest[] }
   | { kind: "cancel"; orders: Order[] }
-  | { kind: "protect"; position: Position; protection: PositionProtection };
+  | { kind: "protect"; position: Position; protection: PositionProtection }
+  /** An algo to start; no spec where there's no account that can trade. */
+  | { kind: "algo"; spec?: AlgoSpec }
+  | { kind: "halt" };
 
 /**
  * The requests an intent turns into: a price makes a limit order (or a
  * ladder of them), none a market order within the venue's slippage bound.
  * Closing and taking part off are reduce-only.
  */
-export function actionFor(intent: Intent, maxSlippageBps: number): CliAction {
+export function actionFor(intent: Intent, maxSlippageBps: number, target?: AlgoTarget): CliAction {
   switch (intent.kind) {
+    case "chase":
+      return {
+        kind: "algo",
+        spec:
+          target &&
+          chaserSpec(
+            {
+              side: intent.side,
+              market: intent.market,
+              size: intent.size,
+              giveUpPct: intent.giveUpPct,
+              finishAtMarket: intent.finish,
+            },
+            target,
+          ),
+      };
+    case "twap":
+      return {
+        kind: "algo",
+        spec:
+          target &&
+          twapSpec(
+            {
+              side: intent.side,
+              market: intent.market,
+              size: intent.size,
+              durationMs: intent.durationMs,
+              slices: intent.slices,
+              style: intent.chase ? "chaser" : "market",
+            },
+            target,
+          ),
+      };
+    case "halt":
+      return { kind: "halt" };
     case "order":
       return {
         kind: "orders",
