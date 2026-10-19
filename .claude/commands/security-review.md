@@ -29,7 +29,12 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    `set_margin_mode` in `venues.rs`) are six operations and nothing else: place, cancel and amend
    orders (an open order's price, size or attached TP/SL - never its market,
    side or kind), a position's protective, reduce-only exits, leverage (1 to
-   the market's maximum) and margin mode. Nothing signs caller-supplied
+   the market's maximum) and margin mode. Placing includes a venue-run TWAP
+   (`OrderKind::Twap`, Hyperliquid's `twapOrder`) and cancelling includes
+   the venue's dead-man's switch (`schedule_cancel`: Hyperliquid's
+   `scheduleCancel`, Aster's `countdownCancelAll`), which can only cancel and
+   which only the engine arms. Algos (`crates/engine/src/algo/`) send
+   through the router like any caller, never an adapter directly. Nothing signs caller-supplied
    bytes, hashes or typed data; withdrawals, transfers and key approvals are
    absent. A new window, panel, palette or CLI command adds no command of
    its own: it goes through the same calls as the order ticket.

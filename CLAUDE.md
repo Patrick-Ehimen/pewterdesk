@@ -41,7 +41,8 @@ a key before storing it.
   and how accounts and their keychain entries are named (`accounts`)
 - `crates/engine` - the router and the trading gate (live-trading switch,
   trading rules); the only caller of an adapter's trading methods
-- `crates/store` - the engine's event log (SQLite)
+- `crates/store` - the engine's event log (SQLite), and each algo's state
+- `crates/sim` - `SimVenue`, an adapter fed order books, for testing algos
 - `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
 - `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
@@ -206,11 +207,20 @@ discover it on their own. The reasoning behind the rules is in
   with the API wallet (`sign_action`: EIP-712 over the action's msgpack
   hash, a fresh millisecond nonce; it takes `orders.rs`'s own type, not
   bytes). Checked against the official Python SDK's signing vectors.
+  It also builds a venue-run TWAP (`twapOrder`, 5 minutes to 7 days, the
+  size checked; its id kept as `twap:<id>`, cancelled with `twapCancel`)
+  and the dead-man's switch (`scheduleCancel`, which can only cancel every
+  open order of the account at a set time). Every action is signed with an
+  expiry, `expiresAfter` (60 seconds), so one held up can't execute late.
+  Those three were checked against the SDK's own `sign_l1_action`
+  (`scheduleCancel` against its published vectors).
   `crates/exchange-aster/src/orders.rs` builds the parameters of
   `POST`/`DELETE`/`PUT /fapi/v3/order` (`PUT` changes a limit order's price
   and size only), `/fapi/v3/leverage`, `/fapi/v3/marginType`, and a
   position's exits (`closePosition` stop and take-profit at market, on the
-  mark), signed by `agent::sign_request` and sent exactly as signed.
+  mark), and the dead-man's switch (`/fapi/v3/countdownCancelAll`, per
+  market, 10 seconds to an hour; `0` stops it), signed by
+  `agent::sign_request` and sent exactly as signed.
   Neither venue gets a trailing stop: Hyperliquid has none, and Aster's
   moves by a percentage rather than the distance asked for, so it's
   refused, not approximated. Neither crate has a request that withdraws,
@@ -221,7 +231,10 @@ discover it on their own. The reasoning behind the rules is in
   wrap the router (`place_order`, `cancel_order`, `amend_order`,
   `set_position_protection`, `set_leverage`, `set_margin_mode` in
   `venues.rs`). Together they are the entire signing surface: place, cancel and amend orders (an open order's
-  price, size or attached TP/SL - never its market, side or kind), set a
+  price, size or attached TP/SL - never its market, side or kind; placing
+  includes a venue-run TWAP, `OrderKind::Twap`, on Hyperliquid only, and
+  cancelling includes the venue's dead-man's switch, `schedule_cancel`,
+  which only the engine arms - no Tauri command), set a
   position's take-profit, stop-loss and trailing stop (protective,
   reduce-only, closing the whole position), and set the leverage (1 to the
   market's maximum) and margin mode (cross or isolated; account-wide on
@@ -240,6 +253,24 @@ discover it on their own. The reasoning behind the rules is in
   connected, every live account (Bybit, Hyperliquid, Aster) only once live
   trading is turned on for it. Every venue implements all six, but for a
   trailing stop on Hyperliquid and Aster.
+- `crates/engine/src/algo/` (its commands in
+  `apps/desktop/src-tauri/src/algos.rs`) - algo orders: a chaser, a TWAP
+  (on this machine, or the venue's own on Hyperliquid), a scaled ladder.
+  Every order an algo sends goes through the router (`Origin::Algo`, the
+  algo's id on the command), so the switch, the rules, the log and client
+  ids apply as to the ticket; a refusal pauses it, it never retries around
+  one. An order whose answer was lost is looked up by client id, never
+  resent. Stale market data or a lost account feed pauses it; after a
+  reconnect it re-reads its orders first. A per-venue request budget
+  (`budget.rs`) keeps it under the venue's limits. Session only: when the
+  app closes it stops, and the next start's reconciler marks it stopped
+  and cancels what of it still rests (a venue-run TWAP is followed again).
+  While one runs on this machine the engine keeps the venue's dead-man's
+  switch armed (`heartbeat.rs`: every 30 seconds, a 2-minute countdown;
+  on Hyperliquid it would cancel every open order of the account, on
+  Aster that market's; Bybit has none we can use). `halt` stops every algo
+  and cancels what they placed. Giving algos a way to the venue that skips
+  the router is a security-relevant change.
 - `crates/store` - the event log (`events.sqlite3` in the app's data
   folder; SQLite, WAL, append-only): every routed command, gate decision,
   client order id and venue result. Never key material - not a key, a
@@ -487,11 +518,13 @@ Cmd+K (Ctrl+K off macOS) or the header's search button opens it
 (`components/CommandMenu.tsx`, `lib/commands.ts`, `CommandPalette` in
 `packages/ui`). It reads typed commands (`buy 100 hype at 38.2`, a scaled
 `... at 38.2 to 37.8 x5`, `sell 50% hype`, `tp hype 41`, `close eth`,
-`cancel all`), and finds markets, pages, venues and themes. It adds no
-trading command: an order, close, cancel or exit goes through the same
-`placeOrder` / `cancelOrder` / `protect` as the ticket and the position
-drawer, and only on a second Enter, after the palette has shown what would
-be sent.
+`cancel all`, and algos: `chase buy 1 btc to 0.5% then market`, `twap
+sell 10 eth over 30m x6 chase`, `halt`), and finds markets, pages, venues
+and themes. It adds no trading command: an order, close, cancel or exit
+goes through the same `placeOrder` / `cancelOrder` / `protect` as the
+ticket and the position drawer, an algo through the same `start_algo` as
+the Algos panel, and only on a second Enter, after the palette has shown
+what would be sent (and, for an algo, where it would run).
 
 ## CLI panel
 
@@ -501,8 +534,23 @@ palette. It reads the command palette's language (`lib/commands.ts`) plus a
 few lines of its own (`positions`, `orders`, `balance`, `price btc`,
 `market btc`, `go portfolio`; `lib/cli.ts`). Like the palette it adds no
 trading command: an order, close, cancel or exit goes through the same
-`placeOrder` / `cancelOrder` / `protect`, and only on a second Enter, after
-the panel has printed what would be sent.
+`placeOrder` / `cancelOrder` / `protect`, an algo (`chase`, `twap`) or a
+`halt` through the same `start_algo` / `halt_algos` as the Algos panel,
+and only on a second Enter, after the panel has printed what would be sent.
+
+## Algos panel
+
+A panel kind added from the layout editor's palette (`algos`;
+`components/panels/AlgosPanel.tsx`, `lib/algos.ts`, `hooks/useAlgos.ts`):
+the engine's algo orders - running (progress, average price, slippage
+against the start, fees, time left, next slice; pause, resume, stop by
+cancelling or finishing at market; halt all) and history - and a form to
+start a chaser, a TWAP or a scaled ladder on the market on screen, for the
+live or demo account (never paper), with a preview that says whether it
+runs on the venue or on this machine. The algos running on the market on
+screen also show as chips over the Trade chart. `useAlgos` raises their
+notifications through `notifyEvent` (finished, stopped, failed, paused on
+its own).
 
 ## Calendar panel
 
@@ -535,10 +583,12 @@ its own grid; the layout editor's "All layouts" opens it.
 Being built. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
 the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
 research behind it in `docs/research/cli-trading-bots.md`. In short:
-`crates/engine` takes over routing and the trading gate (Phase 0, done: the
+`crates/engine` takes over routing and the trading gate (Phase 0: the
 router, `live.rs` and `rules.rs`, the event log in `crates/store`, and client
-order ids), then algo executors (chaser, TWAP, scaled...) and
-bots; it runs inside the app or headless in a daemon (`pdd`),
+order ids), runs algo executors (Phase 1: chaser, TWAP, scaled, in
+`crates/engine/src/algo/`, tested against `SimVenue` in `crates/sim`;
+Phase 2: Hyperliquid's own TWAP, the venues' dead-man's switches and
+`expiresAfter`), and then bots; it runs inside the app or headless in a daemon (`pdd`),
 which a `pd` CLI and the app reach over a localhost-only protocol.
 
 The Bots page (`components/pages/BotsPage.tsx`, `components/bots/`, after
