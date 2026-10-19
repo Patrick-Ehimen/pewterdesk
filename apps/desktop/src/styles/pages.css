@@ -1070,8 +1070,50 @@
   color: var(--pd-pewter);
   font-size: 12.5px;
 }
+/* Only the tables scroll sideways: a scrolling panel would cut off the
+   History filters' calendar, which hangs below it and scrolls the page. */
 .pf-table {
+  overflow: visible;
+}
+.pf-table-scroll {
   overflow-x: auto;
+}
+/* The panel no longer clips, so the last table keeps its rounded corners */
+.pf-table > .pf-table-scroll:last-child {
+  border-radius: 0 0 8px 8px;
+}
+/* The History tab's filters, over its table */
+.pf-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.pf-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 120px;
+}
+.pf-filter-reset {
+  margin-left: auto;
+}
+.pf-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pf-link:hover {
+  text-decoration: underline;
+}
+.pf-filter-reset:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* The middle panel's two views: realized PnL, and edge */

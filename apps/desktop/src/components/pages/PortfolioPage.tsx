@@ -1,16 +1,19 @@
 import type { AccountSnapshot, ClosedTrade, Market } from "@pewterdesk/core";
 import {
   ClosedTradesTable,
+  DateRangePicker,
   dateFormat,
   EmptyState,
   formatNumber,
   formatPercent,
   formatSigned,
+  Select,
   SummarySkeleton,
   TableSkeleton,
   TokenIcon,
   Tooltip,
   t,
+  toDay,
   trendClass,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useState } from "react";
@@ -18,13 +21,17 @@ import { LuCalendarDays, LuCircleDollarSign, LuClock } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import type { Feed } from "../../hooks/useVenueFeeds";
 import { type Edge, edge, extremes, type Group, RETURN_EDGES } from "../../lib/edge";
+import { loadHistoryReset, saveHistoryReset, sinceReset } from "../../lib/historyReset";
 import {
   BUCKETS,
   type Bucket,
   type CurveDot,
   closedSince,
   curvePath,
+  filterClosed,
   HISTORY_MS,
+  type HistoryFilter,
+  NO_FILTER,
   nearestDot,
   performance,
   pnlCurve,
@@ -61,6 +68,8 @@ interface PortfolioPageProps {
   account: Feed<AccountSnapshot>;
   /** The account's closed positions over the last `HISTORY_MS`. */
   closed: Feed<ClosedTrade[]>;
+  /** Whose account is on screen (`venue:address`, or the paper one's): its history reset is kept by it. */
+  accountKey?: string;
   markets: Market[];
   /** The venue's display name, e.g. "Hyperliquid". */
   venue: string;
@@ -190,6 +199,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 export function PortfolioPage({
   account,
   closed,
+  accountKey,
   markets,
   venue,
   connectAuth,
@@ -204,6 +214,30 @@ export function PortfolioPage({
   const [view, setView] = useStoredChoice<View>("pd.portfolio.view", VIEWS, "realized");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [filter, setFilter] = useState<HistoryFilter>(NO_FILTER);
+  const refine = (change: Partial<HistoryFilter>) => setFilter((f) => ({ ...f, ...change }));
+  // Another venue's markets aren't this one's.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on a switch of venue
+  useEffect(() => setFilter(NO_FILTER), [venue]);
+  // "Start over": closes before then are left out of the whole page, in this
+  // app only - the venue's history isn't touched.
+  const [resetAt, setResetAt] = useState(() =>
+    accountKey ? loadHistoryReset(accountKey) : undefined,
+  );
+  useEffect(() => setResetAt(accountKey ? loadHistoryReset(accountKey) : undefined), [accountKey]);
+  // The first click arms Reset, a second within a few seconds does it.
+  const [resetArmed, setResetArmed] = useState(false);
+  useEffect(() => {
+    if (!resetArmed) return;
+    const id = setTimeout(() => setResetArmed(false), 4_000);
+    return () => clearTimeout(id);
+  }, [resetArmed]);
+  const resetHistory = (at: number | undefined) => {
+    if (accountKey) saveHistoryReset(accountKey, at);
+    setResetAt(at);
+    setResetArmed(false);
+    setFilter(NO_FILTER);
+  };
   // The point of the chart under the pointer.
   const [hovered, setHovered] = useState<CurveDot>();
   // The windows move with the clock, a minute at a time.
@@ -213,7 +247,8 @@ export function PortfolioPage({
     return () => clearInterval(id);
   }, []);
 
-  const trades = closed.status === "live" || closed.status === "closed" ? closed.data : undefined;
+  const fetched = closed.status === "live" || closed.status === "closed" ? closed.data : undefined;
+  const trades = useMemo(() => fetched && sinceReset(fetched, resetAt), [fetched, resetAt]);
   const since = now - RANGE_MS[range];
   const perf = useMemo(() => performance(trades ?? [], since), [trades, since]);
   const chart = useMemo(
@@ -222,6 +257,15 @@ export function PortfolioPage({
   );
   const edges: Edge = useMemo(() => edge(trades ?? [], since), [trades, since]);
   const inRange = useMemo(() => closedSince(trades ?? [], since).reverse(), [trades, since]);
+  const shown = useMemo(() => filterClosed(inRange, filter), [inRange, filter]);
+  // The markets the range has closes in, for the Market filter.
+  const historyMarkets = useMemo(
+    () => [...new Set(inRange.map((c) => c.market))].sort(),
+    [inRange],
+  );
+  const filtered = Object.entries(filter).some(
+    ([k, v]) => v !== NO_FILTER[k as keyof HistoryFilter],
+  );
   const money = (v: number) => `${formatSigned(v)} ${quote}`;
 
   if (account.status === "idle") {
@@ -710,11 +754,20 @@ export function PortfolioPage({
             >
               {id === "open"
                 ? t("portfolio.open", { count: s?.positions ?? 0 })
-                : t("portfolio.history", { count: inRange.length })}
+                : t("portfolio.history", { count: shown.length })}
             </button>
           ))}
           <span className="pf-tabs-note">
             {tab === "open" ? t("portfolio.byAssetNote") : t("portfolio.historyNote", { range })}
+            {tab === "history" && resetAt !== undefined && (
+              <>
+                {" · "}
+                {t("portfolio.resetSince", { date: dateFormat(TIP_TIME).format(resetAt) })}{" "}
+                <button type="button" className="pf-link" onClick={() => resetHistory(undefined)}>
+                  {t("portfolio.showAll")}
+                </button>
+              </>
+            )}
           </span>
         </div>
         {tab === "open" ? (
@@ -723,50 +776,138 @@ export function PortfolioPage({
           ) : s.byAsset.length === 0 ? (
             <EmptyState>{t("positions.empty")}</EmptyState>
           ) : (
-            <table className="pd-table">
-              <thead>
-                <tr>
-                  <th>{t("portfolio.col.asset")}</th>
-                  <th>{t("portfolio.col.venue")}</th>
-                  <th className="pd-num">{t("portfolio.col.netSize")}</th>
-                  <th className="pd-num">{t("portfolio.col.netNotional")}</th>
-                  <th className="pd-num">{t("portfolio.col.share")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {s.byAsset.map((a) => (
-                  <tr key={`${a.venue}:${a.market}`}>
-                    <td className="pd-strong page-asset">
-                      <span className="page-asset-name">
-                        <TokenIcon market={marketOf(a.market)} size={20} />
-                        {baseOf(a.market)}
-                      </span>
-                    </td>
-                    <td className="pd-muted">{venue}</td>
-                    <td className={`pd-num ${trendClass(a.netSize)}`}>
-                      {formatSigned(a.netSize, 4).replace(/\.?0+$/, "")}
-                    </td>
-                    <td className="pd-num">{formatNumber(a.netNotional, 2)}</td>
-                    <td className="pd-num">{formatPercent(a.share, 1)}</td>
+            <div className="pf-table-scroll">
+              <table className="pd-table">
+                <thead>
+                  <tr>
+                    <th>{t("portfolio.col.asset")}</th>
+                    <th>{t("portfolio.col.venue")}</th>
+                    <th className="pd-num">{t("portfolio.col.netSize")}</th>
+                    <th className="pd-num">{t("portfolio.col.netNotional")}</th>
+                    <th className="pd-num">{t("portfolio.col.share")}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {s.byAsset.map((a) => (
+                    <tr key={`${a.venue}:${a.market}`}>
+                      <td className="pd-strong page-asset">
+                        <span className="page-asset-name">
+                          <TokenIcon market={marketOf(a.market)} size={20} />
+                          {baseOf(a.market)}
+                        </span>
+                      </td>
+                      <td className="pd-muted">{venue}</td>
+                      <td className={`pd-num ${trendClass(a.netSize)}`}>
+                        {formatSigned(a.netSize, 4).replace(/\.?0+$/, "")}
+                      </td>
+                      <td className="pd-num">{formatNumber(a.netNotional, 2)}</td>
+                      <td className="pd-num">{formatPercent(a.share, 1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )
         ) : (
           (noHistory ??
           (trades === undefined ? (
             <TableSkeleton columns={6} />
           ) : inRange.length === 0 ? (
-            <EmptyState>{t("portfolio.noHistory", { range })}</EmptyState>
+            <EmptyState>
+              {resetAt !== undefined
+                ? t("portfolio.resetEmpty")
+                : t("portfolio.noHistory", { range })}
+            </EmptyState>
           ) : (
-            <ClosedTradesTable
-              trades={inRange}
-              symbolFor={(id) => marketOf(id)?.symbol ?? id}
-              baseFor={baseOf}
-              quoteFor={(id) => marketOf(id)?.quote ?? quote}
-              onShare={onShare}
-            />
+            <>
+              <div className="pf-filters">
+                <div className="pf-filter">
+                  <span className="pf-label">{t("col.market")}</span>
+                  <Select
+                    label={t("col.market")}
+                    value={filter.market}
+                    options={[
+                      { value: "all", label: t("portfolio.filter.all") },
+                      ...historyMarkets.map((id) => ({
+                        value: id,
+                        label: marketOf(id)?.symbol ?? id,
+                      })),
+                    ]}
+                    onChange={(market) => refine({ market })}
+                  />
+                </div>
+                <div className="pf-filter">
+                  <span className="pf-label">{t("portfolio.filter.direction")}</span>
+                  <Select
+                    label={t("portfolio.filter.direction")}
+                    value={filter.side}
+                    options={[
+                      { value: "all", label: t("portfolio.filter.all") },
+                      { value: "long", label: t("side.long") },
+                      { value: "short", label: t("side.short") },
+                    ]}
+                    onChange={(side) => refine({ side })}
+                  />
+                </div>
+                <div className="pf-filter">
+                  <span className="pf-label">{t("portfolio.filter.result")}</span>
+                  <Select
+                    label={t("portfolio.filter.result")}
+                    value={filter.result}
+                    options={[
+                      { value: "all", label: t("portfolio.filter.all") },
+                      { value: "profit", label: t("portfolio.filter.profit") },
+                      { value: "loss", label: t("portfolio.filter.loss") },
+                    ]}
+                    onChange={(result) => refine({ result })}
+                  />
+                </div>
+                <div className="pf-filter">
+                  <span className="pf-label">{t("portfolio.filter.date")}</span>
+                  <DateRangePicker
+                    label={t("portfolio.filter.date")}
+                    from={filter.from}
+                    to={filter.to}
+                    min={toDay(new Date(since))}
+                    max={toDay(new Date(now))}
+                    onChange={(from, to) => refine({ from, to })}
+                  />
+                </div>
+                {filtered && (
+                  <button
+                    type="button"
+                    className="settings-button"
+                    onClick={() => setFilter(NO_FILTER)}
+                  >
+                    {t("portfolio.filter.clear")}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="settings-button pf-filter-reset"
+                  data-danger
+                  data-armed={resetArmed || undefined}
+                  title={t("portfolio.resetHint", { venue })}
+                  disabled={!accountKey}
+                  onClick={() => (resetArmed ? resetHistory(Date.now()) : setResetArmed(true))}
+                >
+                  {t(resetArmed ? "portfolio.resetConfirm" : "portfolio.filter.reset")}
+                </button>
+              </div>
+              {shown.length === 0 ? (
+                <EmptyState>{t("portfolio.filter.none")}</EmptyState>
+              ) : (
+                <div className="pf-table-scroll">
+                  <ClosedTradesTable
+                    trades={shown}
+                    symbolFor={(id) => marketOf(id)?.symbol ?? id}
+                    baseFor={baseOf}
+                    quoteFor={(id) => marketOf(id)?.quote ?? quote}
+                    onShare={onShare}
+                  />
+                </div>
+              )}
+            </>
           )))
         )}
       </section>

@@ -23,6 +23,51 @@ export function closedSince(trades: readonly ClosedTrade[], since: number): Clos
   return trades.filter((c) => c.time >= since).sort((a, b) => a.time - b.time);
 }
 
+/** The History table's filters; `"all"` (or no date) leaves that one open. */
+export interface HistoryFilter {
+  market: string;
+  side: "all" | ClosedTrade["side"];
+  result: "all" | "profit" | "loss";
+  /** Local calendar days, `YYYY-MM-DD`, both included; "" for no bound. */
+  from: string;
+  to: string;
+}
+
+export const NO_FILTER: HistoryFilter = {
+  market: "all",
+  side: "all",
+  result: "all",
+  from: "",
+  to: "",
+};
+
+/** A `YYYY-MM-DD` day's start in this machine's time zone; undefined if it isn't one. */
+function dayStart(day: string): number | undefined {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : undefined;
+}
+
+/** The closes that pass `filter`, in the order given. */
+export function filterClosed(trades: readonly ClosedTrade[], filter: HistoryFilter): ClosedTrade[] {
+  const from = dayStart(filter.from);
+  const toStart = dayStart(filter.to);
+  // The end of the `to` day: the next day's start, so a DST day stays whole.
+  const to =
+    toStart === undefined
+      ? undefined
+      : new Date(new Date(toStart).setDate(new Date(toStart).getDate() + 1)).getTime();
+  return trades.filter((c) => {
+    if (filter.market !== "all" && c.market !== filter.market) return false;
+    if (filter.side !== "all" && c.side !== filter.side) return false;
+    const pnl = Number(c.closedPnl);
+    if (filter.result === "profit" && !(pnl > 0)) return false;
+    if (filter.result === "loss" && !(pnl < 0)) return false;
+    if (from !== undefined && c.time < from) return false;
+    if (to !== undefined && c.time >= to) return false;
+    return true;
+  });
+}
+
 export interface PnlPoint {
   time: number;
   /** Realized PnL from the start of the window to here. */

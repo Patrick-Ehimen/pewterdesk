@@ -3998,6 +3998,107 @@ fieldset.pd-alerts-chips {
   width: 14px;
   color: var(--pd-brass-text);
 }
+/* A from-to range of days: one field, a month's calendar under it */
+.pd-dates-trigger {
+  gap: 8px;
+  font: inherit;
+}
+.pd-dates-trigger [data-empty] {
+  color: var(--pd-pewter-dim);
+}
+.pd-dates-arrow {
+  color: var(--pd-pewter);
+}
+.pd-dates-pop {
+  width: 260px;
+  max-height: none;
+  padding: 10px;
+}
+.pd-dates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.pd-dates-step,
+.pd-dates-clear {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-dates-step {
+  width: 26px;
+  height: 26px;
+}
+.pd-dates-step:hover:not(:disabled),
+.pd-dates-clear:hover:not(:disabled) {
+  background: var(--pd-border);
+  color: var(--pd-text);
+}
+.pd-dates-step:disabled,
+.pd-dates-clear:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.pd-dates-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px 0;
+}
+.pd-dates-weekday {
+  padding: 4px 0;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  text-align: center;
+}
+.pd-dates-day {
+  height: 30px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-text);
+  font-size: 12.5px;
+  text-align: center;
+  cursor: pointer;
+}
+.pd-dates-day:hover:not(:disabled) {
+  background: var(--pd-border);
+}
+.pd-dates-day:disabled {
+  color: var(--pd-pewter-dim);
+  opacity: 0.45;
+  cursor: default;
+}
+.pd-dates-day[data-today] {
+  box-shadow: inset 0 0 0 1px var(--pd-border-strong);
+}
+.pd-dates-day[data-within] {
+  border-radius: 0;
+  background: color-mix(in srgb, var(--pd-brass) 16%, transparent);
+}
+.pd-dates-day[data-edge],
+.pd-dates-day[data-edge]:hover {
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.pd-dates-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 26px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.pd-dates-clear {
+  padding: 4px 8px;
+}
 @media (prefers-reduced-motion: reduce) {
   .pd-select-chevron {
     transition: none;
