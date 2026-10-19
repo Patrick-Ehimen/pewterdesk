@@ -99,6 +99,7 @@ import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
 import { NewsWirePanel } from "./components/panels/NewsWirePanel";
+import { PaperPanel } from "./components/panels/PaperPanel";
 import { PaperBanner } from "./components/paper/PaperBanner";
 import { type PaperDialogMode, PaperFundsDialog } from "./components/paper/PaperFundsDialog";
 import { PaperSwitch } from "./components/paper/PaperSwitch";
@@ -188,6 +189,7 @@ import { startHistory, stepped, stepTo, visited } from "./lib/pageHistory";
 import type { Page } from "./lib/pages";
 import { type PanelKind, panelKindOf } from "./lib/panels";
 import type { PaperState } from "./lib/paper";
+import { markPaperPanelOffered, paperPanelOffered } from "./lib/paperOverview";
 import { isPaperMode, subscribePaper } from "./lib/paperStore";
 import { HISTORY_MS } from "./lib/performance";
 import { defaultPnlPosition, loadPnlCard, type PnlCardState, savePnlCard } from "./lib/pnlCard";
@@ -1402,6 +1404,26 @@ export function App() {
     }),
   );
 
+  /** Puts the Paper panel in the layout, where it isn't already. */
+  const showPaperPanel = () => setWorkspace((w) => withLayout(w, addPanel(w.layout, "paper")));
+  // Paper mode on for the first time: the Paper panel joins the layout,
+  // once; after that it's the trader's to remove or bring back.
+  const setPaperOn = (on: boolean) => {
+    paper.setOn(on);
+    if (on) offerPaperPanel();
+  };
+  const offerPaperPanel = () => {
+    if (paperPanelOffered()) return;
+    markPaperPanelOffered();
+    showPaperPanel();
+  };
+  // Paper mode already on (from before the panel existed, or on another
+  // venue's switch): it's offered the same way, once.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when paper mode comes on
+  useEffect(() => {
+    if (paperOn) offerPaperPanel();
+  }, [paperOn]);
+
   const renderPanel = (kind: PanelKind, id: string): ReactNode => {
     switch (kind) {
       case "markets":
@@ -1489,6 +1511,25 @@ export function App() {
       case "calendar":
         // The week's economic calendar: text from Rust, no links.
         return <CalendarPanel />;
+      case "paper":
+        // The paper account's figures and journal: reads the paper state, places nothing.
+        return (
+          <PaperPanel
+            venue={venueInfo.label}
+            available={paper.available}
+            on={paperOn}
+            state={paper.state}
+            snapshot={paperOn ? accountData : undefined}
+            quote={selected?.quote ?? "USD"}
+            symbolFor={symbolFor}
+            quoteFor={quoteFor}
+            baseFor={baseFor}
+            onShare={(c) => openShare({ closed: c })}
+            onFunds={() => setPaperDialog("funds")}
+            onReset={() => setPaperDialog("reset")}
+            onPaper={setPaperOn}
+          />
+        );
       case "algos":
         // Chasers, TWAPs and ladders: the engine runs them, through the same gate.
         return (
@@ -1678,7 +1719,7 @@ export function App() {
             onSeeAll={() => goTo("venues")}
           />
           {paper.available && (
-            <PaperSwitch on={paperOn} venue={venueInfo.label} onChange={paper.setOn} />
+            <PaperSwitch on={paperOn} venue={venueInfo.label} onChange={setPaperOn} />
           )}
           <div className="app-spacer" />
           {/* The market on screen, beside its watchlist star; opens the market picker. */}
@@ -1958,9 +1999,9 @@ export function App() {
                 quote={selected?.quote ?? "USD"}
                 snapshot={accountData}
                 start={paper.state.start}
+                onShowPanel={placed.has("paper") ? undefined : showPaperPanel}
                 onFunds={() => setPaperDialog("funds")}
-                onReset={() => setPaperDialog("reset")}
-                onLive={() => paper.setOn(false)}
+                onLive={() => setPaperOn(false)}
               />
             )}
             <RulesBanner
