@@ -1,6 +1,7 @@
 import { formatSigned, type MessageKey, t } from "@pewterdesk/ui";
 import { useMemo } from "react";
-import { type RunSpec, runBacktest, runDays, runStats } from "../../lib/backtest";
+import { type RunSpec, runDays, runStats } from "../../lib/backtest";
+import { resultOf, useRuns } from "../../lib/botEngine";
 import { type Bot, PAPER_DAYS } from "../../lib/bots";
 import { Empty } from "./ui";
 
@@ -41,14 +42,17 @@ export function PaperList({
   venueLabel,
 }: PaperListProps) {
   // What each run made a day on average, for the comparison.
+  const version = useRuns();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` brings engine runs in
   const perDay = useMemo(() => {
     const out = new Map<number, number>();
     for (const spec of runs) {
       if (!bots.some((b) => b.run === spec.id)) continue;
-      out.set(spec.id, runStats(runBacktest(spec)).net / Math.max(1, runDays(spec)));
+      const result = resultOf(spec);
+      if (result) out.set(spec.id, runStats(result).net / Math.max(1, runDays(spec)));
     }
     return out;
-  }, [runs, bots]);
+  }, [runs, bots, version]);
 
   if (bots.length === 0) {
     return (

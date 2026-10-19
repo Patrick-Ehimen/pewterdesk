@@ -779,6 +779,8 @@ export const messages: Messages = {
     "Votre compte n’a pas pu être lu pour vérifier vos règles : l’ordre n’a pas été envoyé. Clôturer reste possible.",
   "rules.block.unrecorded":
     "L’ordre n’a pas pu être enregistré dans le journal d’événements de l’app, il n’a donc pas été envoyé. Vous pouvez toujours clôturer et réduire vos positions.",
+  "rules.block.anotherEngine":
+    "Le daemon pewterdesk (pdd) trade ce compte, cette fenêtre ne peut donc pas le faire. Quittez pdd, ou tradez le compte avec pd.",
   "rules.block.lockedAmend":
     "Les ordres d’ouverture sont verrouillés : un ordre ne peut pas être agrandi.",
   "rules.block.lockedStop":
@@ -859,6 +861,9 @@ export const messages: Messages = {
   "rules.news": "Pause actualités",
   "rules.newsHint":
     "de part et d'autre d'une publication à fort impact en USD (IPC, FOMC, emploi), d'après le calendrier économique",
+  "rules.noBots": "Pas de bots",
+  "rules.noBotsHint":
+    "les bots ne peuvent pas trader en réel sur ce compte (pour une prop firm qui les interdit)",
   "rules.block.news":
     "Dans une fenêtre de blocage : une publication à fort impact en USD est trop proche.",
   "rules.block.newsUnchecked":
@@ -1450,6 +1455,18 @@ export const messages: Messages = {
   "settings.tradesView": "Affichage des transactions",
   "settings.advanced.desc":
     "Réinitialisez ce que cet appareil mémorise. Rien ici ne touche aux clés ni aux plateformes.",
+  "settings.alwaysOn.title": "Toujours actif",
+  "settings.alwaysOn.help":
+    "Fait tourner le moteur de trading en arrière-plan (pdd), pour que les algos continuent quand vous quittez l'app. Le désactiver arrête ses algos et annule leurs ordres.",
+  "settings.alwaysOn.unavailable": "Nécessite macOS et le pdd fourni avec l'app.",
+  "settings.alwaysOn.running": "pdd tourne et cette app y est appairée.",
+  "settings.alwaysOn.unreachable":
+    "pdd est injoignable : ordres et nouveaux algos sont refusés en attendant (les annulations passent).",
+  "settings.alwaysOn.unpaired": "pdd tourne ; appairez cette app pour trader à travers lui.",
+  "settings.alwaysOn.approve": "Approuvez la fenêtre pewterdesk affichant le code {code}.",
+  "settings.alwaysOn.pair": "Appairer avec pdd",
+  "settings.alwaysOn.denied": "L'appairage a été refusé.",
+  "settings.alwaysOn.expired": "L'appairage n'a pas été approuvé à temps.",
   "settings.resetLayout": "Réinitialiser la disposition",
   "settings.resetLayoutHelp": "Remettre les panneaux dans leur disposition par défaut.",
   "settings.clearWatchlist": "Vider les favoris",
@@ -2576,6 +2593,21 @@ export const messages: Messages = {
     "Toutes les règles d'entrée étaient remplies à la clôture de la bougie : {rules}.",
   "bots.preview":
     "Aperçu : les bots ne tournent pas encore. Les backtests s'exécutent sur cette page avec des bougies d'exemple, et rien n'est envoyé à une plateforme.",
+  "bots.engine.note":
+    "Les backtests tournent dans le moteur sur les bougies de la plateforme. Un bot trade sur papier 7 jours avant de pouvoir passer en réel, et chaque ordre réel passe par le filtre de trading.",
+  "bots.engine.running": "Backtest en cours sur les bougies de la plateforme…",
+  "bots.engine.failed": "Le backtest n'a pas pu tourner : {reason}",
+  "bots.engine.goLiveConfirm":
+    "Passer ce bot en réel sur {account} ? Il envoie de vrais ordres, via le filtre de trading, dans ses limites.",
+  "bots.event.halted": "Arrêté : {reason}",
+  "bots.mode.paper": "Papier",
+  "bots.note.limit": "Bot arrêté à sa limite",
+  "bots.note.failed": "Bot arrêté",
+  "bots.reason.dailyLoss": "sa limite de perte journalière",
+  "bots.reason.maxPosition": "sa limite de position",
+  "bots.reason.ordersPerMinute": "trop d'ordres par minute",
+  "bots.reason.stopOut": "son stop-loss",
+  "bots.reason.appClosed": "l'app a été fermée",
   "bots.noTrades": "Aucun trade dans ce test.",
   "bots.noTradesCustom":
     "Aucun trade : les règles d'entrée n'ont jamais été toutes remplies sur la même bougie. Essayez moins de règles, ou plus souples.",

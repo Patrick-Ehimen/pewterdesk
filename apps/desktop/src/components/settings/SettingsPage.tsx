@@ -9,6 +9,7 @@ import {
 } from "@pewterdesk/ui";
 import { type FormEvent, Fragment, useEffect, useState, useSyncExternalStore } from "react";
 import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
+import { type DaemonState, daemonClient, type PairTicket } from "../../api/daemonClient";
 import { coinClient, type WireSource, wireClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
@@ -626,10 +627,117 @@ function NewsKey({ source }: { source: WireSource }) {
   );
 }
 
+/**
+ * "Always on": runs the engine in pdd, so algos keep going with the app
+ * quit. Turning it on installs pdd and pairs the app with it (the user
+ * approves in pdd's dialog, which shows the same code); off halts pdd's
+ * algos and removes it.
+ */
+function AlwaysOn() {
+  const [state, setState] = useState<DaemonState>();
+  const [ticket, setTicket] = useState<PairTicket>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    daemonClient.state().then(setState, () => setState(undefined));
+  }, []);
+
+  // While a pairing waits on the user, ask how it went once a second.
+  useEffect(() => {
+    if (!ticket) return;
+    let live = true;
+    const id = setInterval(async () => {
+      try {
+        const status = await daemonClient.pairStatus(ticket.requestId);
+        if (!live || status === "pending") return;
+        setTicket(undefined);
+        if (status !== "approved") setError(t(`settings.alwaysOn.${status}`));
+        setState(await daemonClient.state());
+      } catch (err) {
+        setTicket(undefined);
+        setError(err instanceof Error ? err.message : t("error.failed"));
+      }
+    }, 1000);
+    return () => {
+      live = false;
+      clearInterval(id);
+    };
+  }, [ticket]);
+
+  const pair = async () => {
+    setError(undefined);
+    try {
+      setTicket(await daemonClient.pair());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    }
+  };
+
+  const toggle = async (on: boolean) => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const next = await daemonClient.setAlwaysOn(on);
+      setState(next);
+      if (on && next.connected && !next.paired) await pair();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("error.failed"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const status = !state?.alwaysOn
+    ? undefined
+    : ticket
+      ? t("settings.alwaysOn.approve", { code: ticket.code })
+      : !state.connected
+        ? t("settings.alwaysOn.unreachable")
+        : state.paired
+          ? t("settings.alwaysOn.running")
+          : t("settings.alwaysOn.unpaired");
+  return (
+    <SettingRow
+      title={t("settings.alwaysOn.title")}
+      help={
+        state && !state.available ? t("settings.alwaysOn.unavailable") : t("settings.alwaysOn.help")
+      }
+    >
+      <Switch
+        checked={state?.alwaysOn ?? false}
+        onChange={(on) => void toggle(on)}
+        label={t("settings.alwaysOn.title")}
+        disabled={busy || !state?.available}
+      />
+      {status && (
+        <p
+          className="settings-help"
+          role="status"
+          data-warn={(state?.alwaysOn && !state.connected) || undefined}
+        >
+          {status}
+        </p>
+      )}
+      {state?.alwaysOn && state.connected && !state.paired && !ticket && (
+        <button type="button" className="settings-button" onClick={() => void pair()}>
+          {t("settings.alwaysOn.pair")}
+        </button>
+      )}
+      {error && (
+        <p className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+    </SettingRow>
+  );
+}
+
 function AdvancedSection({ onResetLayout, onClearWatchlist, onRunSetup }: SettingsPageProps) {
   return (
     <>
       <SectionHead title={navLabel("advanced")} description={t("settings.advanced.desc")} />
+      <AlwaysOn />
       <CoinGeckoKey />
       <NewsKey source="tree" />
       <NewsKey source="phoenix" />

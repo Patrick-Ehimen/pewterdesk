@@ -1,6 +1,7 @@
 import { formatNumber, formatSigned, t } from "@pewterdesk/ui";
 import { useMemo, useState } from "react";
-import { DEFAULT_EMA, type RunSpec, runBacktest, runStats } from "../../lib/backtest";
+import { DEFAULT_EMA, type RunSpec, runStats } from "../../lib/backtest";
+import { resultOf, useRuns } from "../../lib/botEngine";
 import { runName } from "./Backtest";
 import { finite } from "./BacktestOverview";
 import { ruleText } from "./CustomRules";
@@ -35,15 +36,17 @@ export function BacktestCompare({
   onDelete,
 }: BacktestCompareProps) {
   const peers = useMemo(() => runs.filter((r) => comparable(r, current)), [runs, current]);
+  const version = useRuns();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` brings engine runs in
   const results = useMemo(
     () =>
       peers
-        .map((spec) => {
-          const result = runBacktest(spec);
-          return { spec, result, stats: runStats(result) };
+        .flatMap((spec) => {
+          const result = resultOf(spec);
+          return result ? [{ spec, result, stats: runStats(result) }] : [];
         })
         .sort((a, b) => b.stats.outOfSample - a.stats.outOfSample),
-    [peers],
+    [peers, version],
   );
   const [ticked, setTicked] = useState<number[]>(() =>
     [current.id, ...results.map((r) => r.spec.id).filter((id) => id !== current.id)].slice(0, 3),

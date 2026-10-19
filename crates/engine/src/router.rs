@@ -24,7 +24,7 @@
 //!   one, a cancel and the rest still go through, so a failing log never
 //!   stops the trader closing a position.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use pewterdesk_core::accounts::{
     bybit_account, bybit_key_entry, normalize_address, wallet_key_entry,
@@ -38,7 +38,9 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::algo::Algos;
+use crate::bot::Bots;
 use crate::live::{self, LiveTrading};
+use crate::owner::Owners;
 use crate::rules::{self, now_ms, TradingRules};
 use crate::{Adapters, Calendar};
 
@@ -106,6 +108,9 @@ pub struct Engine {
     /// `None` when the log couldn't be opened: opening orders are refused.
     log: Option<EventLog>,
     algos: Algos,
+    /// The accounts this engine has taken: one engine per account.
+    owners: Owners,
+    bots: Bots,
 }
 
 /// A value as the log keeps it.
@@ -124,7 +129,27 @@ impl Engine {
             rules: TradingRules::load(config_dir.map(|dir| dir.join(rules::FILE))),
             log,
             algos: Algos::default(),
+            owners: Owners::default(),
+            bots: Bots::default(),
         }
+    }
+
+    /// The bots this engine runs.
+    pub fn bots(&self) -> &Bots {
+        &self.bots
+    }
+
+    /// One engine per account, with the accounts' locks kept in `dir`: an
+    /// account another engine (the app's or the daemon's) trades is refused
+    /// here until that one exits.
+    pub fn with_locks(mut self, dir: PathBuf) -> Self {
+        self.owners = Owners::in_dir(dir);
+        self
+    }
+
+    /// The accounts this engine holds.
+    pub fn owners(&self) -> &Owners {
+        &self.owners
     }
 
     /// The live-trading switch, for the host's commands that show and set it.
@@ -254,6 +279,7 @@ impl Engine {
     ) -> (Option<String>, Result<Order, VenueError>) {
         let command = self.begin(by, venue, account, "placeOrder", as_json(request));
         let decision = async {
+            self.owners.claim(venue, account)?;
             let trading = trading_account(venue, account, &self.live)?;
             // The trader's own rules, before anything is signed.
             self.rules
@@ -354,6 +380,7 @@ impl Engine {
         let detail = json!({ "market": market, "orderId": order_id, "amend": as_json(amend) });
         let command = self.begin(by, venue, account, "amendOrder", detail);
         let decision = async {
+            self.owners.claim(venue, account)?;
             let trading = trading_account(venue, account, &self.live)?;
             self.rules
                 .guard_amend(venues, venue, account, order_id, amend)
@@ -390,6 +417,7 @@ impl Engine {
             detail,
         );
         let decision = async {
+            self.owners.claim(venue, account)?;
             let trading = trading_account(venue, account, &self.live)?;
             self.rules
                 .guard_protection(venues, venue, account, market, protection)
@@ -442,7 +470,11 @@ impl Engine {
     ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "leverage": as_json(&leverage) });
         let command = self.begin(By::app(origin), venue, account, "setLeverage", detail);
-        let trading = self.gate(command, trading_account(venue, account, &self.live))?;
+        let decision = self
+            .owners
+            .claim(venue, account)
+            .and_then(|()| trading_account(venue, account, &self.live));
+        let trading = self.gate(command, decision)?;
         let set = venues
             .adapter(venue)?
             .set_leverage(&trading, market, leverage)
@@ -463,7 +495,11 @@ impl Engine {
     ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "mode": as_json(&mode) });
         let command = self.begin(By::app(origin), venue, account, "setMarginMode", detail);
-        let trading = self.gate(command, trading_account(venue, account, &self.live))?;
+        let decision = self
+            .owners
+            .claim(venue, account)
+            .and_then(|()| trading_account(venue, account, &self.live));
+        let trading = self.gate(command, decision)?;
         let set = venues
             .adapter(venue)?
             .set_margin_mode(&trading, market, mode)

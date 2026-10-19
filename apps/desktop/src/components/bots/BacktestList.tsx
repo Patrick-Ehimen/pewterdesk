@@ -1,14 +1,8 @@
 import { formatNumber, formatSigned, t } from "@pewterdesk/ui";
 import { useMemo, useState } from "react";
 import { LuCircleAlert, LuCircleCheck } from "react-icons/lu";
-import {
-  type RunSpec,
-  runBacktest,
-  runDays,
-  runStats,
-  type Template,
-  verdict,
-} from "../../lib/backtest";
+import { type RunSpec, runDays, runStats, type Template, verdict } from "../../lib/backtest";
+import { resultOf, useRuns } from "../../lib/botEngine";
 import { runName } from "./Backtest";
 import { Empty, TEMPLATE_LABEL } from "./ui";
 
@@ -27,14 +21,17 @@ interface BacktestListProps {
 /** Every backtest run, newest first, with its headline figures and whether it's ready. */
 export function BacktestList({ runs, onOpen, onNew, marketLabel, venueLabel }: BacktestListProps) {
   const [kind, setKind] = useState<Kind>("all");
+  const version = useRuns();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` brings engine runs in
   const rows = useMemo(
     () =>
-      [...runs].reverse().map((spec) => {
-        const result = runBacktest(spec);
+      [...runs].reverse().flatMap((spec) => {
+        const result = resultOf(spec);
+        if (!result) return [];
         const stats = runStats(result);
-        return { spec, stats, verdict: verdict(result, stats) };
+        return [{ spec, stats, verdict: verdict(result, stats) }];
       }),
-    [runs],
+    [runs, version],
   );
   if (runs.length === 0) {
     return (

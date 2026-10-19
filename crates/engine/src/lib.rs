@@ -24,11 +24,14 @@ use pewterdesk_core::{ExchangeAdapter, VenueError, VenueId};
 use serde::Serialize;
 
 pub mod algo;
+pub mod bot;
+mod kept;
 pub mod live;
+pub mod owner;
 mod router;
 pub mod rules;
 
-pub use pewterdesk_store::EventLog;
+pub use pewterdesk_store::{EventLog, Recorder};
 pub use router::{client_id, trading_account, By, Engine};
 
 /// Each venue's adapter, as the host has set it up.

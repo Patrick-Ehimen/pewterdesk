@@ -759,6 +759,8 @@ export const messages: Messages = {
     "ルールを確認するための口座情報を取得できず、注文は送信されませんでした。決済は可能です。",
   "rules.block.unrecorded":
     "注文をアプリのイベントログに記録できなかったため、送信していません。ポジションの決済と縮小は引き続き可能です。",
+  "rules.block.anotherEngine":
+    "pewterdesk デーモン (pdd) がこの口座で取引中のため、このウィンドウからは取引できません。pdd を終了するか、pd から取引してください。",
   "rules.block.lockedAmend": "新規注文はロック中です:注文を大きくすることはできません。",
   "rules.block.lockedStop":
     "新規注文はロック中です:ストップは近づけることはできますが、遠ざけたり外したりはできません。",
@@ -835,6 +837,9 @@ export const messages: Messages = {
   "rules.needsStop": "ストップが必要",
   "rules.news": "ニュース前後の停止",
   "rules.newsHint": "経済カレンダーの重要度の高い米ドル指標（CPI、FOMC、雇用統計）の前後",
+  "rules.noBots": "ボット禁止",
+  "rules.noBotsHint":
+    "このアカウントではボットのライブ取引を禁止（ボットを禁じるプロップファームの場合）",
   "rules.block.news": "ニュース停止中です：重要度の高い米ドル指標が近すぎます。",
   "rules.block.newsUnchecked": "ニュース停止を確認するための経済カレンダーを読み込めませんでした。",
   "rules.newsActive": "停止中",
@@ -1417,6 +1422,19 @@ export const messages: Messages = {
   "settings.tradesView": "約定履歴の表示",
   "settings.advanced.desc":
     "この端末に保存された設定をリセットします。鍵や取引所には影響しません。",
+  "settings.alwaysOn.title": "常時稼働",
+  "settings.alwaysOn.help":
+    "取引エンジンをバックグラウンド（pdd）で実行し、アプリを終了してもアルゴを動かし続けます。オフにするとアルゴを停止し、注文を取り消します。",
+  "settings.alwaysOn.unavailable": "macOS とアプリ付属の pdd が必要です。",
+  "settings.alwaysOn.running": "pdd が稼働中で、このアプリとペアリング済みです。",
+  "settings.alwaysOn.unreachable":
+    "pdd に接続できません。接続できるまで注文と新しいアルゴは拒否されます（取消は可能）。",
+  "settings.alwaysOn.unpaired":
+    "pdd は稼働中です。このアプリをペアリングすると pdd 経由で取引できます。",
+  "settings.alwaysOn.approve": "コード {code} の pewterdesk ダイアログを承認してください。",
+  "settings.alwaysOn.pair": "pdd とペアリング",
+  "settings.alwaysOn.denied": "ペアリングが拒否されました。",
+  "settings.alwaysOn.expired": "時間内に承認されませんでした。",
   "settings.resetLayout": "レイアウトをリセット",
   "settings.resetLayoutHelp": "パネルを既定の配置に戻します。",
   "settings.clearWatchlist": "ウォッチリストを消去",
@@ -2512,6 +2530,21 @@ export const messages: Messages = {
   "bots.why.customSignal": "ローソク足の終値ですべてのエントリールールが成立：{rules}。",
   "bots.preview":
     "プレビュー：ボットはまだ動きません。バックテストはこのページでサンプルのローソク足を使って実行され、取引所には何も送られません。",
+  "bots.engine.note":
+    "バックテストは取引所のローソク足でエンジンが実行します。ボットは本番前に7日間ペーパートレードし、本番の注文はすべて取引ゲートを通ります。",
+  "bots.engine.running": "取引所のローソク足でバックテスト中…",
+  "bots.engine.failed": "バックテストを実行できませんでした：{reason}",
+  "bots.engine.goLiveConfirm":
+    "このボットを {account} で本番にしますか？取引ゲートを通り、上限内で実際の注文を出します。",
+  "bots.event.halted": "停止：{reason}",
+  "bots.mode.paper": "ペーパー",
+  "bots.note.limit": "ボットが上限で停止",
+  "bots.note.failed": "ボットが停止",
+  "bots.reason.dailyLoss": "1日の損失上限",
+  "bots.reason.maxPosition": "ポジション上限",
+  "bots.reason.ordersPerMinute": "1分あたりの注文が多すぎる",
+  "bots.reason.stopOut": "ストップロス",
+  "bots.reason.appClosed": "アプリが閉じられた",
   "bots.noTrades": "このテストでは取引がありません。",
   "bots.noTradesCustom":
     "取引なし：同じローソク足ですべてのエントリールールが成立しませんでした。ルールを減らすか緩めてください。",

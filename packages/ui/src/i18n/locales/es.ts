@@ -775,6 +775,8 @@ export const messages: Messages = {
     "No se pudo leer tu cuenta para comprobar tus reglas, así que la orden no se envió. Cerrar sigue funcionando.",
   "rules.block.unrecorded":
     "No se pudo registrar la orden en el registro de eventos de la app, así que no se envió. Aún puedes cerrar y reducir posiciones.",
+  "rules.block.anotherEngine":
+    "El daemon de pewterdesk (pdd) está operando esta cuenta, así que esta ventana no puede. Cierra pdd u opera la cuenta a través de él con pd.",
   "rules.block.lockedAmend":
     "Las órdenes de apertura están bloqueadas: no se puede ampliar una orden.",
   "rules.block.lockedStop":
@@ -855,6 +857,9 @@ export const messages: Messages = {
   "rules.news": "Bloqueo por noticias",
   "rules.newsHint":
     "a cada lado de un dato de alto impacto en USD (IPC, FOMC, nóminas), según el calendario económico",
+  "rules.noBots": "Sin bots",
+  "rules.noBotsHint":
+    "los bots no pueden operar en real en esta cuenta (para una prop firm que los prohíbe)",
   "rules.block.news":
     "Dentro de un bloqueo por noticias: un dato de alto impacto en USD está demasiado cerca.",
   "rules.block.newsUnchecked":
@@ -1444,6 +1449,18 @@ export const messages: Messages = {
   "settings.tradesView": "Vista de operaciones",
   "settings.advanced.desc":
     "Restablece lo que recuerda este dispositivo. Nada de aquí afecta a las claves ni a los exchanges.",
+  "settings.alwaysOn.title": "Siempre activo",
+  "settings.alwaysOn.help":
+    "Ejecuta el motor de trading en segundo plano (pdd), para que los algos sigan funcionando al cerrar la app. Al desactivarlo se detienen sus algos y se cancelan sus órdenes.",
+  "settings.alwaysOn.unavailable": "Requiere macOS y el pdd incluido con la app.",
+  "settings.alwaysOn.running": "pdd está en marcha y esta app está vinculada.",
+  "settings.alwaysOn.unreachable":
+    "No se puede contactar con pdd: se rechazan órdenes y algos nuevos hasta que se pueda (las cancelaciones sí funcionan).",
+  "settings.alwaysOn.unpaired": "pdd está en marcha; vincula esta app para operar a través de él.",
+  "settings.alwaysOn.approve": "Aprueba el diálogo de pewterdesk con el código {code}.",
+  "settings.alwaysOn.pair": "Vincular con pdd",
+  "settings.alwaysOn.denied": "Se rechazó la vinculación.",
+  "settings.alwaysOn.expired": "La vinculación no se aprobó a tiempo.",
   "settings.resetLayout": "Restablecer diseño",
   "settings.resetLayoutHelp": "Vuelve a colocar los paneles en la disposición predeterminada.",
   "settings.clearWatchlist": "Vaciar favoritos",
@@ -2562,6 +2579,21 @@ export const messages: Messages = {
     "Todas las reglas de entrada se cumplieron al cierre de la vela: {rules}.",
   "bots.preview":
     "Vista previa: los bots aún no se ejecutan. Los backtests corren en esta página sobre velas de muestra, y no se envía nada a un exchange.",
+  "bots.engine.note":
+    "Los backtests se ejecutan en el motor con las velas del propio mercado. Un bot opera en papel 7 días antes de poder ir en vivo, y cada orden real pasa por el filtro de trading.",
+  "bots.engine.running": "Ejecutando el backtest con las velas del mercado…",
+  "bots.engine.failed": "No se pudo ejecutar el backtest: {reason}",
+  "bots.engine.goLiveConfirm":
+    "¿Llevar este bot a real en {account}? Envía órdenes reales, a través del filtro de trading y dentro de sus límites.",
+  "bots.event.halted": "Detenido: {reason}",
+  "bots.mode.paper": "Papel",
+  "bots.note.limit": "Bot detenido en su límite",
+  "bots.note.failed": "Bot detenido",
+  "bots.reason.dailyLoss": "su límite de pérdida diaria",
+  "bots.reason.maxPosition": "su límite de posición",
+  "bots.reason.ordersPerMinute": "demasiadas órdenes por minuto",
+  "bots.reason.stopOut": "su stop-loss",
+  "bots.reason.appClosed": "la app se cerró",
   "bots.noTrades": "No hubo operaciones en esta prueba.",
   "bots.noTradesCustom":
     "Sin operaciones: las reglas de entrada nunca se cumplieron todas en la misma vela. Prueba con menos reglas o más flexibles.",

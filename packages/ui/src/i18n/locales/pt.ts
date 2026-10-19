@@ -769,6 +769,8 @@ export const messages: Messages = {
     "Não foi possível ler sua conta para verificar suas regras, então a ordem não foi enviada. Fechar continua funcionando.",
   "rules.block.unrecorded":
     "Não foi possível registrar a ordem no registro de eventos do app, então ela não foi enviada. Você ainda pode fechar e reduzir posições.",
+  "rules.block.anotherEngine":
+    "O daemon do pewterdesk (pdd) está operando esta conta, então esta janela não pode. Feche o pdd ou opere a conta por ele com o pd.",
   "rules.block.lockedAmend":
     "As ordens de abertura estão bloqueadas: não é possível aumentar uma ordem.",
   "rules.block.lockedStop":
@@ -848,6 +850,9 @@ export const messages: Messages = {
   "rules.news": "Bloqueio por notícias",
   "rules.newsHint":
     "antes e depois de um dado de alto impacto em USD (CPI, FOMC, payroll), pelo calendário econômico",
+  "rules.noBots": "Sem bots",
+  "rules.noBotsHint":
+    "bots não podem operar ao vivo nesta conta (para uma prop firm que os proíbe)",
   "rules.block.news":
     "Dentro de um bloqueio por notícias: um dado de alto impacto em USD está perto demais.",
   "rules.block.newsUnchecked":
@@ -1433,6 +1438,18 @@ export const messages: Messages = {
   "settings.tradesView": "Visualização das negociações",
   "settings.advanced.desc":
     "Redefina o que este dispositivo lembra. Nada aqui afeta chaves ou corretoras.",
+  "settings.alwaysOn.title": "Sempre ligado",
+  "settings.alwaysOn.help":
+    "Executa o motor de trading em segundo plano (pdd), para que os algos continuem quando você fecha o app. Desligar para os algos e cancela as ordens deles.",
+  "settings.alwaysOn.unavailable": "Requer macOS e o pdd que vem com o app.",
+  "settings.alwaysOn.running": "O pdd está rodando e este app está pareado.",
+  "settings.alwaysOn.unreachable":
+    "Não é possível alcançar o pdd: ordens e algos novos são recusados até lá (cancelamentos funcionam).",
+  "settings.alwaysOn.unpaired": "O pdd está rodando; pareie este app para operar por ele.",
+  "settings.alwaysOn.approve": "Aprove a janela do pewterdesk com o código {code}.",
+  "settings.alwaysOn.pair": "Parear com o pdd",
+  "settings.alwaysOn.denied": "O pareamento foi negado.",
+  "settings.alwaysOn.expired": "O pareamento não foi aprovado a tempo.",
   "settings.resetLayout": "Redefinir layout",
   "settings.resetLayoutHelp": "Volta os painéis ao arranjo padrão.",
   "settings.clearWatchlist": "Limpar favoritos",
@@ -2547,6 +2564,21 @@ export const messages: Messages = {
     "Todas as regras de entrada se cumpriram no fechamento do candle: {rules}.",
   "bots.preview":
     "Prévia: os bots ainda não rodam. Os backtests rodam nesta página com candles de amostra, e nada é enviado a uma corretora.",
+  "bots.engine.note":
+    "Os backtests rodam no motor com os candles da própria plataforma. Um bot opera no papel por 7 dias antes de poder ir ao vivo, e toda ordem real passa pelo filtro de trading.",
+  "bots.engine.running": "Rodando o backtest com os candles da plataforma…",
+  "bots.engine.failed": "O backtest não pôde rodar: {reason}",
+  "bots.engine.goLiveConfirm":
+    "Levar este bot ao vivo em {account}? Ele envia ordens reais, pelo filtro de trading, dentro dos limites.",
+  "bots.event.halted": "Parado: {reason}",
+  "bots.mode.paper": "Papel",
+  "bots.note.limit": "Bot parado no seu limite",
+  "bots.note.failed": "Bot parado",
+  "bots.reason.dailyLoss": "seu limite de perda diária",
+  "bots.reason.maxPosition": "seu limite de posição",
+  "bots.reason.ordersPerMinute": "ordens demais por minuto",
+  "bots.reason.stopOut": "seu stop-loss",
+  "bots.reason.appClosed": "o app foi fechado",
   "bots.noTrades": "Nenhuma operação neste teste.",
   "bots.noTradesCustom":
     "Sem operações: as regras de entrada nunca se cumpriram todas no mesmo candle. Tente menos regras ou regras mais flexíveis.",

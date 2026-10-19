@@ -21,9 +21,11 @@
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 use pewterdesk_core::accounts::{bybit_account, normalize_address};
+
+use crate::kept::{Change, Kept};
 use pewterdesk_core::{VenueError, VenueId};
 
 /// The file the switched-on accounts are kept in, in the app's config folder.
@@ -71,37 +73,61 @@ fn known_id(id: &str) -> bool {
 /// The live accounts with trading on: Bybit UIDs and wallet ids.
 pub struct LiveTrading {
     on: Mutex<BTreeSet<String>>,
-    /// Where they're kept between runs; unset when there's nowhere to.
-    path: Option<PathBuf>,
+    /// Where they're kept between runs, which another engine (the app's, or
+    /// the daemon's) may change: read again whenever it has.
+    file: Kept,
+}
+
+/// The accounts a kept list names. Unreadable is none: trading stays off
+/// until it's turned on again.
+fn accounts_in(bytes: Option<&[u8]>) -> BTreeSet<String> {
+    bytes
+        .and_then(|bytes| serde_json::from_slice::<Vec<String>>(bytes).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|id| known_id(id))
+        .collect()
 }
 
 impl LiveTrading {
     /// The accounts kept at `path`. A missing or unreadable file is no
     /// accounts: trading stays off until it's turned on again.
     pub fn load(path: Option<PathBuf>) -> Self {
-        let on = path
-            .as_ref()
-            .and_then(|p| std::fs::read(p).ok())
-            .and_then(|bytes| serde_json::from_slice::<Vec<String>>(&bytes).ok())
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|id| known_id(id))
-            .collect();
+        let file = Kept::new(path);
+        let on = accounts_in(file.read().as_deref());
         Self {
             on: Mutex::new(on),
-            path,
+            file,
         }
+    }
+
+    /// The accounts as they are now: the file read again if another engine
+    /// has changed it. Gone or unreadable is none (it fails closed).
+    fn current(&self) -> MutexGuard<'_, BTreeSet<String>> {
+        let mut on = self.on.lock().unwrap();
+        match self.file.changed() {
+            Change::Same => {}
+            Change::Gone => {
+                on.clear();
+                self.file.taken();
+            }
+            Change::Written(bytes) => {
+                *on = accounts_in(Some(&bytes));
+                self.file.taken();
+            }
+        }
+        on
     }
 
     /// Whether the live account `uid` (a Bybit UID or a `wallet_id`) may trade.
     pub fn is_on(&self, uid: &str) -> bool {
-        self.on.lock().unwrap().contains(uid)
+        self.current().contains(uid)
     }
 
     /// The live accounts with trading on: Bybit UIDs, and Hyperliquid and
     /// Aster accounts as `<venue>:<address>`. Public ids only.
     pub fn list(&self) -> Vec<String> {
-        self.on.lock().unwrap().iter().cloned().collect()
+        self.current().iter().cloned().collect()
     }
 
     /// Turns `uid` on or off and writes the list. If it can't be written
@@ -111,7 +137,7 @@ impl LiveTrading {
     /// app's `set_live_trading` and `set_wallet_trading`): this only keeps
     /// the switch.
     pub fn set(&self, uid: &str, on: bool) -> Result<(), VenueError> {
-        let mut accounts = self.on.lock().unwrap();
+        let mut accounts = self.current();
         let changed = if on {
             accounts.insert(uid.to_owned())
         } else {
@@ -120,12 +146,8 @@ impl LiveTrading {
         if !changed {
             return Ok(());
         }
-        let saved = self.path.as_ref().is_some_and(|path| {
-            let list: Vec<&String> = accounts.iter().collect();
-            path.parent()
-                .is_none_or(|dir| std::fs::create_dir_all(dir).is_ok())
-                && serde_json::to_vec(&list).is_ok_and(|json| std::fs::write(path, json).is_ok())
-        });
+        let list: Vec<&String> = accounts.iter().collect();
+        let saved = serde_json::to_vec(&list).is_ok_and(|json| self.file.write(&json));
         if saved {
             return Ok(());
         }
@@ -164,6 +186,27 @@ mod tests {
             std::env::temp_dir().join(format!("pewterdesk-live-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         dir.join("nested").join(FILE)
+    }
+
+    /// The app and the daemon each keep a copy: switching an account off
+    /// in one stops it in the other before its next order.
+    #[test]
+    fn another_engine_turning_it_off_reaches_this_one() {
+        let path = scratch("shared");
+        let app = LiveTrading::load(Some(path.clone()));
+        let daemon = LiveTrading::load(Some(path.clone()));
+        app.set("24617703", true).unwrap();
+        assert!(daemon.is_on("24617703"), "turned on in the app");
+        app.set("24617703", false).unwrap();
+        assert!(!daemon.is_on("24617703"), "turned off in the app");
+        // The file gone, or not a list, is nobody on.
+        daemon.set("24617703", true).unwrap();
+        assert!(app.is_on("24617703"));
+        std::fs::write(&path, b"garbage").unwrap();
+        assert!(!app.is_on("24617703"));
+        std::fs::remove_file(&path).unwrap();
+        assert!(daemon.list().is_empty());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
     }
 
     #[test]

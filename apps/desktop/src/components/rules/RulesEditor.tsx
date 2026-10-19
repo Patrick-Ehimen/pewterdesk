@@ -388,6 +388,14 @@ export function RulesEditor({
             />
             <Hint>{t("rules.newsHint")}</Hint>
           </Row>
+          <Row label={t("rules.noBots")}>
+            <Switch
+              label={t("rules.noBots")}
+              checked={draft.noBots}
+              onChange={(noBots) => set({ noBots })}
+            />
+            <Hint>{t("rules.noBotsHint")}</Hint>
+          </Row>
           <Row label={t("rules.coolOffShort")}>
             <NumberField
               whole

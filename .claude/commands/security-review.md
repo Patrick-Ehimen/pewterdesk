@@ -6,8 +6,8 @@ The diff for this task touches signing, key handling, or exchange auth code
 (e.g. signing code in a `crates/exchange-<venue>`, the `ExchangeAdapter`
 trait or the Tauri commands exposing it, `KeySource` or the keychain bridge,
 onboarding, the live-trading switch or the trading rules, a data source's
-module, the webview CSP, or anything that constructs or transmits an
-authenticated request). The full list of security-sensitive files is in
+module, the webview CSP, the daemon, its protocol or its clients, or
+anything that constructs or transmits an authenticated request). The full list of security-sensitive files is in
 `CLAUDE.md`. Review it against this checklist before considering the task done -
 go through each point explicitly rather than skimming for "looks fine". The
 rules come from `docs/adr/0001-venues-in-rust.md`.
@@ -71,10 +71,21 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    reaches the UI bounded and plain. A link opens only through Rust, by id,
    as a URL Rust itself fetched, filtered by `safe_url` - never a URL from
    the UI. Adding a source or a host is security-relevant.
-10. **Tests exist for the signing logic in isolation** (not just via an
+10. **The daemon stays local and paired.** `pdd` (`apps/daemon`) listens
+   only on its Unix socket (0600) and 127.0.0.1, its WebSocket refuses any
+   `Origin` and any `Host` but its own; only a paired client gets past
+   `hello`, and pairing is approved by the person at the machine, never over
+   the protocol. `pdd` keeps token hashes only. The protocol
+   (`crates/protocol/src/rpc.rs`) adds nothing to the six operations but
+   read-only queries, algo control, `halt`, `flatten` (reduce-only, through
+   the router) and pairing, and carries no key material. With "always on",
+   the app's trading commands go to `pdd` or are refused - never quietly
+   sent from the app's own engine. Two engines share the gate files
+   (re-read on change, written whole) and one lock per account.
+11. **Tests exist for the signing logic in isolation** (not just via an
    end-to-end flow), checked against known vectors from the venue's official
    SDK, covering at least one wrong-input case, not only the happy path.
-11. **The PR description calls this out explicitly** under a
+12. **The PR description calls this out explicitly** under a
    "Security-relevant changes" heading - don't leave a reviewer to discover
    this touches signing on their own.
 

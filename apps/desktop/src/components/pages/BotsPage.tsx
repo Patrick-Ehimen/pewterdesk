@@ -3,6 +3,7 @@ import { t } from "@pewterdesk/ui";
 import { useState } from "react";
 import { LuInfo, LuPlus } from "react-icons/lu";
 import type { RunSpec } from "../../lib/backtest";
+import { botEngine, botSpecOf, cardOf, engineHere, useEngineBots } from "../../lib/botEngine";
 import {
   type Bot,
   type BotMode,
@@ -64,6 +65,25 @@ interface BotsPageProps {
   priceOf: (market: string) => number | undefined;
   /** A market's name as the app shows it, on any venue. */
   marketLabel: (venue: VenueId, market: string) => string;
+  /** The account on the venue on screen: the one a bot goes live on. */
+  account?: string;
+}
+
+/** Which backtest each engine bot came from, kept on this machine. */
+const LINKS_KEY = "pd.bots.links";
+function loadLinks(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(LINKS_KEY) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+function saveLinks(links: Record<string, number>) {
+  try {
+    localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+  } catch {
+    // Storage unavailable: the link to its backtest is lost with the visit.
+  }
 }
 
 /**
@@ -75,8 +95,38 @@ interface BotsPageProps {
  * simulations made in the page, and nothing reaches a venue. Kept in this
  * browser's storage.
  */
-export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: BotsPageProps) {
+export function BotsPage({
+  venue,
+  venueLabel,
+  markets,
+  priceOf,
+  marketLabel,
+  account,
+}: BotsPageProps) {
   const [state, setState] = useState<BotsState>(() => loadBots());
+  // With the engine, bots are its own: running, on paper and live.
+  const engine = engineHere();
+  const engineBots = useEngineBots();
+  const [links, setLinks] = useState(loadLinks);
+  const [failed, setFailed] = useState<string>();
+  const link = (botId: string, runId: number) => {
+    const next = { ...links, [botId]: runId };
+    setLinks(next);
+    saveLinks(next);
+  };
+  const baseOf = (market: string) => markets.find((m) => m.id === market)?.base ?? market;
+  const bots: Bot[] = engine
+    ? engineBots.bots.map((view) => cardOf(view, baseOf(view.spec.market), links))
+    : state.bots;
+  /** Runs an engine command, its failure said on the page. */
+  const act = async (task: () => Promise<unknown>) => {
+    setFailed(undefined);
+    try {
+      await task();
+    } catch (e) {
+      setFailed(e instanceof Error ? e.message : t("error.failed"));
+    }
+  };
   const [place, setPlace] = useState<Place>(loadPlace);
   const [filter, setFilter] = useState<Filter>("all");
   const { section, view } = place;
@@ -94,20 +144,64 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
   const now = Date.now();
   const change = (bot: Bot, patch: Partial<Bot>) => update(withBot(state, bot.id, patch));
   const pause = (bot: Bot) =>
-    change(bot, { state: "paused", event: { time: Date.now(), kind: "paused" } });
+    engine
+      ? void act(() => botEngine.pause(bot.id))
+      : change(bot, { state: "paused", event: { time: Date.now(), kind: "paused" } });
   const resume = (bot: Bot) =>
-    change(bot, { state: "running", event: { time: Date.now(), kind: "started" } });
+    engine
+      ? void act(() =>
+          bot.state === "paused" ? botEngine.resume(bot.id) : botEngine.start(bot.id),
+        )
+      : change(bot, { state: "running", event: { time: Date.now(), kind: "started" } });
+  const stop = (bot: Bot, flatten: boolean) =>
+    engine
+      ? void act(() => botEngine.stop(bot.id, flatten))
+      : change(bot, {
+          state: "stopped",
+          ...(flatten ? { position: undefined } : {}),
+          event: { time: Date.now(), kind: "stopped" },
+        });
+  const goLive = (bot: Bot) => {
+    if (!window.confirm(t("bots.engine.goLiveConfirm", { account: account ?? "" }))) return;
+    void act(() => botEngine.goLive(bot.id));
+  };
   const openRun = (run: number, tab: BacktestTab = "overview") =>
     setView({ kind: "backtest", run, tab });
   const addRun = (spec: Omit<RunSpec, "id">) => {
-    const [next, run] = withRun(state, spec);
+    // In the app, on the venue's own candles, run by the engine.
+    const [next, run] = withRun(state, engine ? { ...spec, source: "venue" } : spec);
     update(next);
     openRun(run.id);
   };
   const paperTrade = (run: RunSpec) => {
+    if (engine) {
+      void act(async () => {
+        const bot = await botEngine.create(botSpecOf(run, account));
+        link(bot.id, run.id);
+        await botEngine.start(bot.id);
+        engineBots.refresh();
+        toSection("paper");
+      });
+      return;
+    }
     const [withIt, bot] = botForRun(state, run, now);
     update(startPaper(withIt, bot.id, now));
     toSection("paper");
+  };
+  const saveAsBot = (run: RunSpec) => {
+    if (engine) {
+      void act(async () => {
+        const bot = await botEngine.create(botSpecOf(run, account));
+        link(bot.id, run.id);
+        engineBots.refresh();
+        toSection("bots");
+      });
+      return;
+    }
+    const [next] = botForRun(state, run, now);
+    update(next);
+    setFilter("backtest");
+    toSection("bots");
   };
   const sectionLabel = (s: Section) => t(`bots.section.${s}`);
   const home: Crumb = { label: t("nav.bots"), onClick: () => toSection("bots") };
@@ -153,12 +247,7 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
           onBack={() => setView({ kind: "list" })}
           onNewRun={addRun}
           onDelete={(ids) => update(withoutRuns(state, ids))}
-          onSaveAsBot={(run) => {
-            const [next] = botForRun(state, run, now);
-            update(next);
-            setFilter("backtest");
-            toSection("bots");
-          }}
+          onSaveAsBot={saveAsBot}
           onPaperTrade={paperTrade}
           marketLabel={mLabel}
           venueLabel={vLabel}
@@ -167,13 +256,13 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
     );
   }
 
-  const paperBots = state.bots.filter((b) => b.mode === "paper");
+  const paperBots = bots.filter((b) => b.mode === "paper");
   const count: Record<Section, number> = {
-    bots: state.bots.length,
+    bots: bots.length,
     backtests: state.runs.length,
     paper: paperBots.length,
   };
-  const shown = state.bots.filter((b) => filter === "all" || b.mode === filter);
+  const shown = bots.filter((b) => filter === "all" || b.mode === filter);
   return (
     <div className="page bots">
       <header className="page-head bots-head">
@@ -203,10 +292,15 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
         </button>
       </header>
       <PreviewNote />
-      {section === "bots" && state.bots.length === 0 && (
+      {failed && (
+        <p className="settings-error" role="alert">
+          {failed}
+        </p>
+      )}
+      {section === "bots" && bots.length === 0 && (
         <Guide fixed onStart={() => setView({ kind: "new" })} />
       )}
-      {section === "bots" && state.bots.length > 0 && (
+      {section === "bots" && bots.length > 0 && (
         <>
           <Guide onStart={() => setView({ kind: "new" })} />
           <div className="bt-toolbar">
@@ -237,17 +331,13 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
                   marketLabel={marketLabel(bot.venue, bot.market)}
                   onStart={() => resume(bot)}
                   onPause={() => pause(bot)}
-                  onStop={(flatten) =>
-                    change(bot, {
-                      state: "stopped",
-                      ...(flatten ? { position: undefined } : {}),
-                      event: { time: Date.now(), kind: "stopped" },
-                    })
-                  }
+                  onStop={(flatten) => stop(bot, flatten)}
                   onStartPaper={() => {
-                    update(startPaper(state, bot.id, Date.now()));
+                    if (engine) void act(() => botEngine.start(bot.id));
+                    else update(startPaper(state, bot.id, Date.now()));
                     toSection("paper");
                   }}
+                  onGoLive={engine ? () => goLive(bot) : undefined}
                   onOpenBacktest={
                     bot.run === undefined ? undefined : () => openRun(bot.run as number)
                   }
@@ -283,12 +373,16 @@ export function BotsPage({ venue, venueLabel, markets, priceOf, marketLabel }: B
   );
 }
 
-/** Says, on every screen of the page, that none of it trades yet. */
+/**
+ * Says, on every screen of the page, what runs where: in the app, the
+ * engine (the venue's candles; paper, then live through the trading gate);
+ * in a browser alone, a preview on sample candles that trades nothing.
+ */
 function PreviewNote() {
   return (
     <p className="bt-preview" role="note">
       <LuInfo size={14} aria-hidden />
-      {t("bots.preview")}
+      {engineHere() ? t("bots.engine.note") : t("bots.preview")}
     </p>
   );
 }

@@ -675,7 +675,7 @@ export type OrderType = "market" | "limit" | "trigger" | "twap";
  * engine's event log. Only a label: it grants nothing, and every origin
  * goes through the same gate.
  */
-export type Origin = "ticket" | "quick-trade" | "palette" | "cli-panel" | "float" | "multichart" | "chart" | "activity" | "drawer" | "app" | "algo" | "engine";
+export type Origin = "ticket" | "quick-trade" | "palette" | "cli-panel" | "float" | "multichart" | "chart" | "activity" | "drawer" | "app" | "algo" | "engine" | "pd" | "bot";
 
 export type Position = { venue: VenueId, market: string, side: PositionSide, 
 /**

@@ -770,6 +770,8 @@ export const en = {
     "Your account couldn't be read to check your trading rules, so the order wasn't sent. Closing still works.",
   "rules.block.unrecorded":
     "The order couldn't be recorded in the app's event log, so it wasn't sent. You can still close and reduce positions.",
+  "rules.block.anotherEngine":
+    "The pewterdesk daemon (pdd) is trading this account, so this window can't. Quit pdd, or trade the account through it with pd.",
   "rules.block.lockedAmend": "Opening orders are locked: an order can't be made larger.",
   "rules.block.lockedStop":
     "Opening orders are locked: a stop can be moved closer, not further away or removed.",
@@ -847,6 +849,8 @@ export const en = {
   "rules.news": "News blackout",
   "rules.newsHint":
     "either side of a high-impact USD release (CPI, FOMC, payrolls), from the economic calendar",
+  "rules.noBots": "No bots",
+  "rules.noBotsHint": "bots can't run live on this account (for a prop firm that bans them)",
   "rules.block.news": "Inside a news blackout: a high-impact USD release is too close.",
   "rules.block.newsUnchecked": "The economic calendar couldn't be read to check the news blackout.",
   "rules.newsActive": "Blackout",
@@ -1374,6 +1378,18 @@ export const en = {
   "settings.tradesView": "Trades view",
   "settings.advanced.desc":
     "Reset what this device remembers. Nothing here touches keys or the venues.",
+  "settings.alwaysOn.title": "Always on",
+  "settings.alwaysOn.help":
+    "Run the trading engine in the background (pdd), so algos keep running when you quit the app. Turning it off stops its algos and cancels their orders.",
+  "settings.alwaysOn.unavailable": "Needs macOS and the pdd that comes with the app.",
+  "settings.alwaysOn.running": "pdd is running and this app is paired with it.",
+  "settings.alwaysOn.unreachable":
+    "pdd can't be reached: orders and new algos are refused until it can (cancels still work).",
+  "settings.alwaysOn.unpaired": "pdd is running; pair this app with it to trade through it.",
+  "settings.alwaysOn.approve": "Approve the pewterdesk dialog showing code {code}.",
+  "settings.alwaysOn.pair": "Pair with pdd",
+  "settings.alwaysOn.denied": "Pairing was denied.",
+  "settings.alwaysOn.expired": "Pairing wasn't approved in time.",
   "settings.resetLayout": "Reset layout",
   "settings.resetLayoutHelp": "Put the panels back in the default arrangement.",
   "settings.clearWatchlist": "Clear watchlist",
@@ -2476,6 +2492,21 @@ export const en = {
   "bots.why.customSignal": "Every entry rule held on the candle's close: {rules}.",
   "bots.preview":
     "Preview: bots don't run yet. Backtests run on this page on sample candles, and nothing is sent to a venue.",
+  "bots.engine.note":
+    "Backtests run in the engine on the venue's own candles. A bot paper trades for 7 days before it can go live, and every live order goes through the trading gate.",
+  "bots.engine.running": "Running the backtest on the venue's candles…",
+  "bots.engine.failed": "The backtest couldn't run: {reason}",
+  "bots.engine.goLiveConfirm":
+    "Take this bot live on {account}? It sends real orders, through the trading gate, within its limits.",
+  "bots.event.halted": "Stopped: {reason}",
+  "bots.mode.paper": "Paper",
+  "bots.note.limit": "Bot stopped at its limit",
+  "bots.note.failed": "Bot stopped",
+  "bots.reason.dailyLoss": "its daily loss limit",
+  "bots.reason.maxPosition": "its position limit",
+  "bots.reason.ordersPerMinute": "too many orders a minute",
+  "bots.reason.stopOut": "its stop-loss",
+  "bots.reason.appClosed": "the app was closed",
   "bots.noTrades": "No trades in this run.",
   "bots.noTradesCustom":
     "No trades: the entry rules never all held on the same candle. Try fewer or looser rules.",

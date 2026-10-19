@@ -29,7 +29,8 @@ export interface BotPosition {
 export interface BotEvent {
   /** Unix ms. */
   time: number;
-  kind: "bought" | "paused" | "stoppedByLimit" | "backtestDone" | "started" | "stopped";
+  /** `halted`: stopped by the engine, with its reason (`values.reason`). */
+  kind: "bought" | "paused" | "stoppedByLimit" | "backtestDone" | "started" | "stopped" | "halted";
   values?: Record<string, string>;
 }
 

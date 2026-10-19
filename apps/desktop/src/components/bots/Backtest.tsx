@@ -1,7 +1,8 @@
 import { formatNumber, Select, t } from "@pewterdesk/ui";
 import { useMemo } from "react";
 import { LuArrowRight, LuCircleAlert, LuCircleCheck } from "react-icons/lu";
-import { type RunSpec, runBacktest, runStats, type Verdict, verdict } from "../../lib/backtest";
+import { type RunSpec, runStats, type Verdict, verdict } from "../../lib/backtest";
+import { resultOf, runError, useRuns } from "../../lib/botEngine";
 import { PAPER_DAYS } from "../../lib/bots";
 import { BacktestAnalysis } from "./BacktestAnalysis";
 import { BacktestCompare } from "./BacktestCompare";
@@ -76,12 +77,27 @@ export function Backtest({
   venueLabel,
 }: BacktestProps) {
   const spec = runs.find((r) => r.id === runId) ?? runs.at(-1);
-  const result = useMemo(() => (spec ? runBacktest(spec) : undefined), [spec]);
+  const version = useRuns();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` brings an engine run in
+  const result = useMemo(() => (spec ? resultOf(spec) : undefined), [spec, version]);
   const stats = useMemo(() => (result ? runStats(result) : undefined), [result]);
   const assessed = useMemo(
     () => (result && stats ? verdict(result, stats) : undefined),
     [result, stats],
   );
+  if (spec && !result) {
+    const failed = runError(spec);
+    return (
+      <>
+        <button type="button" className="bt-button" onClick={onBack}>
+          {t("bots.back")}
+        </button>
+        <p className="pd-empty" role="status">
+          {failed ? t("bots.engine.failed", { reason: failed }) : t("bots.engine.running")}
+        </p>
+      </>
+    );
+  }
   if (!spec || !result || !stats || !assessed) {
     return (
       <>

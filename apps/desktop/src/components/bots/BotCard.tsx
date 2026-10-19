@@ -17,6 +17,7 @@ const EVENT: Record<BotEvent["kind"], MessageKey> = {
   backtestDone: "bots.event.backtestDone",
   started: "bots.event.started",
   stopped: "bots.event.stopped",
+  halted: "bots.event.halted",
 };
 
 const time = () =>
@@ -77,6 +78,8 @@ interface BotCardProps {
   onPause: () => void;
   onStop: (flatten: boolean) => void;
   onStartPaper: () => void;
+  /** Takes it live (after its paper run); unset where nothing can go live. */
+  onGoLive?: () => void;
   /** Opens the bot's backtest, where it has one. */
   onOpenBacktest?: () => void;
 }
@@ -90,6 +93,7 @@ export function BotCard({
   onPause,
   onStop,
   onStartPaper,
+  onGoLive,
   onOpenBacktest,
 }: BotCardProps) {
   const can = botActions(bot);
@@ -213,10 +217,13 @@ export function BotCard({
           <button
             type="button"
             className="bt-button"
-            disabled
+            disabled={!(can.goLive && onGoLive)}
+            onClick={onGoLive}
             title={
               can.goLive
-                ? t("bots.goLiveNotYet")
+                ? onGoLive
+                  ? undefined
+                  : t("bots.goLiveNotYet")
                 : t("bots.goLiveAfter", { days: PAPER_DAYS - (bot.paperDay ?? 0) })
             }
           >

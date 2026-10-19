@@ -1,0 +1,1269 @@
+{
+  "note": "The command language's contract: apps/desktop/tests/commandFixtures.test.ts and crates/protocol both read it. Regenerate with UPDATE_FIXTURES=1.",
+  "version": 1,
+  "pages": ["trade", "portfolio", "charts", "bots", "rules", "venues", "news", "maps", "settings"],
+  "contexts": {
+    "main": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "BTCUSDT",
+          "symbol": "BTC-USDT",
+          "base": "BTC",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.001",
+          "minSize": "0.001",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "ETHUSDT",
+          "symbol": "ETH-USDT",
+          "base": "ETH",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "HYPEUSDT",
+          "symbol": "HYPE-USDT",
+          "base": "HYPE",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "HYPERUSDT",
+          "symbol": "HYPER-USDT",
+          "base": "HYPER",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "ETHUSDT",
+      "positions": [
+        {
+          "market": "ETHUSDT",
+          "side": "long",
+          "size": "2"
+        }
+      ],
+      "orders": [
+        {
+          "id": "1",
+          "market": "HYPEUSDT"
+        },
+        {
+          "id": "2",
+          "market": "HYPEUSDT"
+        },
+        {
+          "id": "3",
+          "market": "BTCUSDT"
+        }
+      ]
+    },
+    "exits": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "ETHUSDT",
+          "symbol": "ETHUSDT",
+          "base": "ETH",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "ETHUSDT",
+      "positions": [],
+      "orders": []
+    },
+    "sol": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "SOLPERP",
+          "symbol": "SOLPERP",
+          "base": "SOL",
+          "quote": "USDC",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "SOLUSDT",
+          "symbol": "SOLUSDT",
+          "base": "SOL",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "SOLUSDT",
+      "positions": [],
+      "orders": []
+    },
+    "solPerp": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "SOLPERP",
+          "symbol": "SOLPERP",
+          "base": "SOL",
+          "quote": "USDC",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "SOLUSDT",
+          "symbol": "SOLUSDT",
+          "base": "SOL",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "SOLPERP",
+      "positions": [],
+      "orders": []
+    },
+    "solDated": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "SOLPERP",
+          "symbol": "SOLPERP",
+          "base": "SOL",
+          "quote": "USDC",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "SOLUSDT-16OCT26",
+          "symbol": "SOLUSDT-16OCT26",
+          "base": "SOL",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "SOLUSDT",
+          "symbol": "SOLUSDT",
+          "base": "SOL",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "positions": [],
+      "orders": []
+    },
+    "cli": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "BTCUSDT",
+          "symbol": "BTCUSDT",
+          "base": "BTC",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.001",
+          "minSize": "0.001",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "ETHUSDT",
+          "symbol": "ETHUSDT",
+          "base": "ETH",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.001",
+          "minSize": "0.001",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "BTCUSDT",
+      "positions": [
+        {
+          "market": "ETHUSDT",
+          "side": "long",
+          "size": "2"
+        }
+      ],
+      "orders": [
+        {
+          "id": "o1",
+          "market": "BTCUSDT"
+        }
+      ]
+    },
+    "short": {
+      "markets": [
+        {
+          "venue": "bybit",
+          "id": "BTCUSDT",
+          "symbol": "BTC-USDT",
+          "base": "BTC",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.001",
+          "minSize": "0.001",
+          "maxLeverage": 50
+        },
+        {
+          "venue": "bybit",
+          "id": "ETHUSDT",
+          "symbol": "ETH-USDT",
+          "base": "ETH",
+          "quote": "USDT",
+          "tickSize": "0.1",
+          "sizeStep": "0.01",
+          "minSize": "0.01",
+          "maxLeverage": 50
+        }
+      ],
+      "current": "BTCUSDT",
+      "positions": [
+        {
+          "market": "BTCUSDT",
+          "side": "short",
+          "size": "0.5"
+        }
+      ],
+      "orders": []
+    },
+    "empty": {
+      "markets": [],
+      "positions": [],
+      "orders": []
+    }
+  },
+  "commands": [
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00",
+        "price": "38.2"
+      }
+    },
+    {
+      "context": "main",
+      "line": "Short BTC 0.0105 @ 80,000",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "BTCUSDT",
+        "size": "0.010",
+        "price": "80000"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 2 eth @2500",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "2.00",
+        "price": "2500"
+      }
+    },
+    {
+      "context": "main",
+      "line": "long 1.5",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "1.50"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy hype 100",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00"
+      }
+    },
+    {
+      "context": "main",
+      "line": "  BUY   100   HYPE  ",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 0.001 btc",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "BTCUSDT",
+        "size": "0.001"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 0.0019 btc",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "BTCUSDT",
+        "size": "0.001"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 1,250.5 hype at 1,000",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "1250.50",
+        "price": "1000"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy .5 eth",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "0.50"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hyper at 1",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPERUSDT",
+        "size": "100.00",
+        "price": "1"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 100 HYPEUSDT",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype-usdt",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 nope",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 0 hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 0.0001 btc",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at cheap",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 200 hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype now please",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "bought 100 hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy -1 hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 1e3 hype",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "   ",
+      "intent": null
+    },
+    {
+      "context": "empty",
+      "line": "buy 1",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "close eth",
+      "intent": {
+        "kind": "close",
+        "market": "ETHUSDT"
+      }
+    },
+    {
+      "context": "main",
+      "line": "close",
+      "intent": {
+        "kind": "close",
+        "market": "ETHUSDT"
+      }
+    },
+    {
+      "context": "main",
+      "line": "close btc",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "close eth now",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "cancel all",
+      "intent": {
+        "kind": "cancel",
+        "orders": ["1", "2", "3"]
+      }
+    },
+    {
+      "context": "main",
+      "line": "cancel all hype",
+      "intent": {
+        "kind": "cancel",
+        "market": "HYPEUSDT",
+        "orders": ["1", "2"]
+      }
+    },
+    {
+      "context": "main",
+      "line": "cancel btc",
+      "intent": {
+        "kind": "cancel",
+        "market": "BTCUSDT",
+        "orders": ["3"]
+      }
+    },
+    {
+      "context": "main",
+      "line": "cancel eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "cancel",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "cancel all nope",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "cancel hype btc",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 50% eth",
+      "intent": {
+        "kind": "reduce",
+        "market": "ETHUSDT",
+        "fraction": "0.5"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 100% eth at 2500",
+      "intent": {
+        "kind": "reduce",
+        "market": "ETHUSDT",
+        "fraction": "1",
+        "price": "2500"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 33% eth",
+      "intent": {
+        "kind": "reduce",
+        "market": "ETHUSDT",
+        "fraction": "0.33"
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 50% eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 50% btc",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 150% eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 0% eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 50% eth at 2500 to 2400",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "sell 50% eth sl 2000",
+      "intent": null
+    },
+    {
+      "context": "short",
+      "line": "buy 25% btc",
+      "intent": {
+        "kind": "reduce",
+        "market": "BTCUSDT",
+        "fraction": "0.25"
+      }
+    },
+    {
+      "context": "short",
+      "line": "sell 25% btc",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "tp eth 2600",
+      "intent": {
+        "kind": "protect",
+        "market": "ETHUSDT",
+        "exit": "tp",
+        "price": "2600"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sl off",
+      "intent": {
+        "kind": "protect",
+        "market": "ETHUSDT",
+        "exit": "sl"
+      }
+    },
+    {
+      "context": "main",
+      "line": "sl eth remove",
+      "intent": {
+        "kind": "protect",
+        "market": "ETHUSDT",
+        "exit": "sl"
+      }
+    },
+    {
+      "context": "main",
+      "line": "tp 2700",
+      "intent": {
+        "kind": "protect",
+        "market": "ETHUSDT",
+        "exit": "tp",
+        "price": "2700"
+      }
+    },
+    {
+      "context": "main",
+      "line": "tp btc 90000",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "tp eth soon",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "tp",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "tp eth 2600 now",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2 to 37.8",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "HYPEUSDT",
+        "size": "100.00",
+        "price": "38.2",
+        "to": "37.8",
+        "count": 5
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 3 eth @2500 to 2600 x3",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "3.00",
+        "price": "2500",
+        "to": "2600",
+        "count": 3
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 3 eth at 2500 to 2600 in 2 orders",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "3.00",
+        "price": "2500",
+        "to": "2600",
+        "count": 2
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 3 eth at 2500 to 2600 x10",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "3.00",
+        "price": "2500",
+        "to": "2600",
+        "count": 10
+      }
+    },
+    {
+      "context": "main",
+      "line": "sell 3 eth at 2500 to 2600 4",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "3.00",
+        "price": "2500",
+        "to": "2600",
+        "count": 4
+      }
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2 to 37.8 x50",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 0.002 btc at 80000 to 79000 x5",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2 to 38.2",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2 37.8",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "buy 100 hype at 38.2 to 37.8 x1",
+      "intent": null
+    },
+    {
+      "context": "exits",
+      "line": "sell 10 eth sl 2600 tp 2300",
+      "intent": {
+        "kind": "order",
+        "side": "sell",
+        "market": "ETHUSDT",
+        "size": "10.00",
+        "stopLoss": "2600",
+        "takeProfit": "2300"
+      }
+    },
+    {
+      "context": "exits",
+      "line": "buy 1 eth sl 2300 at 2400",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "1.00",
+        "price": "2400",
+        "stopLoss": "2300"
+      }
+    },
+    {
+      "context": "exits",
+      "line": "buy 5 eth at 2400 to 2300 x5 sl 2200",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "5.00",
+        "price": "2400",
+        "to": "2300",
+        "count": 5,
+        "stopLoss": "2200"
+      }
+    },
+    {
+      "context": "exits",
+      "line": "buy 1 eth sl",
+      "intent": null
+    },
+    {
+      "context": "exits",
+      "line": "buy 1 eth sl soon",
+      "intent": null
+    },
+    {
+      "context": "exits",
+      "line": "buy 1 eth",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "1.00"
+      }
+    },
+    {
+      "context": "exits",
+      "line": "buy 1 eth tp 2500",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "ETHUSDT",
+        "size": "1.00",
+        "takeProfit": "2500"
+      }
+    },
+    {
+      "context": "sol",
+      "line": "buy 0.5 sol",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "SOLUSDT",
+        "size": "0.50"
+      }
+    },
+    {
+      "context": "solPerp",
+      "line": "buy 0.5 sol",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "SOLPERP",
+        "size": "0.50"
+      }
+    },
+    {
+      "context": "solPerp",
+      "line": "buy 0.5 solusdt",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "SOLUSDT",
+        "size": "0.50"
+      }
+    },
+    {
+      "context": "solDated",
+      "line": "buy 0.5 sol",
+      "intent": {
+        "kind": "order",
+        "side": "buy",
+        "market": "SOLUSDT",
+        "size": "0.50"
+      }
+    },
+    {
+      "context": "main",
+      "line": "chase buy 0.5 eth",
+      "intent": {
+        "kind": "chase",
+        "side": "buy",
+        "size": "0.50",
+        "market": "ETHUSDT",
+        "finish": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "chase sell eth 1 to 0.5% then market",
+      "intent": {
+        "kind": "chase",
+        "side": "sell",
+        "size": "1.00",
+        "market": "ETHUSDT",
+        "giveUpPct": "0.5",
+        "finish": true
+      }
+    },
+    {
+      "context": "main",
+      "line": "chase buy 1 eth to 2%",
+      "intent": {
+        "kind": "chase",
+        "side": "buy",
+        "size": "1.00",
+        "market": "ETHUSDT",
+        "giveUpPct": "2",
+        "finish": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "chase buy 1 eth then market",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "chase 1 eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "chase buy 1 eth to 80%",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "chase buy 1 eth to 0%",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "chase buy 1 eth then limit to 1%",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "chase long 1",
+      "intent": {
+        "kind": "chase",
+        "side": "buy",
+        "size": "1.00",
+        "market": "ETHUSDT",
+        "finish": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth over 30m",
+      "intent": {
+        "kind": "twap",
+        "side": "sell",
+        "size": "10.00",
+        "market": "ETHUSDT",
+        "durationMs": 1800000,
+        "chase": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "twap buy 2 btc 1h30m x6 chase",
+      "intent": {
+        "kind": "twap",
+        "side": "buy",
+        "size": "2.000",
+        "market": "BTCUSDT",
+        "durationMs": 5400000,
+        "slices": 6,
+        "chase": true
+      }
+    },
+    {
+      "context": "main",
+      "line": "twap buy 2 btc in 2d",
+      "intent": {
+        "kind": "twap",
+        "side": "buy",
+        "size": "2.000",
+        "market": "BTCUSDT",
+        "durationMs": 172800000,
+        "chase": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth 5s",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth 8d",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell eth 30m",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth 30m x0",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth 30m x501",
+      "intent": null
+    },
+    {
+      "context": "main",
+      "line": "twap sell 10 eth 45s",
+      "intent": {
+        "kind": "twap",
+        "side": "sell",
+        "size": "10.00",
+        "market": "ETHUSDT",
+        "durationMs": 45000,
+        "chase": false
+      }
+    },
+    {
+      "context": "main",
+      "line": "halt",
+      "intent": {
+        "kind": "halt"
+      }
+    },
+    {
+      "context": "main",
+      "line": "HALT",
+      "intent": {
+        "kind": "halt"
+      }
+    },
+    {
+      "context": "main",
+      "line": "halt eth",
+      "intent": null
+    }
+  ],
+  "lines": [
+    {
+      "context": "cli",
+      "line": "help",
+      "result": {
+        "kind": "help"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "?",
+      "result": {
+        "kind": "help"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "  POS ",
+      "result": {
+        "kind": "positions"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "orders",
+      "result": {
+        "kind": "orders"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "bal",
+      "result": {
+        "kind": "balance"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "equity",
+      "result": {
+        "kind": "balance"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "clear",
+      "result": {
+        "kind": "clear"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "cls",
+      "result": {
+        "kind": "clear"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "",
+      "result": null
+    },
+    {
+      "context": "cli",
+      "line": "dance",
+      "result": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "help me",
+      "result": {
+        "kind": "unknown"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "price eth",
+      "result": {
+        "kind": "price",
+        "market": "ETHUSDT"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "p",
+      "result": {
+        "kind": "price",
+        "market": "BTCUSDT"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "market eth",
+      "result": {
+        "kind": "market",
+        "market": "ETHUSDT"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "m",
+      "result": {
+        "kind": "market",
+        "market": "BTCUSDT"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "price doge",
+      "result": {
+        "kind": "missing",
+        "what": "market",
+        "word": "doge"
+      }
+    },
+    {
+      "context": "empty",
+      "line": "price",
+      "result": {
+        "kind": "missing",
+        "what": "market",
+        "word": ""
+      }
+    },
+    {
+      "context": "cli",
+      "line": "go portfolio",
+      "result": {
+        "kind": "page",
+        "page": "portfolio"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "go settings",
+      "result": {
+        "kind": "page",
+        "page": "settings"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "page rules",
+      "result": {
+        "kind": "page",
+        "page": "rules"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "go nowhere",
+      "result": {
+        "kind": "missing",
+        "what": "page",
+        "word": "nowhere"
+      }
+    },
+    {
+      "context": "cli",
+      "line": "go",
+      "result": {
+        "kind": "missing",
+        "what": "page",
+        "word": ""
+      }
+    },
+    {
+      "context": "cli",
+      "line": "buy 0.01 btc",
+      "result": {
+        "kind": "trade",
+        "intent": {
+          "kind": "order",
+          "side": "buy",
+          "market": "BTCUSDT",
+          "size": "0.010"
+        }
+      }
+    },
+    {
+      "context": "cli",
+      "line": "sell 50% eth",
+      "result": {
+        "kind": "trade",
+        "intent": {
+          "kind": "reduce",
+          "market": "ETHUSDT",
+          "fraction": "0.5"
+        }
+      }
+    },
+    {
+      "context": "cli",
+      "line": "cancel all",
+      "result": {
+        "kind": "trade",
+        "intent": {
+          "kind": "cancel",
+          "orders": ["o1"]
+        }
+      }
+    },
+    {
+      "context": "cli",
+      "line": "halt",
+      "result": {
+        "kind": "trade",
+        "intent": {
+          "kind": "halt"
+        }
+      }
+    }
+  ]
+}

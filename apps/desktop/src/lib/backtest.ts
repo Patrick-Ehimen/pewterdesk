@@ -81,6 +81,11 @@ export interface RunSpec {
   bars: number;
   /** The newest candle's open, in ms. */
   end: number;
+  /**
+   * Whose candles: the venue's own, run by the engine (`lib/botEngine.ts`);
+   * unset, sample candles made in the page from `seed`.
+   */
+  source?: "venue";
   /** The last of the run held out from tuning, in days. */
   holdOutDays: number;
   capital: number;

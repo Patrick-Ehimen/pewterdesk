@@ -757,6 +757,8 @@ export const messages: Messages = {
     "규칙 확인을 위한 계정 정보를 읽지 못해 주문을 보내지 않았습니다. 청산은 가능합니다.",
   "rules.block.unrecorded":
     "주문을 앱의 이벤트 로그에 기록하지 못해 전송하지 않았습니다. 포지션 청산과 축소는 계속 가능합니다.",
+  "rules.block.anotherEngine":
+    "pewterdesk 데몬(pdd)이 이 계정으로 거래 중이라 이 창에서는 거래할 수 없습니다. pdd를 종료하거나 pd로 거래하세요.",
   "rules.block.lockedAmend": "신규 주문이 잠겨 있습니다: 주문을 키울 수 없습니다.",
   "rules.block.lockedStop":
     "신규 주문이 잠겨 있습니다: 스탑은 가깝게만 옮길 수 있고, 멀리 옮기거나 제거할 수 없습니다.",
@@ -833,6 +835,8 @@ export const messages: Messages = {
   "rules.needsStop": "스탑 필요",
   "rules.news": "뉴스 전후 중단",
   "rules.newsHint": "경제 캘린더의 중요도 높은 USD 지표(CPI, FOMC, 고용) 앞뒤로",
+  "rules.noBots": "봇 금지",
+  "rules.noBotsHint": "이 계정에서는 봇이 실거래할 수 없음 (봇을 금지하는 프랍 펌용)",
   "rules.block.news": "뉴스 차단 중: 중요도 높은 USD 지표가 너무 가깝습니다.",
   "rules.block.newsUnchecked": "뉴스 차단을 확인할 경제 캘린더를 읽지 못했습니다.",
   "rules.newsActive": "차단 중",
@@ -1409,6 +1413,18 @@ export const messages: Messages = {
   "settings.tradesView": "체결 보기",
   "settings.advanced.desc":
     "이 기기에 저장된 설정을 초기화합니다. 키나 거래소에는 영향이 없습니다.",
+  "settings.alwaysOn.title": "항상 켜짐",
+  "settings.alwaysOn.help":
+    "거래 엔진을 백그라운드(pdd)에서 실행해 앱을 종료해도 알고가 계속 돌아갑니다. 끄면 알고를 멈추고 주문을 취소합니다.",
+  "settings.alwaysOn.unavailable": "macOS와 앱에 포함된 pdd가 필요합니다.",
+  "settings.alwaysOn.running": "pdd가 실행 중이며 이 앱과 페어링되어 있습니다.",
+  "settings.alwaysOn.unreachable":
+    "pdd에 연결할 수 없습니다. 연결될 때까지 주문과 새 알고는 거부됩니다(취소는 가능).",
+  "settings.alwaysOn.unpaired": "pdd가 실행 중입니다. 이 앱을 페어링하면 pdd를 통해 거래합니다.",
+  "settings.alwaysOn.approve": "코드 {code}가 표시된 pewterdesk 대화상자를 승인하세요.",
+  "settings.alwaysOn.pair": "pdd와 페어링",
+  "settings.alwaysOn.denied": "페어링이 거부되었습니다.",
+  "settings.alwaysOn.expired": "시간 내에 승인되지 않았습니다.",
   "settings.resetLayout": "레이아웃 초기화",
   "settings.resetLayoutHelp": "패널을 기본 배치로 되돌립니다.",
   "settings.clearWatchlist": "관심 목록 비우기",
@@ -2494,6 +2510,21 @@ export const messages: Messages = {
   "bots.why.customSignal": "캔들 종가에서 모든 진입 규칙이 충족됨: {rules}.",
   "bots.preview":
     "미리보기: 봇은 아직 실행되지 않습니다. 백테스트는 이 페이지에서 샘플 캔들로 실행되며, 거래소로는 아무것도 보내지 않습니다.",
+  "bots.engine.note":
+    "백테스트는 거래소 캔들로 엔진에서 실행됩니다. 봇은 실거래 전 7일간 모의 거래하며, 모든 실주문은 거래 게이트를 거칩니다.",
+  "bots.engine.running": "거래소 캔들로 백테스트 실행 중…",
+  "bots.engine.failed": "백테스트를 실행할 수 없습니다: {reason}",
+  "bots.engine.goLiveConfirm":
+    "이 봇을 {account}에서 실거래로 전환할까요? 거래 게이트를 거쳐 한도 안에서 실제 주문을 보냅니다.",
+  "bots.event.halted": "중지됨: {reason}",
+  "bots.mode.paper": "모의",
+  "bots.note.limit": "봇이 한도에서 중지됨",
+  "bots.note.failed": "봇이 중지됨",
+  "bots.reason.dailyLoss": "일일 손실 한도",
+  "bots.reason.maxPosition": "포지션 한도",
+  "bots.reason.ordersPerMinute": "분당 주문이 너무 많음",
+  "bots.reason.stopOut": "손절",
+  "bots.reason.appClosed": "앱이 종료됨",
   "bots.noTrades": "이 테스트에는 거래가 없습니다.",
   "bots.noTradesCustom":
     "거래 없음: 같은 캔들에서 모든 진입 규칙이 충족된 적이 없습니다. 규칙을 줄이거나 완화해 보세요.",

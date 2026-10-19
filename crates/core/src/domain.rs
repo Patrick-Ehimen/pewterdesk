@@ -833,6 +833,11 @@ pub enum Origin {
     /// The engine itself: a halt, cleaning up after an algo the app closed
     /// on, or the venue's dead-man's switch.
     Engine,
+    /// The `pd` command line, through the daemon. The daemon sets it for
+    /// every command a `pd` client sends, whatever the client says.
+    Pd,
+    /// A bot, sending what its strategy asked for (the bot's id on the command).
+    Bot,
 }
 
 impl Origin {
@@ -851,6 +856,8 @@ impl Origin {
             Self::App => "app",
             Self::Algo => "algo",
             Self::Engine => "engine",
+            Self::Pd => "pd",
+            Self::Bot => "bot",
         }
     }
 }

@@ -2,10 +2,12 @@ use tauri::Manager;
 
 mod about;
 mod algos;
+mod bots;
 mod browser_connect;
 mod bybit_key;
 mod chart_window;
 mod coin_info;
+mod daemon;
 mod econ_calendar;
 mod float;
 mod keychain;
@@ -65,25 +67,42 @@ pub fn run() {
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
         .manage(news_feeds::NewsState::new().expect("failed to set up the news client"))
-        .manage(econ_calendar::CalendarState::new().expect("failed to set up the calendar client"))
+        .manage(
+            econ_calendar::CalendarState::new(env!("CARGO_PKG_VERSION"))
+                .expect("failed to set up the calendar client"),
+        )
         .manage(news_wire::NewsWireState::new().expect("failed to set up the news wire client"))
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
+        .manage(daemon::DaemonLink::new())
         .setup(|app| {
             // The engine's router and its gate: which live accounts may
             // trade, and the trader's own rules, kept in the config folder;
             // and its event log, in the data folder. Without the log no
             // opening order is sent (the engine refuses it).
             let config = app.path().app_config_dir().ok();
-            let log = app
-                .path()
-                .app_data_dir()
-                .ok()
+            let data = app.path().app_data_dir().ok();
+            let log = data
+                .as_ref()
                 .and_then(|dir| pewterdesk_engine::EventLog::open(&dir.join(EVENT_LOG)).ok());
-            app.manage(pewterdesk_engine::Engine::load(config.as_deref(), log));
+            let mut engine = pewterdesk_engine::Engine::load(config.as_deref(), log);
+            // One engine per account: an account the daemon (`pdd`) trades
+            // is refused here, and the other way round.
+            if let Some(dir) = &data {
+                engine = engine.with_locks(dir.join(pewterdesk_engine::owner::LOCK_DIR));
+            }
+            app.manage(engine);
+            // Closed candles kept for bots' backtests and paper runs.
+            if let Some(recorder) = data.as_ref().and_then(|dir| {
+                pewterdesk_engine::Recorder::open(&dir.join("candles.sqlite3")).ok()
+            }) {
+                app.manage(std::sync::Arc::new(recorder));
+            }
             // Algos run on the engine here; any the app closed on are dealt
             // with now.
             algos::install(app.handle());
+            // With always on, the link to pdd: kept up while the app runs.
+            daemon::install(app.handle());
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
@@ -209,6 +228,19 @@ pub fn run() {
             algos::resume_algo,
             algos::stop_algo,
             algos::halt_algos,
+            bots::bots,
+            bots::bot_create,
+            bots::bot_backtest,
+            bots::bot_start,
+            bots::bot_go_live,
+            bots::bot_pause,
+            bots::bot_resume,
+            bots::bot_stop,
+            bots::bot_delete,
+            daemon::daemon_state,
+            daemon::set_always_on,
+            daemon::daemon_pair,
+            daemon::daemon_pair_status,
             coin_info::coin_info,
             coin_info::coin_logo,
             coin_info::coin_markets,
