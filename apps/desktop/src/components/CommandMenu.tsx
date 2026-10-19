@@ -1,4 +1,5 @@
 import type {
+  AlgoSpec,
   Market,
   MarketSummary,
   Order,
@@ -33,6 +34,9 @@ import {
   LuStore,
   LuX,
 } from "react-icons/lu";
+import type { AlgoTarget } from "../lib/algos";
+import { algoLine, algoWhere } from "../lib/algoText";
+import { actionFor } from "../lib/cli";
 import {
   type Intent,
   loadRecent,
@@ -85,6 +89,12 @@ interface CommandMenuProps {
   cancel?: (order: Order) => Promise<void>;
   /** Sets a position's exits; unset where they can't be. */
   protect?: (position: Position, protection: PositionProtection) => Promise<void>;
+  /** Starts an algo; unset where none can be (no account that may trade, or paper). */
+  startAlgo?: (spec: AlgoSpec) => Promise<void>;
+  /** Who an algo trades for. */
+  algoTarget?: AlgoTarget;
+  /** Stops every algo and cancels what they placed. */
+  halt?: () => Promise<void>;
   /** The themes and venues that can be switched to, by name. */
   themes: readonly { value: string; label: string }[];
   onTheme: (theme: string) => void;
@@ -116,6 +126,9 @@ export function CommandMenu({
   place,
   cancel,
   protect,
+  startAlgo,
+  algoTarget,
+  halt,
   themes,
   onTheme,
   venues,
@@ -350,6 +363,37 @@ export function CommandMenu({
       onRun: twice("cancel", () =>
         cancel ? Promise.allSettled(intent.orders.map((o) => cancel(o))) : Promise.resolve(),
       ),
+    });
+  } else if (intent?.kind === "chase" || intent?.kind === "twap") {
+    const action = actionFor(intent, maxSlippageBps, algoTarget);
+    const spec = action.kind === "algo" ? action.spec : undefined;
+    const label = algoLine(intent);
+    describe("algo", {
+      badge: t("cmd.algoBadge"),
+      tone: intent.side,
+      title: label,
+      detail: spec ? algoWhere(spec) : undefined,
+    });
+    actions.push({
+      id: "algo",
+      icon: <LuArrowRight size={15} />,
+      label,
+      disabled: spec && startAlgo ? undefined : t("cmd.noAlgos"),
+      onRun: twice("algo", () => (spec && startAlgo ? startAlgo(spec) : Promise.resolve())),
+    });
+  } else if (intent?.kind === "halt") {
+    describe("halt", {
+      badge: t("cmd.haltBadge"),
+      tone: "plain",
+      title: t("cmd.halt"),
+      detail: t("cmd.haltDetail"),
+    });
+    actions.push({
+      id: "halt",
+      icon: <LuX size={15} />,
+      label: t("cmd.halt"),
+      disabled: halt ? undefined : t("cmd.noAlgos"),
+      onRun: twice("halt", () => (halt ? halt() : Promise.resolve())),
     });
   }
 

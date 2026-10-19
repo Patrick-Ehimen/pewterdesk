@@ -227,7 +227,8 @@ export type PaperError =
   | "price"
   | "hasPosition"
   | "amount"
-  | "tooMuch";
+  | "tooMuch"
+  | "unsupported";
 
 function pushHistory(state: PaperState, o: PaperOrder, status: Order["status"], filled: number) {
   state.history = keep([toOrder(state.venue, o, status, filled), ...state.history]);
@@ -246,6 +247,8 @@ export function placeOrder(
   fees: Fees,
   now: number,
 ): PaperResult & { error?: PaperError } {
+  // A venue-run TWAP has nothing to simulate it here.
+  if (request.type === "twap") return { state: current, error: "unsupported" };
   const quote = quotes[market.id];
   if (!quote || !(quote.mark > 0)) return { state: current, error: "noPrice" };
   const state = clone(current);

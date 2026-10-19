@@ -2599,3 +2599,248 @@ button.coin-chip:hover {
     var(--pd-surface);
   box-shadow: inset 2px 0 0 var(--pd-info);
 }
+
+/* Algos panel: running and past algo orders, and the form to start one.
+   Colours only from --pd-* tokens; green and red mark the side only, brass
+   only the primary action. */
+.algos-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+}
+.algo-tabs-aside {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.algo-button {
+  padding: 4px 10px;
+  background: var(--pd-bg);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  color: var(--pd-text);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.algo-button:hover:not(:disabled) {
+  background: var(--pd-surface-raised);
+}
+.algo-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.algo-button[data-primary] {
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
+.algo-button[data-primary]:hover:not(:disabled) {
+  background: var(--pd-brass-hover);
+}
+/* Destructive: the warning token - red is reserved for market data */
+.algo-button[data-danger] {
+  border-color: var(--pd-warning);
+  color: var(--pd-warning);
+}
+.algo-button[data-danger][data-armed] {
+  background: var(--pd-warning);
+  color: var(--pd-bg);
+  font-weight: 600;
+}
+.algo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.algo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.algo-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12.5px;
+}
+.algo-kind {
+  font-weight: 600;
+}
+.algo-side[data-side="buy"] {
+  color: var(--pd-buy);
+}
+.algo-side[data-side="sell"] {
+  color: var(--pd-sell);
+}
+.algo-market {
+  color: var(--pd-text);
+}
+.algo-where {
+  padding: 1px 6px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.algo-where[data-where="venue"] {
+  color: var(--pd-text);
+}
+.algo-status {
+  margin-left: auto;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.algo-status[data-status="paused"],
+.algo-status[data-status="failed"] {
+  color: var(--pd-warning);
+}
+.algo-bar {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--pd-border);
+}
+.algo-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--pd-pewter);
+  transition: width 0.3s ease;
+}
+.algo-row[data-status="finished"] .algo-bar-fill {
+  background: var(--pd-text);
+}
+.algo-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 12px;
+}
+.algo-figure {
+  display: flex;
+  gap: 6px;
+}
+.algo-figures dt {
+  color: var(--pd-pewter);
+}
+.algo-figures dd {
+  margin: 0;
+}
+.algo-detail {
+  margin: 0;
+  color: var(--pd-warning);
+  font-size: 12px;
+}
+.algo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.algo-note {
+  margin: 8px 12px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.algo-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 12px;
+  padding: 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  background: var(--pd-surface);
+}
+.algo-form-row,
+.algo-form-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+}
+.algo-sides label[data-checked][data-side="buy"] {
+  color: var(--pd-buy);
+}
+.algo-sides label[data-checked][data-side="sell"] {
+  color: var(--pd-sell);
+}
+.algo-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.algo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.algo-field-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.algo-field-input .pd-input {
+  width: 100%;
+  min-width: 0;
+}
+.algo-suffix {
+  color: var(--pd-pewter-dim);
+}
+.algo-option {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+}
+.algo-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--pd-text);
+  font-size: 12px;
+}
+/* Over the price chart: the algos on the market on screen */
+.markets-chart {
+  position: relative;
+}
+.algo-chips {
+  position: absolute;
+  top: 40px;
+  right: 72px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+  pointer-events: none;
+}
+.algo-chip {
+  display: inline-flex;
+  gap: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  font-size: 11px;
+}
+.algo-chip[data-side="buy"] strong {
+  color: var(--pd-buy);
+}
+.algo-chip[data-side="sell"] strong {
+  color: var(--pd-sell);
+}
+.algo-chip[data-status="paused"] {
+  border-color: var(--pd-warning);
+}

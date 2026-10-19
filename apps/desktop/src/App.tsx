@@ -1,6 +1,7 @@
 import { logo, venueLogos } from "@pewterdesk/assets";
 import type {
   AccountSnapshot,
+  AlgoSpec,
   ClosedTrade,
   Fill,
   FundingPayment,
@@ -93,6 +94,7 @@ import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
+import { AlgoChartChips, AlgosPanel } from "./components/panels/AlgosPanel";
 import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
@@ -118,6 +120,7 @@ import { accountName } from "./components/wallet/AccountList";
 import { ApiKeyDialog } from "./components/wallet/ApiKeyDialog";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
+import { useAlgos } from "./hooks/useAlgos";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
@@ -155,6 +158,7 @@ import {
   subscribeAccounts,
 } from "./lib/account";
 import { accountEvents } from "./lib/accountEvents";
+import type { AlgoTarget } from "./lib/algos";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import {
   liquidationDistance,
@@ -1272,6 +1276,29 @@ export function App() {
     (id: string) => marketList.find((m) => m.id === id)?.symbol ?? id,
     [marketList],
   );
+  // Algo orders: the engine runs them; this keeps them on screen and says
+  // when one ends, or stops or pauses on its own.
+  const algoBook = useAlgos(symbolFor);
+  /** Who a new algo trades for: the live (or demo) account on screen, never paper. */
+  const algoTarget: AlgoTarget | undefined =
+    route === "live" && trading
+      ? {
+          venue: trading.venue,
+          account: trading.id,
+          maxSlippageBps: slippageBps(venueInfo.maxSlippage),
+        }
+      : undefined;
+  const algoUnavailable = paperOn ? t("algo.noPaper") : trading ? undefined : t("algo.noAccount");
+  /** Starts an algo from `origin`; unset where none can be started. */
+  const startAlgoFrom = (origin: Origin) =>
+    algoTarget
+      ? async (spec: AlgoSpec) => {
+          await algoBook.start(spec, origin);
+        }
+      : undefined;
+  const haltAlgos = async () => {
+    await algoBook.halt();
+  };
   /** A market's price tick, e.g. "0.1". */
   const tickFor = useCallback(
     (id: string) => marketList.find((m) => m.id === id)?.tickSize ?? "0.01",
@@ -1397,6 +1424,7 @@ export function App() {
             alerts={alerts}
             onProtect={from("chart").protect}
             showChart={chartRequest}
+            chartOverlay={<AlgoChartChips algos={algoBook.algos} market={selected} />}
           />
         );
       case "orderBook":
@@ -1461,6 +1489,24 @@ export function App() {
       case "calendar":
         // The week's economic calendar: text from Rust, no links.
         return <CalendarPanel />;
+      case "algos":
+        // Chasers, TWAPs and ladders: the engine runs them, through the same gate.
+        return (
+          <AlgosPanel
+            algos={algoBook.algos}
+            history={algoBook.history}
+            onLoadHistory={algoBook.loadHistory}
+            market={selected}
+            symbolFor={symbolFor}
+            target={algoTarget}
+            unavailable={algoUnavailable}
+            onStart={(spec) => algoBook.start(spec, "app")}
+            onPause={algoBook.pause}
+            onResume={algoBook.resume}
+            onStop={algoBook.stop}
+            onHalt={algoBook.halt}
+          />
+        );
       case "cli":
         // The palette's commands, typed into a panel; nothing is sent until confirmed.
         return (
@@ -1478,6 +1524,9 @@ export function App() {
             place={from("cli-panel").place}
             cancel={from("cli-panel").cancel}
             protect={from("cli-panel").protect}
+            startAlgo={startAlgoFrom("cli-panel")}
+            algoTarget={algoTarget}
+            halt={haltAlgos}
             onMarket={(marketId) => showMarket(venue, marketId)}
             onPage={goTo}
           />
@@ -2175,6 +2224,9 @@ export function App() {
           place={from("palette").place}
           cancel={from("palette").cancel}
           protect={from("palette").protect}
+          startAlgo={startAlgoFrom("palette")}
+          algoTarget={algoTarget}
+          halt={haltAlgos}
           themes={themeOptions()}
           onTheme={(theme) => {
             const next = THEMES.find((th) => th === theme);

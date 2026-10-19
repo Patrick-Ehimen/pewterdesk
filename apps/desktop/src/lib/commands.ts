@@ -1,5 +1,6 @@
 import type { Market, Order, OrderRequest, Position, PositionProtection } from "@pewterdesk/core";
 import { decimalsOf, roundToStep } from "@pewterdesk/ui";
+import { MAX_SLICES, parseDuration, TWAP_MAX_MS, TWAP_MIN_MS } from "./algos";
 
 /**
  * What a line typed into the command palette asks for. Parsing only: nothing
@@ -36,7 +37,31 @@ export type Intent =
   | { kind: "protect"; position: Position; market: Market; exit: "tp" | "sl"; price?: string }
   | { kind: "close"; position: Position; market?: Market }
   /** Every open order, or only `market`'s. */
-  | { kind: "cancel"; orders: Order[]; market?: Market };
+  | { kind: "cancel"; orders: Order[]; market?: Market }
+  /** A chaser: "chase buy 1 btc", "... to 0.5%" (give up), "... then market". */
+  | {
+      kind: "chase";
+      side: "buy" | "sell";
+      market: Market;
+      size: string;
+      /** Give up this far from the start, in percent. */
+      giveUpPct?: number;
+      /** On giving up, the rest at market. */
+      finish: boolean;
+    }
+  /** A TWAP: "twap sell 10 eth over 30m", "... x6" (slices), "... chase". */
+  | {
+      kind: "twap";
+      side: "buy" | "sell";
+      market: Market;
+      size: string;
+      durationMs: number;
+      slices?: number;
+      /** Each slice chased at the top of the book rather than sent at market. */
+      chase: boolean;
+    }
+  /** Stop every algo and cancel what they placed. */
+  | { kind: "halt" };
 
 export interface CommandContext {
   markets: readonly Market[];
@@ -92,6 +117,77 @@ export function findMarket(
   );
 }
 
+/**
+ * The size and the coin, in either order, from what's left of an algo line:
+ * the size cut to the market's step, and at least its minimum.
+ */
+function sizeAndMarket(
+  words: string[],
+  ctx: CommandContext,
+): { size: string; market: Market } | undefined {
+  if (words.length === 0 || words.length > 2) return undefined;
+  const sizeWord = words.find((w) => amount(w) !== undefined);
+  const coinWord = words.find((w) => amount(w) === undefined);
+  if (!sizeWord || words.length - (coinWord ? 1 : 0) !== 1) return undefined;
+  const market = coinWord ? findMarket(coinWord, ctx.markets, ctx.current) : ctx.current;
+  if (!market) return undefined;
+  const size = roundToStep(Number(amount(sizeWord)), market.sizeStep);
+  if (size.size <= 0 || size.size < Number(market.minSize)) return undefined;
+  return { size: size.text, market };
+}
+
+/** "chase buy 1 btc to 0.5% then market". */
+function parseChase(words: string[], ctx: CommandContext): Intent | undefined {
+  const side = SIDES[words[0] ?? ""];
+  if (!side) return undefined;
+  const rest = words.slice(1);
+  let finish = false;
+  const then = rest.indexOf("then");
+  if (then !== -1) {
+    if (rest[then + 1] !== "market") return undefined;
+    finish = true;
+    rest.splice(then, 2);
+  }
+  let giveUpPct: number | undefined;
+  const to = rest.indexOf("to");
+  if (to !== -1) {
+    const word = rest[to + 1];
+    const pct = word?.endsWith("%") ? Number(amount(word.slice(0, -1))) : Number.NaN;
+    if (!(pct > 0 && pct <= 50)) return undefined;
+    giveUpPct = pct;
+    rest.splice(to, 2);
+  }
+  // Finishing at market only means something with a give-up distance.
+  if (finish && giveUpPct === undefined) return undefined;
+  const sized = sizeAndMarket(rest, ctx);
+  return sized && { kind: "chase", side, ...sized, giveUpPct, finish };
+}
+
+/** "twap sell 10 eth over 30m x6 chase". */
+function parseTwap(words: string[], ctx: CommandContext): Intent | undefined {
+  const side = SIDES[words[0] ?? ""];
+  if (!side) return undefined;
+  const rest = words.slice(1).filter((w) => w !== "over" && w !== "in");
+  const chase = rest.includes("chase");
+  const kept = rest.filter((w) => w !== "chase");
+  const durationAt = kept.findIndex(
+    (w) => parseDuration(w) !== undefined && amount(w) === undefined,
+  );
+  if (durationAt === -1) return undefined;
+  const durationMs = parseDuration(kept[durationAt]) ?? 0;
+  if (durationMs < TWAP_MIN_MS || durationMs > TWAP_MAX_MS) return undefined;
+  kept.splice(durationAt, 1);
+  let slices: number | undefined;
+  const sliceAt = kept.findIndex((w) => /^x\d+$/.test(w));
+  if (sliceAt !== -1) {
+    slices = Number(kept[sliceAt]?.slice(1));
+    if (!Number.isInteger(slices) || slices < 1 || slices > MAX_SLICES) return undefined;
+    kept.splice(sliceAt, 1);
+  }
+  const sized = sizeAndMarket(kept, ctx);
+  return sized && { kind: "twap", side, ...sized, durationMs, slices, chase };
+}
+
 /** "50%" as a fraction, above 0 and at most 1. */
 function percent(word: string | undefined): number | undefined {
   const value = word?.endsWith("%") ? amount(word.slice(0, -1)) : undefined;
@@ -124,6 +220,12 @@ function scaleCount(words: string[]): number | undefined {
  *   both to put on the position it opens.
  * - `close eth`: the open position on that market (or the one on screen).
  * - `cancel all`, `cancel all hype`, `cancel hype`: open orders.
+ * - `chase buy 1 btc`: a chaser, resting at the top of the book until it
+ *   fills; `... to 0.5%` gives up that far from the start, `... to 0.5%
+ *   then market` sends the rest at market when it does.
+ * - `twap sell 10 eth over 30m`: a TWAP over that time (`45s`, `2h`,
+ *   `1h30m`, `2d`); `x6` sets the slices, `chase` chases each slice.
+ * - `halt`: stops every algo and cancels what they placed.
  *
  * Anything else isn't a command (it may still be a search).
  */
@@ -131,6 +233,9 @@ export function parseCommand(text: string, ctx: CommandContext): Intent | undefi
   const words = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const verb = words[0];
   if (!verb) return undefined;
+  if (verb === "halt" && words.length === 1) return { kind: "halt" };
+  if (verb === "chase") return parseChase(words.slice(1), ctx);
+  if (verb === "twap") return parseTwap(words.slice(1), ctx);
 
   const side = SIDES[verb];
   if (side) {

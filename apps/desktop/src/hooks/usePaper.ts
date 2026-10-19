@@ -57,6 +57,7 @@ const ERROR: Record<PaperError, MessageKey> = {
   hasPosition: "paper.error.hasPosition",
   amount: "paper.error.amount",
   tooMuch: "paper.error.tooMuch",
+  unsupported: "paper.error.unsupported",
 };
 
 export interface Paper {

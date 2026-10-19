@@ -9,7 +9,8 @@ export type PanelKind =
   | "positions"
   | "cli"
   | "calendar"
-  | "wire";
+  | "wire"
+  | "algos";
 
 export interface PanelSpec {
   titleKey: MessageKey;
@@ -30,6 +31,7 @@ export const PANELS: Record<PanelKind, PanelSpec> = {
   cli: { titleKey: "panel.cli", w: 10, h: 8, minW: 6, minH: 4 },
   calendar: { titleKey: "panel.calendar", w: 8, h: 12, minW: 5, minH: 5 },
   wire: { titleKey: "panel.wire", w: 7, h: 14, minW: 5, minH: 6 },
+  algos: { titleKey: "panel.algos", w: 9, h: 12, minW: 6, minH: 6 },
 };
 
 /** A panel's title in the interface language. */
