@@ -63,13 +63,6 @@ pub trait Host: Send + Sync + 'static {
     fn calendar(&self) -> &dyn Calendar;
     /// Hands the page an algo's latest state.
     fn publish(&self, view: &AlgoView);
-    /// Hands the page a bot's latest state.
-    fn publish_bot(&self, _view: &pewterdesk_strategy::bot::BotView) {}
-    /// Where closed candles are kept (for backtests, and to pick paper bots
-    /// up after a restart); none for a host that keeps nothing.
-    fn recorder(&self) -> Option<Arc<crate::Recorder>> {
-        None
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

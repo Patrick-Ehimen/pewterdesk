@@ -152,9 +152,6 @@ impl DaemonLink {
                             Event::Algo(view) => {
                                 let _ = app.emit("algo", *view);
                             }
-                            Event::Bot(view) => {
-                                let _ = app.emit("bot", *view);
-                            }
                             Event::Halted(_) => {}
                         }
                     }

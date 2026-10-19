@@ -38,7 +38,6 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::algo::Algos;
-use crate::bot::Bots;
 use crate::live::{self, LiveTrading};
 use crate::owner::Owners;
 use crate::rules::{self, now_ms, TradingRules};
@@ -110,7 +109,6 @@ pub struct Engine {
     algos: Algos,
     /// The accounts this engine has taken: one engine per account.
     owners: Owners,
-    bots: Bots,
 }
 
 /// A value as the log keeps it.
@@ -130,13 +128,7 @@ impl Engine {
             log,
             algos: Algos::default(),
             owners: Owners::default(),
-            bots: Bots::default(),
         }
-    }
-
-    /// The bots this engine runs.
-    pub fn bots(&self) -> &Bots {
-        &self.bots
     }
 
     /// One engine per account, with the accounts' locks kept in `dir`: an

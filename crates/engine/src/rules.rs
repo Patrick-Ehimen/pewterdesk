@@ -238,10 +238,6 @@ pub struct Rules {
     pub news: News,
     pub cool_off: CoolOff,
     pub tilt: Tilt,
-    /// No bots on this account (a prop firm's that bans them): one can't be
-    /// started on it, live. Turning it off is a loosening.
-    #[serde(default)]
-    pub no_bots: bool,
 }
 
 impl Default for Rules {
@@ -296,7 +292,6 @@ impl Default for Rules {
                     factor: 1.5,
                 },
             },
-            no_bots: false,
         }
     }
 }
@@ -387,7 +382,6 @@ impl Rules {
             || !window(&self.hours).is_subset(&window(&old.hours))
             || self.cool_off.losses > old.cool_off.losses
             || self.cool_off.minutes < old.cool_off.minutes
-            || (old.no_bots && !self.no_bots)
             || (old.tilt.revenge.on
                 && (!self.tilt.revenge.on
                     || self.tilt.revenge.minutes < old.tilt.revenge.minutes
@@ -1411,11 +1405,6 @@ impl TradingRules {
             Ok(())
         })?;
         Ok(self.views())
-    }
-
-    /// Whether the account's rules (in force, on) keep bots off it.
-    pub fn bots_barred(&self, venue: VenueId, account: &str) -> bool {
-        self.in_force(venue, account).is_some_and(|r| r.no_bots)
     }
 
     /// The rules in force for `account`, if any are.

@@ -836,8 +836,6 @@ pub enum Origin {
     /// The `pd` command line, through the daemon. The daemon sets it for
     /// every command a `pd` client sends, whatever the client says.
     Pd,
-    /// A bot, sending what its strategy asked for (the bot's id on the command).
-    Bot,
 }
 
 impl Origin {
@@ -857,7 +855,6 @@ impl Origin {
             Self::Algo => "algo",
             Self::Engine => "engine",
             Self::Pd => "pd",
-            Self::Bot => "bot",
         }
     }
 }

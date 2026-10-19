@@ -43,16 +43,6 @@ impl Host for AppHost {
     fn publish(&self, view: &AlgoView) {
         let _ = self.0.emit("algo", view);
     }
-
-    fn publish_bot(&self, view: &pewterdesk_strategy::bot::BotView) {
-        let _ = self.0.emit("bot", view);
-    }
-
-    fn recorder(&self) -> Option<Arc<pewterdesk_engine::Recorder>> {
-        self.0
-            .try_state::<Arc<pewterdesk_engine::Recorder>>()
-            .map(|r| Arc::clone(r.inner()))
-    }
 }
 
 /// Connects the engine's algos to the app, then deals with any the app
@@ -60,12 +50,10 @@ impl Host for AppHost {
 /// venue-run one followed again).
 pub fn install(app: &AppHandle) {
     let host: Arc<dyn Host> = Arc::new(AppHost(app.clone()));
-    app.state::<Engine>().algos().attach(Arc::clone(&host));
-    app.state::<Engine>().bots().attach(host);
+    app.state::<Engine>().algos().attach(host);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         app.state::<Engine>().algos().reconcile().await;
-        app.state::<Engine>().bots().reconcile().await;
     });
 }
 
@@ -184,7 +172,7 @@ pub async fn halt_algos(
     engine: State<'_, Engine>,
     daemon: State<'_, DaemonLink>,
 ) -> Result<usize, ()> {
-    let mut stopped = engine.algos().halt() + engine.bots().halt();
+    let mut stopped = engine.algos().halt();
     if let Some(link) = daemon.route_cancel().await {
         if let Ok(halted) =
             daemon::forward::<pewterdesk_protocol::rpc::Halted>(&link, Call::Halt).await

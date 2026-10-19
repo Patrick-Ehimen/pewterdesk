@@ -2,7 +2,6 @@ use tauri::Manager;
 
 mod about;
 mod algos;
-mod bots;
 mod browser_connect;
 mod bybit_key;
 mod chart_window;
@@ -92,12 +91,6 @@ pub fn run() {
                 engine = engine.with_locks(dir.join(pewterdesk_engine::owner::LOCK_DIR));
             }
             app.manage(engine);
-            // Closed candles kept for bots' backtests and paper runs.
-            if let Some(recorder) = data.as_ref().and_then(|dir| {
-                pewterdesk_engine::Recorder::open(&dir.join("candles.sqlite3")).ok()
-            }) {
-                app.manage(std::sync::Arc::new(recorder));
-            }
             // Algos run on the engine here; any the app closed on are dealt
             // with now.
             algos::install(app.handle());
@@ -228,15 +221,6 @@ pub fn run() {
             algos::resume_algo,
             algos::stop_algo,
             algos::halt_algos,
-            bots::bots,
-            bots::bot_create,
-            bots::bot_backtest,
-            bots::bot_start,
-            bots::bot_go_live,
-            bots::bot_pause,
-            bots::bot_resume,
-            bots::bot_stop,
-            bots::bot_delete,
             daemon::daemon_state,
             daemon::set_always_on,
             daemon::daemon_pair,

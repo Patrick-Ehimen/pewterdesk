@@ -55,8 +55,6 @@ pub struct Daemon {
     pub clients: Arc<Clients>,
     pub pairing: Pairing,
     pub started_at: u64,
-    /// Closed candles kept for backtests and paper bots (`candles.sqlite3`).
-    pub recorder: Option<Arc<pewterdesk_engine::Recorder>>,
 }
 
 impl Daemon {
@@ -74,19 +72,6 @@ impl Daemon {
             }
         };
         Engine::load(Some(&paths.config), log).with_locks(paths.locks())
-    }
-
-    /// The candles kept for bots, beside the event log.
-    pub fn recorder_for(paths: &Paths) -> Option<Arc<pewterdesk_engine::Recorder>> {
-        match pewterdesk_engine::Recorder::open(&paths.data.join("candles.sqlite3")) {
-            Ok(r) => Some(Arc::new(r)),
-            Err(e) => {
-                eprintln!(
-                    "pdd: candles can't be kept ({e}); paper bots start over after a restart"
-                );
-                None
-            }
-        }
     }
 
     pub fn calendar() -> Result<CalendarState, VenueError> {
@@ -110,13 +95,5 @@ impl Host for Daemon {
     fn publish(&self, view: &AlgoView) {
         // Nobody listening is fine.
         let _ = self.events.send(Event::Algo(Box::new(view.clone())));
-    }
-
-    fn publish_bot(&self, view: &pewterdesk_strategy::bot::BotView) {
-        let _ = self.events.send(Event::Bot(Box::new(view.clone())));
-    }
-
-    fn recorder(&self) -> Option<Arc<pewterdesk_engine::Recorder>> {
-        self.recorder.clone()
     }
 }

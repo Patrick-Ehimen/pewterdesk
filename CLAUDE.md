@@ -41,12 +41,8 @@ a key before storing it.
   and how accounts and their keychain entries are named (`accounts`)
 - `crates/engine` - the router and the trading gate (live-trading switch,
   trading rules); the only caller of an adapter's trading methods
-- `crates/store` - the engine's event log (SQLite), each algo's and bot's
-  state, and the candle recorder (`candles.sqlite3`)
+- `crates/store` - the engine's event log (SQLite), and each algo's state
 - `crates/sim` - `SimVenue`, an adapter fed order books, for testing algos
-- `crates/strategy` - bots' strategies (the `Strategy` trait, the trend,
-  grid, DCA and custom templates, indicators), the backtester (`sim.rs`,
-  its fill model documented there) and bot specs, limits and views
 - `crates/protocol` - what a client may ask the engine (JSON-RPC 2.0,
   versioned), the command language in Rust (`command.rs`, checked against
   `tests/fixtures/commands.json` with the TS parser) and what a line comes
@@ -318,22 +314,6 @@ discover it on their own. The reasoning behind the rules is in
   start; one that died let its lock go, so its algos are taken up.
   Adding a protocol method, a listener, or a way to pair is a
   security-relevant change.
-- `crates/engine/src/bot/` and `crates/strategy` (their commands in
-  `apps/desktop/src-tauri/src/bots.rs`, `bot.*` in the protocol, `pd bot`)
-  - bots. A strategy only returns intents; it reaches nothing. A paper bot
-  is the backtester fed each live candle as it closes: nothing signed or
-  sent. A live bot sends its intents through the router (`Origin::Bot`,
-  the bot's id on the command), so the switch, the rules, the log and
-  client ids apply as to the ticket; a refusal stops it, and an answer
-  that didn't come is looked up by client id, never resent. Going live
-  needs `PAPER_DAYS` (7) of paper, the account's live switch, and rules
-  that don't bar bots (`noBots` on the account's set; turning it off is a
-  loosening, so it waits for 00:00 UTC). Its own limits (daily loss,
-  position, orders a minute, hours) stop it, flattening if set, through
-  the router. At start a live bot the last run left is stopped and what
-  of it rests cancelled; paper bots carry on. `halt` stops bots too.
-  Giving a strategy any way to the venue but intents through the router is
-  a security-relevant change.
 - `crates/store` - the event log (`events.sqlite3` in the app's data
   folder; SQLite, WAL, append-only): every routed command, gate decision,
   client order id and venue result. Never key material - not a key, a
@@ -655,46 +635,30 @@ app, Settings > Advanced > Always on does the same for the app. Development:
 `PEWTERDESK_HOME` puts the daemon's and `pd`'s files in one folder of its
 own.
 
-## Algos, bots and `pd`
+## Algos and `pd`
 
-Phases 0 to 4 built; 5 and 6 to do. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
-the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
-research behind it in `docs/research/cli-trading-bots.md`. In short:
-`crates/engine` takes over routing and the trading gate (Phase 0: the
-router, `live.rs` and `rules.rs`, the event log in `crates/store`, and client
-order ids), runs algo executors (Phase 1: chaser, TWAP, scaled, in
-`crates/engine/src/algo/`, tested against `SimVenue` in `crates/sim`;
-Phase 2: Hyperliquid's own TWAP, the venues' dead-man's switches and
-`expiresAfter`), and then bots; it runs inside the app or headless in a daemon (`pdd`),
-which a `pd` CLI and the app reach over a localhost-only protocol.
+Phases 0 to 3 of `docs/bots/plan.md` are built: `crates/engine` does the
+routing and the trading gate (the router, `live.rs` and `rules.rs`, the
+event log in `crates/store`, client order ids), runs the algo executors
+(chaser, TWAP, scaled, in `crates/engine/src/algo/`, tested against
+`SimVenue` in `crates/sim`; Hyperliquid's own TWAP, the venues' dead-man's
+switches and `expiresAfter`), inside the app or headless in `pdd`, which
+`pd` and the app reach over a localhost-only protocol. The decision is
+`docs/adr/0003-bot-engine-daemon.md`.
 
-The Bots page (`components/pages/BotsPage.tsx`, `components/bots/`, after
-the Bots, Backtest and New bot mockups in `design/`) is in three sections: Bots (cards, each with its path backtest → paper →
-live), Backtests (every run with its verdict) and Paper trading (a week's
-progress against the backtest). A new bot (grid, EMA cross, or custom: the
-user's own entry and exit rules over price, EMA, SMA and RSI, with a
-stop-loss, take-profit and size - `components/bots/CustomRules.tsx`; a
-period preset; limits) and a backtest (overview, trades, analysis,
-comparison, with the readiness verdict on top) open over them with a
-breadcrumb trail back; the page remembers where it was left. It starts
-empty: every bot and run is the user's own. In the app it runs on the
-engine (`lib/botEngine.ts`): backtests in Rust on the venue's candles, and
-bots that paper trade there and, after `PAPER_DAYS` (7), go live behind a
-confirmation, on the connected account; a bot stopped by a limit or a
-failure is announced (`hooks/useBotNotices.ts`). Without the Rust side
-(`make dev-ui`) backtests run in the page on seeded sample candles
-(`lib/backtest.ts`). Runs and the page's links to the engine's bots are
-kept in this browser's storage (`lib/bots.ts`, under `pd.bots`).
+There are no bots in pewterdesk. Automated strategies run in FreqTrade,
+on its own, with its own trade-only key (ideally its own sub-account): it
+doesn't talk to pewterdesk and pewterdesk doesn't talk to it. Its trades
+show here like any made elsewhere, and count toward that account's
+trading rules. The bot engine that was built here (strategies, a
+backtester, paper and live bots, the Bots page, `pd bot`) is kept on the
+`bots-engine` branch, unmerged.
 
-When working on any of it:
+When working on the engine, the daemon or `pd`:
 
-- Follow `docs/bots/plan.md` phase by phase; Phase 0 (extracting the engine
-  with no behaviour change) comes before any new feature. Tick its
-  checkboxes as work lands.
 - `docs/bots/safety.md` is binding: no new signing verbs (the six operations
   above only), every order through the one gate whatever sent it, keys only
-  via `KeySource`, localhost and paired clients only, fail closed. The new
-  crates it lists join the security-sensitive list above as they're created.
+  via `KeySource`, localhost and paired clients only, fail closed.
 - Keep `docs/bots/` and the ADR in step with the code; if the plan changes,
   change the doc in the same PR.
 

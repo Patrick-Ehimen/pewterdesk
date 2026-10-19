@@ -13,7 +13,6 @@ publish = false
 async-trait = "0.1.92"
 pewterdesk-core = { path = "../core" }
 pewterdesk-store = { path = "../store" }
-pewterdesk-strategy = { path = "../strategy" }
 rust_decimal = "1.43.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

@@ -139,17 +139,13 @@ async fn run() -> i32 {
         pairing: Pairing::new(Arc::clone(&clients), ask::asker()),
         clients,
         started_at: now_ms(),
-        recorder: Daemon::recorder_for(&paths),
     });
     // Algos run on this engine; any left over from an engine that's gone
     // (this daemon before a crash, or the app) are dealt with before
     // anything else trades. One another engine still runs is left to it.
     let host: Arc<dyn Host> = daemon.clone();
-    daemon.engine.algos().attach(Arc::clone(&host));
-    daemon.engine.bots().attach(host);
+    daemon.engine.algos().attach(host);
     daemon.engine.algos().reconcile().await;
-    // Paper bots carry on; live ones the last run left are stopped, theirs cancelled.
-    daemon.engine.bots().reconcile().await;
 
     #[cfg(unix)]
     let unix = match bind_socket(&paths.socket()) {
@@ -228,7 +224,6 @@ async fn watch_for_wake(daemon: Arc<Daemon>) {
                 (wall - mono).as_secs()
             );
             daemon.engine.algos().reconcile().await;
-            daemon.engine.bots().reconcile().await;
         }
     }
 }

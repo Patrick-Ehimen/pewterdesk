@@ -8,12 +8,9 @@
 //! - No key material, ever. Callers log what was asked and what came back
 //!   (orders, account ids, keychain entry *names* at most), never a key, a
 //!   signature or a signed payload.
-//! - Append-only: nothing here updates or deletes an event. The tables
-//!   that change are `algos` and `bots`, each one's current state (its
-//!   spec, status and progress), so the engine can find the ones it closed
-//!   on, and a bot's settings and paper record survive a restart.
-//! - Candles a recorder keeps live in a file of their own (`Recorder`):
-//!   market data, no account in them.
+//! - Append-only: nothing here updates or deletes an event. The one table
+//!   that changes is `algos`, each algo's current state (its spec, status
+//!   and progress), so the engine can find the ones the app closed on.
 //! - The file lives in the app's own data folder, readable by the user only
 //!   as much as that folder is.
 
@@ -22,7 +19,9 @@ use std::sync::Mutex;
 
 use rusqlite::{params, Connection, OptionalExtension};
 
-/// The schema this code writes, kept in SQLite's `user_version`.
+/// The schema this code writes, kept in SQLite's `user_version`. Version 3
+/// added a `bots` table, since taken out; a file at 3 is version 2 plus
+/// that table, which is left alone.
 const SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA: &str = "
@@ -52,13 +51,6 @@ CREATE TABLE IF NOT EXISTS algos (
     view       TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS algos_over ON algos (over, created_at);
-CREATE TABLE IF NOT EXISTS bots (
-    id         TEXT PRIMARY KEY,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    over       INTEGER NOT NULL,
-    bot        TEXT NOT NULL
-);
 ";
 
 /// Version 2 adds which algo an event belongs to (`events.algo`) and the
@@ -247,15 +239,6 @@ impl EventLog {
         )
     }
 
-    /// Every event of `kind` an algo or bot (`bot:<id>`) logged, in order.
-    pub fn for_algo(&self, algo: &str, kind: &str) -> Result<Vec<Event>, StoreError> {
-        self.query(
-            "SELECT seq, at, command, kind, origin, venue, account, operation, client_id, algo, detail
-             FROM events WHERE algo = ?1 AND kind = ?2 ORDER BY seq",
-            params![algo, kind],
-        )
-    }
-
     /// The client order ids an algo was given, oldest first: every order
     /// it sent, or tried to.
     pub fn algo_client_ids(&self, algo: &str) -> Result<Vec<String>, StoreError> {
@@ -293,42 +276,6 @@ impl EventLog {
             ],
         )?;
         Ok(())
-    }
-
-    /// Keeps a bot's current state (`bot`, its JSON), replacing the last.
-    pub fn save_bot(
-        &self,
-        id: &str,
-        created_at: u64,
-        updated_at: u64,
-        over: bool,
-        bot: &serde_json::Value,
-    ) -> Result<(), StoreError> {
-        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
-        conn.execute(
-            "INSERT INTO bots (id, created_at, updated_at, over, bot)
-             VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT (id) DO UPDATE SET
-                updated_at = excluded.updated_at, over = excluded.over, bot = excluded.bot",
-            params![
-                id,
-                created_at as i64,
-                updated_at as i64,
-                over,
-                bot.to_string()
-            ],
-        )?;
-        Ok(())
-    }
-
-    /// Every bot kept, oldest first; with `over`, the deleted ones too.
-    pub fn bots(&self, over: bool) -> Result<Vec<serde_json::Value>, StoreError> {
-        let sql = if over {
-            "SELECT bot FROM bots ORDER BY created_at"
-        } else {
-            "SELECT bot FROM bots WHERE over = 0 ORDER BY created_at"
-        };
-        self.algo_views(sql, [])
     }
 
     /// The algos not over yet (running or paused when they were last kept),
@@ -560,219 +507,5 @@ mod tests {
         .unwrap();
         assert_eq!(log.recent(1).unwrap()[0].algo.as_deref(), Some("a1"));
         let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
-    }
-}
-
-/// One candle as the recorder keeps it: its prices as the venue wrote them.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct StoredCandle {
-    /// When it opened, in milliseconds since the Unix epoch.
-    pub open_time: u64,
-    pub open: String,
-    pub high: String,
-    pub low: String,
-    pub close: String,
-    pub volume: String,
-}
-
-/// Candles kept for backtests and for picking up paper bots after a
-/// restart, in a file of their own (`candles.sqlite3`): venues serve only
-/// so much history (Hyperliquid about 5,000 candles), so what's been seen
-/// is kept. Market data only: nothing about an account.
-pub struct Recorder {
-    conn: Mutex<Connection>,
-}
-
-const CANDLES: &str = "
-CREATE TABLE IF NOT EXISTS candles (
-    venue     TEXT NOT NULL,
-    market    TEXT NOT NULL,
-    interval  TEXT NOT NULL,
-    open_time INTEGER NOT NULL,
-    open      TEXT NOT NULL,
-    high      TEXT NOT NULL,
-    low       TEXT NOT NULL,
-    close     TEXT NOT NULL,
-    volume    TEXT NOT NULL,
-    PRIMARY KEY (venue, market, interval, open_time)
-) WITHOUT ROWID;
-";
-
-impl Recorder {
-    /// The candles at `path`, created (with its folder) if it isn't there.
-    pub fn open(path: &Path) -> Result<Self, StoreError> {
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| StoreError(e.to_string()))?;
-        }
-        let conn = Connection::open(path)?;
-        // Losing the last candles in a power cut costs nothing: they're read again.
-        conn.pragma_update(None, "journal_mode", "WAL")?;
-        conn.pragma_update(None, "synchronous", "NORMAL")?;
-        conn.execute_batch(CANDLES)?;
-        Ok(Self {
-            conn: Mutex::new(conn),
-        })
-    }
-
-    pub fn open_in_memory() -> Result<Self, StoreError> {
-        let conn = Connection::open_in_memory()?;
-        conn.execute_batch(CANDLES)?;
-        Ok(Self {
-            conn: Mutex::new(conn),
-        })
-    }
-
-    /// Keeps `candles`, replacing any kept at the same open time (the
-    /// forming candle, kept again once it closes).
-    pub fn save(
-        &self,
-        venue: &str,
-        market: &str,
-        interval: &str,
-        candles: &[StoredCandle],
-    ) -> Result<(), StoreError> {
-        let mut conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
-        let tx = conn.transaction()?;
-        {
-            let mut insert = tx.prepare(
-                "INSERT OR REPLACE INTO candles
-                 (venue, market, interval, open_time, open, high, low, close, volume)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            )?;
-            for c in candles {
-                insert.execute(params![
-                    venue,
-                    market,
-                    interval,
-                    c.open_time as i64,
-                    c.open,
-                    c.high,
-                    c.low,
-                    c.close,
-                    c.volume
-                ])?;
-            }
-        }
-        tx.commit()?;
-        Ok(())
-    }
-
-    /// The candles kept that opened from `from` up to `to` (ms), oldest first.
-    pub fn range(
-        &self,
-        venue: &str,
-        market: &str,
-        interval: &str,
-        from: u64,
-        to: u64,
-    ) -> Result<Vec<StoredCandle>, StoreError> {
-        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
-        let mut statement = conn.prepare(
-            "SELECT open_time, open, high, low, close, volume FROM candles
-             WHERE venue = ?1 AND market = ?2 AND interval = ?3
-               AND open_time >= ?4 AND open_time <= ?5
-             ORDER BY open_time",
-        )?;
-        let rows = statement.query_map(
-            params![
-                venue,
-                market,
-                interval,
-                from as i64,
-                to.min(i64::MAX as u64) as i64
-            ],
-            |row| {
-                Ok(StoredCandle {
-                    open_time: row.get::<_, i64>(0)? as u64,
-                    open: row.get(1)?,
-                    high: row.get(2)?,
-                    low: row.get(3)?,
-                    close: row.get(4)?,
-                    volume: row.get(5)?,
-                })
-            },
-        )?;
-        Ok(rows.collect::<Result<_, _>>()?)
-    }
-
-    /// The oldest candle kept, if any.
-    pub fn oldest(
-        &self,
-        venue: &str,
-        market: &str,
-        interval: &str,
-    ) -> Result<Option<u64>, StoreError> {
-        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
-        let oldest: Option<i64> = conn.query_row(
-            "SELECT MIN(open_time) FROM candles WHERE venue = ?1 AND market = ?2 AND interval = ?3",
-            params![venue, market, interval],
-            |row| row.get(0),
-        )?;
-        Ok(oldest.map(|t| t as u64))
-    }
-}
-
-#[cfg(test)]
-mod recorder_tests {
-    use super::*;
-
-    fn candle(t: u64, close: &str) -> StoredCandle {
-        StoredCandle {
-            open_time: t,
-            open: "1".into(),
-            high: "2".into(),
-            low: "0.5".into(),
-            close: close.into(),
-            volume: "10".into(),
-        }
-    }
-
-    #[test]
-    fn keeps_candles_and_replaces_a_formed_one() {
-        let r = Recorder::open_in_memory().unwrap();
-        r.save(
-            "bybit",
-            "BTCUSDT",
-            "1h",
-            &[candle(1, "1.0"), candle(2, "1.1")],
-        )
-        .unwrap();
-        // The second candle again, closed now.
-        r.save(
-            "bybit",
-            "BTCUSDT",
-            "1h",
-            &[candle(2, "1.2"), candle(3, "1.3")],
-        )
-        .unwrap();
-        let kept = r.range("bybit", "BTCUSDT", "1h", 0, u64::MAX).unwrap();
-        let closes: Vec<&str> = kept.iter().map(|c| c.close.as_str()).collect();
-        assert_eq!(closes, ["1.0", "1.2", "1.3"]);
-        assert_eq!(r.range("bybit", "BTCUSDT", "1h", 2, 2).unwrap().len(), 1);
-        assert!(r
-            .range("bybit", "ETHUSDT", "1h", 0, u64::MAX)
-            .unwrap()
-            .is_empty());
-        assert_eq!(r.oldest("bybit", "BTCUSDT", "1h").unwrap(), Some(1));
-        assert_eq!(r.oldest("bybit", "BTCUSDT", "4h").unwrap(), None);
-    }
-
-    #[test]
-    fn keeps_bots_and_leaves_deleted_ones_out() {
-        let log = EventLog::open_in_memory().unwrap();
-        log.save_bot("a", 1, 1, false, &serde_json::json!({"id": "a"}))
-            .unwrap();
-        log.save_bot("b", 2, 2, false, &serde_json::json!({"id": "b"}))
-            .unwrap();
-        log.save_bot(
-            "a",
-            1,
-            3,
-            true,
-            &serde_json::json!({"id": "a", "gone": true}),
-        )
-        .unwrap();
-        assert_eq!(log.bots(false).unwrap(), [serde_json::json!({"id": "b"})]);
-        assert_eq!(log.bots(true).unwrap().len(), 2);
     }
 }

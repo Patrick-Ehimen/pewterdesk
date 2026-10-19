@@ -3164,7 +3164,6 @@ dependencies = [
  "pewterdesk-keychain",
  "pewterdesk-link",
  "pewterdesk-protocol",
- "pewterdesk-strategy",
  "quick-xml",
  "reqwest",
  "serde",
@@ -3205,7 +3204,6 @@ dependencies = [
  "pewterdesk-keychain",
  "pewterdesk-link",
  "pewterdesk-protocol",
- "pewterdesk-strategy",
  "serde",
  "serde_json",
  "tokio",
@@ -3244,7 +3242,6 @@ dependencies = [
  "pewterdesk-keychain",
  "pewterdesk-protocol",
  "pewterdesk-sim",
- "pewterdesk-strategy",
  "rust_decimal",
  "serde",
  "serde_json",
@@ -3262,7 +3259,6 @@ dependencies = [
  "pewterdesk-core",
  "pewterdesk-sim",
  "pewterdesk-store",
- "pewterdesk-strategy",
  "rust_decimal",
  "serde",
  "serde_json",
@@ -3357,7 +3353,6 @@ name = "pewterdesk-protocol"
 version = "0.0.0"
 dependencies = [
  "pewterdesk-core",
- "pewterdesk-strategy",
  "rust_decimal",
  "serde",
  "serde_json",
@@ -3381,16 +3376,6 @@ dependencies = [
  "getrandom 0.4.3",
  "rusqlite",
  "serde_json",
-]
-
-[[package]]
-name = "pewterdesk-strategy"
-version = "0.0.0"
-dependencies = [
- "pewterdesk-core",
- "serde",
- "serde_json",
- "ts-rs",
 ]
 
 [[package]]

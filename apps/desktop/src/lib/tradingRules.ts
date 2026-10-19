@@ -61,8 +61,6 @@ export interface TradingRules {
     sizeCreep: { on: boolean; factor: number };
     overtrading: { on: boolean; factor: number };
   };
-  /** No bots on this account, live (a prop firm's that bans them). */
-  noBots: boolean;
 }
 
 type Terms = Omit<Challenge, "size">;
@@ -128,7 +126,6 @@ export const DEFAULT_RULES: TradingRules = {
     sizeCreep: { on: true, factor: 1.5 },
     overtrading: { on: true, factor: 1.5 },
   },
-  noBots: false,
 };
 
 /** `rules` started over from `preset`: its terms, the same account size and limits. */
@@ -208,7 +205,6 @@ export function restoreRules(saved: unknown): TradingRules {
         factor: amount(overtrading.factor, d.tilt.overtrading.factor, 100),
       },
     },
-    noBots: flag(s.noBots, d.noBots),
   };
 }
 

@@ -1,7 +1,7 @@
 [package]
 name = "pewterdesk-sim"
 version = "0.0.0"
-description = "SimVenue: an ExchangeAdapter fed recorded order books, for testing algos (and later paper trading and backtests)"
+description = "SimVenue: an ExchangeAdapter fed recorded order books, for testing algos"
 edition.workspace = true
 rust-version.workspace = true
 publish = false

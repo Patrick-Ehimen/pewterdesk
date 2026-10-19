@@ -4,8 +4,6 @@
 export type * from "./generated/domain";
 // The command language and its context, from crates/protocol.
 export type * from "./generated/protocol";
-// Bots' strategies and backtests, from crates/strategy.
-export type * from "./generated/strategy";
 export {
   isValidAccount,
   type SecretStore,

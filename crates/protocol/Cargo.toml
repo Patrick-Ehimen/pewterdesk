@@ -11,7 +11,6 @@ publish = false
 # client can ask for (docs/bots/safety.md).
 [dependencies]
 pewterdesk-core = { path = "../core" }
-pewterdesk-strategy = { path = "../strategy" }
 rust_decimal = "1.43.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

@@ -1,5 +1,5 @@
 //! What a client may ask the engine, over JSON-RPC 2.0: the six trading
-//! operations, read-only queries, algo and bot control, `halt` and
+//! operations, read-only queries, algo control, `halt` and
 //! `flatten`, and pairing. Nothing else - no withdrawal, transfer, key approval or
 //! signing of caller-supplied data, and no key material in either
 //! direction (`docs/bots/safety.md`). A key's existence goes no further
@@ -12,7 +12,6 @@ use pewterdesk_core::{
     AccountSnapshot, AlgoSpec, AlgoView, Decimal, MarginMode, Market, Order, OrderAmend, OrderBook,
     OrderRequest, Origin, PositionProtection, StopMode, VenueId,
 };
-use pewterdesk_strategy::bot::{BotSpec, BotView};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -238,35 +237,6 @@ pub enum Call {
         max_slippage_bps: u32,
     },
 
-    // Bots: they send through the same router, as `bot`.
-    #[serde(rename = "bot.create")]
-    BotCreate { spec: Box<BotSpec> },
-    #[serde(rename = "bot.list")]
-    BotList,
-    #[serde(rename = "bot.get")]
-    BotGet { id: String },
-    /// Starts it in its mode (paper, or live once it's gone live).
-    #[serde(rename = "bot.start")]
-    BotStart { id: String },
-    /// From paper to live: only after its paper run, on an account that can trade.
-    #[serde(rename = "bot.live")]
-    BotLive { id: String },
-    #[serde(rename = "bot.pause")]
-    BotPause { id: String },
-    #[serde(rename = "bot.resume")]
-    BotResume { id: String },
-    #[serde(rename = "bot.stop")]
-    BotStop { id: String, flatten: bool },
-    #[serde(rename = "bot.delete")]
-    BotDelete { id: String },
-    /// A backtest of `spec` on its market's candles from `since` (ms).
-    #[serde(rename = "bot.backtest", rename_all = "camelCase")]
-    BotBacktest {
-        spec: Box<BotSpec>,
-        since: u64,
-        hold_out_days: f64,
-    },
-
     /// From here on, the daemon's events come as `event` notifications.
     #[serde(rename = "events.subscribe")]
     Subscribe,
@@ -294,9 +264,6 @@ impl Call {
                 | Call::SetMarginMode { .. }
                 | Call::AlgoStart { .. }
                 | Call::AlgoStop { .. }
-                | Call::BotStart { .. }
-                | Call::BotLive { .. }
-                | Call::BotStop { .. }
                 | Call::Halt
                 | Call::Flatten { .. }
         )
@@ -443,8 +410,6 @@ pub enum Event {
     Algo(Box<AlgoView>),
     /// Everything was halted.
     Halted(Halted),
-    /// A bot's latest state.
-    Bot(Box<BotView>),
 }
 
 /// A notification on the wire: an event.
@@ -528,16 +493,6 @@ pub const KNOWN_METHODS: &[&str] = &[
     "algo.stop",
     "halt",
     "flatten",
-    "bot.create",
-    "bot.list",
-    "bot.get",
-    "bot.start",
-    "bot.live",
-    "bot.pause",
-    "bot.resume",
-    "bot.stop",
-    "bot.delete",
-    "bot.backtest",
     "events.subscribe",
 ];
 

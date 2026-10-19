@@ -95,17 +95,14 @@ global shortcut.
   takes TypeScript from 6 to 7. And the local `feat/tealchart` branch, a
   trial OpenAlgo Charts replaced, can go.
 
-## 6. Algos, bots and the `pd` command line
+## 6. Algos and the `pd` command line
 
-The Bots page is a UI-only preview of it: bots, backtests on sample
-candles (grid, EMA cross, or the user's own rules) and a week's paper run,
-with nothing reaching a venue. The real thing is planned in `docs/bots/`
-(decision: ADR 0003, proposed). Phase 0 extracts
-the engine (routing and the trading gate) from the Tauri app with no
-behaviour change; then algo orders in the app (chaser, TWAP, scaled), native
-venue algos and venue-side protection, the `pdd` daemon and `pd` CLI, bots
-with backtesting and paper trading, and later strategy scripts and remote
-use. See `docs/bots/plan.md` for tasks and exit tests.
+The engine (routing and the trading gate), algo orders (chaser, TWAP,
+scaled), native venue algos and venue-side protection, and the `pdd`
+daemon with the `pd` command line are built (`docs/bots/plan.md`, ADR
+0003). Bots are not part of pewterdesk: automated strategies run in
+FreqTrade, on its own, with its own key. The bot engine that was built
+here is kept, unmerged, on the `bots-engine` branch.
 
 ## Suggested next steps
 
