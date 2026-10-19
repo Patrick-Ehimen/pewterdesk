@@ -6,6 +6,8 @@ import {
   currentStreak,
   curvePath,
   dayKey,
+  filterClosed,
+  NO_FILTER,
   nearestDot,
   performance,
   pnlCalendar,
@@ -124,5 +126,31 @@ describe("PnL calendar", () => {
     expect(currentStreak(trades.slice(0, 4), at(2026, 9, 7, 18))).toBe(0);
     expect(currentStreak(trades.slice(0, 3), at(2026, 9, 9, 9))).toBe(0);
     expect(dayKey(at(2026, 0, 5))).toBe("2026-01-05");
+  });
+});
+
+describe("history filter", () => {
+  const trades = [
+    close(at(2026, 9, 12, 9), 5, { market: "ACNUSDT" }),
+    close(at(2026, 9, 14, 23), -3, { side: "short" }),
+    close(at(2026, 9, 17, 0), 0),
+  ];
+
+  it("passes everything with no filter", () => {
+    expect(filterClosed(trades, NO_FILTER)).toHaveLength(3);
+  });
+
+  it("filters by market, side and result", () => {
+    expect(filterClosed(trades, { ...NO_FILTER, market: "ACNUSDT" })).toEqual([trades[0]]);
+    expect(filterClosed(trades, { ...NO_FILTER, side: "short" })).toEqual([trades[1]]);
+    expect(filterClosed(trades, { ...NO_FILTER, result: "profit" })).toEqual([trades[0]]);
+    // A break-even close is neither.
+    expect(filterClosed(trades, { ...NO_FILTER, result: "loss" })).toEqual([trades[1]]);
+  });
+
+  it("includes both ends of the date range, whole days", () => {
+    const range = { ...NO_FILTER, from: "2026-10-12", to: "2026-10-14" };
+    expect(filterClosed(trades, range)).toEqual([trades[0], trades[1]]);
+    expect(filterClosed(trades, { ...NO_FILTER, from: "2026-10-15" })).toEqual([trades[2]]);
   });
 });

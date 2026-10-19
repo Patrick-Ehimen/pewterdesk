@@ -1738,6 +1738,7 @@ export function App() {
           <PortfolioPage
             account={account}
             closed={closedHistory}
+            accountKey={accountKey || undefined}
             onShare={(c) => openShare({ closed: c })}
             markets={marketList}
             venue={paperOn ? `${venueInfo.label} · ${t("paper.badge")}` : venueInfo.label}
