@@ -37,6 +37,7 @@ use pewterdesk_store::{EventLog, NewEvent};
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::algo::Algos;
 use crate::live::{self, LiveTrading};
 use crate::rules::{self, now_ms, TradingRules};
 use crate::{Adapters, Calendar};
@@ -84,13 +85,27 @@ pub fn client_id(engine_id: u64, seq: u64) -> String {
     format!("0x{engine_id:016x}{seq:016x}")
 }
 
+/// Who sent a command: where in the app, and the algo, if an algo did.
+#[derive(Clone, Copy, Debug)]
+pub struct By<'a> {
+    pub origin: Origin,
+    pub algo: Option<&'a str>,
+}
+
+impl By<'_> {
+    fn app(origin: Origin) -> Self {
+        Self { origin, algo: None }
+    }
+}
+
 /// The router and the gate it checks - the live-trading switch and the
-/// trader's rules - with the event log it records to.
+/// trader's rules - with the event log it records to, and the algos it runs.
 pub struct Engine {
     live: LiveTrading,
     rules: TradingRules,
     /// `None` when the log couldn't be opened: opening orders are refused.
     log: Option<EventLog>,
+    algos: Algos,
 }
 
 /// A value as the log keeps it.
@@ -108,6 +123,7 @@ impl Engine {
             live: LiveTrading::load(config_dir.map(|dir| dir.join(live::FILE))),
             rules: TradingRules::load(config_dir.map(|dir| dir.join(rules::FILE))),
             log,
+            algos: Algos::default(),
         }
     }
 
@@ -126,10 +142,16 @@ impl Engine {
         self.log.as_ref()
     }
 
-    /// Logs a command and returns its sequence number, if it was written.
+    /// The algo orders running in this engine.
+    pub fn algos(&self) -> &Algos {
+        &self.algos
+    }
+
+    /// Logs a command (an algo's, with `by.algo`) and returns its sequence
+    /// number, if it was written.
     fn begin(
         &self,
-        origin: Origin,
+        by: By<'_>,
         venue: VenueId,
         account: &str,
         operation: &str,
@@ -141,10 +163,11 @@ impl Engine {
             .append(&NewEvent {
                 at: now_ms(),
                 kind: "command",
-                origin: Some(origin.as_str()),
+                origin: Some(by.origin.as_str()),
                 venue: venue.as_str(),
                 account: Some(account),
                 operation: Some(operation),
+                algo: by.algo,
                 detail,
                 ..NewEvent::default()
             })
@@ -203,7 +226,6 @@ impl Engine {
 
     /// Places an order for `account`, under a client order id of the
     /// router's own.
-    #[allow(clippy::too_many_arguments)]
     pub async fn place_order(
         &self,
         venues: &dyn Adapters,
@@ -213,7 +235,24 @@ impl Engine {
         account: &str,
         request: &OrderRequest,
     ) -> Result<Order, VenueError> {
-        let command = self.begin(origin, venue, account, "placeOrder", as_json(request));
+        self.place(venues, calendar, By::app(origin), venue, account, request)
+            .await
+            .1
+    }
+
+    /// `place_order` for whoever `by` names, also returning the client order
+    /// id the order went out under - even when the venue's answer is an
+    /// error, so a timed-out order can be looked up rather than resent.
+    pub async fn place(
+        &self,
+        venues: &dyn Adapters,
+        calendar: &dyn Calendar,
+        by: By<'_>,
+        venue: VenueId,
+        account: &str,
+        request: &OrderRequest,
+    ) -> (Option<String>, Result<Order, VenueError>) {
+        let command = self.begin(by, venue, account, "placeOrder", as_json(request));
         let decision = async {
             let trading = trading_account(venue, account, &self.live)?;
             // The trader's own rules, before anything is signed.
@@ -223,7 +262,10 @@ impl Engine {
             Ok(trading)
         }
         .await;
-        let trading = self.gate(command, decision)?;
+        let trading = match self.gate(command, decision) {
+            Ok(trading) => trading,
+            Err(refused) => return (None, Err(refused)),
+        };
         let mut request = request.clone();
         request.client_id = match (self.log.as_ref(), command) {
             (Some(log), Some(seq)) => Some(client_id(log.engine_id(), seq)),
@@ -233,13 +275,17 @@ impl Engine {
         // isn't sent at all.
         let recorded = self.note(command, "sent", request.client_id.as_deref(), Value::Null);
         if !recorded && !request.reduce_only {
-            return Err(VenueError::Blocked("unrecorded".into()));
+            return (None, Err(VenueError::Blocked("unrecorded".into())));
         }
         if !recorded {
             request.client_id = None;
         }
-        let placed = venues.adapter(venue)?.place_order(&trading, &request).await;
-        self.finish(command, placed)
+        let adapter = match venues.adapter(venue) {
+            Ok(adapter) => adapter,
+            Err(e) => return (request.client_id, Err(e)),
+        };
+        let placed = adapter.place_order(&trading, &request).await;
+        (request.client_id, self.finish(command, placed))
     }
 
     /// Cancels `account`'s open order `order_id`.
@@ -252,8 +298,22 @@ impl Engine {
         market: &str,
         order_id: &str,
     ) -> Result<(), VenueError> {
+        self.cancel(venues, By::app(origin), venue, account, market, order_id)
+            .await
+    }
+
+    /// `cancel_order` for whoever `by` names.
+    pub async fn cancel(
+        &self,
+        venues: &dyn Adapters,
+        by: By<'_>,
+        venue: VenueId,
+        account: &str,
+        market: &str,
+        order_id: &str,
+    ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "orderId": order_id });
-        let command = self.begin(origin, venue, account, "cancelOrder", detail);
+        let command = self.begin(by, venue, account, "cancelOrder", detail);
         let trading = self.gate(command, trading_account(venue, account, &self.live))?;
         let cancelled = venues
             .adapter(venue)?
@@ -274,8 +334,25 @@ impl Engine {
         order_id: &str,
         amend: &OrderAmend,
     ) -> Result<(), VenueError> {
+        let by = By::app(origin);
+        self.amend(venues, by, venue, account, market, order_id, amend)
+            .await
+    }
+
+    /// `amend_order` for whoever `by` names.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn amend(
+        &self,
+        venues: &dyn Adapters,
+        by: By<'_>,
+        venue: VenueId,
+        account: &str,
+        market: &str,
+        order_id: &str,
+        amend: &OrderAmend,
+    ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "orderId": order_id, "amend": as_json(amend) });
-        let command = self.begin(origin, venue, account, "amendOrder", detail);
+        let command = self.begin(by, venue, account, "amendOrder", detail);
         let decision = async {
             let trading = trading_account(venue, account, &self.live)?;
             self.rules
@@ -305,7 +382,13 @@ impl Engine {
         protection: &PositionProtection,
     ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "protection": as_json(protection) });
-        let command = self.begin(origin, venue, account, "setPositionProtection", detail);
+        let command = self.begin(
+            By::app(origin),
+            venue,
+            account,
+            "setPositionProtection",
+            detail,
+        );
         let decision = async {
             let trading = trading_account(venue, account, &self.live)?;
             self.rules
@@ -322,6 +405,30 @@ impl Engine {
         self.finish(command, protected)
     }
 
+    /// Arms (or, with `None`, disarms) the venue's dead-man's switch for
+    /// `account`: unless it's armed again within `after_ms`, the venue
+    /// cancels the account's open orders (on `market`, where the switch is
+    /// per market). Part of cancelling: it opens nothing. Behind the switch
+    /// like any trading command, and logged.
+    pub async fn schedule_cancel(
+        &self,
+        venues: &dyn Adapters,
+        by: By<'_>,
+        venue: VenueId,
+        account: &str,
+        market: &str,
+        after_ms: Option<u64>,
+    ) -> Result<(), VenueError> {
+        let detail = json!({ "market": market, "afterMs": after_ms });
+        let command = self.begin(by, venue, account, "scheduleCancel", detail);
+        let trading = self.gate(command, trading_account(venue, account, &self.live))?;
+        let armed = venues
+            .adapter(venue)?
+            .schedule_cancel(&trading, market, after_ms)
+            .await;
+        self.finish(command, armed)
+    }
+
     /// Sets `account`'s leverage on `market`.
     #[allow(clippy::too_many_arguments)]
     pub async fn set_leverage(
@@ -334,7 +441,7 @@ impl Engine {
         leverage: Decimal,
     ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "leverage": as_json(&leverage) });
-        let command = self.begin(origin, venue, account, "setLeverage", detail);
+        let command = self.begin(By::app(origin), venue, account, "setLeverage", detail);
         let trading = self.gate(command, trading_account(venue, account, &self.live))?;
         let set = venues
             .adapter(venue)?
@@ -355,7 +462,7 @@ impl Engine {
         mode: MarginMode,
     ) -> Result<(), VenueError> {
         let detail = json!({ "market": market, "mode": as_json(&mode) });
-        let command = self.begin(origin, venue, account, "setMarginMode", detail);
+        let command = self.begin(By::app(origin), venue, account, "setMarginMode", detail);
         let trading = self.gate(command, trading_account(venue, account, &self.live))?;
         let set = venues
             .adapter(venue)?
@@ -640,6 +747,8 @@ mod tests {
             Origin::Activity,
             Origin::Drawer,
             Origin::App,
+            Origin::Algo,
+            Origin::Engine,
         ] {
             assert_eq!(serde_json::to_value(origin).unwrap(), origin.as_str());
         }

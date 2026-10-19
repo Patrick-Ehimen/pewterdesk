@@ -3196,7 +3196,9 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "pewterdesk-core",
+ "pewterdesk-sim",
  "pewterdesk-store",
+ "rust_decimal",
  "serde",
  "serde_json",
  "tokio",
@@ -3270,6 +3272,16 @@ dependencies = [
  "serde_json",
  "tokio",
  "zeroize",
+]
+
+[[package]]
+name = "pewterdesk-sim"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "pewterdesk-core",
+ "rust_decimal",
+ "tokio",
 ]
 
 [[package]]

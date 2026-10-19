@@ -8,7 +8,9 @@
 //! - No key material, ever. Callers log what was asked and what came back
 //!   (orders, account ids, keychain entry *names* at most), never a key, a
 //!   signature or a signed payload.
-//! - Append-only: nothing here updates or deletes an event.
+//! - Append-only: nothing here updates or deletes an event. The one table
+//!   that changes is `algos`, each algo's current state (its spec, status
+//!   and progress), so the engine can find the ones the app closed on.
 //! - The file lives in the app's own data folder, readable by the user only
 //!   as much as that folder is.
 
@@ -18,7 +20,7 @@ use std::sync::Mutex;
 use rusqlite::{params, Connection, OptionalExtension};
 
 /// The schema this code writes, kept in SQLite's `user_version`.
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS meta (
@@ -39,6 +41,21 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_command ON events (command);
 CREATE INDEX IF NOT EXISTS events_client_id ON events (client_id);
+CREATE TABLE IF NOT EXISTS algos (
+    id         TEXT PRIMARY KEY,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    over       INTEGER NOT NULL,
+    view       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS algos_over ON algos (over, created_at);
+";
+
+/// Version 2 adds which algo an event belongs to (`events.algo`) and the
+/// `algos` table, which `SCHEMA` creates.
+const TO_V2: &str = "
+ALTER TABLE events ADD COLUMN algo TEXT;
+CREATE INDEX IF NOT EXISTS events_algo ON events (algo);
 ";
 
 /// Why the log couldn't be opened, read or written. Messages are SQLite's
@@ -78,6 +95,8 @@ pub struct NewEvent<'a> {
     pub operation: Option<&'a str>,
     /// The client order id, on the event that records it.
     pub client_id: Option<&'a str>,
+    /// The algo that sent the command, if one did.
+    pub algo: Option<&'a str>,
     /// Everything else about it, as JSON.
     pub detail: serde_json::Value,
 }
@@ -94,6 +113,7 @@ pub struct Event {
     pub account: Option<String>,
     pub operation: Option<String>,
     pub client_id: Option<String>,
+    pub algo: Option<String>,
     pub detail: serde_json::Value,
 }
 
@@ -130,6 +150,10 @@ impl EventLog {
             )));
         }
         conn.execute_batch(SCHEMA)?;
+        // A new log is version 0, so it takes version 2's column here too.
+        if version < 2 {
+            conn.execute_batch(TO_V2)?;
+        }
         conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
         let engine_id = Self::engine_id_of(&conn)?;
         Ok(Self {
@@ -177,8 +201,8 @@ impl EventLog {
         let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         conn.execute(
             "INSERT INTO events
-                (at, command, kind, origin, venue, account, operation, client_id, detail)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                (at, command, kind, origin, venue, account, operation, client_id, algo, detail)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 event.at as i64,
                 event.command.map(|c| c as i64),
@@ -188,6 +212,7 @@ impl EventLog {
                 event.account,
                 event.operation,
                 event.client_id,
+                event.algo,
                 event.detail.to_string(),
             ],
         )?;
@@ -197,7 +222,7 @@ impl EventLog {
     /// The latest `limit` events, newest first.
     pub fn recent(&self, limit: usize) -> Result<Vec<Event>, StoreError> {
         self.query(
-            "SELECT seq, at, command, kind, origin, venue, account, operation, client_id, detail
+            "SELECT seq, at, command, kind, origin, venue, account, operation, client_id, algo, detail
              FROM events ORDER BY seq DESC LIMIT ?1",
             params![limit as i64],
         )
@@ -206,17 +231,87 @@ impl EventLog {
     /// A command and everything logged for it, in order.
     pub fn for_command(&self, seq: u64) -> Result<Vec<Event>, StoreError> {
         self.query(
-            "SELECT seq, at, command, kind, origin, venue, account, operation, client_id, detail
+            "SELECT seq, at, command, kind, origin, venue, account, operation, client_id, algo, detail
              FROM events WHERE seq = ?1 OR command = ?1 ORDER BY seq",
             params![seq as i64],
         )
+    }
+
+    /// The client order ids an algo was given, oldest first: every order
+    /// it sent, or tried to.
+    pub fn algo_client_ids(&self, algo: &str) -> Result<Vec<String>, StoreError> {
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
+        let mut statement = conn.prepare(
+            "SELECT e.client_id FROM events e JOIN events c ON e.command = c.seq
+             WHERE c.algo = ?1 AND e.kind = 'sent' AND e.client_id IS NOT NULL
+             ORDER BY e.seq",
+        )?;
+        let ids = statement.query_map(params![algo], |row| row.get::<_, String>(0))?;
+        Ok(ids.collect::<Result<_, _>>()?)
+    }
+
+    /// Keeps an algo's current state (`view`, its JSON), replacing the last.
+    pub fn save_algo(
+        &self,
+        id: &str,
+        created_at: u64,
+        updated_at: u64,
+        over: bool,
+        view: &serde_json::Value,
+    ) -> Result<(), StoreError> {
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
+        conn.execute(
+            "INSERT INTO algos (id, created_at, updated_at, over, view)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT (id) DO UPDATE SET
+                updated_at = excluded.updated_at, over = excluded.over, view = excluded.view",
+            params![
+                id,
+                created_at as i64,
+                updated_at as i64,
+                over,
+                view.to_string()
+            ],
+        )?;
+        Ok(())
+    }
+
+    /// The algos not over yet (running or paused when they were last kept),
+    /// oldest first.
+    pub fn open_algos(&self) -> Result<Vec<serde_json::Value>, StoreError> {
+        self.algo_views(
+            "SELECT view FROM algos WHERE over = 0 ORDER BY created_at",
+            [],
+        )
+    }
+
+    /// The latest `limit` algos that are over, newest first.
+    pub fn past_algos(&self, limit: usize) -> Result<Vec<serde_json::Value>, StoreError> {
+        self.algo_views(
+            "SELECT view FROM algos WHERE over = 1 ORDER BY updated_at DESC LIMIT ?1",
+            params![limit as i64],
+        )
+    }
+
+    fn algo_views(
+        &self,
+        sql: &str,
+        args: impl rusqlite::Params,
+    ) -> Result<Vec<serde_json::Value>, StoreError> {
+        let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
+        let mut statement = conn.prepare(sql)?;
+        let rows = statement.query_map(args, |row| row.get::<_, String>(0))?;
+        Ok(rows
+            .filter_map(Result::ok)
+            .filter_map(|json| serde_json::from_str(&json).ok())
+            .collect())
     }
 
     fn query(&self, sql: &str, args: impl rusqlite::Params) -> Result<Vec<Event>, StoreError> {
         let conn = self.conn.lock().unwrap_or_else(|p| p.into_inner());
         let mut statement = conn.prepare(sql)?;
         let rows = statement.query_map(args, |row| {
-            let detail: String = row.get(9)?;
+            let detail: String = row.get(10)?;
             Ok(Event {
                 seq: row.get::<_, i64>(0)? as u64,
                 at: row.get::<_, i64>(1)? as u64,
@@ -227,6 +322,7 @@ impl EventLog {
                 account: row.get(6)?,
                 operation: row.get(7)?,
                 client_id: row.get(8)?,
+                algo: row.get(9)?,
                 detail: serde_json::from_str(&detail).unwrap_or(serde_json::Value::Null),
             })
         })?;
@@ -328,6 +424,86 @@ mod tests {
             .unwrap();
         drop(conn);
         assert!(EventLog::open(&path).is_err());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
+    }
+
+    #[test]
+    fn keeps_an_algos_state_and_its_client_ids() {
+        let log = EventLog::open_in_memory().unwrap();
+        let command = log
+            .append(&NewEvent {
+                at: 1,
+                kind: "command",
+                algo: Some("a1"),
+                ..NewEvent::default()
+            })
+            .unwrap();
+        log.append(&NewEvent {
+            at: 2,
+            command: Some(command),
+            kind: "sent",
+            client_id: Some("0x1"),
+            ..NewEvent::default()
+        })
+        .unwrap();
+        // Another algo's order isn't this one's.
+        let other = log
+            .append(&NewEvent {
+                at: 3,
+                kind: "command",
+                algo: Some("a2"),
+                ..NewEvent::default()
+            })
+            .unwrap();
+        log.append(&NewEvent {
+            at: 4,
+            command: Some(other),
+            kind: "sent",
+            client_id: Some("0x2"),
+            ..NewEvent::default()
+        })
+        .unwrap();
+        assert_eq!(log.algo_client_ids("a1").unwrap(), ["0x1"]);
+
+        log.save_algo("a1", 1, 1, false, &json!({ "status": "running" }))
+            .unwrap();
+        log.save_algo("a2", 2, 2, false, &json!({ "status": "running" }))
+            .unwrap();
+        log.save_algo("a1", 1, 5, true, &json!({ "status": "finished" }))
+            .unwrap();
+        assert_eq!(log.open_algos().unwrap(), [json!({ "status": "running" })]);
+        assert_eq!(
+            log.past_algos(10).unwrap(),
+            [json!({ "status": "finished" })]
+        );
+    }
+
+    #[test]
+    fn upgrades_a_version_1_log() {
+        let path = scratch("upgrade");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let conn = Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "CREATE TABLE events (seq INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL,
+                command INTEGER, kind TEXT NOT NULL, origin TEXT, venue TEXT, account TEXT,
+                operation TEXT, client_id TEXT, detail TEXT NOT NULL);
+             INSERT INTO events (at, kind, detail) VALUES (1, 'command', 'null');
+             PRAGMA user_version = 1;",
+        )
+        .unwrap();
+        drop(conn);
+        let log = EventLog::open(&path).unwrap();
+        let kept = log.recent(10).unwrap();
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].algo, None);
+        log.append(&NewEvent {
+            at: 2,
+            kind: "command",
+            algo: Some("a1"),
+            ..NewEvent::default()
+        })
+        .unwrap();
+        assert_eq!(log.recent(1).unwrap()[0].algo.as_deref(), Some("a1"));
         let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
     }
 }

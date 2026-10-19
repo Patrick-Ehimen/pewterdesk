@@ -23,12 +23,13 @@ use async_trait::async_trait;
 use pewterdesk_core::{ExchangeAdapter, VenueError, VenueId};
 use serde::Serialize;
 
+pub mod algo;
 pub mod live;
 mod router;
 pub mod rules;
 
 pub use pewterdesk_store::EventLog;
-pub use router::{client_id, trading_account, Engine};
+pub use router::{client_id, trading_account, By, Engine};
 
 /// Each venue's adapter, as the host has set it up.
 pub trait Adapters: Send + Sync {

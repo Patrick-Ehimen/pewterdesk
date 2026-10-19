@@ -5,9 +5,11 @@
 
 pub mod accounts;
 mod adapter;
+mod algo;
 mod domain;
 mod keys;
 
 pub use adapter::{ExchangeAdapter, VenueError};
+pub use algo::*;
 pub use domain::*;
 pub use keys::{KeyError, KeySource};

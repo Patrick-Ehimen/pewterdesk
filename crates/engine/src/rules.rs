@@ -1542,7 +1542,9 @@ impl TradingRules {
                 trigger_price,
                 limit_price,
             } => num(limit_price.unwrap_or(*trigger_price)),
-            OrderKind::Market { .. } => {
+            // A venue-run TWAP is checked as a market order of its whole
+            // size: the most it can do.
+            OrderKind::Market { .. } | OrderKind::Twap { .. } => {
                 match facts.positions.iter().find(|p| p.market == request.market) {
                     Some(held) => held.mark,
                     None => {
