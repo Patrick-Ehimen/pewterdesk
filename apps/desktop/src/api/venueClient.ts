@@ -79,6 +79,8 @@ const BLOCK_TEXT: Record<string, MessageKey> = {
   // Not a rule: the engine couldn't record the order in its event log, so
   // it didn't send it.
   unrecorded: "rules.block.unrecorded",
+  // Not a rule: the daemon (pdd) trades this account; one engine per account.
+  "another-engine": "rules.block.anotherEngine",
 };
 
 /** What a trading rule's code means, in words. */

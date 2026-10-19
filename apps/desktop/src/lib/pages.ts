@@ -3,7 +3,6 @@ export const PAGES = [
   "trade",
   "portfolio",
   "charts",
-  "bots",
   "rules",
   "venues",
   "news",

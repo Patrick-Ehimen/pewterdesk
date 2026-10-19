@@ -19,8 +19,10 @@ use std::sync::Mutex;
 
 use rusqlite::{params, Connection, OptionalExtension};
 
-/// The schema this code writes, kept in SQLite's `user_version`.
-const SCHEMA_VERSION: i64 = 2;
+/// The schema this code writes, kept in SQLite's `user_version`. Version 3
+/// added a `bots` table, since taken out; a file at 3 is version 2 plus
+/// that table, which is left alone.
+const SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS meta (

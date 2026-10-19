@@ -1082,6 +1082,10 @@ input {
 }
 
 /* Toggle switch - brass track when on */
+.pd-switch:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .pd-switch {
   position: relative;
   flex: none;

@@ -16,6 +16,9 @@
 //!   account, or a live account (Bybit, Hyperliquid, Aster) with live
 //!   trading turned on, once the trader's rules pass. Every venue
 //!   implements all six, except a trailing stop on Hyperliquid and Aster.
+//! - With "always on" (`daemon.rs`) the same six go to the daemon's engine
+//!   instead - the same router and gate, in `pdd` - and are refused, not
+//!   sent from here, while it can't be reached (cancels excepted).
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
 //! - Bybit's account reads are signed with its stored API key: the adapter
@@ -43,8 +46,10 @@ use tauri::ipc::Channel;
 use tauri::{State, Webview};
 use tokio::sync::mpsc;
 
+use crate::daemon::{self, DaemonLink};
 use crate::econ_calendar::CalendarState;
 use crate::keychain::KeychainKeySource;
+use pewterdesk_protocol::rpc::{Call, Target};
 
 /// One message on a subscription's channel. `closed` is final: the venue ended
 /// the stream (e.g. it rejected the market), and nothing more will arrive.
@@ -428,25 +433,37 @@ impl Adapters for Venues {
 
 /// Places an order for `account`.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn place_order(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
     calendar: State<'_, CalendarState>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     request: OrderRequest,
     origin: Option<Origin>,
 ) -> Result<Order, VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    if let Some(link) = daemon.route().await? {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        return daemon::forward(&link, Call::PlaceOrder { target, request }).await;
+    }
     engine
         .place_order(&*venues, &*calendar, origin, venue, &account, &request)
         .await
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn cancel_order(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     market: String,
@@ -454,6 +471,20 @@ pub async fn cancel_order(
     origin: Option<Origin>,
 ) -> Result<(), VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    // An order is always allowed off: through pdd if it's there, else here.
+    if let Some(link) = daemon.route_cancel().await {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        let call = Call::CancelOrder {
+            target,
+            market,
+            order_id,
+        };
+        return daemon::forward(&link, call).await;
+    }
     engine
         .cancel_order(&*venues, origin, venue, &account, &market, &order_id)
         .await
@@ -466,6 +497,7 @@ pub async fn cancel_order(
 pub async fn amend_order(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     market: String,
@@ -474,6 +506,20 @@ pub async fn amend_order(
     origin: Option<Origin>,
 ) -> Result<(), VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    if let Some(link) = daemon.route().await? {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        let call = Call::AmendOrder {
+            target,
+            market,
+            order_id,
+            amend,
+        };
+        return daemon::forward(&link, call).await;
+    }
     engine
         .amend_order(
             &*venues, origin, venue, &account, &market, &order_id, &amend,
@@ -484,9 +530,11 @@ pub async fn amend_order(
 /// Sets the take-profit, stop-loss and trailing stop on `account`'s
 /// position in `market`, all at once (`None` removes one). Protective only.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn set_position_protection(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     market: String,
@@ -494,6 +542,19 @@ pub async fn set_position_protection(
     origin: Option<Origin>,
 ) -> Result<(), VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    if let Some(link) = daemon.route().await? {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        let call = Call::Protect {
+            target,
+            market,
+            protection,
+        };
+        return daemon::forward(&link, call).await;
+    }
     engine
         .set_position_protection(&*venues, origin, venue, &account, &market, &protection)
         .await
@@ -526,9 +587,11 @@ pub async fn trade_settings(
 /// Sets `account`'s leverage on `market` (checked against the market's
 /// maximum by the adapter).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn set_leverage(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     market: String,
@@ -536,6 +599,19 @@ pub async fn set_leverage(
     origin: Option<Origin>,
 ) -> Result<(), VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    if let Some(link) = daemon.route().await? {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        let call = Call::SetLeverage {
+            target,
+            market,
+            leverage,
+        };
+        return daemon::forward(&link, call).await;
+    }
     engine
         .set_leverage(&*venues, origin, venue, &account, &market, leverage)
         .await
@@ -544,9 +620,11 @@ pub async fn set_leverage(
 /// Switches `account` between cross and isolated margin (account-wide on
 /// Bybit).
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn set_margin_mode(
     venues: State<'_, Venues>,
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     venue: VenueId,
     account: String,
     market: String,
@@ -554,6 +632,19 @@ pub async fn set_margin_mode(
     origin: Option<Origin>,
 ) -> Result<(), VenueError> {
     let origin = origin.unwrap_or(Origin::App);
+    if let Some(link) = daemon.route().await? {
+        let target = Target {
+            venue,
+            account: account.clone(),
+            origin: Some(origin),
+        };
+        let call = Call::SetMarginMode {
+            target,
+            market,
+            mode,
+        };
+        return daemon::forward(&link, call).await;
+    }
     engine
         .set_margin_mode(&*venues, origin, venue, &account, &market, mode)
         .await

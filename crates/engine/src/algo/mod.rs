@@ -201,6 +201,9 @@ impl Algos {
         validate(&spec)?;
         let host = self.host()?;
         let engine = host.engine();
+        // The account is this engine's, or another engine (the app's or the
+        // daemon's) runs it and this one doesn't.
+        engine.owners().claim(spec.venue, &spec.account)?;
         // The switch now, so a live account with trading off is told at
         // once; the gate still checks every order.
         trading_account(spec.venue, &spec.account, engine.live())?;
@@ -407,6 +410,18 @@ impl Algos {
             .collect();
         for saved in open {
             if self.entry(&saved.view.id).is_ok() {
+                continue;
+            }
+            // Another engine (the app's or the daemon's) holds the account:
+            // it's alive and runs this algo, so it isn't this one's to stop.
+            // An engine that died let its lock go, so its algos are taken
+            // up here.
+            if host
+                .engine()
+                .owners()
+                .claim(saved.view.spec.venue, &saved.view.spec.account)
+                .is_err()
+            {
                 continue;
             }
             match (saved.view.runs_on, &saved.native_order) {

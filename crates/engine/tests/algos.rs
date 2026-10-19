@@ -95,6 +95,19 @@ fn host_with(sim: Arc<SimVenue>, log: EventLog) -> Arc<TestHost> {
     host
 }
 
+/// A host whose engine takes accounts' locks in `locks`, as the app's and
+/// the daemon's do.
+fn host_locked(sim: Arc<SimVenue>, log: EventLog, locks: &std::path::Path) -> Arc<TestHost> {
+    let host = Arc::new(TestHost {
+        engine: Engine::load(None, Some(log)).with_locks(locks.to_path_buf()),
+        sim,
+        published: Mutex::new(Vec::new()),
+    });
+    let attached: Arc<dyn Host> = host.clone();
+    host.engine.algos().attach(attached);
+    host
+}
+
 fn host() -> Arc<TestHost> {
     let sim = Arc::new(SimVenue::new(VenueId::Bybit, vec![market()]));
     host_with(sim, EventLog::open_in_memory().unwrap())
@@ -456,4 +469,81 @@ async fn the_venues_switch_is_kept_armed_while_an_algo_runs_here() {
         .iter()
         .any(|e| e.operation.as_deref() == Some("scheduleCancel")
             && e.origin.as_deref() == Some("engine")));
+}
+
+/// The app and the daemon share the log. One starting up while the other
+/// runs an algo leaves that algo alone: the account is the other's, and it
+/// is alive. (One that died lets its lock go; then the algo is taken up, as
+/// after a restart.)
+#[test]
+fn an_algo_another_engine_runs_is_left_alone() {
+    let dir = std::env::temp_dir().join(format!("pewterdesk-algos-two-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let path = dir.join("events.sqlite3");
+    let locks = dir.join("locks");
+    let sim = Arc::new(SimVenue::new(VenueId::Bybit, vec![market()]));
+    sim.push_book(book("100", "100.1"));
+
+    let daemon_rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let daemon = host_locked(Arc::clone(&sim), EventLog::open(&path).unwrap(), &locks);
+    let id = daemon_rt.block_on(async {
+        let view = daemon
+            .engine
+            .algos()
+            .start(
+                spec(
+                    "0.9",
+                    AlgoKind::Scaled {
+                        from: d("99"),
+                        to: d("97"),
+                        count: 3,
+                        distribution: Distribution::Flat,
+                        post_only: true,
+                    },
+                ),
+                Origin::Pd,
+            )
+            .await
+            .unwrap();
+        until(&daemon, &view.id, |v| v.open_orders == 3).await;
+        view.id
+    });
+
+    // The app starts while the daemon runs.
+    let app_rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let app = host_locked(Arc::clone(&sim), EventLog::open(&path).unwrap(), &locks);
+    app_rt.block_on(app.engine.algos().reconcile());
+    assert!(
+        app.engine.algos().list().iter().all(|v| v.id != id),
+        "not the app's to take up"
+    );
+    assert!(
+        sim.orders()
+            .iter()
+            .all(|o| o.status != OrderStatus::Cancelled),
+        "its orders still rest"
+    );
+    // Nor can the app start an algo on the daemon's account.
+    let refused = app_rt.block_on(app.engine.algos().start(
+        spec(
+            "0.1",
+            AlgoKind::Chaser {
+                give_up_bps: None,
+                finish_at_market: false,
+                post_only: true,
+            },
+        ),
+        Origin::App,
+    ));
+    assert_eq!(
+        refused.map(|v| v.id),
+        Err(VenueError::Blocked(pewterdesk_engine::owner::LOCKED.into()))
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }

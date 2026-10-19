@@ -55,9 +55,19 @@ DEV_RUNNER := $(CURDIR)/scripts/dev-run.sh
 
 .PHONY: dev
 dev: ## Run the desktop app in a native window (Tauri; needs Rust)
+	$(CARGO) build -p pewterdesk-daemon
 	CARGO_TARGET_X86_64_APPLE_DARWIN_RUNNER=$(DEV_RUNNER) \
 	CARGO_TARGET_AARCH64_APPLE_DARWIN_RUNNER=$(DEV_RUNNER) \
 	$(PNPM) --filter $(DESKTOP_PKG) run tauri dev
+
+.PHONY: daemon
+daemon: ## Build pd and pdd (release), signed with the dev certificate when there is one
+	$(CARGO) build --release -p pewterdesk-daemon -p pewterdesk-cli
+	@if [ "$$(uname)" = "Darwin" ] && security find-identity -p codesigning 2>/dev/null | grep -q '"PewterDesk Dev"'; then \
+		codesign --force --sign "PewterDesk Dev" --identifier app.pewterdesk.pdd target/release/pdd && \
+		codesign --force --sign "PewterDesk Dev" --identifier app.pewterdesk.pd target/release/pd; \
+	fi
+	@echo "built target/release/pd and target/release/pdd - run 'target/release/pd daemon install'"
 
 .PHONY: dev-cert
 dev-cert: ## macOS: create the local signing certificate that stops dev keychain prompts
@@ -140,8 +150,8 @@ rust-live: ## Run the read-only venue mainnet tests (needs the network)
 	$(CARGO) test -p pewterdesk-exchange-bybit -- --ignored --test-threads=1
 
 .PHONY: rust-bindings
-rust-bindings: ## Regenerate packages/core/src/generated from crates/core
-	$(CARGO) test -p pewterdesk-core
+rust-bindings: ## Regenerate packages/core/src/generated from crates/core and protocol
+	$(CARGO) test -p pewterdesk-core -p pewterdesk-protocol
 
 ##@ Packaging
 

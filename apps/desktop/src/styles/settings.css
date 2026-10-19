@@ -369,3 +369,8 @@
   color: var(--pd-pewter);
   font-size: 12px;
 }
+
+/* Always on, with pdd out of reach: orders are refused until it's back */
+.settings-help[data-warn] {
+  color: var(--pd-warning);
+}

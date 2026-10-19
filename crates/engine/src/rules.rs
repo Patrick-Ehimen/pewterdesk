@@ -26,7 +26,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use pewterdesk_core::{
@@ -35,6 +35,7 @@ use pewterdesk_core::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::kept::{Change, Kept};
 use crate::{Adapters, Calendar, CalendarEvent, Impact};
 
 /// The file the rules and their progress are kept in, in the app's config folder.
@@ -498,6 +499,18 @@ struct SavedOnce {
 }
 
 impl Saved {
+    /// The rules a kept file holds; a missing or unreadable one is none.
+    /// Rules that don't read as rules are no rules, not half-checked ones.
+    fn kept(bytes: Option<&[u8]>) -> Self {
+        let mut saved = bytes.map(Self::read).unwrap_or_default();
+        saved.sets.retain(|set| {
+            set.rules.valid().is_ok()
+                && set.pending.as_ref().is_none_or(|p| p.rules.valid().is_ok())
+        });
+        saved.sets.truncate(MAX_SETS);
+        saved
+    }
+
     fn read(bytes: &[u8]) -> Self {
         if let Ok(saved) = serde_json::from_slice::<Saved>(bytes) {
             return saved;
@@ -1206,8 +1219,9 @@ type History = (Instant, Vec<ClosedTrade>);
 /// venues lately.
 pub struct TradingRules {
     saved: Mutex<Saved>,
-    /// Where they're kept between runs; unset when there's nowhere to.
-    path: Option<PathBuf>,
+    /// Where they're kept between runs, which another engine (the app's, or
+    /// the daemon's) may change: read again whenever it has.
+    file: Kept,
     recent: Mutex<HashMap<Account, Recent>>,
     history: Mutex<HashMap<Account, History>>,
 }
@@ -1243,31 +1257,36 @@ fn tidy_name(name: &str) -> String {
 impl TradingRules {
     /// The rules kept at `path`. A missing or unreadable file is no rules.
     pub fn load(path: Option<PathBuf>) -> Self {
-        let mut saved = path
-            .as_ref()
-            .and_then(|p| std::fs::read(p).ok())
-            .map(|bytes| Saved::read(&bytes))
-            .unwrap_or_default();
-        // Rules that don't read as rules are no rules, not half-checked ones.
-        saved.sets.retain(|set| {
-            set.rules.valid().is_ok()
-                && set.pending.as_ref().is_none_or(|p| p.rules.valid().is_ok())
-        });
-        saved.sets.truncate(MAX_SETS);
+        let file = Kept::new(path);
+        let saved = Saved::kept(file.read().as_deref());
         Self {
             saved: Mutex::new(saved),
-            path,
+            file,
             recent: Mutex::new(HashMap::new()),
             history: Mutex::new(HashMap::new()),
         }
     }
 
     fn write(&self, saved: &Saved) -> bool {
-        self.path.as_ref().is_some_and(|path| {
-            path.parent()
-                .is_none_or(|dir| std::fs::create_dir_all(dir).is_ok())
-                && serde_json::to_vec(saved).is_ok_and(|json| std::fs::write(path, json).is_ok())
-        })
+        serde_json::to_vec(saved).is_ok_and(|json| self.file.write(&json))
+    }
+
+    /// The rules as they are now: the file read again if another engine
+    /// has changed it.
+    fn current(&self) -> MutexGuard<'_, Saved> {
+        let mut saved = self.saved.lock().unwrap();
+        match self.file.changed() {
+            Change::Same => {}
+            Change::Gone => {
+                *saved = Saved::default();
+                self.file.taken();
+            }
+            Change::Written(bytes) => {
+                *saved = Saved::kept(Some(&bytes));
+                self.file.taken();
+            }
+        }
+        saved
     }
 
     /// Applies each waiting change whose time has come.
@@ -1286,7 +1305,7 @@ impl TradingRules {
 
     /// Every account's rules: whether they're on, and any change that's waiting.
     pub fn views(&self) -> Vec<View> {
-        let mut saved = self.saved.lock().unwrap();
+        let mut saved = self.current();
         Self::settle(&mut saved, now_ms());
         saved
             .sets
@@ -1310,7 +1329,7 @@ impl TradingRules {
         &self,
         edit: impl FnOnce(&mut Saved) -> Result<(), VenueError>,
     ) -> Result<(), VenueError> {
-        let mut saved = self.saved.lock().unwrap();
+        let mut saved = self.current();
         Self::settle(&mut saved, now_ms());
         let before = saved.clone();
         if let Err(why) = edit(&mut saved) {
@@ -1390,7 +1409,7 @@ impl TradingRules {
 
     /// The rules in force for `account`, if any are.
     fn in_force(&self, venue: VenueId, account: &str) -> Option<Rules> {
-        let mut saved = self.saved.lock().unwrap();
+        let mut saved = self.current();
         Self::settle(&mut saved, now_ms());
         saved
             .sets
@@ -1475,7 +1494,7 @@ impl TradingRules {
 
     /// Where `facts` leave `account`, with its progress brought up to date and kept.
     fn stand(&self, venue: VenueId, account: &str, rules: &Rules, facts: &Facts) -> Status {
-        let mut saved = self.saved.lock().unwrap();
+        let mut saved = self.current();
         let who = Account {
             venue,
             id: account.to_owned(),
@@ -2175,7 +2194,7 @@ mod tests {
         assert!(state.in_force(VenueId::Bybit, "demo:1").is_some());
         assert!(state.remove(&me).unwrap().is_empty());
         assert!(state.in_force(VenueId::Bybit, "demo:1").is_none());
-        if let Some(path) = &state.path {
+        if let Some(path) = state.file.path() {
             let _ = std::fs::remove_file(path);
         }
     }
@@ -2242,13 +2261,13 @@ mod tests {
             .lock
             .is_none());
         // Kept, and read back: both sets, each with its progress.
-        let again = TradingRules::load(state.path.clone());
+        let again = TradingRules::load(state.file.path().map(Into::into));
         assert_eq!(again.views().len(), 2);
         assert!(again
             .stand(VenueId::Bybit, "demo:1", &Rules::default(), &down)
             .lock
             .is_some());
-        if let Some(path) = &state.path {
+        if let Some(path) = state.file.path() {
             let _ = std::fs::remove_file(path);
         }
     }

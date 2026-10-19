@@ -43,6 +43,17 @@ a key before storing it.
   trading rules); the only caller of an adapter's trading methods
 - `crates/store` - the engine's event log (SQLite), and each algo's state
 - `crates/sim` - `SimVenue`, an adapter fed order books, for testing algos
+- `crates/protocol` - what a client may ask the engine (JSON-RPC 2.0,
+  versioned), the command language in Rust (`command.rs`, checked against
+  `tests/fixtures/commands.json` with the TS parser) and what a line comes
+  to (`action.rs`), and where things live on this machine (`local.rs`)
+- `crates/link` - `pd`'s and the app's connection to `pdd`, and the
+  LaunchAgent that keeps it running
+- `crates/calendar` - the economic calendar (and its text helpers), shared
+  by the app and `pdd`
+- `apps/daemon` (`pdd`) - the engine headless, served over a Unix socket and
+  a 127.0.0.1 WebSocket to paired clients
+- `apps/cli` (`pd`) - the command line
 - `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
 - `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
@@ -58,7 +69,8 @@ a key before storing it.
   (needs a WASM build or its own implementation, a browser-wallet signer, and
   a proxy for CORS)
 
-The root `Cargo.toml` is a workspace over `crates/*` and `apps/desktop/src-tauri`;
+The root `Cargo.toml` is a workspace over `crates/*`, `apps/daemon`, `apps/cli`
+and `apps/desktop/src-tauri`;
 build output goes to the root `target/`.
 
 ## Commands
@@ -72,6 +84,8 @@ pnpm and cargo, so it can't drift from the underlying scripts.
   also fails if the generated TS types are stale
 - `make rust-bindings` - regenerate `packages/core/src/generated/` after changing `crates/core`
 - `make dev` - run the desktop app in a native window (needs Rust)
+- `make daemon` - build `pd` and `pdd` (release), signed with the dev
+  certificate; then `target/release/pd daemon install` and `pd pair`
 - `make dev-cert` - macOS, once per machine: a local self-signed "PewterDesk
   Dev" certificate that `make dev` signs the app with (`scripts/dev-run.sh`),
   so keychain "Always Allow" survives rebuilds instead of prompting each time
@@ -271,6 +285,35 @@ discover it on their own. The reasoning behind the rules is in
   Aster that market's; Bybit has none we can use). `halt` stops every algo
   and cancels what they placed. Giving algos a way to the venue that skips
   the router is a security-relevant change.
+- `apps/daemon` (`pdd`), `crates/protocol`, `crates/link` and `apps/cli`
+  (`pd`) - the daemon and its clients ("always on"). `pdd` runs the same
+  engine as the app - router, gate, log, client ids, algos - and serves it
+  only on this machine: a Unix socket (0600, the umask narrowed around the
+  bind) for `pd`, and a WebSocket on 127.0.0.1 for the app that refuses any
+  request with an `Origin` (a browser) or a `Host` but its own (DNS
+  rebinding). Only paired clients get past `hello`: pairing is approved by
+  the person at the machine (`pdd`'s terminal, or a macOS dialog showing
+  the code the client shows; the client's name goes to it as an argument,
+  never into the script), never over the protocol; the client keeps its
+  token in its keychain (`pd:token`, `app:pdd-token`), `pdd` only a SHA-256
+  of it (`pdd-clients.json`, 0600), compared in constant time; revoking
+  takes effect on the next call. The protocol (`rpc.rs`) is the six
+  trading operations, read-only queries, algo control, `halt`, `flatten`
+  (reduce-only market orders through the router) and pairing - nothing
+  that signs, withdraws, transfers or carries key material. `pd`'s
+  commands are logged with the origin `pd` whatever it says. A panic aborts
+  `pdd` (launchd restarts it; it reconciles first). With "always on" set
+  (Settings, `src-tauri/src/daemon.rs`, `always-on.json`) the app's six
+  trading commands and its algo commands go to `pdd`, and are refused - not
+  sent from the app's own engine - while it can't be reached; cancels
+  always go through. The app's engine and `pdd`'s share the gate files
+  (`crates/engine/src/kept.rs`: each re-reads one the other changed, and
+  writes it whole) and take one lock per account (`owner.rs`, `flock` in
+  the data folder's `locks`): an account another engine holds is refused
+  (`Blocked("another-engine")`), and its algos are left to that engine at
+  start; one that died let its lock go, so its algos are taken up.
+  Adding a protocol method, a listener, or a way to pair is a
+  security-relevant change.
 - `crates/store` - the event log (`events.sqlite3` in the app's data
   folder; SQLite, WAL, append-only): every routed command, gate decision,
   client order id and venue result. Never key material - not a key, a
@@ -584,46 +627,44 @@ Settings › Layout shows every preset and saved layout as a card
 (`components/layout/LayoutGallery.tsx`), each with a miniature drawn from
 its own grid; the layout editor's "All layouts" opens it.
 
-## Algos, bots and `pd` (planned)
+## The daemon and `pd` ("always on")
 
-Being built. The plan is in `docs/bots/` (start at `docs/bots/README.md`),
-the decision in `docs/adr/0003-bot-engine-daemon.md` (proposed), and the
-research behind it in `docs/research/cli-trading-bots.md`. In short:
-`crates/engine` takes over routing and the trading gate (Phase 0: the
-router, `live.rs` and `rules.rs`, the event log in `crates/store`, and client
-order ids), runs algo executors (Phase 1: chaser, TWAP, scaled, in
-`crates/engine/src/algo/`, tested against `SimVenue` in `crates/sim`;
-Phase 2: Hyperliquid's own TWAP, the venues' dead-man's switches and
-`expiresAfter`), and then bots; it runs inside the app or headless in a daemon (`pdd`),
-which a `pd` CLI and the app reach over a localhost-only protocol.
+Phase 3 of the plan, built: `pdd` keeps the engine (and its algos) running
+with the app quit; `pd` trades through it from a terminal, reading the
+command palette's own lines (`pd buy 100 hype at 38.2`, `pd chase ...`,
+`pd halt`, `pd flatten`), each previewed and confirmed (`--yes`,
+`--dry-run`, `--json`); without `pdd` it reads markets and prices on its
+own and refuses to trade. `pd daemon install` (macOS) copies `pdd` into
+the app's data folder and runs it as a LaunchAgent (`KeepAlive`); `pd pair`
+pairs a `pd` once; `pd use <venue> <account>` picks the account. In the
+app, Settings > Advanced > Always on does the same for the app. Development:
+`PEWTERDESK_HOME` puts the daemon's and `pd`'s files in one folder of its
+own.
 
-The Bots page (`components/pages/BotsPage.tsx`, `components/bots/`, after
-the Bots, Backtest and New bot mockups in `design/`) is a UI-only preview of
-it, in three sections: Bots (cards, each with its path backtest → paper →
-live), Backtests (every run with its verdict) and Paper trading (a week's
-progress against the backtest). A new bot (grid, EMA cross, or custom: the
-user's own entry and exit rules over price, EMA, SMA and RSI, with a
-stop-loss, take-profit and size - `components/bots/CustomRules.tsx`; a
-period preset; limits) and a backtest (overview, trades, analysis,
-comparison, with the readiness verdict on top) open over them with a
-breadcrumb trail back; the page remembers where it was left. It starts
-empty: every bot and run is the user's own, and the backtests run in the
-page on seeded sample candles (`lib/backtest.ts`; a grid around today's
-price, so over 7 to 30 days), kept in this browser's storage
-(`lib/bots.ts`, under `pd.bots`). It calls no command and nothing reaches a venue. A
-bot paper trades for `PAPER_DAYS` (7) before Go live would apply, and Go
-live is disabled. Wiring it to real candles or an engine means following
-the plan below like any other part of it.
+## Algos and `pd`
 
-When working on any of it:
+Phases 0 to 3 of `docs/bots/plan.md` are built: `crates/engine` does the
+routing and the trading gate (the router, `live.rs` and `rules.rs`, the
+event log in `crates/store`, client order ids), runs the algo executors
+(chaser, TWAP, scaled, in `crates/engine/src/algo/`, tested against
+`SimVenue` in `crates/sim`; Hyperliquid's own TWAP, the venues' dead-man's
+switches and `expiresAfter`), inside the app or headless in `pdd`, which
+`pd` and the app reach over a localhost-only protocol. The decision is
+`docs/adr/0003-bot-engine-daemon.md`.
 
-- Follow `docs/bots/plan.md` phase by phase; Phase 0 (extracting the engine
-  with no behaviour change) comes before any new feature. Tick its
-  checkboxes as work lands.
+There are no bots in pewterdesk. Automated strategies run in FreqTrade,
+on its own, with its own trade-only key (ideally its own sub-account): it
+doesn't talk to pewterdesk and pewterdesk doesn't talk to it. Its trades
+show here like any made elsewhere, and count toward that account's
+trading rules. The bot engine that was built here (strategies, a
+backtester, paper and live bots, the Bots page, `pd bot`) is kept on the
+`bots-engine` branch, unmerged.
+
+When working on the engine, the daemon or `pd`:
+
 - `docs/bots/safety.md` is binding: no new signing verbs (the six operations
   above only), every order through the one gate whatever sent it, keys only
-  via `KeySource`, localhost and paired clients only, fail closed. The new
-  crates it lists join the security-sensitive list above as they're created.
+  via `KeySource`, localhost and paired clients only, fail closed.
 - Keep `docs/bots/` and the ADR in step with the code; if the plan changes,
   change the doc in the same PR.
 

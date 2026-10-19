@@ -16,8 +16,10 @@ use pewterdesk_engine::algo::Host;
 use pewterdesk_engine::{Adapters, Calendar, Engine};
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::daemon::{self, DaemonLink};
 use crate::econ_calendar::CalendarState;
 use crate::venues::Venues;
+use pewterdesk_protocol::rpc::Call;
 
 /// The most past algos the history returns.
 const HISTORY_MAX: usize = 200;
@@ -61,46 +63,122 @@ pub fn install(app: &AppHandle) {
 #[tauri::command]
 pub async fn start_algo(
     engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
     spec: AlgoSpec,
     origin: Option<Origin>,
 ) -> Result<AlgoView, VenueError> {
+    // With always on, pdd runs it (and it keeps running with the app quit).
+    if let Some(link) = daemon.route().await? {
+        return daemon::forward(&link, Call::AlgoStart { spec }).await;
+    }
     engine
         .algos()
         .start(spec, origin.unwrap_or(Origin::App))
         .await
 }
 
-/// This session's algos, newest first.
+/// The algos running, newest first: pdd's with always on, else this
+/// session's (and this session's too, should any have run here).
 #[tauri::command]
-pub fn algos(engine: State<'_, Engine>) -> Vec<AlgoView> {
-    engine.algos().list()
+pub async fn algos(
+    engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
+) -> Result<Vec<AlgoView>, VenueError> {
+    let mut list = engine.algos().list();
+    if let Some(link) = daemon.route().await.ok().flatten() {
+        list.extend(daemon::forward::<Vec<AlgoView>>(&link, Call::AlgoList).await?);
+    }
+    Ok(list)
 }
 
-/// Algos that are over, from the log, newest first.
+/// Algos that are over, from the log (shared with pdd), newest first.
 #[tauri::command]
 pub fn algo_history(engine: State<'_, Engine>, limit: Option<usize>) -> Vec<AlgoView> {
     engine.algos().history(limit.unwrap_or(50).min(HISTORY_MAX))
 }
 
-#[tauri::command]
-pub fn pause_algo(engine: State<'_, Engine>, id: String) -> Result<(), VenueError> {
-    engine.algos().pause(&id)
+/// `id` steered here if it's this session's, else in pdd's engine.
+async fn steer(
+    engine: &Engine,
+    daemon: &DaemonLink,
+    id: String,
+    here: impl FnOnce(&Engine, &str) -> Result<(), VenueError>,
+    there: impl FnOnce(String) -> Call,
+) -> Result<(), VenueError> {
+    if engine.algos().list().iter().any(|a| a.id == id) {
+        return here(engine, &id);
+    }
+    match daemon.route().await? {
+        Some(link) => daemon::forward(&link, there(id)).await,
+        None => here(engine, &id),
+    }
 }
 
 #[tauri::command]
-pub fn resume_algo(engine: State<'_, Engine>, id: String) -> Result<(), VenueError> {
-    engine.algos().resume(&id)
+pub async fn pause_algo(
+    engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
+    id: String,
+) -> Result<(), VenueError> {
+    steer(
+        &engine,
+        &daemon,
+        id,
+        |e, id| e.algos().pause(id),
+        |id| Call::AlgoPause { id },
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn resume_algo(
+    engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
+    id: String,
+) -> Result<(), VenueError> {
+    steer(
+        &engine,
+        &daemon,
+        id,
+        |e, id| e.algos().resume(id),
+        |id| Call::AlgoResume { id },
+    )
+    .await
 }
 
 /// Stops an algo: cancels what it has open, and with `finishAtMarket`
 /// sends the rest at market.
 #[tauri::command]
-pub fn stop_algo(engine: State<'_, Engine>, id: String, mode: StopMode) -> Result<(), VenueError> {
-    engine.algos().stop(&id, mode)
+pub async fn stop_algo(
+    engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
+    id: String,
+    mode: StopMode,
+) -> Result<(), VenueError> {
+    steer(
+        &engine,
+        &daemon,
+        id,
+        |e, id| e.algos().stop(id, mode),
+        |id| Call::AlgoStop { id, mode },
+    )
+    .await
 }
 
-/// Stops every algo and cancels everything they placed; how many it stopped.
+/// Stops every algo and cancels everything they placed - here, and in pdd
+/// when it's there; how many it stopped.
 #[tauri::command]
-pub fn halt_algos(engine: State<'_, Engine>) -> usize {
-    engine.algos().halt()
+pub async fn halt_algos(
+    engine: State<'_, Engine>,
+    daemon: State<'_, DaemonLink>,
+) -> Result<usize, ()> {
+    let mut stopped = engine.algos().halt();
+    if let Some(link) = daemon.route_cancel().await {
+        if let Ok(halted) =
+            daemon::forward::<pewterdesk_protocol::rpc::Halted>(&link, Call::Halt).await
+        {
+            stopped += halted.stopped;
+        }
+    }
+    Ok(stopped)
 }

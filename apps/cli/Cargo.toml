@@ -1,0 +1,30 @@
+[package]
+name = "pewterdesk-cli"
+version = "0.3.0"
+description = "pd: the pewterdesk command line - trades through the daemon (pdd), and reads markets on its own"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "pd"
+path = "src/main.rs"
+
+# A protocol client. It holds no venue key: trading goes through pdd, which
+# signs with the trade-only keys the app stored. Its own pairing token is in
+# the keychain. Every crate here is already in the workspace's lockfile.
+[dependencies]
+pewterdesk-core = { path = "../../crates/core" }
+pewterdesk-exchange-aster = { path = "../../crates/exchange-aster" }
+pewterdesk-exchange-bybit = { path = "../../crates/exchange-bybit" }
+pewterdesk-exchange-hyperliquid = { path = "../../crates/exchange-hyperliquid" }
+pewterdesk-keychain = { path = "../../crates/keychain" }
+pewterdesk-link = { path = "../../crates/link" }
+pewterdesk-protocol = { path = "../../crates/protocol" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["rt", "net", "io-util", "time", "macros", "process", "fs"] }
+zeroize = "1.9.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"

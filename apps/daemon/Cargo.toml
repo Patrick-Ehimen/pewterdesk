@@ -1,0 +1,39 @@
+[package]
+name = "pewterdesk-daemon"
+version = "0.3.0"
+description = "pdd: runs the trading engine headless, so algos keep running with the app closed, and serves it to pd and the app"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "pdd"
+path = "src/main.rs"
+
+# Security-relevant (docs/bots/safety.md): listeners, pairing, token checks.
+# Every crate here is already in the workspace's lockfile.
+[dependencies]
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+getrandom = "0.2"
+hex = "0.4.3"
+pewterdesk-calendar = { path = "../../crates/calendar" }
+pewterdesk-core = { path = "../../crates/core" }
+pewterdesk-engine = { path = "../../crates/engine" }
+pewterdesk-exchange-aster = { path = "../../crates/exchange-aster" }
+pewterdesk-exchange-bybit = { path = "../../crates/exchange-bybit" }
+pewterdesk-exchange-hyperliquid = { path = "../../crates/exchange-hyperliquid" }
+pewterdesk-keychain = { path = "../../crates/keychain" }
+pewterdesk-protocol = { path = "../../crates/protocol" }
+rust_decimal = "1.43.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha2 = "0.10.9"
+tokio = { version = "1.53.1", features = ["rt-multi-thread", "net", "io-util", "io-std", "sync", "time", "macros", "signal", "process", "fs"] }
+tokio-tungstenite = "0.29.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
+[dev-dependencies]
+async-trait = "0.1.92"
+pewterdesk-sim = { path = "../../crates/sim" }

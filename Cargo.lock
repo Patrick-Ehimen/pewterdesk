@@ -3155,12 +3155,15 @@ dependencies = [
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
+ "pewterdesk-calendar",
  "pewterdesk-core",
  "pewterdesk-engine",
  "pewterdesk-exchange-aster",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
  "pewterdesk-keychain",
+ "pewterdesk-link",
+ "pewterdesk-protocol",
  "quick-xml",
  "reqwest",
  "serde",
@@ -3173,6 +3176,37 @@ dependencies = [
  "tiny_http",
  "tokio",
  "tokio-tungstenite",
+ "zeroize",
+]
+
+[[package]]
+name = "pewterdesk-calendar"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "pewterdesk-core",
+ "pewterdesk-engine",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "pewterdesk-cli"
+version = "0.3.0"
+dependencies = [
+ "libc",
+ "pewterdesk-core",
+ "pewterdesk-exchange-aster",
+ "pewterdesk-exchange-bybit",
+ "pewterdesk-exchange-hyperliquid",
+ "pewterdesk-keychain",
+ "pewterdesk-link",
+ "pewterdesk-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
  "zeroize",
 ]
 
@@ -3191,10 +3225,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "pewterdesk-daemon"
+version = "0.3.0"
+dependencies = [
+ "async-trait",
+ "futures-util",
+ "getrandom 0.2.17",
+ "hex",
+ "libc",
+ "pewterdesk-calendar",
+ "pewterdesk-core",
+ "pewterdesk-engine",
+ "pewterdesk-exchange-aster",
+ "pewterdesk-exchange-bybit",
+ "pewterdesk-exchange-hyperliquid",
+ "pewterdesk-keychain",
+ "pewterdesk-protocol",
+ "pewterdesk-sim",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
 name = "pewterdesk-engine"
 version = "0.0.0"
 dependencies = [
  "async-trait",
+ "libc",
  "pewterdesk-core",
  "pewterdesk-sim",
  "pewterdesk-store",
@@ -3272,6 +3333,30 @@ dependencies = [
  "serde_json",
  "tokio",
  "zeroize",
+]
+
+[[package]]
+name = "pewterdesk-link"
+version = "0.0.0"
+dependencies = [
+ "futures-util",
+ "libc",
+ "pewterdesk-protocol",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+]
+
+[[package]]
+name = "pewterdesk-protocol"
+version = "0.0.0"
+dependencies = [
+ "pewterdesk-core",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "ts-rs",
 ]
 
 [[package]]
@@ -5139,6 +5224,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

@@ -19,6 +19,10 @@ serde_json = "1.0.151"
 # Algos run as tasks on the host's tokio runtime (the app's, later the daemon's).
 tokio = { version = "1.53.1", default-features = false, features = ["rt", "sync", "time", "macros"] }
 
+# flock, for one engine per account (`owner.rs`). Already in the tree.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.189"
+
 [dev-dependencies]
 pewterdesk-sim = { path = "../sim" }
 tokio = { version = "1.53.1", default-features = false, features = ["macros", "rt", "test-util"] }
