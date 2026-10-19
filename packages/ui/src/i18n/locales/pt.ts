@@ -3053,6 +3053,22 @@ export const messages: Messages = {
     "A parcela do volume e a amplitude média de cada hora UTC nos últimos {days} dias. As sessões se sobrepõem, então as parcelas somam mais de 100%.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Algos",
+  "panel.paper": "Papel",
+  "paperPanel.unavailable":
+    "O trading em papel é para plataformas sem demo. A {venue} tem contas de Demo Trading próprias: conecte uma para praticar lá.",
+  "paperPanel.off": "O trading em papel está desligado na {venue}.",
+  "paperPanel.turnOn": "Operar em papel",
+  "paperPanel.fees": "Taxas pagas",
+  "paperPanel.funding": "Financiamento",
+  "paperPanel.positions": "Posições abertas",
+  "paperPanel.trades": "Operações fechadas",
+  "paperPanel.avgWin": "Ganho médio",
+  "paperPanel.avgLoss": "Perda média",
+  "paperPanel.journal": "Diário em papel",
+  "paperPanel.tabFills": "Operações",
+  "paperPanel.noCloses":
+    "Nenhuma operação fechada ainda. Seu PnL realizado aparece aqui quando uma fechar.",
+  "paperPanel.show": "Mostrar painel de papel",
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP em {minutes} min",
   "paper.error.unsupported": "O paper trading não consegue rodar o TWAP próprio de uma corretora.",

@@ -3086,6 +3086,21 @@ export const messages: Messages = {
     "La part du volume et l'amplitude moyenne de chaque heure UTC sur les {days} derniers jours. Les sessions se chevauchent : leurs parts dépassent 100 % au total.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Algos",
+  "panel.paper": "Papier",
+  "paperPanel.unavailable":
+    "Le trading papier est pour les plateformes sans démo. {venue} a ses propres comptes Demo Trading : connectez-en un pour vous entraîner.",
+  "paperPanel.off": "Le trading papier est désactivé sur {venue}.",
+  "paperPanel.turnOn": "Trader sur papier",
+  "paperPanel.fees": "Frais payés",
+  "paperPanel.funding": "Financement",
+  "paperPanel.positions": "Positions ouvertes",
+  "paperPanel.trades": "Trades clôturés",
+  "paperPanel.avgWin": "Gain moyen",
+  "paperPanel.avgLoss": "Perte moyenne",
+  "paperPanel.journal": "Journal papier",
+  "paperPanel.tabFills": "Trades",
+  "paperPanel.noCloses": "Aucun trade clôturé. Votre PnL réalisé apparaîtra ici dès le premier.",
+  "paperPanel.show": "Afficher le panneau papier",
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP sur {minutes} min",
   "paper.error.unsupported":
