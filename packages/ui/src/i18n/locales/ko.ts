@@ -485,6 +485,7 @@ export const messages: Messages = {
   "share.saved": "{path}에 저장했습니다",
   "share.failed": "이미지를 만들지 못했습니다.",
   "share.layout": "카드 모양",
+  "share.anotherDesign": "다른 디자인",
   "share.landscape": "가로",
   "share.portrait": "세로",
   "share.prev": "이전 카드",

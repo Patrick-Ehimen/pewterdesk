@@ -18,6 +18,9 @@ thing that matters, and green and red belong to the market.
   hints and disabled states only, never for data a trader needs to read.
 - In light mode, brass used as text is `--pd-brass-text`, not `--pd-brass`.
 - Don't add a second accent hue (no teal, cyan or purple).
+  The one exception is the P&L share card's ring art (`lib/shareCard.ts`), in
+  `--pd-art-cyan` and `--pd-art-violet`, after its design: an illustration on an
+  image people post, never interface. Nothing else uses them.
 
 ## Core palette
 

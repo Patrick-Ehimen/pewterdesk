@@ -492,6 +492,7 @@ export const messages: Messages = {
   "share.saved": "Guardada en {path}",
   "share.failed": "No se pudo crear la imagen.",
   "share.layout": "Forma de la tarjeta",
+  "share.anotherDesign": "Otro diseño",
   "share.landscape": "Horizontal",
   "share.portrait": "Vertical",
   "share.prev": "Tarjeta anterior",

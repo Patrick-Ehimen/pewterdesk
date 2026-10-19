@@ -490,6 +490,7 @@ export const messages: Messages = {
   "share.saved": "Сохранено: {path}",
   "share.failed": "Не удалось создать картинку.",
   "share.layout": "Форма карточки",
+  "share.anotherDesign": "Другой дизайн",
   "share.landscape": "Альбомная",
   "share.portrait": "Книжная",
   "share.prev": "Предыдущая карточка",

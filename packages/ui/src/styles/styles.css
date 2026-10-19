@@ -5044,6 +5044,20 @@ fieldset.pd-alerts-chips {
   width: 18px;
   background: var(--pd-text);
 }
+.pd-share-shuffle {
+  display: grid;
+  place-items: center;
+  padding: 5px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.pd-share-shuffle:hover {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
 .pd-share-layouts {
   display: flex;
   overflow: hidden;

@@ -486,6 +486,7 @@ export const messages: Messages = {
   "share.saved": "{path} に保存しました",
   "share.failed": "画像を作成できませんでした。",
   "share.layout": "カードの形",
+  "share.anotherDesign": "別のデザイン",
   "share.landscape": "横長",
   "share.portrait": "縦長",
   "share.prev": "前のカード",

@@ -1,7 +1,10 @@
 // The P&L share card, drawn on a canvas so the preview and the saved image
-// are the same pixels. Colours come from the theme's --pd-* tokens at draw
-// time; green and red only for the PnL, the side and the result's art, brass
-// for the frame and the accents.
+// are the same pixels. Colours come from the --pd-* tokens at draw time:
+// always the dark set, whatever the app's theme, so every card looks like the
+// design; green and red (the user's, colorblind included) only for the PnL
+// and the side, brass for the frame and the accents, and the art's own cyan
+// and violet for the rings. Everything is drawn as shapes, never images, so
+// it stays sharp at any export size.
 
 /** One of the card's two figures: the big number, and its name in the chip. */
 export interface ShareFigure {
@@ -46,6 +49,18 @@ export interface SharePrice {
 }
 
 export type ShareSlide = "roi" | "pnl";
+/**
+ * The card's two designs: faceted slate with neon rings, or a perspective
+ * grid to a lit horizon. The dialog picks one at random.
+ */
+export const SHARE_STYLES = ["slabs", "horizon"] as const;
+export type ShareStyle = (typeof SHARE_STYLES)[number];
+
+/** One of the designs at random; `not` is left out when there's another. */
+export function randomStyle(not?: ShareStyle, random = Math.random): ShareStyle {
+  const pool = SHARE_STYLES.filter((s) => s !== not);
+  return pool[Math.floor(random() * pool.length)] ?? "slabs";
+}
 export type ShareLayout = "landscape" | "portrait";
 
 /** The card's size in CSS pixels; saved at twice that. */
@@ -66,13 +81,23 @@ interface Palette {
   sell: string;
   info: string;
   onBrass: string;
+  cyan: string;
+  violet: string;
   font: string;
 }
 
 function palette(): Palette {
-  const css = getComputedStyle(document.documentElement);
-  const v = (name: string) => css.getPropertyValue(name).trim();
-  return {
+  // The dark set, read off a probe element (the token selectors work on any
+  // element); the market colours stay the document's, so colorblind mode holds.
+  const probe = document.createElement("div");
+  probe.dataset.theme = "dark";
+  probe.style.display = "none";
+  document.body.append(probe);
+  const dark = getComputedStyle(probe);
+  const doc = getComputedStyle(document.documentElement);
+  const v = (name: string) => dark.getPropertyValue(name).trim();
+  const market = (name: string) => doc.getPropertyValue(name).trim() || v(name);
+  const p = {
     bg: v("--pd-bg"),
     raised: v("--pd-surface-raised"),
     border: v("--pd-border"),
@@ -80,12 +105,16 @@ function palette(): Palette {
     pewter: v("--pd-pewter"),
     dim: v("--pd-pewter-dim"),
     brass: v("--pd-brass"),
-    buy: v("--pd-buy"),
-    sell: v("--pd-sell"),
+    buy: market("--pd-buy"),
+    sell: market("--pd-sell"),
     info: v("--pd-info"),
     onBrass: v("--pd-on-brass"),
+    cyan: v("--pd-art-cyan") || v("--pd-info"),
+    violet: v("--pd-art-violet") || v("--pd-info"),
     font: getComputedStyle(document.body).fontFamily || "sans-serif",
   };
+  probe.remove();
+  return p;
 }
 
 /** Loads an image for drawing; resolves undefined if it can't. */
@@ -132,63 +161,185 @@ function alpha(ctx: CanvasRenderingContext2D, color: string, a: number): string 
   });
 }
 
+/** A colour as [r, g, b], through the canvas's own colour parsing. */
+function rgb(ctx: CanvasRenderingContext2D, color: string): [number, number, number] {
+  const parsed = alpha(ctx, color, 1);
+  const [r = 0, g = 0, b = 0] = (parsed.match(/[\d.]+/g) ?? []).map(Number);
+  return [r, g, b];
+}
+
+/** `a` blended towards `b` by `t` (0-1), as an opaque colour. */
+function mix(ctx: CanvasRenderingContext2D, a: string, b: string, t: number): string {
+  const x = rgb(ctx, a);
+  const y = rgb(ctx, b);
+  const c = x.map((v, i) => Math.round(v + ((y[i] ?? v) - v) * t));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
+/** `color` darker by `t` (0-1): the shadows under the slabs, below even the bg. */
+function darken(ctx: CanvasRenderingContext2D, color: string, t: number): string {
+  const c = rgb(ctx, color).map((v) => Math.round(v * (1 - t)));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
 /**
- * The panel's backdrop: large dark shards at angles, each lit a little along
- * one edge, after the faceted stone of the design. Fixed positions, so every
- * card is the same art.
+ * The panel's backdrop, after the design's stone: thick slate slabs at
+ * angles, overlapping, each with a chamfered edge lit from the top left and a
+ * shadow under it, and a faint brushed grain on its face. Fixed positions, so
+ * every card is the same art.
  */
-const SHARDS: readonly [number, number, number, number, number, number][] = [
-  // cx, cy, w, h (fractions of the panel), angle (deg), lift (0-1)
-  [0.08, 0.1, 0.5, 0.34, 38, 0.55],
-  [0.62, 0.02, 0.46, 0.3, -24, 0.35],
-  [1.02, 0.28, 0.42, 0.5, 44, 0.6],
-  [0.32, 0.42, 0.56, 0.3, -38, 0.3],
-  [0.82, 0.62, 0.5, 0.36, 30, 0.45],
-  [0.12, 0.72, 0.44, 0.42, 48, 0.5],
-  [0.52, 0.9, 0.62, 0.3, -18, 0.25],
-  [0.98, 0.98, 0.4, 0.3, 40, 0.4],
-  [-0.06, 0.4, 0.3, 0.5, -12, 0.35],
+const SLABS: readonly [number, number, number, number, number, number][] = [
+  // cx, cy (fractions of the panel), w, h (of its longer side), angle (deg), shade (0-1)
+  [0.02, 0.62, 0.62, 0.5, 52, 0.35],
+  [0.5, 0.86, 0.7, 0.44, -36, 0.45],
+  [1.02, 0.72, 0.5, 0.62, 40, 0.3],
+  [0.36, 0.42, 0.48, 0.3, -42, 0.2],
+  [0.16, 0.06, 0.52, 0.3, 34, 0.5],
+  [0.56, 0.0, 0.34, 0.34, 45, 0.7],
+  [0.86, 0.12, 0.44, 0.22, -45, 0.85],
+  [0.98, -0.02, 0.26, 0.26, 45, 0.6],
+  [0.72, 0.42, 0.3, 0.2, 45, 0.25],
 ];
+/** Where the light comes from: up and to the left. */
+const LIGHT = { x: -0.55, y: -0.83 };
 
 function shards(ctx: CanvasRenderingContext2D, p: Palette, w: number, h: number) {
   const unit = Math.max(w, h);
-  for (const [fx, fy, fw, fh, deg, lift] of SHARDS) {
+  const deep = darken(ctx, p.bg, 0.35);
+  for (const [fx, fy, fw, fh, deg, shade] of SLABS) {
     const sw = fw * unit;
     const sh = fh * unit;
+    const bevel = Math.max(3, Math.min(sw, sh) * 0.035);
+    const a = (deg * Math.PI) / 180;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    const at = (x: number, y: number) => ({
+      x: fx * w + x * cos - y * sin,
+      y: fy * h + x * sin + y * cos,
+    });
+    const outer = [
+      at(-sw / 2, -sh / 2),
+      at(sw / 2, -sh / 2),
+      at(sw / 2, sh / 2),
+      at(-sw / 2, sh / 2),
+    ];
+    const inner = [
+      at(-sw / 2 + bevel, -sh / 2 + bevel),
+      at(sw / 2 - bevel, -sh / 2 + bevel),
+      at(sw / 2 - bevel, sh / 2 - bevel),
+      at(-sw / 2 + bevel, sh / 2 - bevel),
+    ];
+    const poly = (pts: { x: number; y: number }[]) => {
+      ctx.beginPath();
+      for (const [i, pt] of pts.entries()) {
+        if (i) ctx.lineTo(pt.x, pt.y);
+        else ctx.moveTo(pt.x, pt.y);
+      }
+      ctx.closePath();
+    };
+    const face = mix(ctx, p.bg, p.pewter, 0.05 + shade * 0.12);
+    // Its shadow on what's under it: the one soft thing, under crisp edges.
     ctx.save();
-    ctx.translate(fx * w, fy * h);
-    ctx.rotate((deg * Math.PI) / 180);
-    const grad = ctx.createLinearGradient(0, -sh / 2, 0, sh / 2);
-    grad.addColorStop(0, alpha(ctx, p.raised, 0.25 + lift * 0.45));
-    grad.addColorStop(1, alpha(ctx, p.bg, 0.6));
-    ctx.fillStyle = grad;
-    ctx.fillRect(-sw / 2, -sh / 2, sw, sh);
-    // The lit edge, and a darker one opposite: what makes it read as a facet.
-    ctx.strokeStyle = alpha(ctx, p.pewter, 0.05 + lift * 0.1);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(-sw / 2, -sh / 2);
-    ctx.lineTo(sw / 2, -sh / 2);
-    ctx.stroke();
-    ctx.strokeStyle = alpha(ctx, p.bg, 0.8);
-    ctx.beginPath();
-    ctx.moveTo(-sw / 2, sh / 2);
-    ctx.lineTo(sw / 2, sh / 2);
-    ctx.stroke();
+    ctx.shadowColor = alpha(ctx, deep, 0.85);
+    ctx.shadowBlur = bevel * 6;
+    ctx.shadowOffsetX = bevel * 1.2;
+    ctx.shadowOffsetY = bevel * 2;
+    ctx.fillStyle = face;
+    poly(outer);
+    ctx.fill();
     ctx.restore();
+    // The face: lighter towards the light, with a fine grain along it.
+    ctx.save();
+    poly(inner);
+    ctx.clip();
+    const from = at(-sw / 2, -sh / 2);
+    const to = at(sw / 2, sh / 2);
+    const grad = ctx.createLinearGradient(from.x, from.y, to.x, to.y);
+    grad.addColorStop(0, mix(ctx, face, p.pewter, 0.07));
+    grad.addColorStop(1, mix(ctx, face, deep, 0.25));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = alpha(ctx, p.pewter, 0.025);
+    ctx.lineWidth = 0.5;
+    for (let g = -sh / 2; g < sh / 2; g += 2.5) {
+      const s0 = at(-sw / 2, g);
+      const s1 = at(sw / 2, g);
+      ctx.beginPath();
+      ctx.moveTo(s0.x, s0.y);
+      ctx.lineTo(s1.x, s1.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // The chamfer: each edge's strip shaded by how squarely it faces the light.
+    for (let i = 0; i < 4; i++) {
+      const j = (i + 1) % 4;
+      const o0 = outer[i];
+      const o1 = outer[j];
+      const i0 = inner[i];
+      const i1 = inner[j];
+      if (!o0 || !o1 || !i0 || !i1) continue;
+      const ex = o1.x - o0.x;
+      const ey = o1.y - o0.y;
+      const len = Math.hypot(ex, ey) || 1;
+      // Outward normal of a clockwise polygon.
+      const lit = -((ey / len) * LIGHT.x - (ex / len) * LIGHT.y);
+      ctx.fillStyle =
+        lit > 0 ? mix(ctx, face, p.text, 0.12 + lit * 0.3) : mix(ctx, face, deep, 0.35 - lit * 0.5);
+      poly([o0, o1, i1, i0]);
+      ctx.fill();
+      // A hairline on the lit rims: what makes the edge read sharp.
+      if (lit > 0.2) {
+        ctx.strokeStyle = alpha(ctx, p.text, 0.1 + lit * 0.16);
+        ctx.lineWidth = 0.75;
+        ctx.beginPath();
+        ctx.moveTo(o0.x, o0.y);
+        ctx.lineTo(o1.x, o1.y);
+        ctx.stroke();
+      }
+    }
   }
   // Darker towards the edges, so the text in the middle sits on calm ground.
-  const vignette = ctx.createRadialGradient(w * 0.4, h * 0.4, 0, w * 0.4, h * 0.4, unit * 0.8);
+  const vignette = ctx.createRadialGradient(w * 0.4, h * 0.4, 0, w * 0.4, h * 0.4, unit * 0.85);
   vignette.addColorStop(0, alpha(ctx, p.bg, 0));
-  vignette.addColorStop(1, alpha(ctx, p.bg, 0.55));
+  vignette.addColorStop(1, alpha(ctx, p.bg, 0.5));
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, w, h);
 }
 
 /**
- * The result's art: two interlocked rings and an arrow through them, lit in
- * the result's colour (up and to the right for a profit, down for a loss),
- * with a brass ring for the accent.
+ * Strokes the current path as neon: a wide soft glow, a coloured body, then
+ * a thin bright core, so it reads lit but stays crisp at its centre.
+ */
+function neon(
+  ctx: CanvasRenderingContext2D,
+  p: Palette,
+  stroke: string | CanvasGradient,
+  glow: string,
+  width: number,
+) {
+  ctx.save();
+  ctx.shadowColor = alpha(ctx, glow, 0.9);
+  ctx.shadowBlur = width * 7;
+  ctx.globalAlpha = 0.55;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = width * 2.2;
+  ctx.stroke();
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = width;
+  ctx.stroke();
+  ctx.strokeStyle = alpha(ctx, p.text, 0.85);
+  ctx.lineWidth = Math.max(0.6, width * 0.35);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * The result's art, after the design: two interlocked rings, each a pair of
+ * neon lines, and an arrow through them with speed lines trailing, in cyan
+ * running to violet, two small orbs, and a pool of light under it. Up and to
+ * the right for a profit, down for a loss.
  */
 function art(
   ctx: CanvasRenderingContext2D,
@@ -196,93 +347,228 @@ function art(
   cx: number,
   cy: number,
   size: number,
-  tone: string,
   up: boolean,
 ) {
-  const glow = (color: string, blur: number) => {
-    ctx.shadowColor = alpha(ctx, color, 0.8);
-    ctx.shadowBlur = blur;
-  };
+  const dir = up ? -1 : 1;
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  // A soft pool of light under it.
-  const pool = ctx.createRadialGradient(cx, cy + size * 0.38, 0, cx, cy + size * 0.38, size * 0.6);
-  pool.addColorStop(0, alpha(ctx, tone, 0.22));
-  pool.addColorStop(1, alpha(ctx, tone, 0));
+  const sweep = ctx.createLinearGradient(cx - size * 0.6, cy, cx + size * 0.6, cy);
+  sweep.addColorStop(0, p.cyan);
+  sweep.addColorStop(1, p.violet);
+
+  // The pool of light under it, and a faint reflection line.
+  const pool = ctx.createRadialGradient(cx, cy + size * 0.42, 0, cx, cy + size * 0.42, size * 0.55);
+  pool.addColorStop(0, alpha(ctx, p.violet, 0.32));
+  pool.addColorStop(0.5, alpha(ctx, p.cyan, 0.1));
+  pool.addColorStop(1, alpha(ctx, p.violet, 0));
   ctx.fillStyle = pool;
-  ctx.fillRect(cx - size, cy - size, size * 2, size * 2);
-  // The rings, tilted, each drawn twice: a glow, then a bright core.
-  const rings: [number, string][] = [
-    [-size * 0.16, tone],
-    [size * 0.16, p.brass],
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + size * 0.42, size * 0.55, size * 0.12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // The rings: tilted ellipses, each two lines a little apart.
+  const ry = size * 0.3;
+  const rx = size * 0.2;
+  const tilt = -0.42 * -dir;
+  const ringAt = [
+    { x: cx - size * 0.13, color: p.cyan },
+    { x: cx + size * 0.13, color: p.violet },
   ];
-  for (const [dx, color] of rings) {
-    for (const [width, a, blur] of [
-      [3.2, 0.55, 16],
-      [1.4, 1, 0],
-    ] as const) {
-      ctx.save();
-      if (blur) glow(color, blur);
-      ctx.strokeStyle = alpha(ctx, color, a);
-      ctx.lineWidth = width;
+  const ring = (x: number, from: number, to: number, color: string) => {
+    for (const k of [1, 0.84]) {
       ctx.beginPath();
-      ctx.ellipse(cx + dx, cy, size * 0.2, size * 0.3, -0.35, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
+      ctx.ellipse(x, cy, rx * k, ry * k, tilt, from, to);
+      neon(ctx, p, color, color, size * 0.024);
     }
+  };
+  const [first, second] = ringAt;
+  if (first && second) {
+    ring(first.x, 0, Math.PI * 2, first.color);
+    ring(second.x, 0, Math.PI * 2, second.color);
+    // The first ring passes back over the second: that's what interlocks them.
+    ring(first.x, -0.55, 0.65, first.color);
   }
-  // The arrow through them, with a dashed trail behind.
-  const dir = up ? -1 : 1;
-  const x0 = cx - size * 0.55;
-  const y0 = cy - dir * size * 0.32;
+
+  // The arrow: a shaft of three lines, the outer two breaking into dashes
+  // behind, and an open head.
+  const x0 = cx - size * 0.62;
+  const y0 = cy - dir * size * 0.3;
   const x1 = cx + size * 0.5;
-  const y1 = cy + dir * size * 0.34;
+  const y1 = cy + dir * size * 0.36;
   const angle = Math.atan2(y1 - y0, x1 - x0);
-  const head = size * 0.13;
-  for (const [width, a, blur] of [
-    [5, 0.5, 18],
-    [2, 1, 0],
+  const nx = -Math.sin(angle);
+  const ny = Math.cos(angle);
+  const along = (t: number, off: number) => ({
+    x: x0 + (x1 - x0) * t + nx * off,
+    y: y0 + (y1 - y0) * t + ny * off,
+  });
+  const gap = size * 0.045;
+  const line = (t0: number, t1: number, off: number, width: number) => {
+    const a = along(t0, off);
+    const b = along(t1, off);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    neon(ctx, p, sweep, p.cyan, width);
+  };
+  line(0.12, 0.86, 0, size * 0.02);
+  line(0.34, 0.86, gap, size * 0.013);
+  line(0.34, 0.86, -gap, size * 0.013);
+  // The trail: broken lines and dashes, thinning out behind.
+  for (const [t0, t1, off] of [
+    [0.04, 0.12, 0],
+    [0.16, 0.3, gap],
+    [0.08, 0.13, gap],
+    [0.2, 0.3, -gap],
+    [0.0, 0.08, -gap * 2],
+    [0.14, 0.22, gap * 2],
+    [0.24, 0.32, -gap * 2.2],
   ] as const) {
-    ctx.save();
-    if (blur) glow(tone, blur);
-    ctx.strokeStyle = alpha(ctx, tone, a);
-    ctx.lineWidth = width;
-    ctx.beginPath();
-    ctx.moveTo(x0 + (x1 - x0) * 0.3, y0 + (y1 - y0) * 0.3);
-    ctx.lineTo(x1, y1);
-    ctx.moveTo(x1 - head * Math.cos(angle - 0.5), y1 - head * Math.sin(angle - 0.5));
-    ctx.lineTo(x1, y1);
-    ctx.lineTo(x1 - head * Math.cos(angle + 0.5), y1 - head * Math.sin(angle + 0.5));
-    ctx.stroke();
-    ctx.restore();
+    line(t0, t1, off, size * 0.011);
   }
-  ctx.strokeStyle = alpha(ctx, tone, 0.55);
-  ctx.lineWidth = 1.4;
-  ctx.setLineDash([4, 5]);
-  for (const off of [-6, 6]) {
-    const ox = -Math.sin(angle) * off;
-    const oy = Math.cos(angle) * off;
-    ctx.beginPath();
-    ctx.moveTo(x0 + ox, y0 + oy);
-    ctx.lineTo(x0 + (x1 - x0) * 0.3 + ox, y0 + (y1 - y0) * 0.3 + oy);
-    ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  // Two small orbs, as in the design.
-  for (const [ox, oy, r] of [
-    [-size * 0.42, size * 0.12, 3],
-    [size * 0.4, -size * 0.06 * dir, 4],
+  // The head, open: two strokes back from the tip, joined by a short base.
+  const tip = along(1, 0);
+  const head = size * 0.2;
+  const wing = (s: number) => ({
+    x: tip.x - head * Math.cos(angle) + nx * s * head * 0.62,
+    y: tip.y - head * Math.sin(angle) + ny * s * head * 0.62,
+  });
+  const l = wing(1);
+  const r = wing(-1);
+  const neck = along(0.86, 0);
+  ctx.beginPath();
+  ctx.moveTo(neck.x + nx * gap * 1.2, neck.y + ny * gap * 1.2);
+  ctx.lineTo(l.x, l.y);
+  ctx.lineTo(tip.x, tip.y);
+  ctx.lineTo(r.x, r.y);
+  ctx.lineTo(neck.x - nx * gap * 1.2, neck.y - ny * gap * 1.2);
+  neon(ctx, p, sweep, p.violet, size * 0.02);
+
+  // Two small orbs, each with a thin ring round it.
+  for (const [ox, oy, rad, color] of [
+    [-size * 0.46, size * 0.08 * -dir, size * 0.03, p.cyan],
+    [size * 0.3, -size * 0.02 * -dir, size * 0.036, p.violet],
   ] as const) {
+    const ball = ctx.createRadialGradient(
+      cx + ox - rad * 0.4,
+      cy + oy - rad * 0.4,
+      0,
+      cx + ox,
+      cy + oy,
+      rad,
+    );
+    ball.addColorStop(0, alpha(ctx, p.text, 0.9));
+    ball.addColorStop(0.5, alpha(ctx, color, 0.8));
+    ball.addColorStop(1, alpha(ctx, color, 0.25));
     ctx.save();
-    glow(tone, 8);
-    ctx.fillStyle = alpha(ctx, tone, 0.7);
+    ctx.shadowColor = alpha(ctx, color, 0.9);
+    ctx.shadowBlur = rad * 3;
+    ctx.fillStyle = ball;
     ctx.beginPath();
-    ctx.arc(cx + ox, cy + oy, r, 0, Math.PI * 2);
+    ctx.arc(cx + ox, cy + oy, rad, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+    ctx.beginPath();
+    ctx.ellipse(cx + ox, cy + oy, rad * 1.9, rad * 0.7, -0.3, 0, Math.PI * 2);
+    ctx.strokeStyle = alpha(ctx, color, 0.55);
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
   }
   ctx.restore();
+}
+
+/**
+ * The "horizon" design's backdrop: a floor grid running in perspective to a
+ * lit horizon, under a faint sky grid, all in the result's colour (green for
+ * a profit, red for a loss). Every line a
+ * hairline, so it stays sharp.
+ */
+function horizon(ctx: CanvasRenderingContext2D, p: Palette, w: number, h: number, tone: string) {
+  const deep = darken(ctx, p.bg, 0.35);
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, deep);
+  sky.addColorStop(0.62, mix(ctx, p.bg, p.raised, 0.6));
+  sky.addColorStop(1, deep);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
+  const hy = h * 0.66;
+  const vx = w * 0.72;
+  // The glow along the horizon.
+  const glow = ctx.createRadialGradient(vx, hy, 0, vx, hy, Math.max(w, h) * 0.6);
+  glow.addColorStop(0, alpha(ctx, tone, 0.22));
+  glow.addColorStop(0.4, alpha(ctx, tone, 0.06));
+  glow.addColorStop(1, alpha(ctx, tone, 0));
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
+  ctx.lineWidth = 0.75;
+  // The sky: a square grid, fading upwards.
+  const cell = Math.max(w, h) / 16;
+  for (let x = (vx % cell) - cell; x <= w; x += cell) {
+    const g = ctx.createLinearGradient(0, 0, 0, hy);
+    g.addColorStop(0, alpha(ctx, tone, 0));
+    g.addColorStop(1, alpha(ctx, tone, 0.1));
+    ctx.strokeStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(x) + 0.5, 0);
+    ctx.lineTo(Math.round(x) + 0.5, hy);
+    ctx.stroke();
+  }
+  for (let y = hy - cell; y > 0; y -= cell) {
+    ctx.strokeStyle = alpha(ctx, tone, 0.1 * (y / hy));
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(y) + 0.5);
+    ctx.lineTo(w, Math.round(y) + 0.5);
+    ctx.stroke();
+  }
+  // The floor: lines from the vanishing point, and rows closing up towards it.
+  for (let i = -14; i <= 14; i++) {
+    const x = vx + i * cell * 1.6;
+    const g = ctx.createLinearGradient(0, hy, 0, h);
+    g.addColorStop(0, alpha(ctx, tone, 0.35));
+    g.addColorStop(1, alpha(ctx, tone, 0.14));
+    ctx.strokeStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(vx, hy);
+    ctx.lineTo(vx + (x - vx) * 6, h + (h - hy) * 5);
+    ctx.stroke();
+  }
+  for (let k = 1; k < 14; k++) {
+    const y = hy + (h - hy) * ((k * k) / 120);
+    if (y > h) break;
+    ctx.strokeStyle = alpha(ctx, tone, 0.06 + 0.12 * ((y - hy) / (h - hy)));
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(y) + 0.5);
+    ctx.lineTo(w, Math.round(y) + 0.5);
+    ctx.stroke();
+  }
+  // The horizon itself: a bright line in the result's colour.
+  const line = ctx.createLinearGradient(0, 0, w, 0);
+  line.addColorStop(0, alpha(ctx, tone, 0));
+  line.addColorStop(0.72, alpha(ctx, tone, 0.85));
+  line.addColorStop(1, alpha(ctx, tone, 0.1));
+  ctx.save();
+  ctx.shadowColor = alpha(ctx, tone, 0.9);
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = line;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, Math.round(hy) + 0.5);
+  ctx.lineTo(w, Math.round(hy) + 0.5);
+  ctx.stroke();
+  ctx.restore();
+  const vignette = ctx.createRadialGradient(
+    w * 0.4,
+    h * 0.45,
+    0,
+    w * 0.4,
+    h * 0.45,
+    Math.max(w, h) * 0.8,
+  );
+  vignette.addColorStop(0, alpha(ctx, p.bg, 0));
+  vignette.addColorStop(1, alpha(ctx, p.bg, 0.55));
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, w, h);
 }
 
 /** A tile's small line icon, top right: in, out, or the live mark. */
@@ -442,6 +728,7 @@ export function drawShareCard(
   slide: ShareSlide,
   layout: ShareLayout,
   scale = 2,
+  style: ShareStyle = "slabs",
 ) {
   const { w, h } = SHARE_SIZE[layout];
   canvas.width = Math.round(w * scale);
@@ -487,7 +774,8 @@ export function drawShareCard(
   ctx.translate(px, py);
   ctx.fillStyle = p.bg;
   ctx.fillRect(0, 0, pw, ph);
-  shards(ctx, p, pw, ph);
+  if (style === "horizon") horizon(ctx, p, pw, ph, tone);
+  else shards(ctx, p, pw, ph);
   ctx.restore();
   ctx.strokeStyle = alpha(ctx, p.pewter, 0.35);
   roundRect(ctx, px + 0.5, py + 0.5, pw - 1, ph - 1, innerR);
@@ -584,8 +872,8 @@ export function drawShareCard(
   ctx.fillText(figure.label, left, y);
   // The art needs room beside the figure: a long figure shrinks it, then
   // the figure itself, rather than running off the card.
-  let artSize = portrait ? 104 : 128;
-  let figureSize = portrait ? 64 : 62;
+  let artSize = portrait ? 124 : 132;
+  let figureSize = portrait ? 56 : 62;
   ctx.font = font(800, figureSize);
   let room = right - left - ctx.measureText(figure.value).width - ART_GAP;
   if (room < artSize * ART_SPAN) {
@@ -610,7 +898,8 @@ export function drawShareCard(
   // The art, right of the figure, and the other figure in a chip under it.
   const artX = Math.max(right - artSize * 0.62, left + figureW + ART_GAP + artSize * 0.6);
   const artY = fy - figureSize * 0.45;
-  art(ctx, p, artX, artY, artSize, tone, card.profit);
+  // The horizon design has no art: its grid is the picture.
+  if (style === "slabs") art(ctx, p, artX, artY, artSize, card.profit);
   if (other) {
     ctx.font = font(500, 13.5);
     const lead = `${other.short}: `;
