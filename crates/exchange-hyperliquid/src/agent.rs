@@ -11,9 +11,12 @@
 //! - Approving an agent ([`ApproveAgent`]) is signed by the user's main
 //!   wallet, never here: this module builds the exact action, and checks the
 //!   wallet's signature recovers to the main address before it's sent.
-//! - The agent's key signs one thing: an order or cancel action built by
-//!   `orders.rs` ([`sign_action`], which takes that module's own type, not
-//!   bytes). The key is decoded into `Zeroizing` memory for that call and
+//! - The agent's key signs one thing: an action built by `orders.rs`
+//!   ([`sign_action`], which takes that module's own type, not bytes) - an
+//!   order, a cancel, a change, leverage, a venue-run TWAP or its cancel,
+//!   or the dead-man's switch (`scheduleCancel`, which can only cancel).
+//!   Each is signed with an expiry (`expiresAfter`), so one held up before
+//!   it reached the venue can't execute much later. The key is decoded into `Zeroizing` memory for that call and
 //!   dropped. It never signs an approval, a transfer or a withdrawal -
 //!   those are "user-signed actions" in another EIP-712 domain, which this
 //!   key isn't used in.
@@ -298,12 +301,16 @@ const L1_CHAIN_ID: u64 = 1337;
 const L1_AGENT_TYPE: &str = "Agent(string source,bytes32 connectionId)";
 
 /// What an action's signature commits to: its MessagePack encoding, the
-/// nonce, and "no vault" - the SDK's `action_hash` with no vault address
-/// and no expiry.
-fn action_hash(action: &Wire, nonce: u64) -> [u8; 32] {
+/// nonce, "no vault", and the expiry if there is one - the SDK's
+/// `action_hash` with no vault address.
+fn action_hash(action: &Wire, nonce: u64, expires_after: Option<u64>) -> [u8; 32] {
     let mut data = action.packed();
     data.extend(nonce.to_be_bytes());
     data.push(0);
+    if let Some(expires_after) = expires_after {
+        data.push(0);
+        data.extend(expires_after.to_be_bytes());
+    }
     keccak(&data)
 }
 
@@ -335,16 +342,18 @@ fn l1_signing_hash(connection_id: &[u8; 32], chain: &str) -> Result<[u8; 32], Ve
     Ok(keccak(&digest))
 }
 
-/// The agent's signature over `action` (an order or cancel `orders.rs`
-/// built) with `nonce`, as the exchange endpoint takes it. `key` is held
+/// The agent's signature over `action` (one `orders.rs` built) with
+/// `nonce` and, if set, the expiry the request carries as `expiresAfter`
+/// (ms since the epoch), as the exchange endpoint takes it. `key` is held
 /// only to make it. Laid out as the official Python SDK's `sign_l1_action`.
 pub(crate) fn sign_action(
     key: &str,
     action: &Wire,
     nonce: u64,
+    expires_after: Option<u64>,
     chain: &str,
 ) -> Result<Value, VenueError> {
-    let hash = l1_signing_hash(&action_hash(action, nonce), chain)?;
+    let hash = l1_signing_hash(&action_hash(action, nonce, expires_after), chain)?;
     let bytes = decode_key(key)?;
     // SigningKey zeroes itself on drop.
     let signing = SigningKey::from_bytes((&*bytes).into()).map_err(|_| BAD_KEY)?;
@@ -420,7 +429,7 @@ mod tests {
     }
 
     fn signed(action: &Wire, chain: &str) -> (String, String, u64) {
-        let sig = sign_action(SDK_KEY, action, 0, chain).unwrap();
+        let sig = sign_action(SDK_KEY, action, 0, None, chain).unwrap();
         (
             sig["r"].as_str().unwrap().to_owned(),
             sig["s"].as_str().unwrap().to_owned(),
@@ -511,7 +520,7 @@ mod tests {
             ("grouping", str("na")),
         ]);
         let mut hex = String::new();
-        push_hex(&mut hex, &action_hash(&action, 1_677_777_606_040));
+        push_hex(&mut hex, &action_hash(&action, 1_677_777_606_040, None));
         assert_eq!(
             hex,
             "0fcbeda5ae3c4950a548021552a4fea2226858c4453571bf3f24ba017eac2908"
@@ -602,15 +611,24 @@ mod tests {
     #[test]
     fn a_different_action_nonce_or_network_is_a_different_signature() {
         let order = sdk_order(gtc(), None);
-        let base = sign_action(SDK_KEY, &order, 0, "Mainnet").unwrap();
-        assert_ne!(sign_action(SDK_KEY, &order, 1, "Mainnet").unwrap(), base);
-        assert_ne!(sign_action(SDK_KEY, &order, 0, "Testnet").unwrap(), base);
+        let base = sign_action(SDK_KEY, &order, 0, None, "Mainnet").unwrap();
+        assert_ne!(
+            sign_action(SDK_KEY, &order, 1, None, "Mainnet").unwrap(),
+            base
+        );
+        assert_ne!(
+            sign_action(SDK_KEY, &order, 0, None, "Testnet").unwrap(),
+            base
+        );
         let other = sdk_order(gtc(), Some("0x00000000000000000000000000000001"));
-        assert_ne!(sign_action(SDK_KEY, &other, 0, "Mainnet").unwrap(), base);
+        assert_ne!(
+            sign_action(SDK_KEY, &other, 0, None, "Mainnet").unwrap(),
+            base
+        );
         // Nothing is signed for a network that isn't one, or without a key.
-        assert!(sign_action(SDK_KEY, &order, 0, "Devnet").is_err());
+        assert!(sign_action(SDK_KEY, &order, 0, None, "Devnet").is_err());
         assert_eq!(
-            sign_action("not a key", &order, 0, "Mainnet").unwrap_err(),
+            sign_action("not a key", &order, 0, None, "Mainnet").unwrap_err(),
             BAD_KEY
         );
     }
@@ -760,5 +778,156 @@ mod tests {
         .unwrap();
         assert_eq!(agents[0].address, ADDRESS);
         assert_eq!(agents[0].valid_until, 1_790_000_000_000);
+    }
+
+    /// The dead-man's switch, a venue-run TWAP and its cancel, and an
+    /// expiry, signed as the official Python SDK signs them.
+    /// `scheduleCancel` is checked against the SDK's own vectors
+    /// (`test_schedule_cancel_action`); the rest were computed with the
+    /// SDK's unmodified `sign_l1_action` (hyperliquid-python-sdk, 2026-10) -
+    /// a run that also reproduced those vectors and
+    /// `test_l1_action_signing_matches` - from the actions as the exchange
+    /// endpoint documents them. The TWAP is built by `orders::twap`, so its
+    /// field order is checked too.
+    #[test]
+    fn switches_twaps_and_expiries_are_signed_as_the_sdk_signs_them() {
+        use crate::orders::{schedule_cancel, twap, twap_cancel, Asset};
+        use pewterdesk_core::{Decimal, OrderKind, OrderRequest, Side};
+        let at = |action: &Wire, nonce: u64, expires: Option<u64>, chain: &str| {
+            let sig = sign_action(SDK_KEY, action, nonce, expires, chain).unwrap();
+            (
+                sig["r"].as_str().unwrap().to_owned(),
+                sig["s"].as_str().unwrap().to_owned(),
+                sig["v"].as_u64().unwrap(),
+            )
+        };
+        let switch_off = schedule_cancel(None);
+        assert_eq!(
+            at(&switch_off, 0, None, "Mainnet"),
+            (
+                "0x6cdfb286702f5917e76cd9b3b8bf678fcc49aec194c02a73e6d4f16891195df9".into(),
+                "0x6557ac307fa05d25b8d61f21fb8a938e703b3d9bf575f6717ba21ec61261b2a0".into(),
+                27
+            )
+        );
+        assert_eq!(
+            at(&switch_off, 0, None, "Testnet"),
+            (
+                "0xc75bb195c3f6a4e06b7d395acc20bbb224f6d23ccff7c6a26d327304e6efaeed".into(),
+                "0x342f8ede109a29f2c0723bd5efb9e9100e3bbb493f8fb5164ee3d385908233df".into(),
+                28
+            )
+        );
+        let switch_on = schedule_cancel(Some(123_456_789));
+        assert_eq!(
+            at(&switch_on, 0, None, "Mainnet"),
+            (
+                "0x609cb20c737945d070716dcc696ba030e9976fcf5edad87afa7d877493109d55".into(),
+                "0x16c685d63b5c7a04512d73f183b3d7a00da5406ff1f8aad33f8ae2163bab758b".into(),
+                28
+            )
+        );
+        assert_eq!(
+            at(&switch_on, 0, None, "Testnet"),
+            (
+                "0x4e4f2dbd4107c69783e251b7e1057d9f2b9d11cee213441ccfa2be63516dc5bc".into(),
+                "0x706c656b23428c8ba356d68db207e11139ede1670481a9e01ae2dfcdb0e1a678".into(),
+                27
+            )
+        );
+
+        // The SDK's own test action, now with an expiry.
+        let dummy = Wire::Map(vec![
+            ("type", str("dummy")),
+            ("num", Wire::Uint(100_000_000_000)),
+        ]);
+        let expires = Some(1_700_000_060_000);
+        assert_eq!(
+            at(&dummy, 0, expires, "Mainnet"),
+            (
+                "0x8c61c49134c66bf08c23c7ea410d0a5e743474df24020180de141052429f55ce".into(),
+                "0x27e374370ddd8735edd4013a816c25770f5e0a783f7f757e249a85e3a7a5b4f8".into(),
+                27
+            )
+        );
+        assert_eq!(
+            at(&dummy, 0, expires, "Testnet"),
+            (
+                "0x6cc49a9693c38fbed886cc467672eedfed207b6967001d02b5e0888becc6d86d".into(),
+                "0x779e59b96088f75cae2b49e7a5da5718a07c2720d8cb541d5fce00fe7370eb29".into(),
+                27
+            )
+        );
+
+        let eth = Asset {
+            id: 1,
+            sz_decimals: 4,
+        };
+        let request = OrderRequest {
+            market: "ETH".into(),
+            side: Side::Buy,
+            size: Decimal("0.5".parse().unwrap()),
+            reduce_only: false,
+            collateral: None,
+            client_id: None,
+            take_profit: None,
+            stop_loss: None,
+            kind: OrderKind::Twap {
+                minutes: 30,
+                randomize: true,
+            },
+        };
+        let order = twap(&request, eth).unwrap();
+        let nonce = 1_700_000_000_000;
+        assert_eq!(
+            at(&order, nonce, None, "Mainnet"),
+            (
+                "0x1c088e6028a185e281d0ca7e0f3524575a277e108d4762fd9ddcc4f6e23b484e".into(),
+                "0x0699660a54092043fde1f818c60da5058b094a82ec5f45959fc185d9d7815d4b".into(),
+                28
+            )
+        );
+        assert_eq!(
+            at(&order, nonce, None, "Testnet"),
+            (
+                "0xd06c19782b1bc5a3f83047d54afb161f5898a6358bea811c39efd31536fe2f12".into(),
+                "0x13c9a567ee53ada1134abd9214293974ad826fe6582c896c0a5dd637c65dbe2a".into(),
+                27
+            )
+        );
+        assert_eq!(
+            at(&order, nonce, expires, "Mainnet"),
+            (
+                "0x0786b9b009f25f28a499c1e80066239b320089d1922f346cac98d272a2ac2a5b".into(),
+                "0x4e4b521a3df7833d04a4c1f8add65d28b5a59b5367062f8bff5a5b47bd7a2054".into(),
+                27
+            )
+        );
+        assert_eq!(
+            at(&order, nonce, expires, "Testnet"),
+            (
+                "0xa56360867061d526381ae2c83336340880b8c37612be51ff259b6be9fe80d86f".into(),
+                "0x3855f19d005b7d5c3dc53032f5770ce62de76a3c8864eea9d2a0739b72e5d7ad".into(),
+                27
+            )
+        );
+
+        let cancel = twap_cancel(eth, "77738308").unwrap();
+        assert_eq!(
+            at(&cancel, nonce, None, "Mainnet"),
+            (
+                "0xabfa26a270f43a8739011ec68459edb5a4bf86d7e86143142afd573e52ba893d".into(),
+                "0x50f7ad0a986e34be6e3be0c17d4b30741fced149e417feacf50561dc0aff54b3".into(),
+                28
+            )
+        );
+        assert_eq!(
+            at(&cancel, nonce, None, "Testnet"),
+            (
+                "0x0ed4511c1b23932cede9b741dc1a97feca9aa12cfc3a01fd015bd443a11d4438".into(),
+                "0x521609e103e4bb2119c8736639e12d16f10a90461260f77772313f9e55d29327".into(),
+                28
+            )
+        );
     }
 }

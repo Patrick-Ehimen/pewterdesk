@@ -51,6 +51,9 @@ use wire::{
 use ws::Handled;
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+/// How long a signed action stays good for (`expiresAfter`): long enough
+/// for a slow request, short enough that one held up can't fill later.
+const EXPIRES_IN_MS: u64 = 60_000;
 /// Candles of history sent before live updates.
 const CANDLE_HISTORY: u64 = 500;
 /// There's no channel with every market's context, so the screener polls.
@@ -258,9 +261,18 @@ impl HyperliquidAdapter {
             .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
         validate_address(&account.address)?;
         let nonce = next_nonce();
+        // Refused by the venue if it arrives later than this: an action held
+        // up (the machine asleep, a stalled connection) can't execute late.
+        let expires_after = now_ms() + EXPIRES_IN_MS;
         let signature = {
             let key = keys.key(&account.key).await?;
-            agent::sign_action(&key, action, nonce, self.endpoints.chain)?
+            agent::sign_action(
+                &key,
+                action,
+                nonce,
+                Some(expires_after),
+                self.endpoints.chain,
+            )?
         };
         let response = self
             .http
@@ -270,6 +282,7 @@ impl HyperliquidAdapter {
                 "nonce": nonce,
                 "signature": signature,
                 "vaultAddress": null,
+                "expiresAfter": expires_after,
             }))
             .send()
             .await
@@ -1002,6 +1015,31 @@ impl ExchangeAdapter for HyperliquidAdapter {
         request: &OrderRequest,
     ) -> Result<Order, VenueError> {
         let asset = self.asset(&request.market).await?;
+        // A venue-run TWAP: its own action, answered with the TWAP's id.
+        if let OrderKind::Twap { .. } = request.kind {
+            let action = orders::twap(request, asset)?;
+            let id = orders::twap_started(&self.exchange(account, &action).await?)?;
+            return Ok(Order {
+                venue: VenueId::Hyperliquid,
+                id: format!("{}{id}", orders::TWAP_PREFIX),
+                // A TWAP carries no client order id on Hyperliquid.
+                client_id: None,
+                market: request.market.clone(),
+                side: request.side,
+                order_type: request.kind.order_type(),
+                size: request.size,
+                filled_size: Decimal::default(),
+                price: None,
+                trigger_price: None,
+                reduce_only: request.reduce_only,
+                status: OrderStatus::Open,
+                created_at: now_ms(),
+                category: OrderCategory::default(),
+                trigger_by: None,
+                take_profit: None,
+                stop_loss: None,
+            });
+        }
         // Only a market order and a trigger are priced off the market.
         let mid = match request.kind {
             OrderKind::Limit { .. } => Decimal::default(),
@@ -1059,8 +1097,36 @@ impl ExchangeAdapter for HyperliquidAdapter {
         order_id: &str,
     ) -> Result<(), VenueError> {
         let asset = self.asset(market).await?;
+        // A venue-run TWAP is cancelled with its own action.
+        if let Some(twap_id) = order_id.strip_prefix(orders::TWAP_PREFIX) {
+            let action = orders::twap_cancel(asset, twap_id)?;
+            return orders::twap_cancelled(&self.exchange(account, &action).await?);
+        }
         let action = orders::cancel(asset, order_id)?;
         orders::cancelled(&self.exchange(account, &action).await?)
+    }
+
+    /// Hyperliquid's dead-man's switch (`scheduleCancel`): per account, so
+    /// it would cancel every open order the account has, not only
+    /// `market`'s. At least 5 seconds ahead; 10 times a day at most it
+    /// actually fires.
+    async fn schedule_cancel(
+        &self,
+        account: &TradingAccount,
+        _market: &str,
+        after_ms: Option<u64>,
+    ) -> Result<(), VenueError> {
+        let time = match after_ms {
+            Some(after) if after < 5_000 => {
+                return Err(VenueError::InvalidRequest(
+                    "the switch must be at least 5 seconds ahead".into(),
+                ))
+            }
+            Some(after) => Some(now_ms() + after),
+            None => None,
+        };
+        let action = orders::schedule_cancel(time);
+        orders::acknowledged(&self.exchange(account, &action).await?)
     }
 
     /// A resting limit order's price and size. What the order is otherwise

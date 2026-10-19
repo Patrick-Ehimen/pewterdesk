@@ -1250,7 +1250,8 @@ impl ExchangeAdapter for AsterAdapter {
             price: match request.kind {
                 OrderKind::Limit { price, .. } => Some(price),
                 OrderKind::Trigger { limit_price, .. } => limit_price,
-                OrderKind::Market { .. } => None,
+                // A TWAP was refused before anything was sent.
+                OrderKind::Market { .. } | OrderKind::Twap { .. } => None,
             },
             trigger_price: match request.kind {
                 OrderKind::Trigger { trigger_price, .. } => Some(trigger_price),
@@ -1375,6 +1376,32 @@ impl ExchangeAdapter for AsterAdapter {
         let _: Value = self
             .rest
             .signed(reqwest::Method::POST, "/fapi/v3/leverage", &params, &key)
+            .await?;
+        Ok(())
+    }
+
+    /// Aster's dead-man's switch (`countdownCancelAll`), per market.
+    async fn schedule_cancel(
+        &self,
+        account: &TradingAccount,
+        market: &str,
+        after_ms: Option<u64>,
+    ) -> Result<(), VenueError> {
+        let keys = self
+            .keys
+            .as_ref()
+            .ok_or(VenueError::Unsupported("orders (no key store is set up)"))?;
+        wire::validate_market(market)?;
+        let params = orders::countdown(market, after_ms)?;
+        let key = keys.key(&account.key).await?;
+        let _: Value = self
+            .rest
+            .signed(
+                reqwest::Method::POST,
+                "/fapi/v3/countdownCancelAll",
+                &params,
+                &key,
+            )
             .await?;
         Ok(())
     }

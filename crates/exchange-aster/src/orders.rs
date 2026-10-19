@@ -157,6 +157,8 @@ pub(crate) fn create(
         ("side", if buying { "BUY" } else { "SELL" }.into()),
     ];
     match &request.kind {
+        // A venue-run TWAP is Hyperliquid's alone.
+        OrderKind::Twap { .. } => return Err(VenueError::Unsupported("a venue-run TWAP")),
         OrderKind::Market { max_slippage_bps } => {
             if *max_slippage_bps == 0 || *max_slippage_bps > MAX_SLIPPAGE_BPS {
                 return Err(invalid(
@@ -312,6 +314,30 @@ pub(crate) fn leverage(market: &str, leverage: Decimal, max: u32) -> Result<Para
     Ok(vec![
         ("symbol", market.to_owned()),
         ("leverage", value.to_string()),
+    ])
+}
+
+/// The longest countdown the dead-man's switch takes here: an hour.
+const COUNTDOWN_MAX_MS: u64 = 3_600_000;
+
+/// The parameters of `POST /fapi/v3/countdownCancelAll`, Aster's dead-man's
+/// switch: cancel every open order on `market` unless it's called again
+/// within `after_ms` (at least 10 seconds - Aster checks about every 10 ms,
+/// and advises against tight countdowns); `None` stops it (`0`). It can
+/// only cancel.
+pub(crate) fn countdown(market: &str, after_ms: Option<u64>) -> Result<Params, VenueError> {
+    let ms = match after_ms {
+        None => 0,
+        Some(ms) if (10_000..=COUNTDOWN_MAX_MS).contains(&ms) => ms,
+        Some(_) => {
+            return Err(invalid(
+                "the switch's countdown must be 10 seconds to an hour",
+            ))
+        }
+    };
+    Ok(vec![
+        ("symbol", market.to_owned()),
+        ("countdownTime", ms.to_string()),
     ])
 }
 
@@ -816,5 +842,19 @@ mod tests {
             VenueError::Rejected(_)
         ));
         assert!(placed("REJECTED", "0").outcome().is_err());
+    }
+
+    #[test]
+    fn the_switch_counts_down_in_ms_and_stops_at_zero() {
+        assert_eq!(
+            countdown("BTCUSDT", Some(60_000)).unwrap(),
+            vec![
+                ("symbol", "BTCUSDT".into()),
+                ("countdownTime", "60000".into())
+            ]
+        );
+        assert_eq!(countdown("BTCUSDT", None).unwrap()[1].1, "0");
+        assert!(countdown("BTCUSDT", Some(1_000)).is_err());
+        assert!(countdown("BTCUSDT", Some(7_200_000)).is_err());
     }
 }

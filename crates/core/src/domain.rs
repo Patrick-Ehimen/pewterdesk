@@ -437,6 +437,15 @@ pub enum OrderKind {
         #[ts(optional)]
         limit_price: Option<Decimal>,
     },
+    /// The venue's own TWAP: the size at market in slices over `minutes`,
+    /// run by the venue, so it carries on while this machine sleeps. Only
+    /// where the venue has one (Hyperliquid); refused elsewhere. The engine
+    /// places it for a TWAP algo; it is still one order, through the gate.
+    Twap {
+        minutes: u32,
+        /// Spread the slices' times a little.
+        randomize: bool,
+    },
 }
 
 /// Venue-agnostic order intent. Adapters translate it - into two steps where
@@ -483,6 +492,8 @@ pub enum OrderType {
     Market,
     Limit,
     Trigger,
+    /// A venue-run TWAP.
+    Twap,
 }
 
 impl OrderKind {
@@ -491,6 +502,7 @@ impl OrderKind {
             Self::Market { .. } => OrderType::Market,
             Self::Limit { .. } => OrderType::Limit,
             Self::Trigger { .. } => OrderType::Trigger,
+            Self::Twap { .. } => OrderType::Twap,
         }
     }
 }
@@ -816,6 +828,11 @@ pub enum Origin {
     Drawer,
     /// Anywhere else in the app, or a caller that didn't say.
     App,
+    /// An algo order (chaser, TWAP, scaled), sending its own orders.
+    Algo,
+    /// The engine itself: a halt, cleaning up after an algo the app closed
+    /// on, or the venue's dead-man's switch.
+    Engine,
 }
 
 impl Origin {
@@ -832,6 +849,8 @@ impl Origin {
             Self::Activity => "activity",
             Self::Drawer => "drawer",
             Self::App => "app",
+            Self::Algo => "algo",
+            Self::Engine => "engine",
         }
     }
 }
