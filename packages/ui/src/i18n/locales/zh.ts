@@ -477,6 +477,7 @@ export const messages: Messages = {
   "share.saved": "已保存到 {path}",
   "share.failed": "无法生成图片。",
   "share.layout": "卡片形状",
+  "share.anotherDesign": "换一个设计",
   "share.landscape": "横版",
   "share.portrait": "竖版",
   "share.prev": "上一张",

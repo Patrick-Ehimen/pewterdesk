@@ -498,6 +498,7 @@ export const en = {
   "share.saved": "Saved to {path}",
   "share.failed": "The image couldn't be made.",
   "share.layout": "Card shape",
+  "share.anotherDesign": "Another design",
   "share.landscape": "Landscape",
   "share.portrait": "Portrait",
   "share.prev": "Previous card",

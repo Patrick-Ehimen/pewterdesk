@@ -494,6 +494,7 @@ export const messages: Messages = {
   "share.saved": "Enregistrée dans {path}",
   "share.failed": "Impossible de créer l'image.",
   "share.layout": "Format de la carte",
+  "share.anotherDesign": "Un autre design",
   "share.landscape": "Paysage",
   "share.portrait": "Portrait",
   "share.prev": "Carte précédente",

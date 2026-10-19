@@ -16,16 +16,19 @@ import {
   LuDownload,
   LuRectangleHorizontal,
   LuRectangleVertical,
+  LuShuffle,
   LuX,
 } from "react-icons/lu";
 import { t } from "../../i18n";
 import {
   drawShareCard,
   loadImage,
+  randomStyle,
   SHARE_SIZE,
   type ShareCard,
   type ShareLayout,
   type ShareSlide,
+  type ShareStyle,
 } from "../../lib/shareCard";
 
 /**
@@ -99,6 +102,8 @@ export function PnlShareDialog({
   const [slide, setSlide] = useState(0);
   const [layout, setLayout] = useState<ShareLayout>("landscape");
   const [showDemo, setShowDemo] = useState(true);
+  // One of the designs at random each time it opens; the shuffle button swaps it.
+  const [style, setStyle] = useState<ShareStyle>(() => randomStyle());
   const [images, setImages] = useState<{ brand?: HTMLImageElement; venue?: HTMLImageElement }>();
   const captionId = useId();
   const headline = card.roi ?? card.pnl;
@@ -137,15 +142,15 @@ export function PnlShareDialog({
   useEffect(() => {
     if (!canvasRef.current || !images) return;
     const density = (window.devicePixelRatio || 1) * PREVIEW[layout];
-    drawShareCard(canvasRef.current, shown, images, current, layout, density);
-  }, [card, demo, demoText, showDemo, images, current, layout]);
+    drawShareCard(canvasRef.current, shown, images, current, layout, density, style);
+  }, [card, demo, demoText, showDemo, images, current, layout, style]);
 
   // The saved image is its own, sharper render.
   const png = () =>
     new Promise<Blob>((resolve, reject) => {
       if (!images) return reject(new Error("no image"));
       const out = document.createElement("canvas");
-      drawShareCard(out, shown, images, current, layout, EXPORT_SCALE);
+      drawShareCard(out, shown, images, current, layout, EXPORT_SCALE, style);
       out.toBlob((b) => (b ? resolve(b) : reject(new Error("no image"))), "image/png");
     });
   const copy = async () => {
@@ -245,6 +250,15 @@ export function PnlShareDialog({
                 <span key={s} className="pd-share-dot" data-on={i === slide || undefined} />
               ))}
             </div>
+            <button
+              type="button"
+              className="pd-share-shuffle"
+              title={t("share.anotherDesign")}
+              aria-label={t("share.anotherDesign")}
+              onClick={() => setStyle((s) => randomStyle(s))}
+            >
+              <LuShuffle size={15} aria-hidden />
+            </button>
             <div className="pd-share-layouts" role="radiogroup" aria-label={t("share.layout")}>
               {(["landscape", "portrait"] as const).map((l) => (
                 // biome-ignore lint/a11y/useSemanticElements: a two-way icon toggle

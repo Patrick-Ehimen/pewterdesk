@@ -34,6 +34,11 @@
   --pd-warning: #e8894a;
   --pd-info: #8fb3d9;
   --pd-focus: 0 0 0 2px var(--pd-brass);
+  /* The P&L share card's ring art only (its one exception to the single
+     accent; see BRAND.md). Every theme shares them: the card is always
+     drawn in this dark set. */
+  --pd-art-cyan: #5ad8f5;
+  --pd-art-violet: #a77bf3;
 }
 
 [data-theme="light"] {
