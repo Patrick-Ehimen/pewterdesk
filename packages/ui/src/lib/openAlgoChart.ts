@@ -189,6 +189,23 @@ function levelColor(level: ChartLevel, colors: LevelColors) {
 export const levelLineId = (level: ChartLevel) => `pd:${level.id}`;
 
 /**
+ * How much of the plot, from the price axis, a level's line spans. Like an
+ * order line on a trading chart: its label sits clear of the readout in the
+ * top-left corner, over the most recent candles.
+ */
+export const LEVEL_EXTENT = 0.45;
+
+/**
+ * Keeps a level's line out of the price scale's fit, so the candles keep
+ * their scale: a liquidation price 10% away would otherwise squash them into
+ * a band. Out of view, a line is still there when the scale is dragged to it.
+ */
+export function outOfAutoscale<T extends { autoscaleInfo(): unknown }>(line: T): T {
+  line.autoscaleInfo = () => null;
+  return line;
+}
+
+/**
  * A trade level as one of the chart's price lines, saying `label` (already
  * translated). It has no close button, and only a `movable` one (a TP or SL
  * the caller can set) can be dragged.
@@ -206,6 +223,7 @@ export function levelLine(
     lineWidth: 1,
     lineStyle: level.kind === "position" ? "solid" : "dashed",
     leftLabel: label,
+    extentFromRight: LEVEL_EXTENT,
     ...(movable ? { cursor: "ns-resize" } : {}),
   };
 }

@@ -7,6 +7,7 @@ import {
   levelLine,
   MAX_BARS_PAGE,
   marketOfSymbol,
+  outOfAutoscale,
   toBar,
 } from "../src/lib/openAlgoChart";
 
@@ -167,5 +168,18 @@ describe("levelLine", () => {
     expect(
       levelLine({ id: "order:1", kind: "order", price: 37, side: "buy" }, "Buy", colors).color,
     ).toBe("#b80");
+  });
+
+  it("spans part of the plot from the price axis", () => {
+    const line = levelLine({ id: "liquidation", kind: "liquidation", price: 30 }, "Liq", colors);
+    expect(line.extentFromRight).toBeGreaterThan(0);
+    expect(line.extentFromRight).toBeLessThan(1);
+  });
+});
+
+describe("outOfAutoscale", () => {
+  it("leaves a line out of the price scale's fit", () => {
+    const line = { autoscaleInfo: (): unknown => ({ min: 30, max: 30 }) };
+    expect(outOfAutoscale(line).autoscaleInfo()).toBeNull();
   });
 });

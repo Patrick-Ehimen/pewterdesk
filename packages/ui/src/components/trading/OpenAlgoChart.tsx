@@ -63,6 +63,7 @@ import {
   levelLine,
   levelLineId,
   marketOfSymbol,
+  outOfAutoscale,
 } from "../../lib/openAlgoChart";
 import { toastError } from "../../lib/toasts";
 import {
@@ -1102,7 +1103,11 @@ export function OpenAlgoChart({
       const had = drawn.get(id);
       if (had && had.look !== look) widget.chart.removePrimitive(had.line);
       if (!had || had.look !== look) {
-        drawn.set(id, { line: widget.chart.addPriceLine(options), level, look });
+        drawn.set(id, {
+          line: outOfAutoscale(widget.chart.addPriceLine(options)),
+          level,
+          look,
+        });
         continue;
       }
       had.level = level;
