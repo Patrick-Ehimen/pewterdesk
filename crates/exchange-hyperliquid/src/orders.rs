@@ -1,5 +1,6 @@
-//! Turning an [`OrderRequest`] into Hyperliquid's `order` action, a cancel
-//! into its `cancel` action, a change to a resting limit order into
+//! Turning an [`OrderRequest`] into Hyperliquid's `order` action (or, for
+//! a venue-run TWAP, `twapOrder`), a cancel into its `cancel` action (or
+//! `twapCancel`), the dead-man's switch into `scheduleCancel`, a change to a resting limit order into
 //! `batchModify`, leverage and margin mode into `updateLeverage`, and a
 //! position's take-profit and stop-loss into reduce-only trigger orders that
 //! close the whole of it. Pure translation: no keys, no network.
@@ -17,9 +18,10 @@
 //!
 //! The actions are laid out as the official Python SDK's
 //! `order_request_to_order_wire`, `order_wires_to_order_action`,
-//! `bulk_cancel`, `bulk_modify_orders_new` and `update_leverage`: field
-//! order matters, because the signature is over the action's MessagePack
-//! encoding.
+//! `bulk_cancel`, `bulk_modify_orders_new`, `update_leverage` and
+//! `schedule_cancel`, and `twapOrder` / `twapCancel` as the exchange
+//! endpoint's documentation lays them out: field order matters, because the
+//! signature is over the action's MessagePack encoding.
 
 use pewterdesk_core::{Decimal, OrderKind, OrderRequest, Side, TimeInForce, VenueError};
 use rust_decimal::RoundingStrategy;
@@ -31,6 +33,12 @@ pub(crate) const MAX_SLIPPAGE_BPS: u32 = 1000;
 const MAX_PRICE_DECIMALS: u32 = 6;
 /// And at most this many significant figures, unless it's a whole number.
 const MAX_SIG_FIGS: u32 = 5;
+
+/// How long a venue-run TWAP may run, in minutes: 5 minutes to 7 days.
+pub(crate) const TWAP_MINUTES: std::ops::RangeInclusive<u32> = 5..=10_080;
+/// How a venue-run TWAP's id is written as an order id, so a cancel of it
+/// goes as `twapCancel`.
+pub(crate) const TWAP_PREFIX: &str = "twap:";
 
 /// A value in an action: just what the order and cancel actions need. Maps
 /// keep their fields in the order given, which is the order they're signed
@@ -328,6 +336,8 @@ pub(crate) fn create(
     };
 
     let (price, kind) = match &request.kind {
+        // A venue-run TWAP is its own action (`twap`), not an order.
+        OrderKind::Twap { .. } => return Err(invalid("a TWAP goes as its own action")),
         OrderKind::Market { max_slippage_bps } => {
             if *max_slippage_bps == 0 || *max_slippage_bps > MAX_SLIPPAGE_BPS {
                 return Err(invalid(
@@ -451,6 +461,102 @@ fn exits(request: &OrderRequest, asset: Asset, entry: Decimal) -> Result<Vec<Wir
 }
 
 /// The cancel action for order `order_id` on `asset`.
+/// The `twapOrder` action for a venue-run TWAP: `a, b, s, r, m, t`. The
+/// size is checked against the market's step; the venue runs it at market,
+/// in slices, each within its own 3% bound.
+pub(crate) fn twap(request: &OrderRequest, asset: Asset) -> Result<Wire, VenueError> {
+    let OrderKind::Twap { minutes, randomize } = request.kind else {
+        return Err(invalid("that isn't a TWAP"));
+    };
+    if !TWAP_MINUTES.contains(&minutes) {
+        return Err(invalid("a TWAP runs from 5 minutes to 7 days"));
+    }
+    if request.take_profit.is_some() || request.stop_loss.is_some() {
+        return Err(invalid("a TWAP can't carry a take-profit or stop-loss"));
+    }
+    if request.collateral.is_some() {
+        return Err(invalid(
+            "Hyperliquid margins positions itself: no collateral amount",
+        ));
+    }
+    check_size(request.size, asset)?;
+    Ok(Wire::Map(vec![
+        ("type", Wire::str("twapOrder")),
+        (
+            "twap",
+            Wire::Map(vec![
+                ("a", Wire::Uint(u64::from(asset.id))),
+                ("b", Wire::Bool(request.side == Side::Buy)),
+                ("s", Wire::Str(text(request.size))),
+                ("r", Wire::Bool(request.reduce_only)),
+                ("m", Wire::Uint(u64::from(minutes))),
+                ("t", Wire::Bool(randomize)),
+            ]),
+        ),
+    ]))
+}
+
+/// The `twapCancel` action for TWAP `twap_id` (the digits after `twap:`).
+pub(crate) fn twap_cancel(asset: Asset, twap_id: &str) -> Result<Wire, VenueError> {
+    let digits = !twap_id.is_empty() && twap_id.bytes().all(|b| b.is_ascii_digit());
+    let id = digits
+        .then(|| twap_id.parse::<u64>().ok())
+        .flatten()
+        .ok_or_else(|| invalid("that isn't a Hyperliquid TWAP id"))?;
+    Ok(Wire::Map(vec![
+        ("type", Wire::str("twapCancel")),
+        ("a", Wire::Uint(u64::from(asset.id))),
+        ("t", Wire::Uint(id)),
+    ]))
+}
+
+/// The `scheduleCancel` action (the dead-man's switch): cancel every open
+/// order of the account at `time` (ms since the epoch, at least 5 seconds
+/// ahead), or, with `None`, clear what's scheduled. It can only cancel.
+pub(crate) fn schedule_cancel(time: Option<u64>) -> Wire {
+    let mut fields = vec![("type", Wire::str("scheduleCancel"))];
+    if let Some(time) = time {
+        fields.push(("time", Wire::Uint(time)));
+    }
+    Wire::Map(fields)
+}
+
+/// The TWAP's id from `twapOrder`'s answer, or the venue's refusal.
+pub(crate) fn twap_started(body: &Value) -> Result<String, VenueError> {
+    match body["status"].as_str() {
+        Some("ok") => {
+            let status = &body["response"]["data"]["status"];
+            if let Some(id) = status["running"]["twapId"].as_u64() {
+                return Ok(id.to_string());
+            }
+            match status["error"].as_str() {
+                Some(error) => Err(VenueError::Rejected(error.to_owned())),
+                None => Err(VenueError::Network("unexpected exchange response".into())),
+            }
+        }
+        Some("err") => Err(refusal(body)),
+        _ => Err(VenueError::Network("unexpected exchange response".into())),
+    }
+}
+
+/// Whether a `twapCancel` went through.
+pub(crate) fn twap_cancelled(body: &Value) -> Result<(), VenueError> {
+    match body["status"].as_str() {
+        Some("ok") => {
+            let status = &body["response"]["data"]["status"];
+            if status.as_str() == Some("success") {
+                return Ok(());
+            }
+            match status["error"].as_str() {
+                Some(error) => Err(VenueError::Rejected(error.to_owned())),
+                None => Err(VenueError::Network("unexpected exchange response".into())),
+            }
+        }
+        Some("err") => Err(refusal(body)),
+        _ => Err(VenueError::Network("unexpected exchange response".into())),
+    }
+}
+
 pub(crate) fn cancel(asset: Asset, order_id: &str) -> Result<Wire, VenueError> {
     let digits = !order_id.is_empty() && order_id.bytes().all(|b| b.is_ascii_digit());
     let id = digits
@@ -1200,6 +1306,73 @@ mod tests {
             ))
             .unwrap_err(),
             VenueError::Rejected("Order was never placed, already canceled, or filled.".into())
+        );
+    }
+
+    #[test]
+    fn a_twap_is_checked_before_its_built() {
+        let twap_of = |size: &str, minutes| OrderRequest {
+            kind: OrderKind::Twap {
+                minutes,
+                randomize: false,
+            },
+            ..request(
+                Side::Sell,
+                size,
+                OrderKind::Market {
+                    max_slippage_bps: 50,
+                },
+            )
+        };
+        let built = twap(&twap_of("0.5", 30), ETH).unwrap();
+        assert_eq!(
+            built.json(),
+            json!({ "type": "twapOrder", "twap": {
+                "a": 1, "b": false, "s": "0.5", "r": false, "m": 30, "t": false
+            } })
+        );
+        // Out of range, or a size off the step.
+        assert!(twap(&twap_of("0.5", 4), ETH).is_err());
+        assert!(twap(&twap_of("0.5", 10_081), ETH).is_err());
+        assert!(twap(&twap_of("0.00001", 30), ETH).is_err());
+        // No exits ride on a TWAP.
+        let mut exits = twap_of("0.5", 30);
+        exits.stop_loss = Some(d("1500"));
+        assert!(twap(&exits, ETH).is_err());
+        // And it isn't an order action.
+        assert!(create(&twap_of("0.5", 30), ETH, d("1900")).is_err());
+        assert!(twap_cancel(ETH, "x1").is_err());
+    }
+
+    #[test]
+    fn reads_twap_and_switch_replies_as_documented() {
+        let running = json!({ "status": "ok", "response": { "type": "twapOrder",
+            "data": { "status": { "running": { "twapId": 77738308 } } } } });
+        assert_eq!(twap_started(&running).unwrap(), "77738308");
+        let refused = json!({ "status": "ok", "response": { "type": "twapOrder",
+            "data": { "status": { "error": "Invalid TWAP duration: 1 min(s)" } } } });
+        assert_eq!(
+            twap_started(&refused),
+            Err(VenueError::Rejected(
+                "Invalid TWAP duration: 1 min(s)".into()
+            ))
+        );
+        let cancelled = json!({ "status": "ok", "response": { "type": "twapCancel",
+            "data": { "status": "success" } } });
+        assert!(twap_cancelled(&cancelled).is_ok());
+        let gone = json!({ "status": "ok", "response": { "type": "twapCancel",
+            "data": { "status": { "error": "TWAP was never placed, already canceled, or filled." } } } });
+        assert!(matches!(
+            twap_cancelled(&gone),
+            Err(VenueError::Rejected(_))
+        ));
+        assert_eq!(
+            schedule_cancel(None).json(),
+            json!({ "type": "scheduleCancel" })
+        );
+        assert_eq!(
+            schedule_cancel(Some(5)).json(),
+            json!({ "type": "scheduleCancel", "time": 5 })
         );
     }
 }

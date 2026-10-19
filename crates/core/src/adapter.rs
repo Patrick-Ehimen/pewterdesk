@@ -43,8 +43,10 @@ pub enum VenueError {
 ///
 /// The trait has no withdraw, transfer or key-approval method, and no way to
 /// sign caller-supplied bytes: whatever can drive an adapter - including a
-/// script injected into the webview - can place and cancel orders, and set a
-/// position's protective exits, with the trade-only key, and nothing else. Adding such a method is a
+/// script injected into the webview - can place, change and cancel orders
+/// (including the venue's dead-man's switch, a scheduled cancel), set a
+/// position's protective exits, leverage and margin mode, with the
+/// trade-only key, and nothing else. Adding such a method is a
 /// security-sensitive change; see docs/adr/0001-venues-in-rust.md.
 ///
 /// Read-only methods need no key, so market data and account views work before
@@ -295,6 +297,22 @@ pub trait ExchangeAdapter: Send + Sync {
         _mode: MarginMode,
     ) -> Result<(), VenueError> {
         Err(VenueError::Unsupported("changing the margin mode"))
+    }
+
+    /// The venue's dead-man's switch, part of cancelling orders: unless this
+    /// is called again within `after_ms`, the venue cancels `account`'s open
+    /// orders - on `market` where the switch is per market (Aster's
+    /// `countdownCancelAll`), all of them where it's per account
+    /// (Hyperliquid's `scheduleCancel`). `None` turns it off. It can only
+    /// cancel: it opens, moves and transfers nothing. Only where the venue
+    /// has one.
+    async fn schedule_cancel(
+        &self,
+        _account: &TradingAccount,
+        _market: &str,
+        _after_ms: Option<u64>,
+    ) -> Result<(), VenueError> {
+        Err(VenueError::Unsupported("a dead-man's switch"))
     }
 
     /// Changes an open position's take-profit, stop-loss and trailing stop:

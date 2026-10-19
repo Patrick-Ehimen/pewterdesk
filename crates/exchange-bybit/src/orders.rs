@@ -375,6 +375,8 @@ pub(crate) fn create(
         tpsl_mode: None,
     };
     match &request.kind {
+        // A venue-run TWAP is Hyperliquid's alone.
+        OrderKind::Twap { .. } => return Err(VenueError::Unsupported("a venue-run TWAP")),
         OrderKind::Market { max_slippage_bps } => {
             if *max_slippage_bps == 0 || *max_slippage_bps > MAX_SLIPPAGE_BPS {
                 return Err(invalid(
@@ -457,6 +459,8 @@ fn attach_exits(
         ));
     }
     let entry = match &request.kind {
+        // A venue-run TWAP is Hyperliquid's alone.
+        OrderKind::Twap { .. } => return Err(VenueError::Unsupported("a venue-run TWAP")),
         OrderKind::Limit { price, .. } => *price,
         OrderKind::Trigger { trigger_price, .. } => *trigger_price,
         OrderKind::Market { .. } => match request.side {
