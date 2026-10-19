@@ -478,11 +478,17 @@ changed.
 
 Hyperliquid and Aster have no demo, so they get paper trading instead (Bybit
 has its Demo Trading accounts). The Live / Paper switch beside the venue
-chips is per venue; in paper mode a banner over the workspace shows the
-paper balance and P&L, with Funds (add up to 100,000 at a time, or take out
-what isn't held as margin; neither counts as P&L) and Reset (behind a
-confirmation: every position, order and record gone, back to 10,000;
-`components/paper/PaperFundsDialog.tsx`), and the ticket says "Paper". It
+chips is per venue; in paper mode a slim banner over the workspace shows
+the paper P&L and the way back to live, and the ticket says "Paper". The
+account itself is the Paper panel (`paper`; `components/panels/PaperPanel.tsx`,
+`lib/paperOverview.ts`), put in the layout the first time paper mode is
+turned on (and from the banner or the palette after): equity and P&L, open
+P&L, margin, fees and funding, the realized P&L curve, how the trades went,
+and a journal of fills, closes and funding, with Funds (add up to 100,000 at
+a time, or take out what isn't held as margin; neither counts as P&L) and
+Reset (behind a confirmation: every position, order and record gone, back
+to 10,000; `components/paper/PaperFundsDialog.tsx`). It reads the paper
+state only and places nothing. It
 keeps everything in this machine's storage (`pd.paper.<venue>`), so it
 survives a restart. It needs
 no wallet. Orders fill on the venue's live prices (the book's best bid and
