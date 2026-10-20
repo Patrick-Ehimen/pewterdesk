@@ -7,6 +7,7 @@ import type {
   DataFeed,
   PriceLineOptions,
 } from "openalgo-charts";
+import type { DrawingInput, DrawingStyle } from "openalgo-charts/draw";
 import { ALL_INTERVALS } from "./indicators";
 import type { ChartLevel } from "./tradeMarks";
 
@@ -251,4 +252,145 @@ export function keptLayout(saved: string | undefined): KeptLayout | undefined {
   } catch {
     return undefined;
   }
+}
+
+/** What an analysis level is: how the AI analyst marked it on the chart. */
+export type AnalysisKind = "support" | "resistance" | "entry" | "target" | "invalidation";
+
+/** A level the AI analyst drew: a price and a few words. It isn't an order. */
+export interface AnalysisLevel {
+  price: number;
+  kind: AnalysisKind;
+  label: string;
+}
+
+/** A supply or demand zone: a price band from the candle it formed at. Times in ms. */
+export interface AnalysisZone {
+  kind: "supply" | "demand";
+  start: number;
+  /** Where it ends; null runs it a little past the latest candle. */
+  end: number | null;
+  top: number;
+  bottom: number;
+  label: string;
+}
+
+/** Two points (times in ms) and a label: a Fibonacci swing, or a trend line. */
+export interface AnalysisSpan {
+  from: { time: number; price: number };
+  to: { time: number; price: number };
+  label: string;
+}
+
+/** Everything the AI analyst drew on one market. */
+export interface ChartAnalysis {
+  levels: readonly AnalysisLevel[];
+  zones?: readonly AnalysisZone[];
+  fibs?: readonly AnalysisSpan[];
+  trendLines?: readonly AnalysisSpan[];
+}
+
+/** The colours the analyst's drawings are drawn in. */
+export interface AnalysisColors {
+  buy: string;
+  sell: string;
+  warning: string;
+  muted: string;
+}
+
+/** Ids of the analyst's drawings on a chart start with this. */
+export const ANALYSIS_ID = "pd:ai:";
+
+/** Bars a level's ray starts before the latest candle, and an open zone runs past it. */
+const LEVEL_BARS_BACK = 40;
+const ZONE_BARS_AHEAD = 12;
+
+/**
+ * The analyst's analysis as the chart's own drawings, pinned to time and
+ * price so they stay put as the chart scrolls: zones as shaded rectangles,
+ * Fibonacci retracements, trend lines, and each level as a horizontal ray
+ * with its label beside it. They're the host's: read-only, and left out of
+ * the saved drawings (a copy the trader makes is their own). `last` is the
+ * latest candle's time and `bar` one candle's length, both in seconds.
+ */
+export function analysisDrawings(
+  analysis: ChartAnalysis,
+  colors: AnalysisColors,
+  view: { last: number; bar: number },
+): DrawingInput[] {
+  const out: DrawingInput[] = [];
+  const base = (tool: string, points: DrawingInput["points"], style: DrawingStyle) => ({
+    id: `${ANALYSIS_ID}${out.length}`,
+    tool,
+    points,
+    style,
+    paneIndex: 0,
+    policy: { editable: false, persistent: false },
+  });
+  const sec = (ms: number) => Math.floor(ms / 1000);
+  for (const z of analysis.zones ?? []) {
+    const color = z.kind === "demand" ? colors.buy : colors.sell;
+    const end = z.end === null ? view.last + ZONE_BARS_AHEAD * view.bar : sec(z.end);
+    out.push({
+      ...base(
+        "rectangle",
+        [
+          { time: sec(z.start), price: z.top },
+          { time: Math.max(end, sec(z.start) + view.bar), price: z.bottom },
+        ],
+        { color, lineWidth: 1, fill: true, fillColor: color, fillOpacity: 0.14 },
+      ),
+      text: { value: z.label, color, fontSize: 11 },
+    });
+  }
+  for (const f of analysis.fibs ?? []) {
+    out.push(
+      base(
+        "fib-retracement",
+        [
+          { time: sec(f.from.time), price: f.from.price },
+          { time: sec(f.to.time), price: f.to.price },
+        ],
+        { color: colors.muted, lineWidth: 1, showLabels: true },
+      ),
+    );
+  }
+  for (const l of analysis.trendLines ?? []) {
+    out.push(
+      base(
+        "trend-line",
+        [
+          { time: sec(l.from.time), price: l.from.price },
+          { time: sec(l.to.time), price: l.to.price },
+        ],
+        { color: colors.muted, lineWidth: 2 },
+      ),
+    );
+  }
+  const from = view.last - LEVEL_BARS_BACK * view.bar;
+  for (const level of analysis.levels) {
+    const color =
+      level.kind === "support" || level.kind === "target"
+        ? colors.buy
+        : level.kind === "resistance"
+          ? colors.sell
+          : level.kind === "invalidation"
+            ? colors.warning
+            : colors.muted;
+    out.push(
+      base("horizontal-ray", [{ time: from, price: level.price }], {
+        color,
+        lineWidth: 1,
+        lineStyle: "dashed",
+        showLabels: true,
+      }),
+    );
+    if (level.label) {
+      out.push({
+        ...base("text", [{ time: from, price: level.price }], { color }),
+        text: { value: level.label, color, fontSize: 11 },
+      });
+    }
+  }
+  return out;
 }

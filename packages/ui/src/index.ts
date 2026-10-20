@@ -257,7 +257,15 @@ export {
 } from "./lib/liquidations";
 export * from "./lib/mapStats";
 export { RSI_CANDLES, RSI_FRAMES, type RsiFrame, rsiNowAndBefore } from "./lib/marketMaps";
-export type { BarSource } from "./lib/openAlgoChart";
+export type {
+  AnalysisKind,
+  AnalysisLevel,
+  AnalysisSpan,
+  AnalysisZone,
+  BarSource,
+  ChartAnalysis,
+} from "./lib/openAlgoChart";
+export { analysisDrawings } from "./lib/openAlgoChart";
 export {
   closeOrder,
   intervalFor,

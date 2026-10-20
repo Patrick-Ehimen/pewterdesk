@@ -56,9 +56,11 @@ import { INTERVAL_MS } from "../../lib/chart";
 import { decimalsOf, formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import { ALL_INTERVALS, type ChartType } from "../../lib/indicators";
 import {
+  analysisDrawings,
   asInterval,
   type BarSource,
   barFeed,
+  type ChartAnalysis,
   keptLayout,
   levelLine,
   levelLineId,
@@ -709,6 +711,11 @@ interface OpenAlgoChartProps {
   /** The account's fills in this market, marked on the candles they fell in. */
   fills?: readonly Fill[];
   /**
+   * What the AI analyst drew on this market: zones, fibs, trend lines and
+   * levels, as the chart's own drawings pinned to the candles. Read-only.
+   */
+  analysis?: ChartAnalysis;
+  /**
    * Sets the position's TP or SL; with it, the lines of those kept on the
    * position can be dragged. Resolves to the price set (on the tick), or
    * undefined if nothing changed; rejects with the message to show.
@@ -751,6 +758,7 @@ export function OpenAlgoChart({
   position,
   orders = NO_ORDERS,
   fills,
+  analysis,
   onMoveExit,
   compact = false,
   layout,
@@ -1123,6 +1131,29 @@ export function OpenAlgoChart({
       drawn.delete(id);
     }
   }, [widget, levels, decimals, canMove, themed, settled]);
+
+  // The analyst's drawings (zones, fibs, trend lines, levels), pinned to the
+  // candles: drawn afresh when they change, when candles load (a new market
+  // swaps the drawings out) and with the theme. Read-only, and never saved.
+  const analysed = useRef<{ of: Widget; ids: string[] }>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `loaded` redraws on a new market's candles, `themed` recolours them
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!widget || !host || widget.isDestroyed) return;
+    const draw = widget.draw;
+    if (analysed.current?.of === widget) {
+      for (const id of analysed.current.ids) draw.remove(id, { force: true });
+    }
+    analysed.current = { of: widget, ids: [] };
+    const last = widget.series.getData().at(-1)?.time;
+    if (!analysis || last === undefined) return;
+    const t = tokens(host);
+    const colors = { buy: t.buy, sell: t.sell, warning: t.warning, muted: t.muted };
+    const bar = INTERVAL_MS[interval] / 1000;
+    analysed.current.ids = analysisDrawings(analysis, colors, { last, bar }).map(
+      (d) => draw.add(d).id,
+    );
+  }, [widget, analysis, interval, loaded, themed]);
 
   // The account's fills, as arrows at their prices on the candles loaded.
   const markers = useRef<{ of: Widget; layer: SeriesMarkers }>(undefined);
