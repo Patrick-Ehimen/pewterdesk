@@ -253,6 +253,18 @@ pub async fn okx_liquidations(
     market: String,
     since: u64,
 ) -> Result<Vec<OkxLiquidation>, VenueError> {
+    liquidations(&state, &market, since).await
+}
+
+/// `market`'s liquidations since `since`, as `okx_liquidations` gives them
+/// (and the AI analyst reads them). `market` is an OKX swap, e.g. "SOL-USDT";
+/// one OKX doesn't list is refused before a request is built.
+pub async fn liquidations(
+    state: &OkxState,
+    market: &str,
+    since: u64,
+) -> Result<Vec<OkxLiquidation>, VenueError> {
+    let market = market.to_owned();
     let markets = state.markets().await?;
     let Some(&contract) = markets.get(&market) else {
         return Err(VenueError::InvalidRequest("that isn't an OKX swap".into()));

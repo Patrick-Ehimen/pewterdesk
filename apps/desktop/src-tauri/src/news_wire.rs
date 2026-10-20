@@ -66,6 +66,8 @@ const MAX_COINS: usize = 8;
 const MAX_COIN: usize = 15;
 /// Links kept to open, newest last; older ones can no longer be opened.
 const MAX_LINKS: usize = 2000;
+/// Items kept for the AI analyst to search, newest last.
+const MAX_RECENT: usize = 1000;
 
 /// Where an item came from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -170,10 +172,12 @@ pub enum WireEvent {
 }
 
 /// The links of the items sent, by id; the oldest go first past `MAX_LINKS`.
+/// And the items themselves, the last `MAX_RECENT`, for the AI analyst.
 #[derive(Default)]
 struct Links {
     by_id: HashMap<String, String>,
     order: VecDeque<String>,
+    recent: VecDeque<WireItem>,
 }
 
 impl Links {
@@ -185,6 +189,16 @@ impl Links {
             if let Some(old) = self.order.pop_front() {
                 self.by_id.remove(&old);
             }
+        }
+    }
+
+    fn keep(&mut self, item: &WireItem) {
+        if self.recent.iter().any(|i| i.id == item.id) {
+            return;
+        }
+        self.recent.push_back(item.clone());
+        while self.recent.len() > MAX_RECENT {
+            self.recent.pop_front();
         }
     }
 }
@@ -530,6 +544,7 @@ fn send_items(
             if let Some(url) = url {
                 kept.insert(item.id.clone(), url);
             }
+            kept.keep(&item);
             item
         })
         .collect();
@@ -655,6 +670,24 @@ async fn run(source: WireSource, tx: mpsc::Sender<WireEvent>, links: Arc<Mutex<L
         }
         wait = (wait * 2).min(BACKOFF_LAST);
     }
+}
+
+/// The wire's recent items, newest first, for the AI analyst: Tree's
+/// latest (read now, keyless) and whatever the live wire has brought in
+/// while the app ran. Text only, as the page gets them.
+pub async fn recent_items(wire: &NewsWireState) -> Vec<WireItem> {
+    let read = tree_history(&wire.http).await;
+    let mut kept = wire.links.lock().unwrap();
+    for (item, url) in read {
+        if let Some(url) = url {
+            kept.insert(item.id.clone(), url);
+        }
+        kept.keep(&item);
+    }
+    let mut items: Vec<WireItem> = kept.recent.iter().cloned().collect();
+    drop(kept);
+    items.sort_by_key(|i| std::cmp::Reverse(i.time));
+    items
 }
 
 /// Streams both sources to the page: Tree's recent items first, then what

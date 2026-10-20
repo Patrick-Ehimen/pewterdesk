@@ -319,6 +319,12 @@ impl NewsState {
 /// read is left out; it's an error only when none can.
 #[tauri::command]
 pub async fn news_feed(state: State<'_, NewsState>) -> Result<Vec<Article>, VenueError> {
+    headlines(&state).await
+}
+
+/// The publishers' latest headlines, newest first, as `news_feed` gives
+/// them (and the AI analyst reads them).
+pub async fn headlines(state: &NewsState) -> Result<Vec<Article>, VenueError> {
     let mut cache = state.cache.lock().await;
     if let Some((at, articles)) = cache.as_ref() {
         if at.elapsed() < FRESH_FOR {

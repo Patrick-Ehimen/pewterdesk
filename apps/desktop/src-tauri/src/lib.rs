@@ -1,6 +1,8 @@
 use tauri::Manager;
 
 mod about;
+mod ai_assistant;
+mod ai_providers;
 mod algos;
 mod browser_connect;
 mod bybit_key;
@@ -71,6 +73,7 @@ pub fn run() {
                 .expect("failed to set up the calendar client"),
         )
         .manage(news_wire::NewsWireState::new().expect("failed to set up the news wire client"))
+        .manage(ai_assistant::AiState::new().expect("failed to set up the AI client"))
         .manage(wallet::Onboarding::default())
         .manage(browser_connect::BrowserConnect::default())
         .manage(daemon::DaemonLink::new())
@@ -238,6 +241,15 @@ pub fn run() {
             news_wire::news_keys,
             news_wire::clear_news_key,
             news_wire::open_wire_link,
+            ai_assistant::ai_ask,
+            ai_assistant::set_ai_key,
+            ai_assistant::ai_key_status,
+            ai_assistant::clear_ai_key,
+            ai_assistant::ai_models,
+            ai_assistant::ai_account_access,
+            ai_assistant::set_ai_account_access,
+            ai_assistant::load_ai_chats,
+            ai_assistant::save_ai_chats,
             coin_info::open_coin_link,
             coin_info::set_coingecko_key,
             coin_info::has_coingecko_key,
