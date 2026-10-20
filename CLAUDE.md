@@ -197,6 +197,52 @@ discover it on their own. The reasoning behind the rules is in
   so the page shows the host first), filtered by `safe_url`. Adding a
   source, or letting a link or a ticker do more than open or show, is a
   security-relevant change.
+- `apps/desktop/src-tauri/src/ai_assistant.rs` and `ai_providers.rs` -
+  PewterDesk AI, the analyst behind the AI page, on the trader's pick of
+  model (a fixed list per provider, `Provider::models`): Anthropic's Claude
+  (Messages API, `api.anthropic.com/v1/messages`), Google's Gemini
+  (Interactions API, `generativelanguage.googleapis.com/v1beta/interactions`,
+  `store: false`) or OpenAI's ChatGPT models (Responses API,
+  `api.openai.com/v1/responses`, `store: false`). Reached from Rust only,
+  each at its one fixed address (no redirects followed), with the trader's
+  own key for it, kept in the keychain (`anthropic:api`, `gemini:api`,
+  `openai:api`), sent only to its own provider and never returned
+  (`ai_key_status` says only which are stored). A chat stays with the
+  provider it began on: its transcript is that provider's own.
+  Not a venue and not on the signing surface: its tools are read-only
+  market data through the adapters (`get_candles`, `get_order_book`,
+  `get_funding_history`, `get_open_interest`, `get_long_short_ratio`,
+  `get_recent_trades` - the trades stream's first snapshot - and
+  `find_markets`; each takes a `venue`, so it can compare venues), OKX's
+  public liquidation history (`get_liquidations`, through
+  `okx_liquidations::liquidations`), what the app's own data sources already read, each
+  through its own module and fixed hosts (`search_x_posts` over the news
+  wire's X posts - Tree's recent items plus what the live wire brought in,
+  `news_wire::recent_items`; `search_headlines` over the wire's headlines,
+  the RSS feeds and Bybit's announcements; `get_economic_calendar`),
+  Anthropic's own web search, and
+  `mark_chart`, whose analysis comes back to the page only as numbers,
+  candle times and bounded labels to draw (`analysis` on `OpenAlgoChart`:
+  the chart's own drawings - supply/demand zones as rectangles, Fibonacci
+  retracements, trend lines, levels as rays - pinned to the candles,
+  read-only and never saved; `analysisDrawings` in `lib/openAlgoChart.ts`). No tool reaches the router, an account or a key, or
+  takes a URL or host. The trader's own account (`get_account`,
+  `get_fills`, `get_closed_trades`: the adapters' read-only account, fills
+  and closed-trade reads, for the account the page has connected on each
+  venue) is read only with account access on - a switch kept and enforced
+  in Rust (`ai-account-access.json` in the data folder, `set_ai_account_access`),
+  off by default, turned on only from the AI page's side panel, which says
+  that what it reads goes to the model's provider. The tools are always
+  declared (a conversation's tools can't change) and refuse while it's off.
+  Posts and headlines are other people's text, given
+  to the model as data (the prompt says never to follow them). Answers reach the page as bounded text, drawn as
+  text (`lib/aiText.ts`: no markup, no links). The conversation is the
+  API's transcript, kept with the chats in `ai-chats.json` in the app's
+  data folder (written whole by `save_ai_chats`, 0600; never key material)
+  and handed back whole; Rust only appends to it. Adding a provider, or
+  sending a request anywhere else, is a security-relevant change. Giving the analyst a tool that trades, reads an
+  account, or opens a link, or sending its requests anywhere else, is a
+  security-relevant change.
 - Signing code in each `crates/exchange-<venue>` - what turns a key into a
   signed venue action. The highest-stakes code in the repo. Hold keys only as
   `Zeroizing` and only for the signing call. Bybit's:
@@ -622,6 +668,39 @@ a search, kept under `pd.newsWire`; scrolled down, the list holds still and
 counts what's new. A ticker shows its market; it places nothing. The
 sources' keys are set in Settings › Advanced. It's beside the chart in the
 Fundamental preset.
+
+## PewterDesk AI
+
+A page (`ai`; `components/pages/AiPage.tsx`, `hooks/useAiChats.ts`,
+`lib/aiChats.ts`), after CoinMarketCap's CMC AI: a chat with a market
+analyst, and Agentic Charts, the market on screen charted beside the
+analyst, who reads it and marks its levels (support, resistance, entry,
+targets, invalidation) on the chart. Claude, Gemini or a ChatGPT model
+answers (picked in the side panel for new chats; `ai_models`), through
+`ai_assistant.rs` and `ai_providers.rs`, with the trader's own key for that
+provider (set on the page; Gemini's has a free tier, the others are billed
+by their provider). Each question carries the venue, market and
+interval on screen and a snapshot of the busiest markets' prices; the
+analyst reads candles, the book, funding, open interest and the
+long/short ratio itself, searches X posts (from the news wire), headlines
+and announcements, the economic calendar and the web, recent trades and
+OKX's liquidations, on any venue (it compares them), and - with Account
+access on in the side panel, off by default - the trader's own positions,
+orders, fills and closed trades ("how's my risk?"), and lists what it
+found as catalysts with their sources beside the levels, naming markets as it
+likes ("sol-usdt"; Rust's `resolve_market` finds the venue's id, or tells
+it there's none). An answer that marks another market or interval takes
+the chart there, and each answer's marks can be shown again from the
+thread. Its home screen (after Bybit's TradeGPT) has starter questions in
+tabs (Market analysis, Token insights, and Your account with account
+access on), the day's biggest movers as chips to ask about, Deep Think on
+the question box (the provider's higher reasoning effort, per question:
+`deep` on `AskContext`) and Daily Pulse in the side panel (a briefing on
+the day's market, in a new chat). Chats, and the chat open in each view, are kept on this machine
+in `ai-chats.json` (not the webview's storage, which the market caches
+fill), read once and written after every change; a chat that can't be
+saved says so in the side panel. It places nothing: an answer can at most open its marks on
+the chart, or the market on the Trade page.
 
 Settings › Layout shows every preset and saved layout as a card
 (`components/layout/LayoutGallery.tsx`), each with a miniature drawn from

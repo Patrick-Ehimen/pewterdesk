@@ -1,0 +1,1039 @@
+/* PewterDesk AI: the chats down the side, then the chat or Agentic Charts.
+   Colors only from --pd-* tokens; brass is the one accent, green and red
+   only for market data (a bias, a level, a change). */
+
+.page.ai {
+  flex-direction: row;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-bg);
+}
+
+/* The side: brand, new chat, the two views, the chats */
+.ai-side {
+  flex: 0 0 248px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 14px 12px;
+  background: var(--pd-surface);
+  border-right: 1px solid var(--pd-border);
+}
+.ai-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px 8px;
+  font-size: 16px;
+}
+.ai-brand svg {
+  color: var(--pd-brass);
+}
+.ai-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ai-new:hover {
+  border-color: var(--pd-brass);
+}
+.ai-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 0;
+}
+.ai-modes button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-modes button:hover {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.ai-modes button[aria-current="page"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  box-shadow: inset 2px 0 0 var(--pd-brass);
+}
+.ai-side-head {
+  margin: 8px 10px 2px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ai-side-empty {
+  margin: 4px 10px;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.ai-chats {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.ai-chats li {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.ai-chats li:hover,
+.ai-chats li[data-active] {
+  background: var(--pd-surface-raised);
+}
+.ai-chat-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 4px 7px 10px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-chat-open svg {
+  flex: none;
+  color: var(--pd-pewter);
+}
+.ai-chat-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-chat-when {
+  flex: none;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.ai-chat-delete {
+  visibility: hidden;
+  margin-right: 4px;
+}
+.ai-chats li:hover .ai-chat-delete,
+.ai-chat-delete:focus-visible {
+  visibility: visible;
+}
+.ai-key-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 2px;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-key-status span {
+  flex: 1;
+}
+.ai-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-link-button:hover {
+  text-decoration: underline;
+}
+
+/* The main view */
+.ai-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ai-home {
+  overflow-y: auto;
+}
+.ai-home-inner {
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 24px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ai-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-banner:hover {
+  border-color: var(--pd-brass);
+}
+.ai-banner > svg {
+  flex: none;
+  color: var(--pd-brass);
+}
+.ai-banner-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-banner-text strong {
+  font-size: 15px;
+}
+.ai-banner-text > span {
+  color: var(--pd-pewter);
+  font-size: 13px;
+}
+.ai-badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: 2px;
+}
+.ai-banner-cta {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+  font-size: 13px;
+}
+.ai-hero {
+  margin: 12px 0 0;
+  font-size: 30px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The question box */
+.ai-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  background: var(--pd-surface);
+}
+.ai-composer:focus-within {
+  border-color: var(--pd-brass);
+}
+.ai-composer textarea {
+  width: 100%;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.ai-composer[data-big] textarea {
+  font-size: 16px;
+}
+/* The box is the field: one outline, its border, brass while typing */
+.ai-composer textarea:focus-visible {
+  box-shadow: none;
+}
+.ai-composer textarea::placeholder {
+  color: var(--pd-pewter-dim);
+}
+.ai-composer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ai-model {
+  padding: 3px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.ai-send {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  cursor: pointer;
+}
+.ai-send:hover:not(:disabled) {
+  background: var(--pd-brass-hover);
+}
+.ai-send:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The key, before there is one */
+.ai-key-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  background: var(--pd-surface);
+}
+.ai-key-card p {
+  margin: 0;
+  color: var(--pd-pewter);
+  line-height: 1.5;
+}
+.ai-key-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-key-card-head svg {
+  color: var(--pd-brass);
+}
+.ai-key-row {
+  display: flex;
+  gap: 8px;
+}
+.ai-key-row .pd-input {
+  flex: 1;
+  font-family: var(--pd-font-mono);
+}
+/* One outline: the border turns brass instead of a ring around it */
+.ai-key-row .pd-input:focus-visible {
+  box-shadow: none;
+  border-color: var(--pd-brass);
+}
+.ai-key-card .ai-key-note {
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.ai-error {
+  color: var(--pd-sell);
+}
+
+/* Quick insights */
+.ai-insights h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.ai-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+.ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-surface);
+}
+.ai-card-label {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-card-value {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 600;
+}
+.ai-card-note {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-card-value[data-tone="up"],
+.ai-card-value[data-tone="up"] + .ai-card-note {
+  color: var(--pd-buy);
+}
+.ai-card-value[data-tone="down"] {
+  color: var(--pd-sell);
+}
+.ai-meter {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pd-sell-tint);
+  overflow: hidden;
+}
+.ai-meter span {
+  display: block;
+  height: 100%;
+  background: var(--pd-buy);
+}
+.ai-disclaimer {
+  margin: 0;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* A conversation */
+.ai-thread-view {
+  overflow: hidden;
+}
+.ai-thread-head {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.ai-thread-head h1 {
+  margin: 0;
+  font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-thread {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px max(24px, calc((100% - 820px) / 2));
+}
+.ai-thread[data-compact] {
+  padding: 4px 0;
+  gap: 12px;
+}
+.ai-thread-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px max(24px, calc((100% - 820px) / 2)) 14px;
+  border-top: 1px solid var(--pd-border);
+}
+.ai-msg {
+  max-width: 100%;
+  line-height: 1.55;
+}
+.ai-msg p {
+  margin: 0;
+}
+.ai-msg[data-role="user"] {
+  align-self: flex-end;
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px 12px 2px 12px;
+  background: var(--pd-surface-raised);
+  white-space: pre-wrap;
+}
+.ai-rich {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-rich h3 {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+.ai-rich ul,
+.ai-rich ol {
+  margin: 0;
+  padding-left: 20px;
+}
+.ai-rich li:not(:first-child) {
+  margin-top: 3px;
+}
+.ai-rich code {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+  font-family: var(--pd-font-mono);
+  font-size: 0.92em;
+}
+.ai-msg .ai-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+.ai-tools span {
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+.ai-note {
+  color: var(--pd-pewter);
+  font-style: italic;
+}
+.ai-show-chart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-show-chart:hover {
+  border-color: var(--pd-brass);
+}
+.ai-pending {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pd-pewter);
+}
+.ai-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.ai-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pd-brass);
+  animation: ai-dot 1.2s ease-in-out infinite;
+}
+.ai-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.ai-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes ai-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-dots span {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+.ai-failure {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-sell);
+  border-radius: 8px;
+  background: var(--pd-sell-tint);
+  font-size: 13px;
+}
+.ai-failure > span {
+  flex: 1;
+}
+
+/* Agentic Charts: the chart, and the analyst beside it */
+.ai-charts {
+  flex-direction: row;
+}
+.ai-chart-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--pd-border);
+}
+.ai-chart-panel .pd-oachart {
+  flex: 1;
+  min-height: 0;
+}
+.ai-analyst {
+  flex: 0 0 360px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-y: auto;
+  background: var(--pd-surface);
+}
+.ai-analyst-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-analyst-head svg {
+  color: var(--pd-brass);
+}
+.ai-analyst-head h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+}
+.ai-analyze {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.ai-analyst-empty {
+  margin: 0;
+  color: var(--pd-pewter);
+  line-height: 1.5;
+}
+.ai-analyst .ai-thread {
+  flex: 1 0 auto;
+}
+.ai-marks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-bg);
+}
+.ai-marks-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ai-bias {
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--pd-border-strong);
+  color: var(--pd-pewter);
+  font-size: 12px;
+  font-weight: 600;
+}
+.ai-bias[data-bias="bullish"] {
+  border-color: var(--pd-buy);
+  background: var(--pd-buy-tint);
+  color: var(--pd-buy);
+}
+.ai-bias[data-bias="bearish"] {
+  border-color: var(--pd-sell);
+  background: var(--pd-sell-tint);
+  color: var(--pd-sell);
+}
+.ai-marks-what {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-marks-summary {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 13px;
+}
+.ai-levels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-levels li {
+  display: grid;
+  grid-template-columns: 88px 1fr auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  border-top: 1px solid var(--pd-border);
+  font-size: 12px;
+}
+.ai-level-kind {
+  color: var(--pd-pewter);
+}
+.ai-levels li[data-kind="support"] .ai-level-kind,
+.ai-levels li[data-kind="target"] .ai-level-kind {
+  color: var(--pd-buy);
+}
+.ai-levels li[data-kind="resistance"] .ai-level-kind {
+  color: var(--pd-sell);
+}
+.ai-levels li[data-kind="invalidation"] .ai-level-kind {
+  color: var(--pd-warning);
+}
+.ai-level-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-level-price {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+  .ai-side {
+    flex-basis: 200px;
+  }
+  .ai-analyst {
+    flex-basis: 300px;
+  }
+}
+
+/* The side panel, folded to a rail of icons */
+.ai-brand strong {
+  flex: 1;
+}
+.ai-side-toggle {
+  margin-right: -4px;
+}
+.ai-side[data-collapsed] {
+  flex-basis: 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px;
+}
+.ai-rail-mode[aria-current="page"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  box-shadow: inset 2px 0 0 var(--pd-brass);
+}
+.ai-msg .ai-on-chart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-save-error {
+  margin: 4px 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--pd-warning);
+  border-radius: 6px;
+  color: var(--pd-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* What beyond the chart drives the analysis, each with its source */
+.ai-catalysts h2 {
+  margin: 0 0 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ai-catalysts ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-catalysts li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.ai-source {
+  flex: none;
+  min-width: 52px;
+  padding: 1px 6px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  color: var(--pd-pewter);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+}
+.ai-levels li[data-kind="demand"] .ai-level-kind {
+  color: var(--pd-buy);
+}
+.ai-levels li[data-kind="supply"] .ai-level-kind {
+  color: var(--pd-sell);
+}
+.ai-marks-more {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+
+/* Account access: off by default, says what it shares and with whom */
+.ai-access {
+  margin: 8px 4px 0;
+  padding: 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.ai-access[data-on] {
+  border-color: var(--pd-brass);
+}
+.ai-access-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.ai-access-row span {
+  flex: 1;
+}
+.ai-access-row svg {
+  color: var(--pd-pewter);
+}
+.ai-access[data-on] .ai-access-row svg {
+  color: var(--pd-brass);
+}
+.ai-access p {
+  margin: 6px 0 0;
+  color: var(--pd-pewter);
+  line-height: 1.4;
+}
+
+/* The model for new chats, and which providers have a key */
+.ai-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 4px 0;
+  border-top: 1px solid var(--pd-border);
+}
+.ai-pick .ai-side-head {
+  margin: 0 6px;
+}
+/* The picker fills the panel, and its list opens upward: it sits at the
+   bottom of the panel, and the page clips what runs past it. */
+.ai-pick .pd-select,
+.ai-pick .pd-select-trigger {
+  width: 100%;
+  min-width: 0;
+}
+.ai-pick .pd-select-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-pick .pd-select-list {
+  top: auto;
+  bottom: calc(100% + 4px);
+  right: 0;
+  min-width: 0;
+  max-height: min(320px, 60vh);
+}
+.ai-pick .pd-select-option {
+  white-space: normal;
+}
+.ai-pick-note {
+  margin: 0 6px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.ai-key-list {
+  margin: 0;
+  padding: 8px 10px 2px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--pd-pewter);
+}
+.ai-key-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ai-key-list li > span:first-of-type {
+  flex: 1;
+}
+.ai-key-list li[data-on] > svg:first-child {
+  color: var(--pd-brass);
+}
+.ai-key-off {
+  color: var(--pd-pewter-dim);
+}
+
+/* Starter questions in tabs, as a list (after Bybit TradeGPT's home) */
+.ai-suggest {
+  margin-top: 16px;
+}
+.ai-suggest-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.ai-suggest-tabs button {
+  padding: 8px 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ai-suggest-tabs button:hover {
+  color: var(--pd-text);
+}
+.ai-suggest-tabs button[aria-selected="true"] {
+  color: var(--pd-text);
+  border-bottom-color: var(--pd-brass);
+}
+.ai-suggest-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-suggest-list li + li {
+  border-top: 1px solid var(--pd-border);
+}
+.ai-suggest-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 6px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-suggest-icon {
+  flex: none;
+  color: var(--pd-pewter);
+}
+.ai-suggest-list button:hover:not(:disabled) {
+  background: var(--pd-surface);
+}
+.ai-suggest-list button:hover:not(:disabled) .ai-suggest-icon {
+  color: var(--pd-brass);
+}
+.ai-suggest-list button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* The question box's controls: Deep Think, the day's movers, the model */
+.ai-composer-foot {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ai-composer-gap {
+  flex: 1;
+}
+.ai-deep {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-coins {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-coin:hover:not(:disabled) {
+  border-color: var(--pd-brass);
+}
+.ai-coin:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ai-coin-change {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.ai-coin-change[data-tone="up"] {
+  color: var(--pd-buy);
+}
+.ai-coin-change[data-tone="down"] {
+  color: var(--pd-sell);
+}
+
+/* Daily Pulse: a briefing on the day's market, in a new chat */
+.ai-pulse {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-pulse:hover:not(:disabled) {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.ai-pulse:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

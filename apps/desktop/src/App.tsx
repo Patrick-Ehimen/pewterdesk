@@ -87,6 +87,7 @@ import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
+import { AiPage } from "./components/pages/AiPage";
 import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
@@ -1871,6 +1872,27 @@ export function App() {
                 : undefined
             }
             positions={liveAccount?.positions ?? []}
+            onTrade={(id) => {
+              showMarket(venue, id);
+              setPage("trade");
+            }}
+          />
+        ) : page === "ai" ? (
+          <AiPage
+            venue={venue}
+            venueLabel={venueInfo.label}
+            markets={marketList}
+            market={selected}
+            summaries={
+              barSummaries.status === "live" || barSummaries.status === "closed"
+                ? barSummaries.data
+                : undefined
+            }
+            accounts={VENUE_IDS.flatMap((v) => {
+              const a = activeAccount(accounts, v);
+              return a ? [{ venue: v, account: a.id }] : [];
+            })}
+            onShowMarket={(v, id) => showMarket(v, id)}
             onTrade={(id) => {
               showMarket(venue, id);
               setPage("trade");

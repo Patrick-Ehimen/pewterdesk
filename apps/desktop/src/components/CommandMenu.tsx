@@ -59,6 +59,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   venues: "nav.venues",
   news: "nav.news",
   maps: "nav.maps",
+  ai: "nav.ai",
   settings: "settings.title",
 };
 

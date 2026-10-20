@@ -1,12 +1,13 @@
 /** The app's pages, switched from the header's page menu. */
 export const PAGES = [
   "trade",
-  "portfolio",
   "charts",
+  "maps",
+  "portfolio",
   "rules",
   "venues",
   "news",
-  "maps",
+  "ai",
   "settings",
 ] as const;
 export type Page = (typeof PAGES)[number];

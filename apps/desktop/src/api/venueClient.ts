@@ -29,7 +29,13 @@ import type {
   VenueError,
   VenueId,
 } from "@pewterdesk/core";
-import { type HeatCoin, type HeatSector, type MessageKey, t } from "@pewterdesk/ui";
+import {
+  type AnalysisKind,
+  type HeatCoin,
+  type HeatSector,
+  type MessageKey,
+  t,
+} from "@pewterdesk/ui";
 import { Channel, invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { trackFeed } from "../lib/feedActivity";
@@ -687,4 +693,121 @@ export const coinClient = {
   hasKey: () => call<boolean>("has_coingecko_key", {}),
 
   clearKey: () => call<void>("clear_coingecko_key", {}),
+};
+
+/** One market's line in the snapshot sent with a question to the AI analyst. */
+export interface AiSnapshotRow {
+  symbol: string;
+  price: number;
+  /** Over 24 hours, in percent. */
+  change: number | null;
+  /** The current funding rate, as a fraction. */
+  funding: number | null;
+  volume: number | null;
+  openInterest: number | null;
+}
+
+/** What's on screen when the trader asks. */
+export interface AiContext {
+  venue: VenueId;
+  market: string | null;
+  interval: CandleInterval | null;
+  snapshot: AiSnapshotRow[];
+  /** The connected account on each venue, read only with account access on. */
+  accounts: {
+    venue: VenueId;
+    account: string;
+  }[] /** Deep Think: the model reasons harder on this question. */;
+  deep: boolean;
+}
+
+export type AiBias = "bullish" | "bearish" | "neutral";
+
+/** The analyst's analysis, to draw on a chart. */
+export interface AiChartMarks {
+  venue: VenueId;
+  market: string;
+  interval: CandleInterval;
+  bias: AiBias;
+  summary: string;
+  levels: { price: number; kind: AnalysisKind; label: string }[];
+  /** Supply and demand zones (times in ms; `end` null runs to now). Absent in older chats. */
+  zones?: {
+    kind: "supply" | "demand";
+    start: number;
+    end: number | null;
+    top: number;
+    bottom: number;
+    label: string;
+  }[];
+  /** Fibonacci retracements, each over a swing. */
+  fibs?: AiSpan[];
+  trendLines?: AiSpan[];
+  /** What beyond the chart drives the view, with where it came from. Absent in older chats. */
+  catalysts?: { source: AiCatalystSource; text: string }[];
+}
+
+export type AiCatalystSource = "x" | "news" | "calendar" | "data" | "web";
+
+/** Two points on the chart (times in ms) and a label. */
+export interface AiSpan {
+  from: { time: number; price: number };
+  to: { time: number; price: number };
+  label: string;
+}
+
+export interface AiReply {
+  /** The whole conversation, opaque here: handed back with the next question. */
+  transcript: unknown;
+  text: string;
+  marks: AiChartMarks | null;
+  /** The tools the analyst used, in order. */
+  tools: string[];
+  end: "done" | "refused" | "cutShort";
+}
+
+/** Who answers: Anthropic's Claude, Google's Gemini, or OpenAI's ChatGPT models. */
+export type AiProvider = "claude" | "gemini" | "openai";
+
+/** A model the trader can pick. */
+export interface AiModel {
+  provider: AiProvider;
+  id: string;
+  label: string;
+  /** The provider's model when none is picked. */
+  default: boolean;
+}
+
+export const aiClient = {
+  /**
+   * Asks the analyst with `provider`'s `model`, in the conversation
+   * `transcript` (null for a new one; a chat stays with its provider).
+   */
+  ask: (
+    provider: AiProvider,
+    model: string,
+    transcript: unknown,
+    question: string,
+    context: AiContext,
+  ) =>
+    call<AiReply>("ai_ask", {
+      provider,
+      model,
+      transcript: transcript ?? null,
+      question,
+      context,
+    }),
+  /** The models the trader can pick, by provider. */
+  models: () => call<AiModel[]>("ai_models", {}),
+  /** Which providers have a key stored (never the key). */
+  keys: () => call<Record<AiProvider, boolean>>("ai_key_status", {}),
+  setKey: (provider: AiProvider, key: string) => call<void>("set_ai_key", { provider, key }),
+  clearKey: (provider: AiProvider) => call<void>("clear_ai_key", { provider }),
+  /** Whether the analyst may read the trader's account (off by default; kept in Rust). */
+  accountAccess: () => call<boolean>("ai_account_access", {}),
+  setAccountAccess: (on: boolean) => call<void>("set_ai_account_access", { on }),
+  /** The chats file as last saved, or null before the first save. */
+  loadChats: () => call<string | null>("load_ai_chats", {}),
+  /** Replaces the chats file with `store`. */
+  saveChats: (store: unknown) => call<void>("save_ai_chats", { store }),
 };

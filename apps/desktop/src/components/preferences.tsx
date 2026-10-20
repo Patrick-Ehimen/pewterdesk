@@ -12,6 +12,7 @@ import {
   LuOrbit,
   LuSettings,
   LuShieldCheck,
+  LuSparkles,
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
@@ -60,6 +61,7 @@ const PAGE_ICONS = {
   venues: LuLandmark,
   news: LuNewspaper,
   maps: LuOrbit,
+  ai: LuSparkles,
   settings: LuSettings,
 } as const;
 

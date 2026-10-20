@@ -4,6 +4,7 @@ import "@pewterdesk/ui/src/styles/styles.css";
 import "./styles/app.css";
 import "./styles/layout.css";
 import "./styles/pages.css";
+import "./styles/ai.css";
 import "./styles/paper.css";
 import "./styles/watchlist.css";
 import "./styles/settings.css";

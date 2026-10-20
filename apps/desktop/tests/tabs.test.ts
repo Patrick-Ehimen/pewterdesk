@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MENU_PAGES } from "../src/lib/pages";
 import {
   activePage,
   closed,
@@ -16,12 +17,13 @@ describe("tabs", () => {
     let tabs = initialTabs();
     expect(activePage(tabs)).toBe("trade");
     // A second tab opens somewhere new, and is the one on screen.
+    // A second tab opens on the next page in the menu not already open.
     tabs = opened(tabs);
-    expect(tabs.tabs.map((t) => t.page)).toEqual(["trade", "portfolio"]);
-    expect(activePage(tabs)).toBe("portfolio");
+    expect(tabs.tabs.map((t) => t.page)).toEqual(["trade", MENU_PAGES[1]]);
+    expect(activePage(tabs)).toBe(MENU_PAGES[1]);
     // Changing the page changes this tab only.
-    tabs = withPage(tabs, "charts");
-    expect(tabs.tabs.map((t) => t.page)).toEqual(["trade", "charts"]);
+    tabs = withPage(tabs, "portfolio");
+    expect(tabs.tabs.map((t) => t.page)).toEqual(["trade", "portfolio"]);
     tabs = selected(tabs, 1);
     expect(activePage(tabs)).toBe("trade");
     expect(selected(tabs, 99)).toBe(tabs);
