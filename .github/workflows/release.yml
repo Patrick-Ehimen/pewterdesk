@@ -88,11 +88,14 @@ jobs:
             only once you turn live trading on for it. Hyperliquid and Aster
             also have paper trading.
 
-            New since v0.2.0: Aster, live trading on all three venues, paper
-            trading, your own trading rules (daily loss, drawdown, risk per trade,
-            a news blackout and more) checked before an order is sent, the
-            Portfolio, Maps and Multi-chart pages, a news feed and economic
-            calendar, and the command palette.
+            New since v0.3.0: PewterDesk AI, a market analyst on your own Claude,
+            Gemini or ChatGPT key that reads the markets and marks its levels on
+            the chart (it places nothing; your account only with account access
+            turned on); algo orders - a chaser, a TWAP (Hyperliquid's own, or run
+            on this machine) and a scaled ladder - from the Algos panel, the
+            command palette and the CLI panel; every order logged with where it
+            came from; a Paper panel for the paper account; the P&L share card;
+            and a note before macOS asks for your password to the keychain.
 
             Live trading is new: start with a small order.
 
