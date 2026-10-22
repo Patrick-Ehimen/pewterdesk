@@ -275,8 +275,13 @@ html:has(.tray-panel) {
 .tray-sort[data-active] {
   color: var(--pd-text);
 }
+/* Favorites and Top Movers show five rows however many there are; the rest
+   scroll. Rows are a fixed height so five is exactly five. */
+.tray-markets {
+  --tray-row: 32px;
+}
 .tray-list {
-  max-height: 220px;
+  max-height: calc(var(--tray-row) * 5);
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -284,7 +289,8 @@ html:has(.tray-panel) {
 }
 .tray-list button {
   width: 100%;
-  padding: 7px 8px;
+  height: var(--tray-row);
+  padding: 0 8px;
   background: none;
   border: 0;
   border-radius: 6px;
@@ -336,7 +342,8 @@ html:has(.tray-panel) {
   grid-template-columns: minmax(0, 1fr) 96px 72px;
   align-items: center;
   gap: 8px;
-  padding: 10px 8px;
+  height: var(--tray-row);
+  padding: 0 8px;
   justify-items: end;
 }
 .tray-skel-row .tray-coin {
