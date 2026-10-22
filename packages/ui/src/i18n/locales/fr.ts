@@ -2768,6 +2768,12 @@ export const messages: Messages = {
   "ai.key.remove": "Retirer",
   "ai.modelNote": "Pour les nouvelles discussions ; une discussion garde le modèle de départ.",
   "ai.modelPick": "Modèle",
+  "ai.gemini.plan": "Offre Google",
+  "ai.gemini.free": "Gratuite",
+  "ai.gemini.paid": "Payante (facturation active)",
+  "ai.gemini.paidOnly": "{model} - offre payante",
+  "ai.gemini.freeNote":
+    "Niveau gratuit : quelques requêtes par minute, donc une réponse peut prendre une minute ou deux pendant que l'app attend ; pas de recherche web, et Gemini 4 Argon n'est pas disponible. Google peut utiliser vos questions et ses réponses pour améliorer ses produits, et des personnes chez Google peuvent les lire - laissez l'accès au compte désactivé si cela compte pour vous.",
   "ai.keys": "Clés d'API",
   "ai.key.none": "Aucune clé",
   "ai.key.help.openai":
@@ -2878,5 +2884,34 @@ export const messages: Messages = {
   "ai.onChart": "Sur le graphique · {count} niveaux",
   "ai.retry": "Réessayer",
   "ai.dismiss": "Ignorer",
+  "ai.fail.rate.title": "{company} limite les requêtes",
+  "ai.fail.rate.free":
+    "Le niveau gratuit de Google n'autorise que quelques requêtes par minute, et cette question en demandait plus. L'app a déjà attendu et réessayé ; patientez une minute ou posez une question plus simple.",
+  "ai.fail.rate.body":
+    "Trop de requêtes en peu de temps. L'app a déjà attendu et réessayé ; patientez un instant.",
+  "ai.fail.quota.title": "Le quota de {company} est épuisé",
+  "ai.fail.quota.free":
+    "Les requêtes gratuites du jour sont épuisées. Elles reviennent à minuit, heure du Pacifique ({time} ici). Activer la facturation dans Google AI Studio supprime la limite.",
+  "ai.fail.quota.body":
+    "Votre compte {company} a atteint son quota ou sa limite de dépenses. Vérifiez son utilisation et sa facturation, puis réessayez.",
+  "ai.fail.key.title": "{company} a refusé la clé API",
+  "ai.fail.key.body":
+    "Elle a peut-être été supprimée, mal saisie, ou n'a pas accès à {name}. Remplacez-la par une nouvelle clé.",
+  "ai.fail.noKey.title": "Ajoutez votre clé API {name}",
+  "ai.fail.noKey.body":
+    "L'analyste fonctionne avec votre propre clé pour ce fournisseur. Ajoutez-la sur cette page.",
+  "ai.fail.paidModel.title": "Ce modèle nécessite l'offre payante de Google",
+  "ai.fail.paidModel.body":
+    "Cette conversation a commencé sur un modèle absent du niveau gratuit. Commencez une nouvelle conversation avec Gemini 3.8 Flash ou Flash-Lite, ou passez l'offre Google en Payante si la facturation est active.",
+  "ai.fail.unavailable.title": "{company} est indisponible pour le moment",
+  "ai.fail.unavailable.body":
+    "Ses serveurs n'ont pas répondu. Le problème vient de leur côté ; réessayez dans un instant.",
+  "ai.fail.other.title": "{company} n'a pas pu répondre",
+  "ai.fail.other.body":
+    "Il a refusé cette requête. Réessayez, ou commencez une nouvelle conversation si cela se répète.",
+  "ai.fail.app.title": "L'analyste n'a pas pu répondre",
+  "ai.fail.detail": "Ce qu'a dit {company}",
+  "ai.fail.replaceKey": "Remplacer la clé",
+  "ai.fail.retryIn": "Réessayer dans {secs} s",
   "ai.send": "Envoyer",
 };

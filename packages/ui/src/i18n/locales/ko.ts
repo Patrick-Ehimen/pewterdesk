@@ -2692,6 +2692,12 @@ export const messages: Messages = {
   "ai.key.remove": "제거",
   "ai.modelNote": "새 채팅에 적용됩니다. 채팅은 시작할 때의 모델을 유지합니다.",
   "ai.modelPick": "모델",
+  "ai.gemini.plan": "Google 요금제",
+  "ai.gemini.free": "무료",
+  "ai.gemini.paid": "유료 (결제 사용)",
+  "ai.gemini.paidOnly": "{model} - 유료 요금제",
+  "ai.gemini.freeNote":
+    "무료 등급: 분당 요청 수가 적어 앱이 기다리는 동안 답변에 1~2분이 걸릴 수 있습니다. 웹 검색이 없고 Gemini 4 Argon은 사용할 수 없습니다. Google은 질문과 답변을 제품 개선에 사용할 수 있으며 Google 직원이 읽을 수 있습니다. 신경 쓰인다면 계정 접근을 끈 채로 두세요.",
   "ai.keys": "API 키",
   "ai.key.none": "키 없음",
   "ai.key.help.openai":
@@ -2798,5 +2804,32 @@ export const messages: Messages = {
   "ai.onChart": "차트에 표시됨 · {count}개 가격대",
   "ai.retry": "다시 시도",
   "ai.dismiss": "닫기",
+  "ai.fail.rate.title": "{company}에서 요청을 제한하고 있습니다",
+  "ai.fail.rate.free":
+    "Google 무료 등급은 분당 몇 건의 요청만 허용하는데, 이 질문에는 그보다 많이 필요했습니다. 앱이 이미 기다렸다가 다시 시도했습니다. 1분 정도 기다리거나 더 간단한 질문을 해 보세요.",
+  "ai.fail.rate.body":
+    "짧은 시간에 요청이 너무 많습니다. 앱이 이미 기다렸다가 다시 시도했습니다. 잠시 기다려 주세요.",
+  "ai.fail.quota.title": "{company} 사용 한도를 모두 썼습니다",
+  "ai.fail.quota.free":
+    "오늘의 무료 요청을 모두 썼습니다. 태평양 시간 자정(여기서는 {time})에 다시 채워집니다. Google AI Studio에서 결제를 켜면 한도가 없어집니다.",
+  "ai.fail.quota.body":
+    "{company} 계정이 할당량 또는 지출 한도에 도달했습니다. 사용량과 결제를 확인한 뒤 다시 시도하세요.",
+  "ai.fail.key.title": "{company}에서 API 키를 거부했습니다",
+  "ai.fail.key.body":
+    "삭제되었거나 잘못 입력되었거나 {name}을(를) 사용할 권한이 없을 수 있습니다. 새 키로 바꾸세요.",
+  "ai.fail.noKey.title": "{name} API 키를 추가하세요",
+  "ai.fail.noKey.body": "분석가는 이 제공업체의 본인 키로 작동합니다. 이 페이지에서 추가하세요.",
+  "ai.fail.paidModel.title": "이 모델은 Google 유료 요금제가 필요합니다",
+  "ai.fail.paidModel.body":
+    "이 채팅은 무료 등급에 없는 모델로 시작되었습니다. Gemini 3.8 Flash 또는 Flash-Lite로 새 채팅을 시작하거나, 결제가 켜져 있다면 Google 요금제를 유료로 바꾸세요.",
+  "ai.fail.unavailable.title": "{company}을(를) 지금 사용할 수 없습니다",
+  "ai.fail.unavailable.body":
+    "서버가 응답하지 않았습니다. 상대 쪽 문제이니 잠시 후 다시 시도하세요.",
+  "ai.fail.other.title": "{company}에서 답변하지 못했습니다",
+  "ai.fail.other.body": "이 요청이 거부되었습니다. 다시 시도하거나, 계속되면 새 채팅을 시작하세요.",
+  "ai.fail.app.title": "분석가가 답변하지 못했습니다",
+  "ai.fail.detail": "{company}의 응답 내용",
+  "ai.fail.replaceKey": "키 바꾸기",
+  "ai.fail.retryIn": "{secs}초 후 다시 시도",
   "ai.send": "보내기",
 };

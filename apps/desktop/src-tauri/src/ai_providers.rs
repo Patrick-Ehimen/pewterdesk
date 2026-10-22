@@ -30,6 +30,12 @@ const GEMINI_API: &str = "https://generativelanguage.googleapis.com/v1beta/inter
 const OPENAI_API: &str = "https://api.openai.com/v1/responses";
 
 const MAX_TOKENS: u32 = 16_000;
+/// A per-minute rate limit is waited out, up to this long each time, this
+/// many times a request. Gemini's free tier allows a few requests a minute,
+/// and one question can take several; a daily quota asks for longer, and
+/// fails as it is.
+const MAX_RATE_WAIT: std::time::Duration = std::time::Duration::from_secs(65);
+const RATE_RETRIES: u32 = 3;
 /// Searches the provider's own web search may run in one answer.
 const WEB_SEARCHES: u32 = 8;
 
@@ -51,6 +57,8 @@ pub struct ModelInfo {
     label: &'static str,
     /// The provider's model when none is picked.
     default: bool,
+    /// On the provider's free tier (Gemini's only; the others have none).
+    free: bool,
 }
 
 impl Provider {
@@ -105,6 +113,12 @@ impl Provider {
         self.models().iter().any(|(m, _)| *m == id)
     }
 
+    /// Whether `model` can be used on the provider's free tier. Only Gemini
+    /// has one, and not for every model (Google's pricing page).
+    pub fn free_tier(self, model: &str) -> bool {
+        self == Provider::Gemini && matches!(model, "gemini-3.8-flash" | "gemini-3.5-flash-lite")
+    }
+
     /// Whether `key` looks like one of its keys: its own prefix where it has
     /// one, and only the characters keys use (Google's newer keys, "AQ.",
     /// have dots).
@@ -137,6 +151,7 @@ pub fn all_models() -> Vec<ModelInfo> {
                     id,
                     label,
                     default: i == 0,
+                    free: provider.free_tier(id),
                 })
         })
         .collect()
@@ -218,14 +233,15 @@ pub fn user_turn(provider: Provider, context: &str, question: &str) -> Value {
 
 /// The analyst's tools in each provider's form. `tools` is the neutral list:
 /// `{name, description, input_schema}` each (every object closed, every
-/// property required), web search added per provider.
+/// property required), and the provider's own web search with `web_search`
+/// (Gemini's free tier has none: Google Search grounding is paid only).
 ///
 /// Not in strict mode: a provider compiles strict schemas into one grammar,
 /// and these tools together are past Claude's limit for it ("the compiled
 /// grammar is too large"). Nothing relies on it - every tool's input is
 /// checked in Rust (markets resolved, enums matched, numbers clamped, times
 /// parsed), and what doesn't check out goes back to the model as an error.
-pub fn tools_for(provider: Provider, tools: &[Value]) -> Value {
+pub fn tools_for(provider: Provider, tools: &[Value], web_search: bool) -> Value {
     let mut out: Vec<Value> = tools
         .iter()
         .map(|t| {
@@ -244,6 +260,9 @@ pub fn tools_for(provider: Provider, tools: &[Value]) -> Value {
             }
         })
         .collect();
+    if !web_search {
+        return Value::Array(out);
+    }
     out.push(match provider {
         Provider::Claude => {
             json!({"type": "web_search_20260209", "name": "web_search", "max_uses": WEB_SEARCHES})
@@ -254,8 +273,48 @@ pub fn tools_for(provider: Provider, tools: &[Value]) -> Value {
     Value::Array(out)
 }
 
-/// The provider's error, put into words the page can show. Never the request.
-fn api_error(provider: Provider, status: reqwest::StatusCode, body: &str) -> VenueError {
+/// What went wrong asking a provider, for the page to put into words: an
+/// invalid request whose detail is `ai:` and this as JSON (a provider isn't
+/// a venue, so its refusals aren't a venue's rejection).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Failure {
+    /// `key` (refused), `rate` (a per-minute limit), `quota` (a daily one),
+    /// `unavailable`, `paidModel` (not on the free tier), `noKey`, `other`.
+    kind: &'static str,
+    provider: Provider,
+    /// How long the provider asked to wait, where it said.
+    wait_secs: Option<u64>,
+    /// The provider's own words, bounded.
+    detail: Option<String>,
+}
+
+/// An `ai:` failure, as `ai_ask` returns it.
+pub fn failure(
+    kind: &'static str,
+    provider: Provider,
+    wait: Option<std::time::Duration>,
+    detail: Option<String>,
+) -> VenueError {
+    let failure = Failure {
+        kind,
+        provider,
+        wait_secs: wait.map(|w| w.as_secs_f64().ceil() as u64),
+        detail,
+    };
+    VenueError::InvalidRequest(format!(
+        "ai:{}",
+        serde_json::to_string(&failure).unwrap_or_default()
+    ))
+}
+
+/// The provider's error, sorted for the page. Never the request.
+fn api_error(
+    provider: Provider,
+    status: reqwest::StatusCode,
+    body: &str,
+    wait: Option<std::time::Duration>,
+) -> VenueError {
     let message = serde_json::from_str::<Value>(body).ok().and_then(|v| {
         v.pointer("/error/message")
             .and_then(Value::as_str)
@@ -266,20 +325,61 @@ fn api_error(provider: Provider, status: reqwest::StatusCode, body: &str) -> Ven
                     .collect::<String>()
             })
     });
-    let who = provider.name();
-    // A provider isn't a venue: its refusals are invalid requests, not a venue's rejection.
-    match status.as_u16() {
-        401 | 403 => VenueError::InvalidRequest(format!("the {who} API key was refused")),
-        429 => VenueError::InvalidRequest(format!(
-            "{who}'s rate limit or quota: try again in a moment{}",
-            message.map(|m| format!(" ({m})")).unwrap_or_default()
-        )),
-        500..=599 => VenueError::Network(format!("{who} is unavailable: try again in a moment")),
-        _ => VenueError::InvalidRequest(match message {
-            Some(m) => format!("{who}: {m}"),
-            None => format!("{who} answered {status}"),
-        }),
-    }
+    let kind = match status.as_u16() {
+        401 | 403 => "key",
+        429 => {
+            // A day's allowance asks for longer than a minute's, or says so.
+            let daily = message
+                .as_deref()
+                .is_some_and(|m| m.to_ascii_lowercase().contains("per day"))
+                || wait.is_some_and(|w| w > MAX_RATE_WAIT);
+            if daily {
+                "quota"
+            } else {
+                "rate"
+            }
+        }
+        500..=599 => "unavailable",
+        _ => "other",
+    };
+    let detail = message.or_else(|| (kind == "other").then(|| format!("HTTP {status}")));
+    failure(kind, provider, wait, detail)
+}
+
+/// How long a 429 asks to wait: the `Retry-After` header, or Google's
+/// `RetryInfo` (`"retryDelay": "40s"`), or "retry in 40s" in its message.
+fn retry_delay(headers: &reqwest::header::HeaderMap, body: &str) -> Option<std::time::Duration> {
+    let secs = |text: &str| {
+        let number: String = text
+            .trim()
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.')
+            .collect();
+        number
+            .parse::<f64>()
+            .ok()
+            .filter(|s| s.is_finite() && *s >= 0.0)
+    };
+    let from_header = headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(secs);
+    let error = serde_json::from_str::<Value>(body).ok();
+    let from_info = || {
+        error
+            .as_ref()?
+            .pointer("/error/details")?
+            .as_array()?
+            .iter()
+            .find_map(|d| d.get("retryDelay")?.as_str().and_then(secs))
+    };
+    let from_message = || {
+        let message = error.as_ref()?.pointer("/error/message")?.as_str()?;
+        let at = message.find("retry in ")? + "retry in ".len();
+        secs(&message[at..])
+    };
+    let secs = from_header.or_else(from_info).or_else(from_message)?;
+    Some(std::time::Duration::from_secs_f64(secs.min(3600.0)))
 }
 
 async fn post(
@@ -288,6 +388,27 @@ async fn post(
     key: &str,
     body: &Value,
 ) -> Result<Value, VenueError> {
+    let mut retries = 0;
+    loop {
+        match post_once(http, provider, key, body).await {
+            Err((_, Some(wait))) if retries < RATE_RETRIES => {
+                retries += 1;
+                tokio::time::sleep(wait + std::time::Duration::from_secs(1)).await;
+            }
+            done => return done.map_err(|(error, _)| error),
+        }
+    }
+}
+
+/// One attempt: the answer, or the error with how long a per-minute rate
+/// limit asks to wait, when it's short enough to wait out.
+async fn post_once(
+    http: &reqwest::Client,
+    provider: Provider,
+    key: &str,
+    body: &Value,
+) -> Result<Value, (VenueError, Option<std::time::Duration>)> {
+    let fail = |error: VenueError| (error, None);
     let request = http.post(provider.endpoint()).json(body);
     let request = match provider {
         Provider::Claude => request
@@ -300,16 +421,21 @@ async fn post(
     let response = request
         .send()
         .await
-        .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        .map_err(|e| fail(VenueError::Network(e.without_url().to_string())))?;
     let status = response.status();
+    let headers = response.headers().clone();
     let text = response
         .text()
         .await
-        .map_err(|e| VenueError::Network(e.without_url().to_string()))?;
+        .map_err(|e| fail(VenueError::Network(e.without_url().to_string())))?;
     if !status.is_success() {
-        return Err(api_error(provider, status, &text));
+        let wait = (status == reqwest::StatusCode::TOO_MANY_REQUESTS)
+            .then(|| retry_delay(&headers, &text))
+            .flatten();
+        let error = api_error(provider, status, &text, wait);
+        return Err((error, wait.filter(|w| *w <= MAX_RATE_WAIT)));
     }
-    serde_json::from_str(&text).map_err(|e| VenueError::Network(e.to_string()))
+    serde_json::from_str(&text).map_err(|e| fail(VenueError::Network(e.to_string())))
 }
 
 fn texts<'a>(blocks: impl Iterator<Item = &'a Value>, kind: &str) -> String {
@@ -613,13 +739,13 @@ mod tests {
 
     #[test]
     fn writes_the_tools_in_each_providers_form() {
-        let claude = tools_for(Provider::Claude, &[tool()]);
+        let claude = tools_for(Provider::Claude, &[tool()], true);
         assert_eq!(claude[0]["input_schema"]["required"], json!(["market"]));
         // Not strict: the tools together are too large a grammar for it.
         assert!(claude[0].get("strict").is_none());
         assert_eq!(claude[1]["type"], json!("web_search_20260209"));
 
-        let gemini = tools_for(Provider::Gemini, &[tool()]);
+        let gemini = tools_for(Provider::Gemini, &[tool()], true);
         assert_eq!(gemini[0]["type"], json!("function"));
         assert_eq!(
             gemini[0]["parameters"]["properties"]["market"]["type"],
@@ -630,13 +756,59 @@ mod tests {
             json!({"type": "google_search", "search_types": ["web_search"]})
         );
 
-        let openai = tools_for(Provider::OpenAi, &[tool()]);
+        let openai = tools_for(Provider::OpenAi, &[tool()], true);
         assert!(openai[0].get("strict").is_none());
         assert_eq!(
             openai[0]["parameters"]["additionalProperties"],
             json!(false)
         );
         assert_eq!(openai[1], json!({"type": "web_search"}));
+    }
+
+    #[test]
+    fn reads_how_long_a_rate_limit_asks_to_wait() {
+        use reqwest::header::{HeaderMap, HeaderValue, RETRY_AFTER};
+        use std::time::Duration;
+        let none = HeaderMap::new();
+        // Gemini's free tier, as it answered.
+        let gemini = r#"{"error":{"code":429,"message":"Rate limit exceeded for model gemini-3.8-flash (limit: 5 requests per minute on Free Tier). Please retry in 40s or upgrade your tier.","status":"RESOURCE_EXHAUSTED"}}"#;
+        assert_eq!(retry_delay(&none, gemini), Some(Duration::from_secs(40)));
+        let info = r#"{"error":{"message":"quota","details":[{"@type":"type.googleapis.com/google.rpc.RetryInfo","retryDelay":"12.5s"}]}}"#;
+        assert_eq!(
+            retry_delay(&none, info),
+            Some(Duration::from_secs_f64(12.5))
+        );
+        let mut headers = HeaderMap::new();
+        headers.insert(RETRY_AFTER, HeaderValue::from_static("7"));
+        assert_eq!(retry_delay(&headers, "{}"), Some(Duration::from_secs(7)));
+        assert_eq!(
+            retry_delay(&none, r#"{"error":{"message":"daily quota"}}"#),
+            None
+        );
+        assert_eq!(retry_delay(&none, "not json"), None);
+    }
+
+    #[test]
+    fn leaves_web_search_out_when_asked() {
+        // Gemini's free tier: Google Search grounding is paid only.
+        let gemini = tools_for(Provider::Gemini, &[tool()], false);
+        assert_eq!(gemini.as_array().map(Vec::len), Some(1));
+        assert_eq!(gemini[0]["name"], json!("get_candles"));
+    }
+
+    #[test]
+    fn knows_which_models_are_on_the_free_tier() {
+        assert!(Provider::Gemini.free_tier("gemini-3.8-flash"));
+        assert!(Provider::Gemini.free_tier("gemini-3.5-flash-lite"));
+        assert!(!Provider::Gemini.free_tier("gemini-4-argon"));
+        assert!(!Provider::Claude.free_tier("claude-sonnet-5-5"));
+        assert!(!Provider::OpenAi.free_tier("gpt-6-luna"));
+        // Every free model is one the page can pick.
+        for (id, _) in Provider::Gemini.models() {
+            if Provider::Gemini.free_tier(id) {
+                assert!(Provider::Gemini.has_model(id));
+            }
+        }
     }
 
     #[test]
@@ -688,20 +860,61 @@ mod tests {
     }
 
     #[test]
-    fn says_what_a_provider_refused_without_calling_it_a_venue() {
+    fn sorts_what_a_provider_refused_without_calling_it_a_venue() {
+        use std::time::Duration;
+        let failure_of = |err: VenueError| match err {
+            VenueError::InvalidRequest(detail) => {
+                serde_json::from_str::<Value>(detail.strip_prefix("ai:").unwrap()).unwrap()
+            }
+            other => panic!("not an invalid request: {other:?}"),
+        };
         let err = api_error(
             Provider::Gemini,
             reqwest::StatusCode::BAD_REQUEST,
             r#"{"error":{"message":"Unknown parameter 'x'."}}"#,
+            None,
         );
         assert_eq!(
-            err.to_string(),
-            "invalid request: Google: Unknown parameter 'x'."
+            failure_of(err),
+            json!({"kind": "other", "provider": "gemini", "waitSecs": null, "detail": "Unknown parameter 'x'."})
         );
-        let err = api_error(Provider::OpenAi, reqwest::StatusCode::UNAUTHORIZED, "");
+        let err = api_error(
+            Provider::OpenAi,
+            reqwest::StatusCode::UNAUTHORIZED,
+            "",
+            None,
+        );
+        assert_eq!(failure_of(err)["kind"], json!("key"));
+        let minute = r#"{"error":{"message":"Rate limit exceeded (limit: 5 requests per minute on Free Tier). Please retry in 40s."}}"#;
+        let err = api_error(
+            Provider::Gemini,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            minute,
+            Some(Duration::from_secs_f64(39.2)),
+        );
+        let rate = failure_of(err);
+        assert_eq!(rate["kind"], json!("rate"));
+        assert_eq!(rate["waitSecs"], json!(40));
+        let day =
+            r#"{"error":{"message":"Quota exceeded (limit: 20 requests per day on Free Tier)."}}"#;
+        let err = api_error(
+            Provider::Gemini,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            day,
+            None,
+        );
+        assert_eq!(failure_of(err)["kind"], json!("quota"));
+        let err = api_error(
+            Provider::Gemini,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            "{}",
+            Some(Duration::from_secs(3 * 3600)),
+        );
+        assert_eq!(failure_of(err)["kind"], json!("quota"));
+        let err = api_error(Provider::Claude, reqwest::StatusCode::BAD_GATEWAY, "", None);
         assert_eq!(
-            err.to_string(),
-            "invalid request: the OpenAI API key was refused"
+            failure_of(err),
+            json!({"kind": "unavailable", "provider": "claude", "waitSecs": null, "detail": null})
         );
     }
 

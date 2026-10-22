@@ -776,6 +776,71 @@ export interface AiModel {
   label: string;
   /** The provider's model when none is picked. */
   default: boolean;
+  /** On the provider's free tier (Gemini's only; the others have none). */
+  free: boolean;
+}
+
+/** Why the analyst couldn't answer, as Rust sorted it (`ai_providers::failure`). */
+export interface AiFailure {
+  kind: "key" | "rate" | "quota" | "unavailable" | "paidModel" | "noKey" | "other";
+  provider: AiProvider;
+  /** How long the provider asked to wait, where it said. */
+  waitSecs: number | null;
+  /** The provider's own words, bounded; text only. */
+  detail: string | null;
+}
+
+const AI_FAILURE_KINDS = new Set<string>([
+  "key",
+  "rate",
+  "quota",
+  "unavailable",
+  "paidModel",
+  "noKey",
+  "other",
+]);
+
+/** An analyst failure: its message for anywhere that shows one, and what Rust sorted it as. */
+export class AiError extends Error {
+  constructor(
+    message: string,
+    readonly failure: AiFailure,
+  ) {
+    super(message);
+  }
+}
+
+/** The `ai:` failure in a rejection, if it is one. */
+function aiFailureOf(error: VenueError | undefined): AiFailure | undefined {
+  if (error?.kind !== "invalidRequest" || !error.detail.startsWith("ai:")) return undefined;
+  try {
+    const f = JSON.parse(error.detail.slice(3)) as Partial<AiFailure>;
+    if (typeof f.kind !== "string" || !AI_FAILURE_KINDS.has(f.kind)) return undefined;
+    if (f.provider !== "claude" && f.provider !== "gemini" && f.provider !== "openai") {
+      return undefined;
+    }
+    return {
+      kind: f.kind,
+      provider: f.provider,
+      waitSecs: typeof f.waitSecs === "number" ? f.waitSecs : null,
+      detail: typeof f.detail === "string" ? f.detail : null,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/** `call` for the analyst: an `ai:` failure rejects as an `AiError`. */
+async function callAi<T>(command: string, args: Record<string, unknown>): Promise<T> {
+  if (!isTauri()) throw new Error(t("error.noTauri"));
+  try {
+    return await invoke<T>(command, args);
+  } catch (e) {
+    const error = asVenueError(e);
+    const failure = aiFailureOf(error);
+    if (failure) throw new AiError(failure.detail ?? failure.kind, failure);
+    throw new Error(describeVenueError(error));
+  }
 }
 
 export const aiClient = {
@@ -790,7 +855,7 @@ export const aiClient = {
     question: string,
     context: AiContext,
   ) =>
-    call<AiReply>("ai_ask", {
+    callAi<AiReply>("ai_ask", {
       provider,
       model,
       transcript: transcript ?? null,
@@ -806,6 +871,9 @@ export const aiClient = {
   /** Whether the analyst may read the trader's account (off by default; kept in Rust). */
   accountAccess: () => call<boolean>("ai_account_access", {}),
   setAccountAccess: (on: boolean) => call<void>("set_ai_account_access", { on }),
+  /** Whether the Gemini key is on Google's paid plan (free by default; kept in Rust). */
+  geminiPaid: () => call<boolean>("ai_gemini_paid", {}),
+  setGeminiPaid: (paid: boolean) => call<void>("set_ai_gemini_paid", { paid }),
   /** The chats file as last saved, or null before the first save. */
   loadChats: () => call<string | null>("load_ai_chats", {}),
   /** Replaces the chats file with `store`. */

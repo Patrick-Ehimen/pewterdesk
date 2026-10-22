@@ -679,7 +679,10 @@ targets, invalidation) on the chart. Claude, Gemini or a ChatGPT model
 answers (picked in the side panel for new chats; `ai_models`), through
 `ai_assistant.rs` and `ai_providers.rs`, with the trader's own key for that
 provider (set on the page; Gemini's has a free tier, the others are billed
-by their provider). Each question carries the venue, market and
+by their provider). The Google plan (side panel, free unless set to paid,
+`ai-gemini-plan.json`) only takes away: on the free tier Rust refuses the
+paid-only models (`Provider::free_tier`) and declares no web search, and the
+page says Google may use and read what's sent. Each question carries the venue, market and
 interval on screen and a snapshot of the busiest markets' prices; the
 analyst reads candles, the book, funding, open interest and the
 long/short ratio itself, searches X posts (from the news wire), headlines

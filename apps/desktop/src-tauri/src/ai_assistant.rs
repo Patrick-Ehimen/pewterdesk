@@ -31,6 +31,10 @@
 //!   request to that provider, held as `Zeroizing`, and never returned:
 //!   `ai_key_status` says only which are stored. The client follows no
 //!   redirects, so a key goes nowhere but its provider.
+//! - Gemini's plan (`GEMINI_PLAN_FILE`, free unless set to paid) only takes
+//!   things away: on the free tier, the paid-only models are refused and
+//!   web search isn't declared. Google may use what's sent on its free tier
+//!   to improve its products; the page says so.
 //! - What the model says reaches the page as text (control characters
 //!   dropped, bounded) and its chart marks as numbers and bounded labels.
 //!   The page renders no links from it.
@@ -93,6 +97,13 @@ const MAX_FIBS: usize = 3;
 const MAX_TREND_LINES: usize = 6;
 /// Whether the analyst may read the trader's account, in the app's data folder.
 const ACCOUNT_ACCESS_FILE: &str = "ai-account-access.json";
+/// Whether the Gemini key is on Google's paid plan, in the app's data folder.
+/// Free unless it says paid: the free tier has no web search (Google Search
+/// grounding is paid only) and not every model.
+const GEMINI_PLAN_FILE: &str = "ai-gemini-plan.json";
+/// Said in place of web search where the provider gives none.
+const NO_WEB_SEARCH: &str = "\n\nWeb search is not available in this conversation: for news and \
+events use search_headlines and search_x_posts, and say when something can't be checked.";
 const MAX_ACCOUNTS: usize = 6;
 const MAX_FILLS: usize = 100;
 const MAX_TRADES_SHOWN: usize = 60;
@@ -1747,11 +1758,13 @@ pub async fn ai_ask(
             "pick one of the listed models".into(),
         ));
     }
+    // Gemini's free tier: some models and web search are paid only.
+    let free = provider == Provider::Gemini && !gemini_paid(&app).await;
+    if free && !provider.free_tier(&model) {
+        return Err(ai_providers::failure("paidModel", provider, None, None));
+    }
     let Some(key) = stored_key(provider).await else {
-        return Err(VenueError::InvalidRequest(format!(
-            "add your {} API key first",
-            provider.name()
-        )));
+        return Err(ai_providers::failure("noKey", provider, None, None));
     };
     let mut messages = transcript_of(transcript, provider)?;
     let asked_at = messages.len();
@@ -1761,12 +1774,17 @@ pub async fn ai_ask(
         &question,
     ));
 
-    let tools = ai_providers::tools_for(provider, &tools());
+    let tools = ai_providers::tools_for(provider, &tools(), !free);
+    let system = if free {
+        format!("{SYSTEM}{NO_WEB_SEARCH}")
+    } else {
+        SYSTEM.to_owned()
+    };
     let request = ai_providers::Request {
         provider,
         key: &key,
         model: &model,
-        system: SYSTEM,
+        system: &system,
         tools: &tools,
         deep: context.deep,
     };
@@ -1872,9 +1890,14 @@ fn account_access_path(app: &AppHandle) -> Option<PathBuf> {
 
 /// Whether the analyst may read the trader's account: off unless the file says on.
 async fn account_access(app: &AppHandle) -> bool {
-    let Some(path) = account_access_path(app) else {
-        return false;
-    };
+    match account_access_path(app) {
+        Some(path) => read_switch(path).await,
+        None => false,
+    }
+}
+
+/// A switch kept as `{"on": bool}`: off unless the file says on.
+async fn read_switch(path: PathBuf) -> bool {
     tauri::async_runtime::spawn_blocking(move || {
         std::fs::read(&path)
             .ok()
@@ -1886,6 +1909,43 @@ async fn account_access(app: &AppHandle) -> bool {
     .unwrap_or(false)
 }
 
+async fn write_switch(path: Option<PathBuf>, on: bool) -> Result<(), VenueError> {
+    let path = path.ok_or_else(|| VenueError::InvalidRequest("no data folder".into()))?;
+    let bytes = serde_json::to_vec(&json!({ "on": on }))
+        .map_err(|e| VenueError::InvalidRequest(e.to_string()))?;
+    tauri::async_runtime::spawn_blocking(move || write_whole(&path, &bytes))
+        .await
+        .map_err(|e| VenueError::InvalidRequest(e.to_string()))?
+        .map_err(|e| VenueError::InvalidRequest(format!("couldn't save the setting: {e}")))
+}
+
+fn gemini_plan_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|dir| dir.join(GEMINI_PLAN_FILE))
+}
+
+/// Whether the Gemini key is on Google's paid plan: free unless set to paid.
+async fn gemini_paid(app: &AppHandle) -> bool {
+    match gemini_plan_path(app) {
+        Some(path) => read_switch(path).await,
+        None => false,
+    }
+}
+
+/// Whether the Gemini key is on Google's paid plan (free by default).
+#[tauri::command]
+pub async fn ai_gemini_paid(app: AppHandle) -> Result<bool, VenueError> {
+    Ok(gemini_paid(&app).await)
+}
+
+/// Sets the Gemini key's plan: paid gives every Gemini model and web search.
+#[tauri::command]
+pub async fn set_ai_gemini_paid(app: AppHandle, paid: bool) -> Result<(), VenueError> {
+    write_switch(gemini_plan_path(&app), paid).await
+}
+
 /// Whether the analyst may read the trader's account (off by default).
 #[tauri::command]
 pub async fn ai_account_access(app: AppHandle) -> Result<bool, VenueError> {
@@ -1895,14 +1955,7 @@ pub async fn ai_account_access(app: AppHandle) -> Result<bool, VenueError> {
 /// Turns the analyst's read-only account access on or off.
 #[tauri::command]
 pub async fn set_ai_account_access(app: AppHandle, on: bool) -> Result<(), VenueError> {
-    let path = account_access_path(&app)
-        .ok_or_else(|| VenueError::InvalidRequest("no data folder".into()))?;
-    let bytes = serde_json::to_vec(&json!({ "on": on }))
-        .map_err(|e| VenueError::InvalidRequest(e.to_string()))?;
-    tauri::async_runtime::spawn_blocking(move || write_whole(&path, &bytes))
-        .await
-        .map_err(|e| VenueError::InvalidRequest(e.to_string()))?
-        .map_err(|e| VenueError::InvalidRequest(format!("couldn't save the setting: {e}")))
+    write_switch(account_access_path(&app), on).await
 }
 
 /// Stores the trader's key for `provider`, for `ai_ask`.

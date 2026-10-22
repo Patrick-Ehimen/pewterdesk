@@ -248,6 +248,8 @@ pub fn run() {
             ai_assistant::ai_models,
             ai_assistant::ai_account_access,
             ai_assistant::set_ai_account_access,
+            ai_assistant::ai_gemini_paid,
+            ai_assistant::set_ai_gemini_paid,
             ai_assistant::load_ai_chats,
             ai_assistant::save_ai_chats,
             coin_info::open_coin_link,

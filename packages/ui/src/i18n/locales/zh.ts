@@ -2612,6 +2612,12 @@ export const messages: Messages = {
   "ai.key.remove": "移除",
   "ai.modelNote": "用于新对话；已有对话保留其开始时的模型。",
   "ai.modelPick": "模型",
+  "ai.gemini.plan": "Google 方案",
+  "ai.gemini.free": "免费",
+  "ai.gemini.paid": "付费（已开通计费）",
+  "ai.gemini.paidOnly": "{model} - 付费方案",
+  "ai.gemini.freeNote":
+    "免费层级：每分钟只能发出少量请求，应用等待期间回答可能需要一两分钟；没有网页搜索，也不能使用 Gemini 4 Argon。Google 可能会用你的提问和它的回答改进其产品，Google 的人员也可能阅读这些内容——如果在意，请保持账户访问关闭。",
   "ai.keys": "API 密钥",
   "ai.key.none": "无密钥",
   "ai.key.help.openai":
@@ -2716,5 +2722,28 @@ export const messages: Messages = {
   "ai.onChart": "已显示在图表上 · {count} 个价位",
   "ai.retry": "重试",
   "ai.dismiss": "关闭",
+  "ai.fail.rate.title": "{company} 正在限制请求",
+  "ai.fail.rate.free":
+    "Google 免费层级每分钟只允许少量请求，而这个问题需要更多。应用已经等待并重试过了；请等一分钟，或问一个更简单的问题。",
+  "ai.fail.rate.body": "短时间内请求过多。应用已经等待并重试过了；请稍候。",
+  "ai.fail.quota.title": "{company} 的额度已用完",
+  "ai.fail.quota.free":
+    "今天的免费请求已用完，将在太平洋时间午夜（你这里的 {time}）恢复。在 Google AI Studio 开通计费即可取消上限。",
+  "ai.fail.quota.body": "你的 {company} 账户已达到配额或消费上限。请检查用量和账单后再试。",
+  "ai.fail.key.title": "{company} 拒绝了 API 密钥",
+  "ai.fail.key.body": "它可能已被删除、输入有误，或无权使用 {name}。请换成新的密钥。",
+  "ai.fail.noKey.title": "添加你的 {name} API 密钥",
+  "ai.fail.noKey.body": "分析师使用你自己在该服务商的密钥运行。请在此页面添加。",
+  "ai.fail.paidModel.title": "此模型需要 Google 付费方案",
+  "ai.fail.paidModel.body":
+    "此对话开始时使用的模型不在免费层级中。请用 Gemini 3.8 Flash 或 Flash-Lite 开始新对话；如果已开通计费，也可以把 Google 方案设为付费。",
+  "ai.fail.unavailable.title": "{company} 目前不可用",
+  "ai.fail.unavailable.body": "其服务器没有响应。这是对方的问题，请稍后再试。",
+  "ai.fail.other.title": "{company} 无法回答",
+  "ai.fail.other.body": "它拒绝了此请求。请重试；如果一直出现，请开始新对话。",
+  "ai.fail.app.title": "分析师无法回答",
+  "ai.fail.detail": "{company} 的原话",
+  "ai.fail.replaceKey": "更换密钥",
+  "ai.fail.retryIn": "{secs} 秒后重试",
   "ai.send": "发送",
 };

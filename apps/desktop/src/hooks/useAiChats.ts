@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
-import { type AiContext, type AiProvider, aiClient } from "../api/venueClient";
+import {
+  type AiContext,
+  AiError,
+  type AiFailure,
+  type AiProvider,
+  aiClient,
+} from "../api/venueClient";
 import {
   type AiChat,
   type ChatMessage,
@@ -23,6 +29,10 @@ import {
 interface Failure {
   question: string;
   error: string;
+  /** What Rust sorted it as, when it came from the provider or the setup. */
+  ai?: AiFailure;
+  /** When it failed, for a wait the provider asked for. */
+  at: number;
 }
 
 interface AiChatsState {
@@ -236,7 +246,12 @@ function ask(
           pending,
           failed: {
             ...current().failed,
-            [chatId]: { question: text, error: e instanceof Error ? e.message : String(e) },
+            [chatId]: {
+              question: text,
+              error: e instanceof Error ? e.message : String(e),
+              ai: e instanceof AiError ? e.failure : undefined,
+              at: Date.now(),
+            },
           },
         },
         true,

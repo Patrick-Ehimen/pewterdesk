@@ -15,9 +15,11 @@ import {
   t,
 } from "@pewterdesk/ui";
 import {
+  createContext,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -27,6 +29,8 @@ import {
   LuArrowUp,
   LuBrain,
   LuChartCandlestick,
+  LuCircleAlert,
+  LuClock,
   LuKeyRound,
   LuLockKeyhole,
   LuMessageSquare,
@@ -42,6 +46,7 @@ import {
   type AiCatalystSource,
   type AiChartMarks,
   type AiContext,
+  type AiFailure,
   type AiModel,
   type AiProvider,
   aiClient,
@@ -69,6 +74,19 @@ const PROVIDER_INFO: Record<AiProvider, { name: string; site: string; placeholde
   gemini: { name: "Gemini", site: "aistudio.google.com/apikey", placeholder: "AIza…" },
   openai: { name: "ChatGPT", site: "platform.openai.com/api-keys", placeholder: "sk-…" },
 };
+
+/** Who runs each provider, for "Google refused the key". Names, not words to translate. */
+const PROVIDER_COMPANY: Record<AiProvider, string> = {
+  claude: "Anthropic",
+  gemini: "Google",
+  openai: "OpenAI",
+};
+
+/** What a failure card can do beyond trying again: the page's own actions. */
+const FailureActions = createContext<{
+  replaceKey: (provider: AiProvider) => void;
+  newChat: () => void;
+}>({ replaceKey: () => {}, newChat: () => {} });
 
 const HELP_KEYS = {
   claude: "ai.key.help.claude",
@@ -207,6 +225,26 @@ export function AiPage({
       live = false;
     };
   }, []);
+  // Whether the Gemini key is on Google's paid plan; Rust keeps it, free by default.
+  const [geminiPaid, setGeminiPaid] = useState(false);
+  const [planError, setPlanError] = useState<string>();
+  useEffect(() => {
+    let live = true;
+    aiClient.geminiPaid().then(
+      (paid) => live && setGeminiPaid(paid),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  const changePlan = (paid: boolean) => {
+    setPlanError(undefined);
+    aiClient.setGeminiPaid(paid).then(
+      () => setGeminiPaid(paid),
+      (e: unknown) => setPlanError(e instanceof Error ? e.message : String(e)),
+    );
+  };
   const changeAccess = (on: boolean) => {
     setAccessError(undefined);
     aiClient.setAccountAccess(on).then(
@@ -508,11 +546,34 @@ export function AiPage({
                 label={t("ai.modelPick")}
                 options={models.map((m) => ({
                   value: choiceOf(m),
-                  label: m.label,
+                  label:
+                    m.provider === "gemini" && !m.free && !geminiPaid
+                      ? t("ai.gemini.paidOnly", { model: m.label })
+                      : m.label,
                 }))}
                 onChange={pickModel}
               />
               <p className="ai-pick-note">{t("ai.modelNote")}</p>
+              {picked.provider === "gemini" && (
+                <>
+                  <h2 className="ai-side-head">{t("ai.gemini.plan")}</h2>
+                  <Select
+                    value={geminiPaid ? "paid" : "free"}
+                    label={t("ai.gemini.plan")}
+                    options={[
+                      { value: "free", label: t("ai.gemini.free") },
+                      { value: "paid", label: t("ai.gemini.paid") },
+                    ]}
+                    onChange={(v) => changePlan(v === "paid")}
+                  />
+                  {!geminiPaid && <p className="ai-pick-note">{t("ai.gemini.freeNote")}</p>}
+                  {planError && (
+                    <p className="ai-error" role="alert">
+                      {planError}
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
           <div className="ai-access" data-on={accountAccess || undefined}>
@@ -562,47 +623,54 @@ export function AiPage({
         </aside>
       )}
 
-      {mode === "chat" ? (
-        <ChatView
-          chat={chat}
-          pending={chat !== undefined && ai.pending.has(chat.id)}
-          failure={chat ? ai.failed[chat.id] : undefined}
-          onDismissFailure={() => chat && ai.dismissFailure(chat.id)}
-          ready={chatView.ready}
-          keyCard={chatView.keyCard}
-          modelLabel={chatView.label}
-          controls={controls("chat")}
-          accountAccess={accountAccess}
-          summaries={summaries}
-          symbolOf={symbolOf}
-          market={market}
-          venueLabel={venueLabel}
-          onAsk={(q) => ask(q, "chat")}
-          onShowOnChart={showOnChart}
-          onTryCharts={() => setMode("chart")}
-        />
-      ) : (
-        <ChartView
-          chat={chartChat}
-          pending={chartChat !== undefined && ai.pending.has(chartChat.id)}
-          failure={chartChat ? ai.failed[chartChat.id] : undefined}
-          onDismissFailure={() => chartChat && ai.dismissFailure(chartChat.id)}
-          ready={chartView.ready}
-          keyCard={chartView.keyCard}
-          modelLabel={chartView.label}
-          controls={controls("chart")}
-          venue={venue}
-          venueLabel={venueLabel}
-          markets={markets}
-          market={market}
-          interval={interval}
-          onInterval={setChartInterval}
-          shown={shown}
-          onAsk={(q) => ask(q, "chart")}
-          onShowOnChart={showOnChart}
-          onTrade={onTrade}
-        />
-      )}
+      <FailureActions.Provider
+        value={{
+          replaceKey: (p) => void aiClient.clearKey(p).then(readKeys, () => {}),
+          newChat: () => pick(mode, undefined),
+        }}
+      >
+        {mode === "chat" ? (
+          <ChatView
+            chat={chat}
+            pending={chat !== undefined && ai.pending.has(chat.id)}
+            failure={chat ? ai.failed[chat.id] : undefined}
+            onDismissFailure={() => chat && ai.dismissFailure(chat.id)}
+            ready={chatView.ready}
+            keyCard={chatView.keyCard}
+            modelLabel={chatView.label}
+            controls={controls("chat")}
+            accountAccess={accountAccess}
+            summaries={summaries}
+            symbolOf={symbolOf}
+            market={market}
+            venueLabel={venueLabel}
+            onAsk={(q) => ask(q, "chat")}
+            onShowOnChart={showOnChart}
+            onTryCharts={() => setMode("chart")}
+          />
+        ) : (
+          <ChartView
+            chat={chartChat}
+            pending={chartChat !== undefined && ai.pending.has(chartChat.id)}
+            failure={chartChat ? ai.failed[chartChat.id] : undefined}
+            onDismissFailure={() => chartChat && ai.dismissFailure(chartChat.id)}
+            ready={chartView.ready}
+            keyCard={chartView.keyCard}
+            modelLabel={chartView.label}
+            controls={controls("chart")}
+            venue={venue}
+            venueLabel={venueLabel}
+            markets={markets}
+            market={market}
+            interval={interval}
+            onInterval={setChartInterval}
+            shown={shown}
+            onAsk={(q) => ask(q, "chart")}
+            onShowOnChart={showOnChart}
+            onTrade={onTrade}
+          />
+        )}
+      </FailureActions.Provider>
     </div>
   );
 }
@@ -677,6 +745,8 @@ function KeySetup({ provider, onSaved }: { provider: AiProvider; onSaved: () => 
 interface Failure {
   question: string;
   error: string;
+  ai?: AiFailure;
+  at: number;
 }
 
 interface ChatViewProps {
@@ -1200,6 +1270,38 @@ function ToolTrail({ tools }: { tools: readonly string[] }) {
   );
 }
 
+/** Seconds left of a wait the provider asked for, counting down; 0 once it's over. */
+function useWaitLeft(failure: Failure): number {
+  const until = failure.at + (failure.ai?.waitSecs ?? 0) * 1000;
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (Date.now() >= until) return;
+    const id = window.setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= until) window.clearInterval(id);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [until]);
+  return Math.max(0, Math.ceil((until - now) / 1000));
+}
+
+/** When Google's free daily allowance comes back: midnight Pacific, in this machine's time. */
+function pacificMidnight(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  const left = 86_400 - (part("hour") * 3600 + part("minute") * 60 + part("second"));
+  return dateFormat({ hour: "2-digit", minute: "2-digit" }).format(
+    new Date(Date.now() + left * 1000),
+  );
+}
+
+/** A failed question: what went wrong in words, what to do, and the provider's own text if wanted. */
 function FailureRow({
   failure,
   onRetry,
@@ -1209,12 +1311,105 @@ function FailureRow({
   onRetry: (question: string) => void;
   onDismiss: () => void;
 }) {
+  const actions = useContext(FailureActions);
+  const waitLeft = useWaitLeft(failure);
+  const ai = failure.ai;
+  const company = ai ? PROVIDER_COMPANY[ai.provider] : "";
+  const name = ai ? PROVIDER_INFO[ai.provider].name : "";
+  const free = ai?.provider === "gemini";
+
+  let title: string;
+  let body: string;
+  switch (ai?.kind) {
+    case "rate":
+      title = t("ai.fail.rate.title", { company });
+      body = t(free ? "ai.fail.rate.free" : "ai.fail.rate.body");
+      break;
+    case "quota":
+      title = t("ai.fail.quota.title", { company });
+      body = free
+        ? t("ai.fail.quota.free", { time: pacificMidnight() })
+        : t("ai.fail.quota.body", { company });
+      break;
+    case "key":
+      title = t("ai.fail.key.title", { company });
+      body = t("ai.fail.key.body", { name });
+      break;
+    case "noKey":
+      title = t("ai.fail.noKey.title", { name });
+      body = t("ai.fail.noKey.body");
+      break;
+    case "paidModel":
+      title = t("ai.fail.paidModel.title");
+      body = t("ai.fail.paidModel.body");
+      break;
+    case "unavailable":
+      title = t("ai.fail.unavailable.title", { company });
+      body = t("ai.fail.unavailable.body");
+      break;
+    case "other":
+      title = t("ai.fail.other.title", { company });
+      body = t("ai.fail.other.body");
+      break;
+    default:
+      title = t("ai.fail.app.title");
+      body = failure.error;
+  }
+  // The provider's words, behind a toggle: useful to report, not to read first.
+  const detail = ai?.detail ?? undefined;
+
   return (
-    <div className="ai-failure" role="alert">
-      <span>{failure.error}</span>
-      <button type="button" className="ai-link-button" onClick={() => onRetry(failure.question)}>
-        {t("ai.retry")}
-      </button>
+    <div className="ai-failure" role="alert" data-kind={ai?.kind ?? "app"}>
+      <LuCircleAlert className="ai-failure-icon" size={18} aria-hidden />
+      <div className="ai-failure-main">
+        <strong>{title}</strong>
+        <p>{body}</p>
+        {detail && (
+          <details className="ai-failure-detail">
+            <summary>{t("ai.fail.detail", { company })}</summary>
+            <p>{detail}</p>
+          </details>
+        )}
+        <div className="ai-failure-actions">
+          {ai?.kind === "key" && (
+            <button
+              type="button"
+              className="settings-button"
+              data-primary
+              onClick={() => actions.replaceKey(ai.provider)}
+            >
+              {t("ai.fail.replaceKey")}
+            </button>
+          )}
+          {ai?.kind === "paidModel" && (
+            <button
+              type="button"
+              className="settings-button"
+              data-primary
+              onClick={actions.newChat}
+            >
+              {t("ai.newChat")}
+            </button>
+          )}
+          {ai?.kind !== "key" && ai?.kind !== "noKey" && ai?.kind !== "paidModel" && (
+            <button
+              type="button"
+              className="settings-button"
+              data-primary
+              disabled={waitLeft > 0}
+              onClick={() => onRetry(failure.question)}
+            >
+              {waitLeft > 0 ? (
+                <>
+                  <LuClock size={13} aria-hidden /> {t("ai.fail.retryIn", { secs: waitLeft })}
+                </>
+              ) : (
+                t("ai.retry")
+              )}
+            </button>
+          )}
+        </div>
+      </div>
       <button
         type="button"
         className="pd-icon-button"

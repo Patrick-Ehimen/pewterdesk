@@ -2673,6 +2673,12 @@ export const en = {
   "ai.key.remove": "Remove",
   "ai.modelNote": "For new chats; a chat keeps the model it began with.",
   "ai.modelPick": "Model",
+  "ai.gemini.plan": "Google plan",
+  "ai.gemini.free": "Free",
+  "ai.gemini.paid": "Paid (billing on)",
+  "ai.gemini.paidOnly": "{model} - paid plan",
+  "ai.gemini.freeNote":
+    "Free tier: a few requests a minute, so an answer can take a minute or two while the app waits; no web search, and Gemini 4 Argon isn't available. Google may use your questions and its answers to improve its products, and people at Google may read them - keep account access off if that matters.",
   "ai.keys": "API keys",
   "ai.key.none": "No key",
   "ai.key.help.openai":
@@ -2779,6 +2785,34 @@ export const en = {
   "ai.onChart": "On the chart · {count} levels",
   "ai.retry": "Try again",
   "ai.dismiss": "Dismiss",
+  "ai.fail.rate.title": "{company} is limiting requests",
+  "ai.fail.rate.free":
+    "Google's free tier allows only a few requests a minute, and this question needed more. The app already waited and tried again; give it a minute, or ask something simpler.",
+  "ai.fail.rate.body":
+    "Too many requests in a short time. The app already waited and tried again; give it a moment.",
+  "ai.fail.quota.title": "{company}'s allowance is used up",
+  "ai.fail.quota.free":
+    "Today's free requests are spent. They come back at midnight Pacific time ({time} here). Turning on billing in Google AI Studio removes the cap.",
+  "ai.fail.quota.body":
+    "Your {company} account has reached its quota or spending limit. Check its usage and billing, then try again.",
+  "ai.fail.key.title": "{company} refused the API key",
+  "ai.fail.key.body":
+    "It may have been deleted, mistyped, or not allowed to use {name}. Replace it with a new key.",
+  "ai.fail.noKey.title": "Add your {name} API key",
+  "ai.fail.noKey.body": "The analyst runs on your own key for this provider. Add it on this page.",
+  "ai.fail.paidModel.title": "This model needs Google's paid plan",
+  "ai.fail.paidModel.body":
+    "This chat began on a model that isn't on the free tier. Start a new chat with Gemini 3.8 Flash or Flash-Lite, or set the Google plan to Paid if billing is on.",
+  "ai.fail.unavailable.title": "{company} is unavailable right now",
+  "ai.fail.unavailable.body":
+    "Its servers didn't answer. That's on their side; try again in a moment.",
+  "ai.fail.other.title": "{company} couldn't answer",
+  "ai.fail.other.body":
+    "It refused this request. Try again, or start a new chat if it keeps happening.",
+  "ai.fail.app.title": "The analyst couldn't answer",
+  "ai.fail.detail": "What {company} said",
+  "ai.fail.replaceKey": "Replace key",
+  "ai.fail.retryIn": "Try again in {secs}s",
   "ai.send": "Send",
 } as const satisfies Record<string, string>;
 

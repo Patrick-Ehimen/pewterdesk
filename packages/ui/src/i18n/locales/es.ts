@@ -2752,6 +2752,12 @@ export const messages: Messages = {
   "ai.key.remove": "Quitar",
   "ai.modelNote": "Para chats nuevos; un chat conserva el modelo con el que empezó.",
   "ai.modelPick": "Modelo",
+  "ai.gemini.plan": "Plan de Google",
+  "ai.gemini.free": "Gratis",
+  "ai.gemini.paid": "De pago (facturación activa)",
+  "ai.gemini.paidOnly": "{model} - plan de pago",
+  "ai.gemini.freeNote":
+    "Nivel gratuito: pocas solicitudes por minuto, así que una respuesta puede tardar uno o dos minutos mientras la app espera; sin búsqueda web y sin Gemini 4 Argon. Google puede usar tus preguntas y sus respuestas para mejorar sus productos, y personas de Google pueden leerlas: deja el acceso a la cuenta desactivado si eso te importa.",
   "ai.keys": "Claves de API",
   "ai.key.none": "Sin clave",
   "ai.key.help.openai":
@@ -2859,5 +2865,34 @@ export const messages: Messages = {
   "ai.onChart": "En el gráfico · {count} niveles",
   "ai.retry": "Reintentar",
   "ai.dismiss": "Descartar",
+  "ai.fail.rate.title": "{company} está limitando las solicitudes",
+  "ai.fail.rate.free":
+    "El nivel gratuito de Google solo permite unas pocas solicitudes por minuto, y esta pregunta necesitó más. La app ya esperó y volvió a intentarlo; espera un minuto o pregunta algo más simple.",
+  "ai.fail.rate.body":
+    "Demasiadas solicitudes en poco tiempo. La app ya esperó y volvió a intentarlo; espera un momento.",
+  "ai.fail.quota.title": "Se agotó la cuota de {company}",
+  "ai.fail.quota.free":
+    "Las solicitudes gratuitas de hoy se agotaron. Vuelven a medianoche, hora del Pacífico ({time} aquí). Activar la facturación en Google AI Studio quita el límite.",
+  "ai.fail.quota.body":
+    "Tu cuenta de {company} alcanzó su cuota o límite de gasto. Revisa su uso y facturación y vuelve a intentarlo.",
+  "ai.fail.key.title": "{company} rechazó la clave de API",
+  "ai.fail.key.body":
+    "Puede que se haya eliminado, esté mal escrita o no tenga permiso para usar {name}. Sustitúyela por una clave nueva.",
+  "ai.fail.noKey.title": "Añade tu clave de API de {name}",
+  "ai.fail.noKey.body":
+    "El analista funciona con tu propia clave de este proveedor. Añádela en esta página.",
+  "ai.fail.paidModel.title": "Este modelo necesita el plan de pago de Google",
+  "ai.fail.paidModel.body":
+    "Este chat empezó con un modelo que no está en el nivel gratuito. Empieza un chat nuevo con Gemini 3.8 Flash o Flash-Lite, o pon el plan de Google en De pago si tienes la facturación activa.",
+  "ai.fail.unavailable.title": "{company} no está disponible ahora",
+  "ai.fail.unavailable.body":
+    "Sus servidores no respondieron. Es un problema de su lado; vuelve a intentarlo en un momento.",
+  "ai.fail.other.title": "{company} no pudo responder",
+  "ai.fail.other.body":
+    "Rechazó esta solicitud. Vuelve a intentarlo o empieza un chat nuevo si sigue pasando.",
+  "ai.fail.app.title": "El analista no pudo responder",
+  "ai.fail.detail": "Lo que dijo {company}",
+  "ai.fail.replaceKey": "Sustituir clave",
+  "ai.fail.retryIn": "Reintentar en {secs} s",
   "ai.send": "Enviar",
 };

@@ -2710,6 +2710,12 @@ export const messages: Messages = {
   "ai.key.remove": "削除",
   "ai.modelNote": "新しいチャット用です。チャットは開始時のモデルのままです。",
   "ai.modelPick": "モデル",
+  "ai.gemini.plan": "Google のプラン",
+  "ai.gemini.free": "無料",
+  "ai.gemini.paid": "有料（課金を有効化）",
+  "ai.gemini.paidOnly": "{model} - 有料プラン",
+  "ai.gemini.freeNote":
+    "無料枠: 1 分あたりのリクエスト数が少ないため、アプリが待つ間に回答まで 1〜2 分かかることがあります。ウェブ検索なし、Gemini 4 Argon は使えません。Google は質問と回答を製品の改善に使うことがあり、Google の担当者が読む場合があります。気になる場合はアカウントへのアクセスをオフのままにしてください。",
   "ai.keys": "APIキー",
   "ai.key.none": "キーなし",
   "ai.key.help.openai":
@@ -2816,5 +2822,34 @@ export const messages: Messages = {
   "ai.onChart": "チャートに表示中 · {count}本",
   "ai.retry": "再試行",
   "ai.dismiss": "閉じる",
+  "ai.fail.rate.title": "{company} がリクエストを制限しています",
+  "ai.fail.rate.free":
+    "Google の無料枠は 1 分あたり数件のリクエストしか使えず、この質問にはそれ以上が必要でした。アプリはすでに待って再試行しました。1 分ほど待つか、より簡単な質問をしてください。",
+  "ai.fail.rate.body":
+    "短時間にリクエストが多すぎます。アプリはすでに待って再試行しました。少し待ってください。",
+  "ai.fail.quota.title": "{company} の利用枠を使い切りました",
+  "ai.fail.quota.free":
+    "本日の無料リクエストを使い切りました。太平洋時間の午前 0 時（こちらでは {time}）に戻ります。Google AI Studio で課金を有効にすると上限がなくなります。",
+  "ai.fail.quota.body":
+    "{company} アカウントが割り当てまたは支出上限に達しました。使用量と請求を確認してから再試行してください。",
+  "ai.fail.key.title": "{company} が API キーを拒否しました",
+  "ai.fail.key.body":
+    "削除された、入力を間違えた、または {name} を使う権限がない可能性があります。新しいキーに置き換えてください。",
+  "ai.fail.noKey.title": "{name} の API キーを追加してください",
+  "ai.fail.noKey.body":
+    "アナリストはこのプロバイダーのあなた自身のキーで動きます。このページで追加してください。",
+  "ai.fail.paidModel.title": "このモデルには Google の有料プランが必要です",
+  "ai.fail.paidModel.body":
+    "このチャットは無料枠にないモデルで始まりました。Gemini 3.8 Flash または Flash-Lite で新しいチャットを始めるか、課金が有効なら Google のプランを有料にしてください。",
+  "ai.fail.unavailable.title": "{company} は現在利用できません",
+  "ai.fail.unavailable.body":
+    "サーバーから応答がありませんでした。先方の問題です。少ししてから再試行してください。",
+  "ai.fail.other.title": "{company} が回答できませんでした",
+  "ai.fail.other.body":
+    "このリクエストは拒否されました。再試行するか、繰り返す場合は新しいチャットを始めてください。",
+  "ai.fail.app.title": "アナリストが回答できませんでした",
+  "ai.fail.detail": "{company} からの内容",
+  "ai.fail.replaceKey": "キーを置き換える",
+  "ai.fail.retryIn": "{secs} 秒後に再試行",
   "ai.send": "送信",
 };
