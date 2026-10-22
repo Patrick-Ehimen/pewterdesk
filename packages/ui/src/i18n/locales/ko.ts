@@ -1761,6 +1761,12 @@ export const messages: Messages = {
   "about.reportBug": "버그 신고",
   "about.licenses": "라이선스",
   "about.close": "닫기",
+  "keychainNotice.title": "macOS가 키체인 접근을 요청할 수 있습니다",
+  "keychainNotice.body":
+    "pewterdesk는 API 지갑과 API 키를 macOS 키체인에 보관하고, 주문 서명을 위해 그곳에서 읽습니다. macOS가 요청하면 Mac 로그인 암호를 입력하고 '항상 허용'을 선택하세요.",
+  "keychainNotice.item":
+    '항목 이름은 "app.pewterdesk.desktop"입니다. 앱의 새 버전에서 다시 요청할 수 있으며, 키는 그대로 유지됩니다.',
+  "keychainNotice.continue": "계속",
   "about.linkFailed": "브라우저를 열 수 없습니다.",
   "tray.showInMenuBar": "메뉴 막대에 표시",
   "tray.pricePnl": "가격 + 손익",

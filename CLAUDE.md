@@ -117,7 +117,13 @@ discover it on their own. The reasoning behind the rules is in
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
   than formatted into a string. Nothing reads a key back to JS: Rust reads it
-  through `KeychainKeySource`, the app's `KeySource`.
+  through `KeychainKeySource`, the app's `KeySource`. On macOS a build this
+  Mac hasn't run (named by its Mach-O UUID: an install, an update, a
+  rebuild) first shows a note that macOS will ask for the password
+  (`keychain_notice.rs`, `components/KeychainNotice.tsx`); until it's
+  dismissed, nothing at start reads the keychain - the app doesn't mount,
+  the tray panel and floating window wait, and so do the algos' reconciler
+  and the daemon link (those two for 2 minutes at most).
 - `apps/desktop/src-tauri/src/wallet.rs` and `crates/exchange-hyperliquid/src/agent.rs`
   - onboarding. The pasted key crosses IPC once, into `connect_wallet`, which
   wraps it in `Zeroizing`, refuses the main wallet's own key, and stores it

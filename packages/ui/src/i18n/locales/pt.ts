@@ -1792,6 +1792,12 @@ export const messages: Messages = {
   "about.reportBug": "Relatar um bug",
   "about.licenses": "Licenças",
   "about.close": "Fechar",
+  "keychainNotice.title": "O macOS pode pedir acesso às Chaves",
+  "keychainNotice.body":
+    "O pewterdesk guarda sua carteira de API e suas chaves de API nas Chaves do macOS e as lê de lá para assinar suas ordens. Se o macOS pedir, digite a senha de login do seu Mac e escolha Sempre Permitir.",
+  "keychainNotice.item":
+    'O item se chama "app.pewterdesk.desktop". Uma nova versão do app pode pedir de novo; suas chaves continuam onde estão.',
+  "keychainNotice.continue": "Continuar",
   "about.linkFailed": "Não foi possível abrir o navegador.",
   "tray.showInMenuBar": "Mostrar na barra de menus",
   "tray.pricePnl": "Preço + PnL",

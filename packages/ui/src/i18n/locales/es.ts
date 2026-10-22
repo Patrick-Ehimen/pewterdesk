@@ -1803,6 +1803,12 @@ export const messages: Messages = {
   "about.reportBug": "Informar de un error",
   "about.licenses": "Licencias",
   "about.close": "Cerrar",
+  "keychainNotice.title": "Puede que macOS pida acceso al Llavero",
+  "keychainNotice.body":
+    "pewterdesk guarda tu cartera API y tus claves API en el Llavero de macOS y las lee de ahí para firmar tus órdenes. Si macOS lo pide, introduce la contraseña de inicio de sesión de tu Mac y elige Permitir siempre.",
+  "keychainNotice.item":
+    'El elemento se llama "app.pewterdesk.desktop". Una nueva versión de la app puede volver a pedirlo; tus claves siguen donde están.',
+  "keychainNotice.continue": "Continuar",
   "about.linkFailed": "No se pudo abrir el navegador.",
   "tray.showInMenuBar": "Mostrar en la barra de menús",
   "tray.pricePnl": "Precio + PnL",

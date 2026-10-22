@@ -1788,6 +1788,12 @@ export const messages: Messages = {
   "about.reportBug": "Сообщить об ошибке",
   "about.licenses": "Лицензии",
   "about.close": "Закрыть",
+  "keychainNotice.title": "macOS может запросить доступ к связке ключей",
+  "keychainNotice.body":
+    "pewterdesk хранит API-кошелёк и API-ключи в связке ключей macOS и читает их оттуда, чтобы подписывать ваши ордера. Если macOS спросит, введите пароль входа в Mac и выберите «Разрешать всегда».",
+  "keychainNotice.item":
+    "Элемент называется «app.pewterdesk.desktop». Новая версия приложения может спросить ещё раз; ключи остаются на месте.",
+  "keychainNotice.continue": "Продолжить",
   "about.linkFailed": "Не удалось открыть браузер.",
   "tray.showInMenuBar": "Показывать в строке меню",
   "tray.pricePnl": "Цена + PnL",

@@ -1730,6 +1730,12 @@ export const en = {
   "about.reportBug": "Report a bug",
   "about.licenses": "Licenses",
   "about.close": "Close",
+  "keychainNotice.title": "macOS may ask for Keychain access",
+  "keychainNotice.body":
+    "pewterdesk keeps your API wallet and API keys in the macOS Keychain and reads them from there to sign your orders. If macOS asks, enter your Mac's login password and choose Always Allow.",
+  "keychainNotice.item":
+    'The item is named "app.pewterdesk.desktop". A new version of the app may ask once more; your keys stay where they are.',
+  "keychainNotice.continue": "Continue",
   "about.linkFailed": "Couldn't open the browser.",
   "tray.showInMenuBar": "Show in menu bar",
   "tray.pricePnl": "Price + PnL",

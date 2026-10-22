@@ -29,6 +29,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State as TauriState};
 use tokio::sync::RwLock;
 
+use crate::keychain_notice::KeychainNotice;
+
 /// Where the app's pairing token is kept in the keychain.
 const TOKEN_ACCOUNT: &str = "app:pdd-token";
 /// The setting, in the config folder.
@@ -184,6 +186,8 @@ impl DaemonLink {
 pub fn install(app: &AppHandle) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
+        // The link's token is in the keychain: not before the page's keychain note.
+        app.state::<KeychainNotice>().cleared().await;
         loop {
             let daemon = app.state::<DaemonLink>();
             if daemon.always_on() {

@@ -1713,6 +1713,12 @@ export const messages: Messages = {
   "about.reportBug": "报告问题",
   "about.licenses": "许可证",
   "about.close": "关闭",
+  "keychainNotice.title": "macOS 可能会请求访问钥匙串",
+  "keychainNotice.body":
+    "pewterdesk 将你的 API 钱包和 API 密钥保存在 macOS 钥匙串中，并从中读取以签署订单。如果 macOS 询问，请输入 Mac 的登录密码并选择“始终允许”。",
+  "keychainNotice.item":
+    "该项名为“app.pewterdesk.desktop”。新版本的应用可能会再次询问；你的密钥保持不变。",
+  "keychainNotice.continue": "继续",
   "about.linkFailed": "无法打开浏览器。",
   "tray.showInMenuBar": "在菜单栏显示",
   "tray.pricePnl": "价格 + 盈亏",

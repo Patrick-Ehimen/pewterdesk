@@ -1813,6 +1813,12 @@ export const messages: Messages = {
   "about.reportBug": "Signaler un bug",
   "about.licenses": "Licences",
   "about.close": "Fermer",
+  "keychainNotice.title": "macOS peut demander l'accès au trousseau",
+  "keychainNotice.body":
+    "pewterdesk garde votre portefeuille API et vos clés API dans le trousseau de macOS et les y lit pour signer vos ordres. Si macOS le demande, saisissez le mot de passe de session de votre Mac et choisissez Toujours autoriser.",
+  "keychainNotice.item":
+    "L'élément s'appelle « app.pewterdesk.desktop ». Une nouvelle version de l'app peut le redemander ; vos clés restent où elles sont.",
+  "keychainNotice.continue": "Continuer",
   "about.linkFailed": "Impossible d'ouvrir le navigateur.",
   "tray.showInMenuBar": "Afficher dans la barre des menus",
   "tray.pricePnl": "Prix + PnL",

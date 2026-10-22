@@ -18,6 +18,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::daemon::{self, DaemonLink};
 use crate::econ_calendar::CalendarState;
+use crate::keychain_notice::KeychainNotice;
 use crate::venues::Venues;
 use pewterdesk_protocol::rpc::Call;
 
@@ -53,6 +54,8 @@ pub fn install(app: &AppHandle) {
     app.state::<Engine>().algos().attach(host);
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
+        // Reconciling reads keys: not before the page's keychain note.
+        app.state::<KeychainNotice>().cleared().await;
         app.state::<Engine>().algos().reconcile().await;
     });
 }

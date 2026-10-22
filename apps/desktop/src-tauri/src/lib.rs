@@ -12,6 +12,7 @@ mod daemon;
 mod econ_calendar;
 mod float;
 mod keychain;
+mod keychain_notice;
 mod live_trading;
 mod menubar;
 mod news_feeds;
@@ -94,6 +95,9 @@ pub fn run() {
                 engine = engine.with_locks(dir.join(pewterdesk_engine::owner::LOCK_DIR));
             }
             app.manage(engine);
+            // Before anything at start reads the keychain, the page may have
+            // a note to show about the password prompt macOS is about to give.
+            app.manage(keychain_notice::KeychainNotice::new(config));
             // Algos run on the engine here; any the app closed on are dealt
             // with now.
             algos::install(app.handle());
@@ -149,6 +153,9 @@ pub fn run() {
             about::app_info,
             about::open_about_link,
             splash::app_ready,
+            keychain_notice::keychain_notice,
+            keychain_notice::dismiss_keychain_notice,
+            keychain_notice::keychain_notice_cleared,
             tray::update_tray,
             tray::tray_open_main,
             tray::tray_quit,

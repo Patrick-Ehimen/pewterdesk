@@ -1772,6 +1772,12 @@ export const messages: Messages = {
   "about.reportBug": "バグを報告",
   "about.licenses": "ライセンス",
   "about.close": "閉じる",
+  "keychainNotice.title": "macOS がキーチェーンへのアクセスを求めることがあります",
+  "keychainNotice.body":
+    "pewterdesk は API ウォレットと API キーを macOS のキーチェーンに保管し、注文の署名のためにそこから読み取ります。macOS に求められたら、Mac のログインパスワードを入力し「常に許可」を選んでください。",
+  "keychainNotice.item":
+    "項目名は「app.pewterdesk.desktop」です。アプリの新しいバージョンでは再度求められることがありますが、キーはそのまま残ります。",
+  "keychainNotice.continue": "続ける",
   "about.linkFailed": "ブラウザを開けませんでした。",
   "tray.showInMenuBar": "メニューバーに表示",
   "tray.pricePnl": "価格 + 損益",

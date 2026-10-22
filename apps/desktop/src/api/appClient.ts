@@ -156,6 +156,23 @@ export const appClient = {
   },
 
   /**
+   * Whether to show the keychain note before anything reads the keychain:
+   * a build this Mac hasn't run before (macOS only; see keychain_notice.rs).
+   */
+  keychainNotice: async (): Promise<boolean> =>
+    isTauri() ? invoke<boolean>("keychain_notice") : false,
+
+  /** The keychain note was read: remember this build and let startup go on. */
+  dismissKeychainNotice: async () => {
+    if (isTauri()) await invoke("dismiss_keychain_notice");
+  },
+
+  /** Resolves once the keychain note is out of the way, for the windows beside the main one. */
+  keychainNoticeCleared: async () => {
+    if (isTauri()) await invoke("keychain_notice_cleared");
+  },
+
+  /**
    * Saves a P&L share card (a PNG) to the Downloads folder, under a name
    * Rust picks; resolves to where it went. Sent as raw bytes.
    */

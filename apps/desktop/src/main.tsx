@@ -14,7 +14,9 @@ import "./styles/wallet.css";
 import "./styles/onboarding.css";
 import { loadLocale } from "@pewterdesk/ui";
 import { App } from "./App";
+import { appClient } from "./api/appClient";
 import { ChartWindow } from "./chart/ChartWindow";
+import { KeychainNotice } from "./components/KeychainNotice";
 import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { FloatWindow } from "./float/FloatWindow";
 import { applyStoredAppearance } from "./hooks/useAppearance";
@@ -30,6 +32,8 @@ const root = createRoot(el);
 /** The menu-bar panel: the same frontend, loaded in its own window at #tray. */
 async function startTrayPanel() {
   applyStoredAppearance();
+  // The panel reads accounts: not before the main window's keychain note.
+  await appClient.keychainNoticeCleared().catch(() => {});
   const locale = storedLanguage();
   await loadLocale(locale);
   document.documentElement.lang = locale;
@@ -50,11 +54,28 @@ async function start() {
   const holdSplash = takeLanguageSwitch() || wasReloaded();
 
   root.render(<Splash />);
-  await Promise.all([
+  const [, , notice] = await Promise.all([
     loadLocale(locale),
     holdSplash ? new Promise((resolve) => setTimeout(resolve, SWITCH_SPLASH_MS)) : null,
+    appClient.keychainNotice().catch(() => false),
   ]);
   document.documentElement.lang = locale;
+
+  // A build this Mac hasn't run: say macOS will ask for the password before
+  // anything reads the keychain (the app mounting does), over the splash.
+  if (notice) {
+    await new Promise<void>((resolve) => {
+      root.render(
+        <StrictMode>
+          <Splash />
+          <KeychainNotice
+            onContinue={() => void appClient.dismissKeychainNotice().finally(resolve)}
+          />
+        </StrictMode>,
+      );
+      void appClient.appReady().catch(() => {});
+    });
+  }
 
   // The app mounts underneath while the splash fades out on top of it, then
   // the splash goes. App keeps its position in the tree, so it isn't remounted.
@@ -78,6 +99,8 @@ async function start() {
 /** The floating window: the same frontend again, in its own window at #float. */
 async function startFloatWindow() {
   applyStoredAppearance();
+  // The floating window reads accounts: not before the main window's keychain note.
+  await appClient.keychainNoticeCleared().catch(() => {});
   const locale = storedLanguage();
   await loadLocale(locale);
   document.documentElement.lang = locale;
