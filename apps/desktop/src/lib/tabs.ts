@@ -3,8 +3,8 @@ import { MENU_PAGES, PAGES, type Page } from "./pages";
 const STORAGE_KEY = "pd.tabs";
 /** The key the one page used to be kept under, before there were tabs. */
 const OLD_PAGE_KEY = "pd.page";
-/** The most tabs open at once: two, one beside the other. */
-export const MAX_TABS = 2;
+/** The most tabs open at once: three, side by side in the header. */
+export const MAX_TABS = 3;
 
 /** One tab: the page it shows. */
 export interface Tab {

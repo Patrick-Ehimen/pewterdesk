@@ -44,26 +44,36 @@ describe("tabs", () => {
     expect(tabs.active).toBe(2);
   });
 
-  it("stop at two, and step between them", () => {
+  it("stop at three, and step between them", () => {
     let tabs = initialTabs();
     for (let i = 0; i < 5; i++) tabs = opened(tabs);
-    expect(MAX_TABS).toBe(2);
-    expect(tabs.tabs).toHaveLength(2);
+    expect(MAX_TABS).toBe(3);
+    expect(tabs.tabs).toHaveLength(3);
+    // Each opened on a page of its own.
+    expect(new Set(tabs.tabs.map((t) => t.page)).size).toBe(3);
     tabs = selected(tabs, 1);
     expect(stepped(tabs, 1).active).toBe(2);
-    expect(stepped(tabs, -1).active).toBe(2);
-    expect(stepped(selected(tabs, 2), 1).active).toBe(1);
+    // Stepping wraps round, both ways.
+    expect(stepped(tabs, -1).active).toBe(3);
+    expect(stepped(selected(tabs, 3), 1).active).toBe(1);
   });
 
   it("come back as they were saved, as far as they read", () => {
     const tabs = restoreTabs({
-      tabs: [{ page: "trade" }, { page: "nowhere" }, { page: "charts" }, { page: "maps" }],
+      tabs: [
+        { page: "trade" },
+        { page: "nowhere" },
+        { page: "charts" },
+        { page: "maps" },
+        { page: "news" },
+      ],
       activeIndex: 1,
     });
-    // What doesn't read is dropped, and no more than two come back.
+    // What doesn't read is dropped, and no more than three come back.
     expect(tabs.tabs).toEqual([
       { id: 1, page: "trade" },
       { id: 3, page: "charts" },
+      { id: 4, page: "maps" },
     ]);
     expect(activePage(tabs)).toBe("charts");
     // Nothing saved: one tab, on the page that was open before tabs existed.

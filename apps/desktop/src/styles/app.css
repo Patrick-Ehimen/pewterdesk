@@ -153,6 +153,8 @@
 .app-tab {
   display: inline-flex;
   align-items: center;
+  /* Three tabs share the room: a long page name shortens, it doesn't push. */
+  min-width: 0;
   border: 1px solid transparent;
   border-radius: var(--pd-radius);
 }
@@ -161,6 +163,10 @@
   border-color: var(--pd-border);
 }
 .app-tab-button {
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   height: 32px;
   padding: 0 12px;
   background: none;
@@ -195,7 +201,11 @@
   color: var(--pd-pewter-dim);
 }
 .app-page-menu {
+  /* The page on screen keeps its name on one line ("Multi-chart" broke at
+     its hyphen); the other tabs give way instead. */
+  flex: none;
   margin-right: 0;
+  white-space: nowrap;
 }
 /* The pages list: a little clear of its button, each page's description in
    small type on one line under its name (cut short rather than wrapping) */
@@ -249,6 +259,17 @@
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+/* A crowded header (more than two venues): the market pill goes smaller. */
+.app-header[data-crowded] .app-market-pill {
+  gap: 7px;
+  padding: 4px 6px 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.app-header[data-crowded] .app-quote-badge {
+  padding: 1px 5px;
+  font-size: 10.5px;
 }
 .app-spacer {
   flex: 1;
@@ -796,6 +817,9 @@ button.app-status-venue[aria-expanded="true"] {
 }
 .app-connect,
 .app-wallet-chip {
+  /* One line, whatever room the header has left. */
+  flex: none;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1190,20 +1214,30 @@ button.app-status-venue[aria-expanded="true"] {
   display: flex;
   gap: 3px;
   min-width: 0;
-  overflow: hidden;
+  /* Slides along on its own when the chips don't fit (useAutoSlide), and
+     scrolls by hand; no scrollbar. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.venue-chips::-webkit-scrollbar {
+  display: none;
 }
 .venue-chip {
   flex: none;
+  /* The venue's logo, its latency under it: compact, so three tabs, the
+     chips and the Live / Paper switch all fit the header. */
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 3px 9px 3px 4px;
+  gap: 1px;
+  min-width: 44px;
+  padding: 3px 5px 2px;
   background: var(--pd-surface-raised);
   border: 1px solid transparent;
   border-radius: 8px;
   color: var(--pd-text);
   font: inherit;
-  text-align: left;
   cursor: pointer;
 }
 .venue-chip:hover {
@@ -1213,22 +1247,15 @@ button.app-status-venue[aria-expanded="true"] {
   border-color: var(--pd-brass);
 }
 .venue-chip-logo {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 6px;
-}
-.venue-chip-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-.venue-chip-text strong {
-  font-size: 12px;
-  font-weight: 600;
 }
 .venue-chip-ms {
   color: var(--pd-pewter);
-  font-size: 10.5px;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .venue-chip[data-down] .venue-chip-ms {
   color: var(--pd-warning);
@@ -1347,14 +1374,7 @@ button.app-status-venue[aria-expanded="true"] {
 .venue-menu-all:hover {
   color: var(--pd-text);
 }
-@media (max-width: 1100px) {
-  .venue-chip-text {
-    display: none;
-  }
-  .venue-chip {
-    padding: 4px;
-  }
-}
+
 /* With an account picture, the chip is just the picture */
 .app-wallet-chip:has(.acct-avatar) {
   padding: 0;

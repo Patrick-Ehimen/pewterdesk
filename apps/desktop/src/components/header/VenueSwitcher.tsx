@@ -3,6 +3,7 @@ import type { VenueId } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
 import { useEffect, useRef, useState } from "react";
 import { LuChevronsDown, LuLandmark, LuSearch } from "react-icons/lu";
+import { useAutoSlide } from "../../hooks/useAutoSlide";
 import { useFeedAge } from "../../hooks/useFeedAge";
 import { useVenueProbe } from "../../hooks/useVenueProbe";
 import { VENUES } from "../../lib/venues";
@@ -34,6 +35,9 @@ export function VenueSwitcher({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrap = useRef<HTMLDivElement>(null);
+  // When the chips don't all fit, they slide along on their own.
+  const strip = useRef<HTMLDivElement>(null);
+  useAutoSlide(strip);
 
   // The menu closes on Escape or a click elsewhere.
   useEffect(() => {
@@ -69,7 +73,7 @@ export function VenueSwitcher({
 
   return (
     <div ref={wrap} className="venue-switch">
-      <div className="venue-chips" role="radiogroup" aria-label={t("venues.switch")}>
+      <div ref={strip} className="venue-chips" role="radiogroup" aria-label={t("venues.switch")}>
         {venues.map((id) => (
           // biome-ignore lint/a11y/useSemanticElements: a chip-style radio, like the other segmented choices
           <button
@@ -79,12 +83,14 @@ export function VenueSwitcher({
             aria-checked={id === venue}
             className="venue-chip"
             data-down={probes[id].status === "down" || undefined}
+            // The logo stands for the venue; its name is the chip's accessible name and tooltip.
+            aria-label={`${VENUES[id].label} · ${latency(id)}`}
+            title={`${VENUES[id].label} · ${latency(id)}`}
             onClick={() => id !== venue && onChange(id)}
           >
             <img className="venue-chip-logo" src={venueLogos[id]} alt="" />
-            <span className="venue-chip-text">
-              <strong>{VENUES[id].label}</strong>
-              <span className="venue-chip-ms pd-num">{latency(id)}</span>
+            <span className="venue-chip-ms pd-num" aria-hidden>
+              {latency(id)}
             </span>
           </button>
         ))}

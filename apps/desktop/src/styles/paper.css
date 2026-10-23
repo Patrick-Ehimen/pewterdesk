@@ -28,6 +28,12 @@
   background: var(--pd-surface-raised);
   color: var(--pd-text);
 }
+/* A crowded header (more than two venues): the switch goes smaller. */
+.app-header[data-crowded] .paper-switch button {
+  height: 20px;
+  padding: 0 7px;
+  font-size: 10.5px;
+}
 .paper-switch[data-paper] {
   border-color: var(--pd-info);
 }

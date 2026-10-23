@@ -1646,7 +1646,9 @@ export function App() {
   return (
     <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
       <div className="app" data-editing={editing || undefined}>
-        <header className="app-header">
+        {/* More than two venues: the venue chips take more room, so the
+            Live / Paper switch and the market pill go smaller. */}
+        <header className="app-header" data-crowded={setup.venues.length > 2 || undefined}>
           {/* The logo goes home: back to the trading workspace, out of settings or layout editing. */}
           <button
             type="button"
@@ -1690,6 +1692,7 @@ export function App() {
                   <button
                     type="button"
                     className="app-tab-close"
+                    title={pageLabel(tab.page)}
                     aria-label={t("tabs.close", { page: pageLabel(tab.page) })}
                     title={t("tabs.close", { page: pageLabel(tab.page) })}
                     onClick={() => showTabs(closed(tabs, tab.id))}
