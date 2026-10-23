@@ -2758,6 +2758,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "Чаты пока не сохранены: {error}",
   "ai.untitled": "Новый чат",
   "ai.deleteChat": "Удалить чат",
+  "ai.renameChat": "Переименовать чат",
+  "ai.renameLabel": "Название чата",
   "ai.key.remove": "Удалить",
   "ai.modelNote": "Для новых чатов; чат сохраняет модель, с которой начался.",
   "ai.modelPick": "Модель",

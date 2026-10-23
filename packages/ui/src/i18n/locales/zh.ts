@@ -2633,6 +2633,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "对话尚未保存：{error}",
   "ai.untitled": "新对话",
   "ai.deleteChat": "删除对话",
+  "ai.renameChat": "重命名对话",
+  "ai.renameLabel": "对话名称",
   "ai.key.remove": "移除",
   "ai.modelNote": "用于新对话；已有对话保留其开始时的模型。",
   "ai.modelPick": "模型",

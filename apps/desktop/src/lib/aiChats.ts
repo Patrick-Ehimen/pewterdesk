@@ -175,6 +175,15 @@ export function storeToSave(
   };
 }
 
+/**
+ * A title the trader typed: one line, at most `TITLE_MAX` characters, or
+ * undefined when nothing is left (the chat keeps the title it had).
+ */
+export function cleanTitle(title: string): string | undefined {
+  const line = title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX).trim();
+  return line || undefined;
+}
+
 /** A chat's title from its first question: one line, cut at a word. */
 export function titleFrom(question: string): string {
   const line = question.trim().replace(/\s+/g, " ");

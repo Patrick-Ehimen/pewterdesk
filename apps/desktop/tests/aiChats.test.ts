@@ -2,6 +2,7 @@ import type { MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
   type AiChat,
+  cleanTitle,
   marketPulse,
   mergeChats,
   parseChats,
@@ -63,6 +64,15 @@ describe("titleFrom", () => {
     const long = titleFrom("word ".repeat(40));
     expect(long.length).toBeLessThanOrEqual(TITLE_MAX);
     expect(long.endsWith("word…")).toBe(true);
+  });
+});
+
+describe("cleanTitle", () => {
+  it("keeps a typed title to one line within the limit, or nothing", () => {
+    expect(cleanTitle("  SOL   breakout\nplan ")).toBe("SOL breakout plan");
+    expect(cleanTitle("x".repeat(TITLE_MAX + 20))).toHaveLength(TITLE_MAX);
+    expect(cleanTitle("   ")).toBeUndefined();
+    expect(cleanTitle("")).toBeUndefined();
   });
 });
 

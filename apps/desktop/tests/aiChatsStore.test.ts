@@ -144,6 +144,24 @@ describe("the AI chats store", () => {
     expect(lastSaved().chats.map((c) => c.id)).toEqual(["new", "old"]);
   });
 
+  it("renames a chat in place, and keeps its title when the new one is blank", async () => {
+    loadChats.mockResolvedValue(
+      JSON.stringify({ version: 1, chats: [chat("a", 5), chat("b", 1)], open: {} }),
+    );
+    const store = await freshStore();
+    store.rename("b", "  My   SOL plan ");
+    await vi.waitFor(() =>
+      expect(lastSaved()?.chats.find((c) => c.id === "b")?.title).toBe("My SOL plan"),
+    );
+    // Its place stays: a rename doesn't bring it to the top.
+    expect(store.state().chats.map((c) => c.id)).toEqual(["a", "b"]);
+    const saves = saveChats.mock.calls.length;
+    store.rename("b", "   ");
+    store.rename("gone", "x");
+    expect(store.state().chats.find((c) => c.id === "b")?.title).toBe("My SOL plan");
+    expect(saveChats.mock.calls.length).toBe(saves);
+  });
+
   it("never saves over a file it couldn't read, and says so", async () => {
     loadChats.mockRejectedValue(new Error("permission denied"));
     ask.mockReturnValue(new Promise(() => {}));

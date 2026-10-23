@@ -37,6 +37,7 @@ import {
   LuNewspaper,
   LuPanelLeftClose,
   LuPanelLeftOpen,
+  LuPencil,
   LuPlus,
   LuSparkles,
   LuTrash2,
@@ -59,6 +60,7 @@ import {
   type ChatMode,
   marketPulse,
   snapshotOf,
+  TITLE_MAX,
 } from "../../lib/aiChats";
 import { blocksOf, type Span } from "../../lib/aiText";
 import { venueBarSource } from "../../lib/barSource";
@@ -506,28 +508,14 @@ export function AiPage({
           ) : (
             <ul className="ai-chats">
               {ai.chats.map((c) => (
-                <li key={c.id} data-active={c.id === active?.id || undefined}>
-                  <button type="button" className="ai-chat-open" onClick={() => openChat(c)}>
-                    {c.mode === "chart" ? (
-                      <LuChartCandlestick size={14} aria-hidden />
-                    ) : (
-                      <LuMessageSquare size={14} aria-hidden />
-                    )}
-                    <span className="ai-chat-title">{c.title || t("ai.untitled")}</span>
-                    <span className="ai-chat-when">{when(c.updated)}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="pd-icon-button ai-chat-delete"
-                    title={t("ai.deleteChat")}
-                    aria-label={t("ai.deleteChat")}
-                    onClick={() => {
-                      ai.remove(c.id);
-                    }}
-                  >
-                    <LuTrash2 size={14} aria-hidden />
-                  </button>
-                </li>
+                <ChatRow
+                  key={c.id}
+                  chat={c}
+                  active={c.id === active?.id}
+                  onOpen={() => openChat(c)}
+                  onRename={(title) => ai.rename(c.id, title)}
+                  onDelete={() => ai.remove(c.id)}
+                />
               ))}
             </ul>
           )}
@@ -672,6 +660,93 @@ export function AiPage({
         )}
       </FailureActions.Provider>
     </div>
+  );
+}
+
+/**
+ * A chat in the side panel: opens it, and renames it in place (the pencil,
+ * or a double click on its title; Enter or leaving the field keeps the new
+ * name, Escape drops it) or deletes it.
+ */
+function ChatRow({
+  chat,
+  active,
+  onOpen,
+  onRename,
+  onDelete,
+}: {
+  chat: AiChat;
+  active: boolean;
+  onOpen: () => void;
+  onRename: (title: string) => void;
+  onDelete: () => void;
+}) {
+  const [draft, setDraft] = useState<string>();
+  const title = chat.title || t("ai.untitled");
+  const finish = (keep: boolean) => {
+    if (keep && draft !== undefined) onRename(draft);
+    setDraft(undefined);
+  };
+  if (draft !== undefined) {
+    return (
+      <li data-active={active || undefined} data-editing>
+        <input
+          className="pd-input ai-chat-rename"
+          value={draft}
+          maxLength={TITLE_MAX}
+          aria-label={t("ai.renameLabel")}
+          // biome-ignore lint/a11y/noAutofocus: the field appears because the trader asked to rename
+          autoFocus
+          onFocus={(e) => e.currentTarget.select()}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") finish(true);
+            if (e.key === "Escape") finish(false);
+          }}
+          onBlur={() => finish(true)}
+        />
+      </li>
+    );
+  }
+  return (
+    <li data-active={active || undefined}>
+      <button
+        type="button"
+        className="ai-chat-open"
+        onClick={onOpen}
+        onDoubleClick={() => setDraft(chat.title)}
+      >
+        {chat.mode === "chart" ? (
+          <LuChartCandlestick size={14} aria-hidden />
+        ) : (
+          <LuMessageSquare size={14} aria-hidden />
+        )}
+        <span className="ai-chat-title" title={title}>
+          {title}
+        </span>
+        <span className="ai-chat-when">{when(chat.updated)}</span>
+      </button>
+      <span className="ai-chat-actions">
+        <button
+          type="button"
+          className="pd-icon-button ai-chat-action"
+          title={t("ai.renameChat")}
+          aria-label={t("ai.renameChat")}
+          onClick={() => setDraft(chat.title)}
+        >
+          <LuPencil size={13} aria-hidden />
+        </button>
+        <button
+          type="button"
+          className="pd-icon-button ai-chat-action"
+          title={t("ai.deleteChat")}
+          aria-label={t("ai.deleteChat")}
+          onClick={onDelete}
+        >
+          <LuTrash2 size={14} aria-hidden />
+        </button>
+      </span>
+    </li>
   );
 }
 

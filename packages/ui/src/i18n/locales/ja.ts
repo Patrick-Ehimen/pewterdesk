@@ -2732,6 +2732,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "チャットはまだ保存されていません：{error}",
   "ai.untitled": "新しいチャット",
   "ai.deleteChat": "チャットを削除",
+  "ai.renameChat": "チャット名を変更",
+  "ai.renameLabel": "チャット名",
   "ai.key.remove": "削除",
   "ai.modelNote": "新しいチャット用です。チャットは開始時のモデルのままです。",
   "ai.modelPick": "モデル",

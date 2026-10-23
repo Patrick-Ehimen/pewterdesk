@@ -2790,6 +2790,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "Les discussions ne sont pas encore enregistrées : {error}",
   "ai.untitled": "Nouvelle discussion",
   "ai.deleteChat": "Supprimer la discussion",
+  "ai.renameChat": "Renommer la discussion",
+  "ai.renameLabel": "Nom de la discussion",
   "ai.key.remove": "Retirer",
   "ai.modelNote": "Pour les nouvelles discussions ; une discussion garde le modèle de départ.",
   "ai.modelPick": "Modèle",

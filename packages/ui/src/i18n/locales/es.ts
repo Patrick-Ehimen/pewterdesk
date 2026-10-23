@@ -2774,6 +2774,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "Los chats aún no se han guardado: {error}",
   "ai.untitled": "Nuevo chat",
   "ai.deleteChat": "Eliminar chat",
+  "ai.renameChat": "Renombrar chat",
+  "ai.renameLabel": "Nombre del chat",
   "ai.key.remove": "Quitar",
   "ai.modelNote": "Para chats nuevos; un chat conserva el modelo con el que empezó.",
   "ai.modelPick": "Modelo",

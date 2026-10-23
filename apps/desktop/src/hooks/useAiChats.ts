@@ -10,6 +10,7 @@ import {
   type AiChat,
   type ChatMessage,
   type ChatMode,
+  cleanTitle,
   LEGACY_KEY,
   mergeChats,
   newChatId,
@@ -275,6 +276,17 @@ function remove(id: string) {
   );
 }
 
+/**
+ * Gives chat `id` the trader's own title. A blank one changes nothing. Its
+ * place in the list stays: a rename isn't news.
+ */
+function rename(id: string, title: string) {
+  const name = cleanTitle(title);
+  const chat = current().chats.find((c) => c.id === id);
+  if (!name || !chat || chat.title === name) return;
+  update({ chats: withChat(id, (c) => ({ ...c, title: name })) }, true);
+}
+
 /** Opens chat `id` in view `mode` (none: a new chat), and keeps it so. */
 function setOpen(mode: ChatMode, id: string | undefined) {
   if (current().open[mode] === id) return;
@@ -289,10 +301,18 @@ function dismissFailure(id: string) {
 }
 
 /** The store without React, for tests. */
-export const aiChatsStore = { state: current, subscribe, ask, remove, setOpen, dismissFailure };
+export const aiChatsStore = {
+  state: current,
+  subscribe,
+  ask,
+  remove,
+  rename,
+  setOpen,
+  dismissFailure,
+};
 
 /** The chats, newest first, and what can be done with them. */
 export function useAiChats() {
   const s = useSyncExternalStore(subscribe, current);
-  return { ...s, ask, remove, dismissFailure, setOpen };
+  return { ...s, ask, remove, rename, dismissFailure, setOpen };
 }

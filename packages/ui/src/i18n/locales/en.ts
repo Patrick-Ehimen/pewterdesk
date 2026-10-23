@@ -2695,6 +2695,8 @@ export const en = {
   "ai.store.saveFailed": "Chats aren't saved yet: {error}",
   "ai.untitled": "New chat",
   "ai.deleteChat": "Delete chat",
+  "ai.renameChat": "Rename chat",
+  "ai.renameLabel": "Chat name",
   "ai.key.remove": "Remove",
   "ai.modelNote": "For new chats; a chat keeps the model it began with.",
   "ai.modelPick": "Model",

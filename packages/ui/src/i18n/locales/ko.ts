@@ -2714,6 +2714,8 @@ export const messages: Messages = {
   "ai.store.saveFailed": "채팅이 아직 저장되지 않았습니다: {error}",
   "ai.untitled": "새 채팅",
   "ai.deleteChat": "채팅 삭제",
+  "ai.renameChat": "채팅 이름 바꾸기",
+  "ai.renameLabel": "채팅 이름",
   "ai.key.remove": "제거",
   "ai.modelNote": "새 채팅에 적용됩니다. 채팅은 시작할 때의 모델을 유지합니다.",
   "ai.modelPick": "모델",
