@@ -2807,3 +2807,294 @@
 .mc-calc .pd-calc {
   padding: 4px 12px 12px;
 }
+
+/* News: Feed or Calendar, beside the page's title */
+.news-views {
+  margin-left: auto;
+}
+.news-views button {
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.news-views button[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.news-views button:hover {
+  color: var(--pd-text);
+}
+
+/* News › Calendar: a week strip, filters and the day's timeline (after
+   Bybit's Market Calendar). Dots: headlines in info, what's scheduled in
+   brass-free pewter; green and red only for the coins' moves. */
+.news-calendar-page {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+.news-calendar-head {
+  padding: 4px 4px 0;
+}
+.news-calendar {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 18px 18px;
+}
+.ncal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+}
+.ncal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ncal-month {
+  font-size: 16px;
+}
+.ncal-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ncal-today {
+  padding: 4px 12px;
+}
+.ncal-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+.ncal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px 6px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.ncal-day:hover {
+  border-color: var(--pd-border-strong);
+}
+.ncal-day[aria-selected="true"] {
+  border-color: var(--pd-brass);
+  background: var(--pd-surface-raised);
+}
+.ncal-weekday {
+  color: var(--pd-pewter);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ncal-date {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ncal-day[data-today] .ncal-date {
+  color: var(--pd-brass-text);
+}
+.ncal-dots {
+  display: flex;
+  gap: 4px;
+  height: 6px;
+}
+.ncal-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.ncal-dot[data-kind="news"] {
+  background: var(--pd-info);
+}
+.ncal-dot[data-kind="scheduled"] {
+  background: var(--pd-pewter);
+}
+.ncal-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ncal-filters .pd-chips {
+  flex: 1;
+  min-width: 0;
+}
+.ncal-filters .pd-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ncal-mine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.ncal-day-title {
+  margin: 4px 0 0;
+  font-size: 15px;
+}
+.ncal-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ncal-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.ncal-time {
+  padding-top: 12px;
+  color: var(--pd-pewter);
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+.ncal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-left: 3px solid var(--pd-info);
+  border-radius: 10px;
+  background: var(--pd-bg);
+}
+.ncal-row[data-past] .ncal-card {
+  opacity: 0.92;
+}
+.ncal-card[data-scheduled] {
+  border-left-color: var(--pd-pewter);
+}
+.ncal-card[data-kind="delisting"],
+.ncal-card[data-kind="maintenance"] {
+  border-left-color: var(--pd-warning);
+}
+.ncal-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.ncal-kind {
+  padding: 1px 7px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ncal-starts {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.ncal-source {
+  margin-left: auto;
+  color: var(--pd-pewter-dim);
+}
+.ncal-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+}
+button.ncal-title {
+  cursor: pointer;
+}
+button.ncal-title:hover {
+  text-decoration: underline;
+}
+.ncal-desc {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ncal-coins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ncal-coin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ncal-coin:hover {
+  border-color: var(--pd-brass);
+}
+.ncal-coin-change {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ncal-coin-change[data-tone="up"] {
+  color: var(--pd-buy);
+}
+.ncal-coin-change[data-tone="down"] {
+  color: var(--pd-sell);
+}
+.ncal-now {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+  color: var(--pd-brass-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ncal-now::before,
+.ncal-now::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--pd-brass);
+  opacity: 0.6;
+}
+.ncal-now::before {
+  flex: 0 0 56px;
+}
+.ncal-empty {
+  margin: 8px 0;
+  color: var(--pd-pewter);
+}

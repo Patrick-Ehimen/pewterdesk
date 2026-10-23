@@ -528,7 +528,12 @@ Trade (the workspace), Portfolio (the connected account's equity and exposure),
 Settings, News (Bybit's own announcements, read by its adapter's
 `announcements` from the venue's public API whichever venue is on screen,
 and news sites' headlines from their RSS feeds - `news_feeds.rs`; text
-only, no links reach the UI), Maps (an RSI heatmap of every market from its own
+only, no links reach the UI; a Feed / Calendar switch lays the same items
+out by day after Bybit's Market Calendar - `components/news/NewsCalendar.tsx`,
+`lib/newsCalendar.ts`: a week strip with dots, filters by kind, My markets
+(held or starred), and a timeline with a line at now, announcements at
+their start times and each position's next funding; token unlocks wait on
+a data source, none free and allowed), Maps (an RSI heatmap of every market from its own
 candles, a market heatmap of coins by sector from CoinGecko, liquidations
 from Bybit's public live feed and OKX's public history whichever venue is
 on screen, and an estimated liquidation heatmap from hourly open interest

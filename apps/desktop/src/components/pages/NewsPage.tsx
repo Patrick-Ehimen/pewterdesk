@@ -40,6 +40,7 @@ import {
   saveMutedPublishers,
   upcoming,
 } from "../../lib/news";
+import { NewsCalendar } from "../news/NewsCalendar";
 
 const CHART_W = 600;
 const CHART_H = 180;
@@ -47,6 +48,7 @@ const CHART_H = 180;
 const MAX_CANDLES = 500;
 /** The chart starts at least this long before the headline. */
 const LEAD_MS = 2 * 3_600_000;
+const NEWS_VIEWS = ["feed", "calendar"] as const;
 const ON_OFF = ["on", "off"] as const;
 
 const CLOCK: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", hour12: false };
@@ -110,6 +112,8 @@ interface NewsPageProps {
   /** Every market's price and funding; unset until they arrive. */
   summaries?: MarketSummary[];
   positions: Position[];
+  /** The starred markets: the calendar's "My markets" keeps them, with the held ones. */
+  starred: ReadonlySet<string>;
   /** Opens a market on the Trade page. */
   onTrade: (marketId: string) => void;
 }
@@ -129,8 +133,11 @@ export function NewsPage({
   markets,
   summaries,
   positions,
+  starred,
   onTrade,
 }: NewsPageProps) {
+  // The feed, or the same news laid out by day (after Bybit's Market Calendar).
+  const [view, setView] = useStoredChoice("pd.news.view", NEWS_VIEWS, "feed");
   const [filter, setFilter] = useState<NewsFilter>("all");
   const [query, setQuery] = useState("");
   const [highOnly, setHighOnly] = useState(false);
@@ -275,12 +282,59 @@ export function NewsPage({
       </ul>
     );
 
+  const views = (
+    <div className="pd-segmented news-views" role="radiogroup" aria-label={t("news.view.label")}>
+      {NEWS_VIEWS.map((v) => (
+        // biome-ignore lint/a11y/useSemanticElements: a segmented choice, like the others
+        <button
+          type="button"
+          role="radio"
+          key={v}
+          aria-checked={view === v}
+          onClick={() => setView(v)}
+        >
+          {t(v === "feed" ? "news.view.feed" : "news.view.calendar")}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (view === "calendar") {
+    return (
+      <div className="page news-calendar-page">
+        <header className="news-feed-head news-calendar-head">
+          <h1>{t("nav.news")}</h1>
+          {views}
+        </header>
+        <section className="news-panel news-calendar">
+          <NewsCalendar
+            items={items}
+            positions={positions}
+            summaries={summaries ?? []}
+            markets={markets}
+            starred={starred}
+            announcer={announcer}
+            now={now}
+            onOpen={(item) => {
+              setFilter("all");
+              setQuery("");
+              setSelectedId(item.id);
+              setView("feed");
+            }}
+            onTrade={onTrade}
+          />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="page news">
       <div className="news-main">
         <section className="news-panel news-feed">
           <header className="news-feed-head">
             <h1>{t("nav.news")}</h1>
+            {views}
             {loaded && (
               <span className="news-live">
                 <span className="news-live-dot" aria-hidden />

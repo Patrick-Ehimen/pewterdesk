@@ -1884,6 +1884,7 @@ export function App() {
             markets={marketList}
             market={selected}
             summaries={
+            starred={watchlist.starred}
               barSummaries.status === "live" || barSummaries.status === "closed"
                 ? barSummaries.data
                 : undefined
