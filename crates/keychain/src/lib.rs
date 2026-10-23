@@ -86,13 +86,25 @@ fn get(service: &str, account: &str) -> Result<String, KeychainError> {
         .map_err(map_keyring_error)
 }
 
-/// The keychain APIs have no existence check, so this reads the secret and
-/// drops it immediately. It never leaves Rust.
+/// Whether a secret is stored, without reading it: a search by service and
+/// account returns the entries' attributes only. On macOS that's what
+/// matters - reading a secret's data asks for the login password (once per
+/// entry, for each build the Mac hasn't seen), reading its attributes
+/// doesn't, so a "connected?" check costs no prompt.
+///
+/// A store that can't search that way (the error says so) falls back to
+/// reading the secret and dropping it at once; it never leaves Rust.
 fn has(service: &str, account: &str) -> Result<bool, KeychainError> {
-    match entry(service, account)?.get_password() {
-        Ok(_) => Ok(true),
-        Err(KeyringError::NoEntry) => Ok(false),
-        Err(err) => Err(map_keyring_error(err)),
+    // Also sets up keyring's default store, which the search goes to.
+    let entry = entry(service, account)?;
+    let spec = std::collections::HashMap::from([("service", service), ("user", account)]);
+    match keyring_core::Entry::search(&spec) {
+        Ok(found) => Ok(!found.is_empty()),
+        Err(_) => match entry.get_password() {
+            Ok(_) => Ok(true),
+            Err(KeyringError::NoEntry) => Ok(false),
+            Err(err) => Err(map_keyring_error(err)),
+        },
     }
 }
 
@@ -168,6 +180,24 @@ impl KeySource for KeychainKeySource {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    /// The existence check against the real OS store, without reading the
+    /// secret (on macOS: no password prompt for it). Skipped by default
+    /// (`cargo test -p pewterdesk-keychain -- --ignored`).
+    #[test]
+    #[ignore]
+    fn tells_a_stored_secret_from_none_without_reading_it() {
+        let service = "app.pewterdesk.desktop.test";
+        let account = "has-check:probe";
+        delete(service, account).unwrap();
+        assert_eq!(has(service, account), Ok(false));
+        store(service, account, "not-a-real-secret").unwrap();
+        assert_eq!(has(service, account), Ok(true));
+        // Another account under the same service isn't it.
+        assert_eq!(has(service, "has-check:other"), Ok(false));
+        delete(service, account).unwrap();
+        assert_eq!(has(service, account), Ok(false));
+    }
 
     #[test]
     fn accepts_valid_accounts() {

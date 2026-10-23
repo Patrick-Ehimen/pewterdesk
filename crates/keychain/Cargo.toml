@@ -9,6 +9,9 @@ publish = false
 [dependencies]
 async-trait = "0.1.92"
 keyring = "4"
+# The crate keyring 4 is built on (already in the tree): its `Entry::search`
+# answers whether a secret exists from its attributes, without its data.
+keyring-core = "1"
 pewterdesk-core = { path = "../core" }
 serde = { version = "1.0.229", features = ["derive"] }
 # Keychain calls block (and can wait on a prompt), so they run on tokio's

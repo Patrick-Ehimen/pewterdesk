@@ -117,7 +117,11 @@ discover it on their own. The reasoning behind the rules is in
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
   than formatted into a string. Nothing reads a key back to JS: Rust reads it
-  through `KeychainKeySource`, the app's `KeySource`. On macOS a build this
+  through `KeychainKeySource`, the app's `KeySource`. Whether a key is stored
+  (`has_secret`, and the AI page's and news wire's key status) is a search by
+  service and account that loads attributes only, never the secret, so on
+  macOS it asks for no password (a store that can't search that way falls
+  back to reading and dropping it). On macOS a build this
   Mac hasn't run (named by its Mach-O UUID: an install, an update, a
   rebuild) first shows a note that macOS will ask for the password
   (`keychain_notice.rs`, `components/KeychainNotice.tsx`); until it's

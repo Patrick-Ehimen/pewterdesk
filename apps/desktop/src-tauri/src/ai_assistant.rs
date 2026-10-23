@@ -2053,12 +2053,16 @@ pub async fn save_ai_chats(
     .map_err(|e| VenueError::InvalidRequest(format!("couldn't save the chats: {e}")))
 }
 
-/// Which providers have a key stored. Never returns one.
+/// Which providers have a key stored. Never returns one, and never reads
+/// one: an existence check, so it asks macOS for no password.
 #[tauri::command]
 pub async fn ai_key_status() -> Result<std::collections::HashMap<Provider, bool>, VenueError> {
     let mut out = std::collections::HashMap::new();
     for provider in Provider::ALL {
-        out.insert(provider, stored_key(provider).await.is_some());
+        let has = keychain::has_secret(provider.key_account().to_owned())
+            .await
+            .unwrap_or(false);
+        out.insert(provider, has);
     }
     Ok(out)
 }

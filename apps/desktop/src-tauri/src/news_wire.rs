@@ -734,12 +734,16 @@ pub async fn set_news_key(source: WireSource, key: String) -> Result<(), VenueEr
         .map_err(|e| VenueError::Key(e.into()))
 }
 
-/// Which sources have a key stored. Never returns one.
+/// Which sources have a key stored. Never returns one, and never reads
+/// one: an existence check, so it asks macOS for no password.
 #[tauri::command]
 pub async fn news_keys() -> Result<HashMap<WireSource, bool>, VenueError> {
     let mut out = HashMap::new();
     for source in WireSource::ALL {
-        out.insert(source, stored_key(source).await.is_some());
+        let has = keychain::has_secret(source.key_account().to_owned())
+            .await
+            .unwrap_or(false);
+        out.insert(source, has);
     }
     Ok(out)
 }
