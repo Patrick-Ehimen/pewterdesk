@@ -275,13 +275,14 @@ html:has(.tray-panel) {
 .tray-sort[data-active] {
   color: var(--pd-text);
 }
-/* Favorites and Top Movers show five rows however many there are; the rest
-   scroll. Rows are a fixed height so five is exactly five. */
+/* Favorites and Top Movers show four rows however many there are; the rest
+   scroll. Rows are a fixed height so four is exactly four. */
 .tray-markets {
   --tray-row: 32px;
+  --tray-rows: 4;
 }
 .tray-list {
-  max-height: calc(var(--tray-row) * 5);
+  max-height: calc(var(--tray-row) * var(--tray-rows));
   margin: 0;
   padding: 0;
   overflow-y: auto;

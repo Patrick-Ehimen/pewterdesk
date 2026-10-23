@@ -20,6 +20,7 @@ import {
 } from "@pewterdesk/ui";
 import { useEffect, useState } from "react";
 import { algoKind, algoReason } from "../../hooks/useAlgos";
+import { useStoredChoice } from "../../hooks/useStoredChoice";
 import {
   type AlgoTarget,
   chaserSpec,
@@ -40,6 +41,8 @@ import {
 // what's running and how far along, what's over, and a form to start one on
 // the market on screen. The engine runs them (`crates/engine`); every order
 // goes through the same gate as the ticket's.
+
+const ALGO_TABS = ["running", "history"] as const;
 
 type AlgoKindId = "chaser" | "twap" | "scaled";
 const KINDS: readonly AlgoKindId[] = ["chaser", "twap", "scaled"];
@@ -512,7 +515,7 @@ export function AlgosPanel({
   onStop,
   onHalt,
 }: AlgosPanelProps) {
-  const [tab, setTab] = useState<"running" | "history">("running");
+  const [tab, setTab] = useStoredChoice("pd.algos.tab", ALGO_TABS, "running");
   const [adding, setAdding] = useState(false);
   const [halting, setHalting] = useState(false);
   const [now, setNow] = useState(Date.now);

@@ -47,7 +47,8 @@ import { ScreenerPanel } from "./ScreenerPanel";
 import { ViewSettings } from "./ViewSettings";
 
 const NO_POSITIONS: readonly Position[] = [];
-type MarketsTab = "chart" | "overview" | "depth" | "screener" | "watchlist";
+const MARKETS_TABS = ["chart", "overview", "depth", "screener", "watchlist"] as const;
+type MarketsTab = (typeof MARKETS_TABS)[number];
 
 /** Which chart the Charts tab shows: the price chart, or the funding history. */
 type ChartKind = "standard" | "funding";
@@ -114,7 +115,8 @@ export function MarketsPanel({
   showChart,
   chartOverlay,
 }: MarketsPanelProps) {
-  const [tab, setTab] = useState<MarketsTab>("chart");
+  // Kept, so coming back to the Trade page finds the tab where it was left.
+  const [tab, setTab] = useStoredChoice<MarketsTab>("pd.markets.tab", MARKETS_TABS, "chart");
   const [interval, setInterval] = useStoredChoice<CandleInterval>(
     "pd.chart.interval",
     ALL_INTERVALS,

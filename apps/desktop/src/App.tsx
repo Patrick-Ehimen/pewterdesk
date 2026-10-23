@@ -247,7 +247,15 @@ const VENUE_CHIPS = VENUE_IDS.map((id) => ({
   logo: venueLogos[id],
 }));
 
-type ActivityTab = "positions" | "orders" | "closedPnl" | "fills" | "funding" | "orderHistory";
+const ACTIVITY_TABS = [
+  "positions",
+  "orders",
+  "closedPnl",
+  "fills",
+  "funding",
+  "orderHistory",
+] as const;
+type ActivityTab = (typeof ACTIVITY_TABS)[number];
 type BookTab = "book" | "trades";
 const SOUND = ["on", "off"] as const;
 
@@ -293,7 +301,8 @@ function ActivityPanel({
   /** Sets a position's TP, SL and trailing stop; unset where the account can't trade. */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<ActivityTab>("positions");
+  // Kept, so coming back to the Trade page finds the tab where it was left.
+  const [tab, setTab] = useStoredChoice<ActivityTab>("pd.activity.tab", ACTIVITY_TABS, "positions");
   const snapshot = account.status === "live" || account.status === "closed" ? account.data : null;
   // Paper mode reads the paper account's own history, and never the venue's.
   const from = paper ? undefined : address;
@@ -1683,6 +1692,7 @@ export function App() {
                   <button
                     type="button"
                     className="app-tab-button"
+                    title={pageLabel(tab.page)}
                     onClick={() => showTabs(tabSelected(tabs, tab.id))}
                   >
                     {pageLabel(tab.page)}
@@ -1692,7 +1702,6 @@ export function App() {
                   <button
                     type="button"
                     className="app-tab-close"
-                    title={pageLabel(tab.page)}
                     aria-label={t("tabs.close", { page: pageLabel(tab.page) })}
                     title={t("tabs.close", { page: pageLabel(tab.page) })}
                     onClick={() => showTabs(closed(tabs, tab.id))}
@@ -1733,7 +1742,7 @@ export function App() {
               triggerClassName="app-market-pill"
               trigger={
                 <>
-                  <TokenIcon market={selected} size={22} />
+                  <TokenIcon market={selected} size={setup.venues.length > 2 ? 18 : 22} />
                   <strong>
                     {selected.base}
                     {selected.quote}
@@ -1875,6 +1884,7 @@ export function App() {
                 : undefined
             }
             positions={liveAccount?.positions ?? []}
+            starred={watchlist.starred}
             onTrade={(id) => {
               showMarket(venue, id);
               setPage("trade");
@@ -1887,7 +1897,6 @@ export function App() {
             markets={marketList}
             market={selected}
             summaries={
-            starred={watchlist.starred}
               barSummaries.status === "live" || barSummaries.status === "closed"
                 ? barSummaries.data
                 : undefined

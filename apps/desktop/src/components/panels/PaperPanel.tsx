@@ -14,6 +14,7 @@ import {
 } from "@pewterdesk/ui";
 import { useEffect, useId, useMemo, useState } from "react";
 import { LuFlaskConical } from "react-icons/lu";
+import { useStoredChoice } from "../../hooks/useStoredChoice";
 import type { PaperState } from "../../lib/paper";
 import { paperOverview } from "../../lib/paperOverview";
 import { curvePath } from "../../lib/performance";
@@ -71,7 +72,7 @@ export function PaperPanel({
   onReset,
   onPaper,
 }: PaperPanelProps) {
-  const [tab, setTab] = useState<Tab>("fills");
+  const [tab, setTab] = useStoredChoice<Tab>("pd.paper.tab", TABS, "fills");
   const fillId = useId();
   // The curve runs to now; a minute at a time is plenty.
   const [now, setNow] = useState(Date.now);
