@@ -749,13 +749,13 @@ switches and `expiresAfter`), inside the app or headless in `pdd`, which
 `pd` and the app reach over a localhost-only protocol. The decision is
 `docs/adr/0003-bot-engine-daemon.md`.
 
-There are no bots in pewterdesk. Automated strategies run in FreqTrade,
-on its own, with its own trade-only key (ideally its own sub-account): it
-doesn't talk to pewterdesk and pewterdesk doesn't talk to it. Its trades
-show here like any made elsewhere, and count toward that account's
-trading rules. The bot engine that was built here (strategies, a
-backtester, paper and live bots, the Bots page, `pd bot`) is kept on the
-`bots-engine` branch, unmerged.
+No bot engine runs in pewterdesk yet. Automated strategies run in
+FreqTrade, on its own, with its own trade-only key (ideally its own
+sub-account): it doesn't talk to pewterdesk and pewterdesk doesn't talk to
+it. Its trades show here like any made elsewhere, and count toward that
+account's trading rules. The bot engine that was built here (strategies, a
+backtester, paper and live bots, `pd bot`) is kept on the `bots-engine`
+branch, unmerged. The bots' UI is on main without it (below).
 
 When working on the engine, the daemon or `pd`:
 
@@ -764,6 +764,30 @@ When working on the engine, the daemon or `pd`:
   via `KeySource`, localhost and paired clients only, fail closed.
 - Keep `docs/bots/` and the ADR in step with the code; if the plan changes,
   change the doc in the same PR.
+
+## Bots panel and page
+
+The UI for bots, with no engine behind it: a panel kind (`bots`;
+`components/panels/BotsPanel.tsx`) and a page (`bots`, last in the menu so
+it takes Cmd+9; `components/pages/BotsPage.tsx`), sharing
+`components/bots/parts.tsx`, `hooks/useBots.ts` (one instance in
+`App.tsx`, which raises their notifications) and `lib/bots.ts` (the types
+and the arithmetic, no React). The panel shows the bots on the market on
+screen (running, paused, stopped; pause, stop, halt all), a form to start
+one from a saved backtest as a dry run on the backtest account or live (a
+live bot needs the account's live trading on, as the ticket does), and
+their log. The page compares each bot with the backtest it came from:
+its curve against the backtest's over the same bars, daily P&L, trades,
+events, P&L by hour, and whether it's in line after 10 closed trades.
+Both have every state: loading, no engine, no bots, none on this market,
+halted, the engine out of reach, history unreadable.
+They read a `BotSource` (`lib/botSource.ts`); the app's is `noEngine`,
+which shows nothing and refuses every action. `lib/botDemo.ts` is a demo
+source for development builds only (`import.meta.env.DEV`; "Show demo
+bots" in the empty state, with a state picker): its bots are marked
+`demo` and say so, and it sends nothing. Wiring a real source - Tauri
+commands that start, pause or stop a bot - is a security-relevant change:
+every order a bot sends must go through the router, as the algos' do.
 
 ## Notifications
 
