@@ -516,6 +516,10 @@ input {
   margin-left: 8px;
   color: var(--pd-pewter);
 }
+/* The PnL's return on margin, after its amount, in its colour */
+.pd-account-return {
+  margin-left: 8px;
+}
 .pd-account-ratio[data-level="warn"] {
   --pd-level: var(--pd-warning);
 }

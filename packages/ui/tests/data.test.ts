@@ -129,6 +129,8 @@ describe("accountTotals", () => {
       equity: 1000,
       available: 700,
       unrealizedPnl: 30,
+      // 30 on 300 of margin: a 10% return.
+      pnlReturn: 0.1,
       marginUsed: 300,
       marginRatio: 0.3,
       notional: 2,
@@ -159,6 +161,12 @@ describe("accountTotals", () => {
 
   it("reports a zero margin ratio for an empty account", () => {
     expect(accountTotals({ ...snapshot, equity: "0", positions: [] }).marginRatio).toBe(0);
+  });
+
+  it("has no PnL return without margin to measure it against", () => {
+    expect(accountTotals({ ...snapshot, positions: [] }).pnlReturn).toBeUndefined();
+    const unpriced = { ...snapshot, positions: [position("-5", "0")] };
+    expect(accountTotals(unpriced).pnlReturn).toBeUndefined();
   });
 });
 

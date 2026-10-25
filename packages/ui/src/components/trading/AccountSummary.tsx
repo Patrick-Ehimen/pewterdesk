@@ -1,6 +1,6 @@
 import type { AccountSnapshot } from "@pewterdesk/core";
 import { t } from "../../i18n";
-import { formatNumber, formatPercent, trendClass } from "../../lib/format";
+import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
 import { Hint } from "../common/ColumnHeader";
 import { Tooltip } from "../common/Tooltip";
 
@@ -8,6 +8,11 @@ export interface AccountTotals {
   equity: number;
   available: number;
   unrealizedPnl: number;
+  /**
+   * Unrealized PnL over the margin the positions tie up, as the ticket and
+   * the position drawer reckon a position's return; undefined with no margin.
+   */
+  pnlReturn: number | undefined;
   marginUsed: number;
   /** Margin used over equity; 0 when there's no equity. */
   marginRatio: number;
@@ -49,6 +54,7 @@ export function accountTotals(
     equity,
     available: Number(snapshot.availableMargin),
     unrealizedPnl,
+    pnlReturn: marginUsed > 0 ? unrealizedPnl / marginUsed : undefined,
     marginUsed,
     marginRatio: equity > 0 ? marginUsed / equity : 0,
     notional,
@@ -127,7 +133,12 @@ export function AccountSummary({ snapshot, maxLeverageFor }: AccountSummaryProps
         </div>
         <div>
           <dt>{t("account.upnl")}</dt>
-          <dd className={trendClass(pnl)}>{usd(pnl)}</dd>
+          <dd className={trendClass(pnl)}>
+            {usd(pnl)}
+            {totals?.pnlReturn !== undefined && (
+              <span className="pd-account-return">{formatSigned(totals.pnlReturn * 100)}%</span>
+            )}
+          </dd>
         </div>
         <div>
           <dt>
