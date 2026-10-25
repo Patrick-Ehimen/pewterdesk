@@ -64,10 +64,11 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { venueClient } from "../../api/venueClient";
 import { useCoinSectors } from "../../hooks/useCoinSectors";
-import { useLiquidations } from "../../hooks/useLiquidations";
+import { liveLiquidationSource, useLiquidations } from "../../hooks/useLiquidations";
 import {
   BOOK_COLUMNS,
   BOOK_ROWS,
+  longShortSource,
   OI_HISTORY_VENUES,
   SEASON_DAYS,
   useBookHeat,
@@ -464,7 +465,8 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     };
   }, [view, summaryList, oiWindow, byId, oiSince, oiHistory, histories]);
 
-  const longShort = useLongShort(view === "ls");
+  const lsSource = longShortSource(venue);
+  const longShort = useLongShort(view === "ls", lsSource);
   const lsRows = useMemo(
     () => longShort.rows.map((r) => ({ ...r, market: byBase.get(r.base) })),
     [longShort.rows, byBase],
@@ -597,11 +599,13 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   // OKX's liquidations join the venue's own market for the same coin where it
   // lists one, and are read busiest first (by the RSI heatmap's saved order).
   const rankOfId = useMemo(() => new Map((order ?? []).map((id, i) => [id, i])), [order]);
+  const liqSource = liveLiquidationSource(venue);
   const liquidations = useLiquidations(
     view === "liquidations",
     (base) => byBase.get(base)?.id ?? base,
     (base) => rankOfId.get(byBase.get(base)?.id ?? "") ?? Number.MAX_SAFE_INTEGER,
     `${venue}:${markets.length}`,
+    liqSource,
   );
 
   // The heatmap's history, fetched again every few minutes while it shows.
@@ -762,6 +766,7 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             progress={{ done: longShort.done, total: longShort.total }}
             loader={<LoadingMark size={44} />}
             error={longShort.error}
+            source={VENUES[lsSource].label}
             onTrade={(r) => r.market && onTrade(r.market)}
           />
         ) : view === "corr" ? (
@@ -913,7 +918,13 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             }
           />
         )}
-        <MapHelp view={view} title={t(VIEW_LABEL[view])} />
+        <MapHelp
+          view={view}
+          title={t(VIEW_LABEL[view])}
+          vars={{
+            venue: VENUES[view === "ls" ? lsSource : liqSource].label,
+          }}
+        />
       </section>
     </div>
   );

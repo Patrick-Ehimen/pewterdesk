@@ -8,7 +8,16 @@ import { LuX } from "react-icons/lu";
 const PARTS = ["what", "how", "read", "caveats"] as const;
 
 /** A "?" at the bottom right of the view; opens its explanation. */
-export function MapHelp({ view, title }: { view: string; title: string }) {
+export function MapHelp({
+  view,
+  title,
+  vars,
+}: {
+  view: string;
+  title: string;
+  /** Filled into the explanation: `venue`, whose data the view reads. */
+  vars?: Record<string, string>;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
 
@@ -56,7 +65,7 @@ export function MapHelp({ view, title }: { view: string; title: string }) {
             {PARTS.map((part) => (
               <section key={part}>
                 <h3 className="maps-help-part">{t(`maphelp.part.${part}` as MessageKey)}</h3>
-                <p>{t(`maphelp.${view}.${part}` as MessageKey)}</p>
+                <p>{t(`maphelp.${view}.${part}` as MessageKey, vars)}</p>
               </section>
             ))}
             <p className="maps-help-foot">{t("maphelp.foot")}</p>

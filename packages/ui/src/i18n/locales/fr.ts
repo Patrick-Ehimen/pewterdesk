@@ -2480,23 +2480,23 @@ export const messages: Messages = {
   "maphelp.oi.what":
     "La variation de prix de chaque marché actif face à sa variation d'intérêt ouvert sur la fenêtre, en points répartis sur quatre quadrants.",
   "maphelp.oi.how":
-    "L'intérêt ouvert est le nombre de contrats ouverts. Bybit publie un historique horaire ; sur Hyperliquid et Aster, l'app l'échantillonne toutes les 5 minutes tant qu'elle tourne, et montre la variation jusqu'ici tant que la fenêtre n'est pas couverte. Les points sont dimensionnés par l'intérêt ouvert.",
+    "L'intérêt ouvert est le nombre de contrats ouverts. Bybit et Binance publient un historique horaire ; sur Hyperliquid et Aster, l'app l'échantillonne toutes les 5 minutes tant qu'elle tourne et affiche la variation jusqu'ici, le temps de couvrir la fenêtre. Les points sont proportionnels à l'intérêt ouvert.",
   "maphelp.oi.read":
     "Prix en hausse et intérêt ouvert en hausse : de nouveaux longs s'ouvrent. Prix en hausse et intérêt en baisse : des shorts se ferment (un squeeze). Prix en baisse et intérêt en hausse : de nouveaux shorts. Les deux en baisse : des longs se ferment ou sont liquidés. Les mouvements portés par de nouvelles positions vont souvent plus loin que ceux causés par des fermetures.",
   "maphelp.oi.caveats":
     "L'intérêt ouvert ne dit pas qui est long ou short, seulement combien est ouvert. Les quadrants sont une lecture, pas un fait sur un trader. Sur les plateformes échantillonnées par l'app, l'historique commence au lancement de l'app.",
   "maphelp.ls.what":
-    "La part des comptes Bybit en position longue ou courte sur ses marchés les plus actifs, maintenant et il y a un jour.",
+    "La part des comptes {venue} en position longue ou courte sur ses marchés les plus actifs, maintenant et il y a un jour.",
   "maphelp.ls.how":
-    "Bybit publie le ratio des comptes longs face aux comptes courts pour chaque marché. Il est lu chez Bybit quelle que soit la plateforme à l'écran, car les autres ne le publient pas. Il compte des comptes, pas des tailles de position.",
+    "{venue} publie le ratio entre comptes acheteurs et comptes vendeurs pour chaque marché. Bybit et Binance le publient : sur l'une ou l'autre, c'est le sien ; sur une plateforme qui ne le publie pas, il est lu chez Bybit. Il compte les comptes, pas la taille des positions.",
   "maphelp.ls.read":
     "Une très forte part de comptes longs signifie que la foule penche d'un côté, ce que les traders lisent souvent à l'envers : le côté encombré peut être pris en squeeze. Un grand changement sur la journée montre un sentiment qui tourne.",
   "maphelp.ls.caveats":
-    "Un gros compte avec une grosse position compte autant qu'un petit compte : cela montre le sentiment de la foule, pas où est l'argent. Ne couvre que Bybit.",
+    "Un gros compte avec une grosse position compte autant qu'un petit compte : cela montre le sentiment de la foule, pas où se trouve l'argent. Il ne couvre que {venue}.",
   "maphelp.liquidations.what":
     "Les liquidations du marché au moment où elles se produisent, et les totaux de la fenêtre : combien de longs et de shorts ont été forcés de sortir, et sur quelles cryptos.",
   "maphelp.liquidations.how":
-    "Ce sont des données de marché, les mêmes quelle que soit la plateforme à l'écran. Les dernières 24 heures viennent de l'historique public des liquidations d'OKX ; tant que la vue est ouverte, les nouvelles arrivent du flux public en direct de Bybit, qui couvre tous ses marchés. Les totaux sont faits sur la fenêtre choisie, de 1 à 24 heures.",
+    "Ce sont des données de marché. Les dernières 24 heures viennent de l'historique public des liquidations d'OKX ; tant que la vue est ouverte, les nouvelles arrivent du flux public en direct de {venue} : celui de la plateforme à l'écran si elle en a un (Bybit, Binance), sinon celui de Bybit. Les totaux portent sur la fenêtre choisie, de 1 à 24 heures.",
   "maphelp.liquidations.read":
     "Une rafale de liquidations de longs signifie qu'une baisse a forcé des longs à effet de levier à sortir, et que la vente s'est nourrie d'elle-même ; une rafale de shorts, l'inverse. Les gros groupes marquent souvent la fin d'un mouvement brusque, quand la vente ou l'achat forcé s'épuise.",
   "maphelp.liquidations.caveats":
@@ -2594,7 +2594,7 @@ export const messages: Messages = {
   "mapx.oi.value": "Intérêt ouvert",
   "mapx.oi.short": "OI {value}",
   "mapx.oi.tryBybit":
-    "Bybit publie cet historique : passez sur Bybit pour voir l'intérêt ouvert tout de suite.",
+    "Bybit et Binance publient cet historique : passez sur l'une des deux pour voir l'intérêt ouvert tout de suite.",
   "maps.saved.button": "Vues enregistrées",
   "maps.saved.empty":
     "Aucune vue enregistrée. Réglez une vue comme vous l'aimez, puis nommez-la et enregistrez-la ici.",
@@ -2620,7 +2620,7 @@ export const messages: Messages = {
   "mapx.ls.average": "Moyenne {value} % long",
   "mapx.ls.change": "{value} pts 24h",
   "mapx.ls.note":
-    "La part des comptes Bybit en long et en short sur ses marchés les plus actifs, quelle que soit la plateforme à l'écran (Bybit la publie ; les autres non).",
+    "La part des comptes {venue} acheteurs et vendeurs sur ses marchés les plus actifs. Bybit et Binance la publient ; sur les autres plateformes, celle de Bybit est affichée.",
   "mapx.corr.title": "Corrélation",
   "mapx.corr.average": "Moyenne {value}",
   "mapx.corr.loosest": "Les moins liés à {base}",

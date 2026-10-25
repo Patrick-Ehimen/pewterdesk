@@ -428,6 +428,7 @@ export function LongShortMap({
   progress,
   loader,
   error,
+  source,
   onTrade,
 }: {
   rows: readonly LongShortRow[];
@@ -436,6 +437,8 @@ export function LongShortMap({
   progress: { done: number; total: number };
   loader?: ReactNode;
   error?: string;
+  /** The venue whose ratio it is, by name. */
+  source: string;
   onTrade: (row: LongShortRow) => void;
 }) {
   const change = (r: LongShortRow) => (r.dayAgo === undefined ? 0 : r.long - r.dayAgo);
@@ -475,7 +478,7 @@ export function LongShortMap({
           </>
         )
       }
-      note={t("mapx.ls.note")}
+      note={t("mapx.ls.note", { venue: source })}
       state={
         error ? (
           <MapState error={error} />

@@ -2388,23 +2388,23 @@ export const en = {
   "maphelp.oi.what":
     "Each busy market's change in price against its change in open interest over the window, as dots in four quadrants.",
   "maphelp.oi.how":
-    "Open interest is the number of contracts open. Bybit publishes an hourly history; on Hyperliquid and Aster the app samples open interest every 5 minutes while it runs, and shows the change so far until the window is covered. Dots are sized by open interest.",
+    "Open interest is the number of contracts open. Bybit and Binance publish an hourly history; on Hyperliquid and Aster the app samples open interest every 5 minutes while it runs, and shows the change so far until the window is covered. Dots are sized by open interest.",
   "maphelp.oi.read":
     "Price up with open interest up: new longs opening. Price up with it down: shorts closing (a squeeze). Price down with it up: new shorts. Both down: longs closing or being liquidated. Moves backed by new positions tend to carry further than ones made by positions closing.",
   "maphelp.oi.caveats":
     "Open interest doesn't say who is long or short, only how much is open. The quadrants are a reading, not a fact about any trader. On venues sampled by the app, the history starts when the app starts.",
   "maphelp.ls.what":
-    "The share of Bybit accounts holding long or short positions on its busiest markets, now and a day ago.",
+    "The share of {venue} accounts holding long or short positions on its busiest markets, now and a day ago.",
   "maphelp.ls.how":
-    "Bybit publishes the ratio of accounts long against accounts short for each market. It's read from Bybit whichever venue is on screen, since the other venues don't publish it. It counts accounts, not position sizes.",
+    "{venue} publishes the ratio of accounts long against accounts short for each market. Bybit and Binance publish it, so on either it's that venue's own; on a venue that doesn't, it's read from Bybit. It counts accounts, not position sizes.",
   "maphelp.ls.read":
     "A very high share of long accounts means the crowd is leaning one way, which traders often read the other way: a crowded side can be squeezed. A big shift over the day shows sentiment turning.",
   "maphelp.ls.caveats":
-    "One large account with a big position counts the same as one small account, so this shows crowd sentiment, not where the money is. It covers Bybit only.",
+    "One large account with a big position counts the same as one small account, so this shows crowd sentiment, not where the money is. It covers {venue} only.",
   "maphelp.liquidations.what":
     "Liquidations across the market as they happen, and the totals for the window: how many longs and shorts were forced out, and in which coins.",
   "maphelp.liquidations.how":
-    "These are market data, the same whichever venue is on screen. The last 24 hours come from OKX's public liquidation history; while the view is open, new ones arrive from Bybit's public live feed, which covers every Bybit market. Totals are added up for the window you pick, 1 to 24 hours.",
+    "These are market data. The last 24 hours come from OKX's public liquidation history; while the view is open, new ones arrive from {venue}'s public live feed - the venue on screen's where it has one (Bybit, Binance), Bybit's otherwise. Totals are added up for the window you pick, 1 to 24 hours.",
   "maphelp.liquidations.read":
     "A burst of long liquidations means a drop forced leveraged longs out, and selling fed on itself; a burst of shorts, the opposite. Large clusters often mark the end of a sharp move, once the forced selling or buying runs out.",
   "maphelp.liquidations.caveats":
@@ -2500,7 +2500,7 @@ export const en = {
   "mapx.oi.value": "Open interest",
   "mapx.oi.short": "OI {value}",
   "mapx.oi.tryBybit":
-    "Bybit publishes this history: switch to it to see open interest straight away.",
+    "Bybit and Binance publish this history: switch to either to see open interest straight away.",
   "maps.saved.button": "Saved views",
   "maps.saved.empty":
     "No saved views yet. Set a view up the way you like it, then name it and save it here.",
@@ -2526,7 +2526,7 @@ export const en = {
   "mapx.ls.average": "Average {value}% long",
   "mapx.ls.change": "{value} pts 24h",
   "mapx.ls.note":
-    "The share of Bybit accounts holding longs and shorts on its busiest markets, whichever venue is on screen (Bybit publishes it; the other venues don't).",
+    "The share of {venue} accounts holding longs and shorts on its busiest markets. Bybit and Binance publish it; on other venues, Bybit's is shown.",
   "mapx.corr.title": "Correlation",
   "mapx.corr.average": "Average {value}",
   "mapx.corr.loosest": "Least tied to {base}",

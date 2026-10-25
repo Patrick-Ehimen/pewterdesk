@@ -123,6 +123,7 @@ const PACE_MS = 150;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const NONE: string[] = [];
+const NO_IDS: { id: string; base: string }[] = [];
 
 /** The venues that publish an hourly open-interest history. */
 export const OI_HISTORY_VENUES: readonly VenueId[] = ["bybit", "binance"];
@@ -188,36 +189,47 @@ export function useOiHistory(
   return state.venue === venue ? state.samples : new Map<string, { time: number; oi: number }[]>();
 }
 
-/** Bybit markets whose long / short ratio is read. */
+/** Markets whose long / short ratio is read. */
 const LS_MARKETS = 30;
 
+/** The venues that publish an account long / short ratio. */
+export const LONG_SHORT_VENUES: readonly VenueId[] = ["bybit", "binance"];
+
 /**
- * Bybit's share of accounts long on its busiest USDT perps, now and a day
- * ago, refreshed every few minutes. Only Bybit publishes it, so it's read
- * from Bybit whichever venue is on screen.
+ * Whose long / short ratio the Maps page reads: the venue on screen's, where
+ * it publishes one, and Bybit's on a venue that doesn't.
  */
-export function useLongShort(enabled: boolean) {
-  const summaries = summariesOf(useMarketSummaries("bybit", enabled));
-  const bybitMarkets = marketsOf(useMarkets(enabled ? "bybit" : undefined));
+export const longShortSource = (venue: VenueId): VenueId =>
+  LONG_SHORT_VENUES.includes(venue) ? venue : "bybit";
+
+/**
+ * `source`'s share of accounts long on its busiest USDT perps, now and a
+ * day ago, refreshed every few minutes (see `longShortSource`).
+ */
+export function useLongShort(enabled: boolean, source: VenueId) {
+  const summaries = summariesOf(useMarketSummaries(source, enabled));
+  const sourceMarkets = marketsOf(useMarkets(enabled ? source : undefined));
   const [state, setState] = useState<{
     rows: LongShortRow[];
     done: number;
     total: number;
     error?: string;
   }>({ rows: [], done: 0, total: 0 });
-  // Ranked once, from the first summaries to arrive.
-  const [ids, setIds] = useState<{ id: string; base: string }[]>([]);
+  // Ranked once per source, from the first summaries to arrive.
+  const [ranked, setRanked] = useState<{ source: VenueId; ids: { id: string; base: string }[] }>();
+  const ids = ranked?.source === source ? ranked.ids : NO_IDS;
   useEffect(() => {
-    if (!summaries || !bybitMarkets || ids.length > 0) return;
-    const bases = cryptoBases(bybitMarkets);
-    setIds(
-      [...summaries]
-        .filter((s) => s.market.endsWith("USDT") && bases.has(s.market))
-        .sort((a, b) => Number(b.dayVolume) - Number(a.dayVolume))
-        .slice(0, LS_MARKETS)
-        .map((s) => ({ id: s.market, base: bases.get(s.market) ?? s.market })),
-    );
-  }, [summaries, bybitMarkets, ids.length]);
+    if (!summaries || !sourceMarkets || ranked?.source === source) return;
+    const bases = cryptoBases(sourceMarkets);
+    const top = [...summaries]
+      .filter((s) => s.market.endsWith("USDT") && bases.has(s.market))
+      .sort((a, b) => Number(b.dayVolume) - Number(a.dayVolume))
+      .slice(0, LS_MARKETS)
+      .map((s) => ({ id: s.market, base: bases.get(s.market) ?? s.market }));
+    if (top.length === 0) return;
+    setRanked({ source, ids: top });
+    setState({ rows: [], done: 0, total: top.length });
+  }, [summaries, sourceMarkets, ranked, source]);
   useEffect(() => {
     if (!enabled || ids.length === 0) return;
     let live = true;
@@ -228,7 +240,7 @@ export function useLongShort(enabled: boolean) {
       for (const [i, { id, base }] of ids.entries()) {
         if (!live) return;
         try {
-          const points = await venueClient.longShortRatio("bybit", id, 25);
+          const points = await venueClient.longShortRatio(source, id, 25);
           const last = points[points.length - 1];
           if (last) {
             rows.push({
@@ -258,7 +270,7 @@ export function useLongShort(enabled: boolean) {
       live = false;
       clearInterval(id);
     };
-  }, [enabled, ids]);
+  }, [enabled, ids, source]);
   return state;
 }
 

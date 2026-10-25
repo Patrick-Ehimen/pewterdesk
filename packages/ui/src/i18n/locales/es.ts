@@ -2466,23 +2466,23 @@ export const messages: Messages = {
   "maphelp.oi.what":
     "El cambio de precio de cada mercado activo frente a su cambio de interés abierto en la ventana, como puntos en cuatro cuadrantes.",
   "maphelp.oi.how":
-    "El interés abierto es el número de contratos abiertos. Bybit publica un historial horario; en Hyperliquid y Aster la app lo muestrea cada 5 minutos mientras funciona, y muestra el cambio hasta ahora hasta cubrir la ventana. Los puntos se dimensionan por interés abierto.",
+    "El interés abierto es el número de contratos abiertos. Bybit y Binance publican un historial por horas; en Hyperliquid y Aster la app toma una muestra cada 5 minutos mientras se ejecuta y muestra el cambio hasta ahora hasta cubrir la ventana. Los puntos se dimensionan por interés abierto.",
   "maphelp.oi.read":
     "Precio arriba con interés abierto arriba: se abren largos. Precio arriba con interés abajo: cortos cerrando (un squeeze). Precio abajo con interés arriba: nuevos cortos. Ambos abajo: largos cerrando o liquidados. Los movimientos respaldados por posiciones nuevas suelen llegar más lejos que los causados por cierres.",
   "maphelp.oi.caveats":
     "El interés abierto no dice quién está largo o corto, solo cuánto hay abierto. Los cuadrantes son una lectura, no un hecho sobre ningún trader. En las plataformas que muestrea la app, el historial empieza cuando arranca la app.",
   "maphelp.ls.what":
-    "La proporción de cuentas de Bybit con posiciones largas o cortas en sus mercados más activos, ahora y hace un día.",
+    "La proporción de cuentas de {venue} con posiciones largas o cortas en sus mercados más activos, ahora y hace un día.",
   "maphelp.ls.how":
-    "Bybit publica la proporción de cuentas largas frente a cortas de cada mercado. Se lee de Bybit sea cual sea la plataforma en pantalla, ya que las demás no la publican. Cuenta cuentas, no tamaños de posición.",
+    "{venue} publica la relación entre cuentas en largo y cuentas en corto de cada mercado. Bybit y Binance la publican, así que en cualquiera de las dos es la propia; en un exchange que no la publica, se lee de Bybit. Cuenta cuentas, no tamaños de posición.",
   "maphelp.ls.read":
     "Una proporción muy alta de cuentas largas significa que la multitud se inclina hacia un lado, algo que los traders suelen leer al revés: el lado saturado puede sufrir un squeeze. Un gran cambio en el día muestra que el sentimiento está girando.",
   "maphelp.ls.caveats":
-    "Una cuenta grande con una posición enorme cuenta igual que una cuenta pequeña, así que esto muestra el sentimiento de la multitud, no dónde está el dinero. Solo cubre Bybit.",
+    "Una cuenta grande con una posición enorme cuenta igual que una cuenta pequeña, así que esto muestra el sentimiento general, no dónde está el dinero. Solo abarca {venue}.",
   "maphelp.liquidations.what":
     "Las liquidaciones del mercado en el momento en que ocurren, y los totales de la ventana: cuántos largos y cortos fueron forzados a salir, y en qué monedas.",
   "maphelp.liquidations.how":
-    "Son datos de mercado, iguales sea cual sea la plataforma en pantalla. Las últimas 24 horas vienen del historial público de liquidaciones de OKX; mientras la vista está abierta, las nuevas llegan del feed público en vivo de Bybit, que cubre todos sus mercados. Los totales se suman para la ventana que elijas, de 1 a 24 horas.",
+    "Son datos de mercado. Las últimas 24 horas vienen del historial público de liquidaciones de OKX; mientras la vista está abierta, las nuevas llegan del feed público en vivo de {venue}: el del exchange en pantalla si tiene uno (Bybit, Binance) y, si no, el de Bybit. Los totales se suman para la ventana que elijas, de 1 a 24 horas.",
   "maphelp.liquidations.read":
     "Una ráfaga de liquidaciones de largos significa que una caída forzó la salida de largos apalancados y la venta se alimentó a sí misma; una de cortos, lo contrario. Los grandes grupos suelen marcar el final de un movimiento brusco, cuando se agota la venta o compra forzada.",
   "maphelp.liquidations.caveats":
@@ -2578,7 +2578,7 @@ export const messages: Messages = {
   "mapx.oi.value": "Interés abierto",
   "mapx.oi.short": "OI {value}",
   "mapx.oi.tryBybit":
-    "Bybit publica este historial: cambia a Bybit para ver el interés abierto al momento.",
+    "Bybit y Binance publican este historial: cambia a cualquiera de los dos para ver el interés abierto al instante.",
   "maps.saved.button": "Vistas guardadas",
   "maps.saved.empty":
     "Aún no hay vistas guardadas. Configura una vista a tu gusto, ponle nombre y guárdala aquí.",
@@ -2604,7 +2604,7 @@ export const messages: Messages = {
   "mapx.ls.average": "Media {value}% en largo",
   "mapx.ls.change": "{value} pts 24h",
   "mapx.ls.note":
-    "La proporción de cuentas de Bybit en largo y en corto en sus mercados más activos, sea cual sea el exchange en pantalla (Bybit lo publica; los demás no).",
+    "La proporción de cuentas de {venue} en largo y en corto en sus mercados más activos. Bybit y Binance la publican; en otros exchanges se muestra la de Bybit.",
   "mapx.corr.title": "Correlación",
   "mapx.corr.average": "Media {value}",
   "mapx.corr.loosest": "Menos ligados a {base}",

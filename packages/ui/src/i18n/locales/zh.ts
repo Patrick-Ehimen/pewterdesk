@@ -2338,22 +2338,22 @@ export const messages: Messages = {
     "费率每个周期都会变，当前费率在支付前只是估计。套利还要承担手续费、平台间价差，以及一边被强平的风险。",
   "maphelp.oi.what": "每个活跃市场在窗口内的价格变化与持仓量变化对比，以四个象限中的点显示。",
   "maphelp.oi.how":
-    "持仓量是未平仓合约的数量。Bybit 公布每小时的历史；在 Hyperliquid 和 Aster 上，应用在运行期间每 5 分钟采样一次，在覆盖整个窗口之前显示目前为止的变化。点的大小代表持仓量。",
+    "持仓量是未平仓合约的数量。Bybit 和 Binance 公布每小时的历史；在 Hyperliquid 和 Aster 上，应用在运行期间每 5 分钟采样一次，在覆盖整个窗口之前显示目前为止的变化。点的大小代表持仓量。",
   "maphelp.oi.read":
     "价格涨、持仓量涨：新多头入场。价格涨、持仓量跌：空头平仓（逼空）。价格跌、持仓量涨：新空头入场。两者都跌：多头平仓或被强平。有新仓位支撑的行情，通常比平仓带来的行情走得更远。",
   "maphelp.oi.caveats":
     "持仓量不说明谁做多谁做空，只说明总共有多少未平仓。象限是一种解读，不是关于某个交易者的事实。在由应用采样的平台上，历史从应用启动时开始。",
-  "maphelp.ls.what": "Bybit 最活跃市场中持有多头或空头仓位的账户占比，包括现在和一天前。",
+  "maphelp.ls.what": "{venue} 最活跃市场中持有多头或空头仓位的账户占比，包括现在和一天前。",
   "maphelp.ls.how":
-    "Bybit 公布每个市场多头账户与空头账户的比例。其他平台不公布，所以无论屏幕上是哪个平台，都从 Bybit 读取。它统计的是账户数，不是仓位大小。",
+    "{venue} 公布每个市场多头账户与空头账户的比例。Bybit 和 Binance 都公布该数据，所以在这两个平台上读取的是平台自己的数据；在不公布的平台上，从 Bybit 读取。它统计的是账户数，不是仓位大小。",
   "maphelp.ls.read":
     "多头账户占比很高，说明大众倒向一边，交易者常常反向解读：拥挤的一边可能被挤压。一天内的大幅变化说明情绪正在转向。",
   "maphelp.ls.caveats":
-    "一个持有巨额仓位的大账户与一个小账户算作同样的一个，所以这里显示的是大众情绪，而不是资金在哪里。只覆盖 Bybit。",
+    "一个持有巨额仓位的大账户与一个小账户算作同样的一个，所以这里显示的是大众情绪，而不是资金在哪里。只覆盖 {venue}。",
   "maphelp.liquidations.what":
     "全市场发生中的强平，以及窗口内的合计：多少多头和空头被强制出局，涉及哪些币。",
   "maphelp.liquidations.how":
-    "这是市场数据，无论屏幕上是哪个平台都一样。最近 24 小时来自 OKX 的公开强平历史；视图打开期间，新的强平来自覆盖 Bybit 全部市场的公开实时推送。合计按你选择的窗口（1 到 24 小时）计算。",
+    "这是市场数据。最近 24 小时来自 OKX 的公开强平历史；视图打开期间，新的强平来自 {venue} 的公开实时推送：屏幕上的平台有推送时用它的（Bybit、Binance），否则用 Bybit 的。合计按你选择的窗口（1 到 24 小时）计算。",
   "maphelp.liquidations.read":
     "多头强平集中爆发，说明下跌把加杠杆的多头逼出场，抛售自我强化；空头集中爆发则相反。大规模的集中强平常常标志着急剧行情的结束，因为被迫的买卖已经耗尽。",
   "maphelp.liquidations.caveats":
@@ -2442,7 +2442,7 @@ export const messages: Messages = {
   "mapx.oi.oi": "持仓量 {window}",
   "mapx.oi.value": "持仓量",
   "mapx.oi.short": "OI {value}",
-  "mapx.oi.tryBybit": "Bybit 公布该历史数据：切换到 Bybit 即可立即查看持仓量。",
+  "mapx.oi.tryBybit": "Bybit 和 Binance 公布该历史数据：切换到其中任一平台即可立即查看持仓量。",
   "maps.saved.button": "已保存的视图",
   "maps.saved.empty": "还没有保存的视图。按你的喜好设置好视图，然后命名并保存在这里。",
   "maps.saved.name": "视图名称",
@@ -2466,7 +2466,7 @@ export const messages: Messages = {
   "mapx.ls.average": "平均 {value}% 做多",
   "mapx.ls.change": "24小时 {value} 个百分点",
   "mapx.ls.note":
-    "Bybit 最活跃市场中持有多头和空头的账户比例，无论屏幕上是哪个交易所（只有 Bybit 公布该数据）。",
+    "{venue} 最活跃市场中持有多头和空头的账户比例。Bybit 和 Binance 公布该数据；在其他平台上显示 Bybit 的数据。",
   "mapx.corr.title": "相关性",
   "mapx.corr.average": "平均 {value}",
   "mapx.corr.loosest": "与 {base} 相关性最低",

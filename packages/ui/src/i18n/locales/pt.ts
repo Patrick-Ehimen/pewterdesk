@@ -2455,23 +2455,23 @@ export const messages: Messages = {
   "maphelp.oi.what":
     "A variação de preço de cada mercado ativo contra a sua variação de open interest na janela, como pontos em quatro quadrantes.",
   "maphelp.oi.how":
-    "O open interest é o número de contratos abertos. A Bybit publica um histórico horário; na Hyperliquid e na Aster o app o amostra a cada 5 minutos enquanto roda, e mostra a variação até agora até cobrir a janela. Os pontos são dimensionados pelo open interest.",
+    "O interesse aberto é o número de contratos em aberto. A Bybit e a Binance publicam um histórico por hora; na Hyperliquid e na Aster o app registra o interesse aberto a cada 5 minutos enquanto roda e mostra a variação até agora, até cobrir a janela. Os pontos são dimensionados pelo interesse aberto.",
   "maphelp.oi.read":
     "Preço subindo com open interest subindo: novos comprados abrindo. Preço subindo com ele caindo: vendidos fechando (um squeeze). Preço caindo com ele subindo: novos vendidos. Os dois caindo: comprados fechando ou sendo liquidados. Movimentos sustentados por posições novas tendem a ir mais longe que os causados por fechamentos.",
   "maphelp.oi.caveats":
     "O open interest não diz quem está comprado ou vendido, só quanto está aberto. Os quadrantes são uma leitura, não um fato sobre algum trader. Nas plataformas amostradas pelo app, o histórico começa quando o app é aberto.",
   "maphelp.ls.what":
-    "A fração de contas da Bybit com posições compradas ou vendidas nos seus mercados mais ativos, agora e há um dia.",
+    "A parcela de contas da {venue} com posições compradas ou vendidas nos seus mercados mais ativos, agora e há um dia.",
   "maphelp.ls.how":
-    "A Bybit publica a proporção de contas compradas contra vendidas em cada mercado. Ela é lida da Bybit qualquer que seja a plataforma na tela, já que as outras não a publicam. Conta contas, não tamanhos de posição.",
+    "A {venue} publica a razão entre contas compradas e contas vendidas de cada mercado. A Bybit e a Binance a publicam, então em qualquer uma delas é a da própria exchange; numa exchange que não publica, é lida da Bybit. Conta contas, não tamanhos de posição.",
   "maphelp.ls.read":
     "Uma fração muito alta de contas compradas indica que a multidão pende para um lado, o que traders costumam ler ao contrário: o lado lotado pode sofrer um squeeze. Uma grande mudança no dia mostra o sentimento virando.",
   "maphelp.ls.caveats":
-    "Uma conta grande com uma posição enorme conta o mesmo que uma conta pequena, então isto mostra o sentimento da multidão, não onde está o dinheiro. Cobre só a Bybit.",
+    "Uma conta grande com uma posição enorme conta o mesmo que uma conta pequena, então isto mostra o sentimento geral, não onde está o dinheiro. Cobre apenas a {venue}.",
   "maphelp.liquidations.what":
     "As liquidações do mercado à medida que acontecem, e os totais da janela: quantos comprados e vendidos foram forçados a sair, e em quais moedas.",
   "maphelp.liquidations.how":
-    "São dados de mercado, iguais qualquer que seja a plataforma na tela. As últimas 24 horas vêm do histórico público de liquidações da OKX; enquanto a visão está aberta, as novas chegam do feed público ao vivo da Bybit, que cobre todos os seus mercados. Os totais são somados na janela escolhida, de 1 a 24 horas.",
+    "São dados de mercado. As últimas 24 horas vêm do histórico público de liquidações da OKX; com a visão aberta, as novas chegam do feed público ao vivo da {venue}: o da exchange na tela, se ela tiver um (Bybit, Binance), e o da Bybit caso contrário. Os totais são somados para a janela que você escolher, de 1 a 24 horas.",
   "maphelp.liquidations.read":
     "Uma rajada de liquidações de comprados indica que uma queda forçou comprados alavancados a sair e a venda alimentou a si mesma; de vendidos, o contrário. Grandes grupos costumam marcar o fim de um movimento brusco, quando a venda ou compra forçada se esgota.",
   "maphelp.liquidations.caveats":
@@ -2567,7 +2567,7 @@ export const messages: Messages = {
   "mapx.oi.value": "Open interest",
   "mapx.oi.short": "OI {value}",
   "mapx.oi.tryBybit":
-    "A Bybit publica esse histórico: mude para a Bybit para ver o open interest na hora.",
+    "A Bybit e a Binance publicam este histórico: mude para qualquer uma delas para ver o interesse aberto na hora.",
   "maps.saved.button": "Visões salvas",
   "maps.saved.empty":
     "Nenhuma visão salva ainda. Ajuste uma visão do seu jeito, dê um nome e salve aqui.",
@@ -2593,7 +2593,7 @@ export const messages: Messages = {
   "mapx.ls.average": "Média {value}% long",
   "mapx.ls.change": "{value} pts 24h",
   "mapx.ls.note":
-    "A parcela de contas da Bybit em long e em short nos seus mercados mais ativos, qualquer que seja a corretora na tela (a Bybit publica; as outras não).",
+    "A parcela de contas da {venue} compradas e vendidas nos seus mercados mais ativos. A Bybit e a Binance a publicam; nas outras exchanges, mostra-se a da Bybit.",
   "mapx.corr.title": "Correlação",
   "mapx.corr.average": "Média {value}",
   "mapx.corr.loosest": "Menos ligados a {base}",
