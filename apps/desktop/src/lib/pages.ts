@@ -8,6 +8,8 @@ export const PAGES = [
   "venues",
   "news",
   "ai",
+  // Last, so it takes Cmd+9 and the pages before it keep their shortcuts.
+  "bots",
   "settings",
 ] as const;
 export type Page = (typeof PAGES)[number];

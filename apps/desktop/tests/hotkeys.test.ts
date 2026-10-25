@@ -48,8 +48,10 @@ describe("hotkeys", () => {
       type: "page",
       page: MENU_PAGES[last - 1],
     });
-    // No page that far down the menu.
-    expect(hotkeyFor(press("9", { metaKey: true }), false)).toBeUndefined();
+    // Cmd+9 is the last a digit can reach; it's a page only while the menu has nine.
+    expect(hotkeyFor(press("9", { metaKey: true }), false)).toEqual(
+      MENU_PAGES[8] && { type: "page", page: MENU_PAGES[8] },
+    );
     expect(pageRows().map((r) => r.page)).toEqual(MENU_PAGES);
     expect(pageRows()[0]?.keys).toEqual(["mod", "1"]);
   });

@@ -4,6 +4,7 @@
 
 import { type Locale, languageName, type MenuOption, type RowMode, t } from "@pewterdesk/ui";
 import {
+  LuBot,
   LuBriefcaseBusiness,
   LuChartCandlestick,
   LuLandmark,
@@ -62,6 +63,7 @@ const PAGE_ICONS = {
   news: LuNewspaper,
   maps: LuOrbit,
   ai: LuSparkles,
+  bots: LuBot,
   settings: LuSettings,
 } as const;
 
