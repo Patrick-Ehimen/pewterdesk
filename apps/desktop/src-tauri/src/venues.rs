@@ -318,9 +318,15 @@ pub async fn subscribe_market_summaries(
     venues: State<'_, Venues>,
     webview: Webview,
     venue: VenueId,
+    mainnet: Option<bool>,
     on_event: Channel<StreamEvent<Vec<MarketSummary>>>,
 ) -> Result<u32, VenueError> {
-    let rx = venues.adapter(venue)?.subscribe_market_summaries().await?;
+    // Binance's mainnet figures, while its market data is Demo Trading's.
+    let rx = if venue == VenueId::Binance && mainnet == Some(true) {
+        venues.binance().subscribe_mainnet_summaries().await?
+    } else {
+        venues.adapter(venue)?.subscribe_market_summaries().await?
+    };
     Ok(venues.forward(rx, on_event, &webview))
 }
 
@@ -346,6 +352,16 @@ pub async fn subscribe_liquidations(
 ) -> Result<u32, VenueError> {
     let rx = venues.adapter(venue)?.subscribe_liquidations().await?;
     Ok(venues.forward(rx, on_event, &webview))
+}
+
+/// Whether Binance's market data comes from Demo Trading's exchange (its own
+/// markets and prices) or mainnet's: the page sets it from the Binance
+/// account on screen. Both are fixed hosts of the adapter's own; accounts
+/// and orders go to their own host whatever this says. Returns whether it
+/// changed.
+#[tauri::command]
+pub fn set_binance_demo_data(venues: State<'_, Venues>, demo: bool) -> bool {
+    venues.binance().set_demo_market_data(demo)
 }
 
 /// A market's hourly open interest over the last `hours` hours, oldest first.

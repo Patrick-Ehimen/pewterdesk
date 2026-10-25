@@ -1,4 +1,5 @@
 import type { Candle, CandleInterval, VenueId } from "@pewterdesk/core";
+import { dataKey } from "./binanceData";
 
 // Candles are public market data, so browser storage is fine. The cache only
 // lets the chart draw at once on launch; the venue's history replaces it a
@@ -14,8 +15,9 @@ const INDEX_KEY = `${PREFIX}index`;
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
+// Binance's Demo Trading candles are kept apart from mainnet's (`dataKey`).
 const seriesKey = (venue: VenueId, market: string, interval: CandleInterval) =>
-  `${PREFIX}${venue}:${interval}:${market}`;
+  `${PREFIX}${dataKey(venue)}:${interval}:${market}`;
 
 const isCandle = (c: unknown): c is Candle =>
   typeof c === "object" &&

@@ -7,6 +7,7 @@
 import type { CandleInterval, VenueId } from "@pewterdesk/core";
 import { RSI_CANDLES, type RsiFrame, rsiNowAndBefore } from "@pewterdesk/ui";
 import { venueClient } from "../api/venueClient";
+import { dataKey } from "./binanceData";
 
 /** RSI(14) for one market: now, and one candle earlier. */
 export interface RsiValue {
@@ -52,7 +53,8 @@ interface Entry {
 }
 
 const entries = new Map<string, Entry>();
-const keyOf = (venue: VenueId, frame: RsiFrame) => `${venue}:${frame}`;
+// Binance's Demo Trading readings are kept apart from mainnet's (`dataKey`).
+const keyOf = (venue: VenueId, frame: RsiFrame) => `${dataKey(venue)}:${frame}`;
 
 function stored(key: string): Pick<Entry, "values" | "fetchedAt"> {
   try {

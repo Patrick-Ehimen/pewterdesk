@@ -23,6 +23,12 @@ pub struct Endpoints {
     pub demo_rest: Option<&'static str>,
     /// Demo Trading's spot host, for a demo key's UID.
     pub demo_spot_rest: Option<&'static str>,
+    /// Demo Trading's stream routes, as `ws_public` and `ws_market`: its
+    /// market data, while a demo account is on screen. Its positioning
+    /// history (`/futures/data/`) answers with no data, so that stays
+    /// mainnet's.
+    pub demo_ws_public: Option<&'static str>,
+    pub demo_ws_market: Option<&'static str>,
 }
 
 pub const MAINNET: Endpoints = Endpoints {
@@ -32,4 +38,6 @@ pub const MAINNET: Endpoints = Endpoints {
     spot_rest: "https://api.binance.com",
     demo_rest: Some("https://demo-fapi.binance.com"),
     demo_spot_rest: Some("https://demo-api.binance.com"),
+    demo_ws_public: Some("wss://demo-fstream.binance.com/public/stream"),
+    demo_ws_market: Some("wss://demo-fstream.binance.com/market/stream"),
 };

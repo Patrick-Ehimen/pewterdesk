@@ -208,3 +208,31 @@ async fn subscribes_to_liquidations() {
     let rx = adapter().subscribe_liquidations().await.unwrap();
     drop(rx);
 }
+
+#[tokio::test]
+#[ignore = "hits Binance mainnet and Demo Trading"]
+async fn demo_market_data_is_demo_tradings_own() {
+    let adapter = adapter();
+    let mainnet = adapter.markets().await.unwrap();
+    assert!(adapter.set_demo_market_data(true));
+    assert!(!adapter.set_demo_market_data(true), "already on");
+    let demo = adapter.markets().await.unwrap();
+    // Demo Trading lists a market set of its own, not mainnet's.
+    assert!(demo.len() > 100);
+    assert_ne!(
+        mainnet.iter().map(|m| &m.id).collect::<Vec<_>>(),
+        demo.iter().map(|m| &m.id).collect::<Vec<_>>()
+    );
+    let mut rx = adapter.subscribe_market_stats("BTCUSDT").await.unwrap();
+    let stats = timeout(Duration::from_secs(10), rx.recv())
+        .await
+        .unwrap()
+        .unwrap();
+    assert!(!stats.mark_price.0.is_zero());
+    // Positioning history isn't served on Demo Trading: it stays mainnet's.
+    assert_eq!(
+        adapter.long_short_ratio("BTCUSDT", 2).await.unwrap().len(),
+        2
+    );
+    assert!(adapter.set_demo_market_data(false));
+}

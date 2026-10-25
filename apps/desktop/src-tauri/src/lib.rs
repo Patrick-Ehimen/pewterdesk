@@ -224,6 +224,7 @@ pub fn run() {
             live_trading::set_live_trading,
             live_trading::set_wallet_trading,
             live_trading::set_binance_trading,
+            venues::set_binance_demo_data,
             trading_rules::trading_rules,
             trading_rules::set_trading_rules,
             trading_rules::delete_trading_rules,

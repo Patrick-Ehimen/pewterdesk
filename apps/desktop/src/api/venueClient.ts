@@ -343,8 +343,12 @@ export const venueClient = {
     handlers: StreamHandlers<Candle[]>,
   ) => subscribe("subscribe_candles", { venue, market, interval }, handlers),
 
-  subscribeMarketSummaries: (venue: VenueId, handlers: StreamHandlers<MarketSummary[]>) =>
-    subscribe("subscribe_market_summaries", { venue }, handlers),
+  /** `mainnet`: Binance's mainnet figures even while its market data is Demo Trading's. */
+  subscribeMarketSummaries: (
+    venue: VenueId,
+    handlers: StreamHandlers<MarketSummary[]>,
+    mainnet = false,
+  ) => subscribe("subscribe_market_summaries", { venue, mainnet }, handlers),
 
   subscribeMarketHistory: (venue: VenueId, handlers: StreamHandlers<MarketHistory>) =>
     subscribe("subscribe_market_history", { venue }, handlers),
@@ -543,6 +547,12 @@ export const binanceKeyClient = {
    * check the stored key with Binance again, and refuses if it isn't trade-only.
    */
   setLive: (uid: string, on: boolean) => call<void>("set_binance_trading", { uid, on }),
+
+  /**
+   * Reads Binance's market data from Demo Trading's exchange, which lists
+   * markets and prices of its own, or mainnet's. True if it changed.
+   */
+  setDemoData: (demo: boolean) => call<boolean>("set_binance_demo_data", { demo }),
 };
 
 /** What a coin link is, for its label and icon. Mirrors `LinkKind` in `coin_info.rs`. */

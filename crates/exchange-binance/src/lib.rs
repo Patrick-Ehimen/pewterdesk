@@ -39,6 +39,7 @@ mod wire;
 mod ws;
 
 use std::collections::{HashMap, HashSet};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -394,11 +395,51 @@ impl Rest {
             self.signed_get::<Vec<account::WireOrder>>("/fapi/v1/openOrders", none, creds),
             self.signed_get::<account::AlgoOrders>("/fapi/v1/openAlgoOrders", none, creds),
         )?;
+        // Where Binance gave a position no initial margin (Demo Trading can
+        // send a placeholder), its leverage works it out: one read per such
+        // market, none otherwise. A failed read leaves the margin unsaid.
+        let mut rows = Vec::with_capacity(positions.len());
+        for row in positions {
+            let mut leverage = None;
+            if account::needs_leverage(&row) {
+                let symbol = [("symbol", row.symbol.clone())];
+                if let Ok(configs) = self
+                    .signed_get::<Vec<account::SymbolConfig>>(
+                        "/fapi/v1/symbolConfig",
+                        &symbol,
+                        creds,
+                    )
+                    .await
+                {
+                    leverage = configs
+                        .iter()
+                        .find(|c| c.symbol == row.symbol)
+                        .map(|c| c.leverage);
+                }
+                // Not there: the older position list still carries it.
+                if leverage.is_none() {
+                    if let Ok(rows) = self
+                        .signed_get::<Vec<account::WireLeverage>>(
+                            "/fapi/v2/positionRisk",
+                            &symbol,
+                            creds,
+                        )
+                        .await
+                    {
+                        leverage = rows
+                            .iter()
+                            .find(|r| r.symbol == row.symbol)
+                            .map(|r| r.leverage);
+                    }
+                }
+            }
+            rows.push((row, leverage));
+        }
         Ok(account::snapshot(
             id,
             summary,
             config,
-            positions,
+            rows,
             orders,
             algos.into_vec(),
             now_ms(),
@@ -609,9 +650,15 @@ pub struct BinanceAdapter {
     spot: Rest,
     demo_spot: Option<Rest>,
     endpoints: &'static Endpoints,
-    /// Price decimals, from `exchangeInfo`: fetched on first use and
-    /// refreshed whenever `markets` runs.
-    meta: tokio::sync::Mutex<Option<Arc<wire::Meta>>>,
+    /// Whether market data (markets, books, trades, candles, stats,
+    /// summaries) comes from Demo Trading's hosts rather than mainnet's: set
+    /// while a Demo Trading account is the one on screen, whose exchange has
+    /// markets and prices of its own. Accounts and orders always go to their
+    /// own host (`rest_for`), whatever this says.
+    demo_data: AtomicBool,
+    /// Price decimals, from `exchangeInfo`, and whether they're Demo
+    /// Trading's: fetched on first use and refreshed whenever `markets` runs.
+    meta: tokio::sync::Mutex<Option<(bool, Arc<wire::Meta>)>>,
     /// Where account reads take the stored API key from; unset, account
     /// data is `Unsupported`.
     keys: Option<Arc<dyn KeySource>>,
@@ -643,6 +690,7 @@ impl BinanceAdapter {
                 .demo_spot_rest
                 .map(|base| Rest::new(&http, base, SPOT_TIME)),
             endpoints,
+            demo_data: AtomicBool::new(false),
             meta: tokio::sync::Mutex::new(None),
             keys: None,
         })
@@ -698,6 +746,185 @@ impl BinanceAdapter {
         })
     }
 
+    /// Reads market data from Demo Trading's hosts (`true`) or mainnet's. A
+    /// network without Demo Trading stays on mainnet. Returns whether it
+    /// changed: streams opened before keep their host until reopened.
+    pub fn set_demo_market_data(&self, demo: bool) -> bool {
+        let demo = demo && self.demo.is_some() && self.endpoints.demo_ws_market.is_some();
+        self.demo_data.swap(demo, Ordering::Relaxed) != demo
+    }
+
+    fn demo_data(&self) -> bool {
+        self.demo_data.load(Ordering::Relaxed)
+    }
+
+    /// The host market data comes from (see `demo_data`).
+    fn data(&self) -> &Rest {
+        match (&self.demo, self.demo_data()) {
+            (Some(demo), true) => demo,
+            _ => &self.rest,
+        }
+    }
+
+    fn ws_public(&self) -> &'static str {
+        match self.endpoints.demo_ws_public {
+            Some(demo) if self.demo_data() => demo,
+            _ => self.endpoints.ws_public,
+        }
+    }
+
+    fn ws_market(&self) -> &'static str {
+        match self.endpoints.demo_ws_market {
+            Some(demo) if self.demo_data() => demo,
+            _ => self.endpoints.ws_market,
+        }
+    }
+
+    /// `market`'s book on mainnet or Demo Trading: the diff stream, then a
+    /// REST snapshot to apply it to (the diffs that came in meanwhile are
+    /// queued), kept locally and sent whole - the top levels - at most every
+    /// `BOOK_EVERY`.
+    async fn book_stream(
+        &self,
+        demo: bool,
+        market: &str,
+    ) -> Result<mpsc::Receiver<OrderBook>, VenueError> {
+        wire::validate_market(market)?;
+        let (rest, ws) = match (&self.demo, self.endpoints.demo_ws_public) {
+            (Some(rest), Some(ws)) if demo => (rest, ws),
+            _ if demo => return Err(VenueError::Unsupported("Demo Trading on this network")),
+            _ => (&self.rest, self.endpoints.ws_public),
+        };
+        let diffs = ws::subscribe(
+            ws,
+            vec![format!("{}@depth@100ms", wire::stream_name(market))],
+            |push| match serde_json::from_value::<wire::DepthDiff>(push.data) {
+                Ok(diff) => Handled::Emit(diff),
+                Err(_) => Handled::Ignore,
+            },
+        )
+        .await?;
+        let depth = rest.depth(market, BOOK_SNAPSHOT).await?;
+        let mut book = book::Book::default();
+        book.reset(&depth);
+        let first = book.snapshot(market, BOOK_DEPTH);
+        let (tx, rx) = mpsc::channel(4);
+        tokio::spawn(keep_book(rest.clone(), market.to_owned(), book, diffs, tx));
+        Ok(with_first(first, rx))
+    }
+
+    /// Every live market's summary on mainnet, whatever the market data on
+    /// screen is from: for a comparison across venues (the status bar's
+    /// Market movement), where Demo Trading's volume and open interest -
+    /// demo funds - would mean nothing.
+    pub async fn subscribe_mainnet_summaries(
+        &self,
+    ) -> Result<mpsc::Receiver<Vec<MarketSummary>>, VenueError> {
+        self.summaries_on(false).await
+    }
+
+    /// Every live market's summary on mainnet or Demo Trading (see
+    /// `subscribe_market_summaries`).
+    async fn summaries_on(
+        &self,
+        demo: bool,
+    ) -> Result<mpsc::Receiver<Vec<MarketSummary>>, VenueError> {
+        let (rest, ws) = match (&self.demo, self.endpoints.demo_ws_market) {
+            (Some(rest), Some(ws)) if demo => (rest, ws),
+            _ => (&self.rest, self.endpoints.ws_market),
+        };
+        let (info, tickers, marks, intervals) = tokio::try_join!(
+            rest.exchange_info(),
+            rest.tickers(None),
+            rest.marks(None),
+            rest.funding_intervals(),
+        )?;
+        let live = live_markets(&info);
+        let meta = Arc::new(wire::meta(&info));
+        if demo == self.demo_data() {
+            *self.meta.lock().await = Some((demo, Arc::clone(&meta)));
+        }
+        let order = by_volume(&live, &tickers);
+        let mut tickers: HashMap<String, Ticker> = tickers
+            .into_iter()
+            .filter(|t| live.contains(&t.symbol))
+            .map(|t| (t.symbol.clone(), t))
+            .collect();
+        let mut marks: HashMap<String, Mark> = marks
+            .into_iter()
+            .filter(|m| live.contains(&m.symbol))
+            .map(|m| (m.symbol.clone(), m))
+            .collect();
+        let open_interest: Arc<Mutex<HashMap<String, Decimal>>> = Arc::default();
+        let first = wire::market_summaries(
+            &order,
+            &tickers,
+            &marks,
+            &open_interest.lock().unwrap(),
+            &intervals,
+            &meta.scales,
+        );
+
+        // Walks the markets for open interest until the stream is dropped.
+        {
+            let weak = Arc::downgrade(&open_interest);
+            let rest = rest.clone();
+            let order = order.clone();
+            tokio::spawn(async move {
+                let mut pace = OI_PACE_FIRST;
+                loop {
+                    for market in &order {
+                        tokio::time::sleep(pace).await;
+                        if weak.strong_count() == 0 {
+                            return;
+                        }
+                        let Ok(oi) = rest.open_interest(market).await else {
+                            continue;
+                        };
+                        let Some(shared) = weak.upgrade() else { return };
+                        shared.lock().unwrap().insert(market.clone(), oi);
+                    }
+                    pace = OI_PACE;
+                }
+            });
+        }
+
+        let mut last_sent = Instant::now();
+        let streams = vec!["!ticker@arr".to_owned(), "!markPrice@arr@1s".to_owned()];
+        let live_rx = ws::subscribe(ws, streams, move |push| {
+            if push.stream == "!ticker@arr" {
+                for t in wire::tickers_from_stream(push.data).unwrap_or_default() {
+                    if live.contains(&t.symbol) {
+                        tickers.insert(t.symbol.clone(), t);
+                    }
+                }
+                return Handled::Ignore;
+            }
+            if !push.stream.starts_with("!markPrice@arr") {
+                return Handled::Ignore;
+            }
+            for m in Mark::from_stream(push.data).unwrap_or_default() {
+                if live.contains(&m.symbol) {
+                    marks.insert(m.symbol.clone(), m);
+                }
+            }
+            if last_sent.elapsed() < SUMMARY_EVERY {
+                return Handled::Ignore;
+            }
+            last_sent = Instant::now();
+            Handled::Emit(wire::market_summaries(
+                &order,
+                &tickers,
+                &marks,
+                &open_interest.lock().unwrap(),
+                &intervals,
+                &meta.scales,
+            ))
+        })
+        .await?;
+        Ok(with_first(first, live_rx))
+    }
+
     /// The futures host for account `id`: Demo Trading's for a demo account.
     fn rest_for(&self, id: &str) -> Result<&Rest, VenueError> {
         if auth::parse_account(id)?.0 {
@@ -742,12 +969,15 @@ impl BinanceAdapter {
     }
 
     async fn meta(&self) -> Result<Arc<wire::Meta>, VenueError> {
+        let demo = self.demo_data();
         let mut meta = self.meta.lock().await;
-        if let Some(meta) = meta.as_ref() {
-            return Ok(Arc::clone(meta));
+        if let Some((of, meta)) = meta.as_ref() {
+            if *of == demo {
+                return Ok(Arc::clone(meta));
+            }
         }
-        let fresh = Arc::new(wire::meta(&self.rest.exchange_info().await?));
-        *meta = Some(Arc::clone(&fresh));
+        let fresh = Arc::new(wire::meta(&self.data().exchange_info().await?));
+        *meta = Some((demo, Arc::clone(&fresh)));
         Ok(fresh)
     }
 
@@ -784,49 +1014,36 @@ impl ExchangeAdapter for BinanceAdapter {
     }
 
     async fn markets(&self) -> Result<Vec<Market>, VenueError> {
-        let info = self.rest.exchange_info().await?;
-        *self.meta.lock().await = Some(Arc::new(wire::meta(&info)));
+        let info = self.data().exchange_info().await?;
+        *self.meta.lock().await = Some((self.demo_data(), Arc::new(wire::meta(&info))));
         Ok(wire::markets(info))
     }
 
     async fn order_book(&self, market: &str) -> Result<OrderBook, VenueError> {
         wire::validate_market(market)?;
-        let depth = self.rest.depth(market, BOOK_SNAPSHOT).await?;
+        let depth = self.data().depth(market, BOOK_SNAPSHOT).await?;
         let mut book = book::Book::default();
         book.reset(&depth);
         Ok(book.snapshot(market, BOOK_DEPTH))
     }
 
-    /// The diff stream, then a REST snapshot to apply it to (the diffs that
-    /// came in meanwhile are queued), kept locally and sent whole - the top
-    /// levels - at most every `BOOK_EVERY`.
     async fn subscribe_order_book(
         &self,
         market: &str,
     ) -> Result<mpsc::Receiver<OrderBook>, VenueError> {
-        wire::validate_market(market)?;
-        let diffs = ws::subscribe(
-            self.endpoints.ws_public,
-            vec![format!("{}@depth@100ms", wire::stream_name(market))],
-            |push| match serde_json::from_value::<wire::DepthDiff>(push.data) {
-                Ok(diff) => Handled::Emit(diff),
-                Err(_) => Handled::Ignore,
-            },
-        )
-        .await?;
-        let depth = self.rest.depth(market, BOOK_SNAPSHOT).await?;
-        let mut book = book::Book::default();
-        book.reset(&depth);
-        let first = book.snapshot(market, BOOK_DEPTH);
-        let (tx, rx) = mpsc::channel(4);
-        tokio::spawn(keep_book(
-            self.rest.clone(),
-            market.to_owned(),
-            book,
-            diffs,
-            tx,
-        ));
-        Ok(with_first(first, rx))
+        self.book_stream(self.demo_data(), market).await
+    }
+
+    /// The book on the exchange `account` trades on - Demo Trading's for a
+    /// demo account - whatever the market data on screen is from: for an
+    /// algo, whose orders are priced off it.
+    async fn subscribe_account_order_book(
+        &self,
+        account: &str,
+        market: &str,
+    ) -> Result<mpsc::Receiver<OrderBook>, VenueError> {
+        let (demo, _) = auth::parse_account(account)?;
+        self.book_stream(demo, market).await
     }
 
     /// Recent aggregate trades over REST start the tape; the `@aggTrade`
@@ -838,7 +1055,7 @@ impl ExchangeAdapter for BinanceAdapter {
     ) -> Result<mpsc::Receiver<Vec<Trade>>, VenueError> {
         wire::validate_market(market)?;
         let recent: Vec<wire::AggTrade> = self
-            .rest
+            .data()
             .get(
                 "/fapi/v1/aggTrades",
                 &[
@@ -853,7 +1070,7 @@ impl ExchangeAdapter for BinanceAdapter {
 
         let id = market.to_owned();
         let live = ws::subscribe(
-            self.endpoints.ws_market,
+            self.ws_market(),
             vec![format!("{}@aggTrade", wire::stream_name(market))],
             move |push| {
                 let Ok(t) = serde_json::from_value::<wire::AggTrade>(push.data) else {
@@ -879,7 +1096,7 @@ impl ExchangeAdapter for BinanceAdapter {
         market: &str,
     ) -> Result<mpsc::Receiver<MarketStats>, VenueError> {
         wire::validate_market(market)?;
-        let rest = &self.rest;
+        let rest = self.data();
         let book_query = [("symbol", market.to_owned())];
         let book = rest.get::<wire::RestBookTicker>("/fapi/v1/ticker/bookTicker", &book_query);
         let (tickers, marks, oi, intervals, book, meta) = tokio::try_join!(
@@ -901,7 +1118,7 @@ impl ExchangeAdapter for BinanceAdapter {
 
         let name = wire::stream_name(market);
         let mut updates = ws::subscribe(
-            self.endpoints.ws_market,
+            self.ws_market(),
             vec![format!("{name}@ticker"), format!("{name}@markPrice@1s")],
             |push| {
                 if push.stream.ends_with("@ticker") {
@@ -921,7 +1138,7 @@ impl ExchangeAdapter for BinanceAdapter {
         )
         .await?;
         let mut mids = ws::subscribe(
-            self.endpoints.ws_public,
+            self.ws_public(),
             vec![format!("{name}@bookTicker")],
             |push| match serde_json::from_value::<wire::BookTicker>(push.data) {
                 Ok(book) => Handled::Emit(book.mid()),
@@ -931,7 +1148,7 @@ impl ExchangeAdapter for BinanceAdapter {
         .await?;
 
         let (tx, rx) = mpsc::channel(16);
-        let rest = self.rest.clone();
+        let rest = self.data().clone();
         let market = market.to_owned();
         tokio::spawn(async move {
             let mut poll = tokio::time::interval(STATS_OI_POLL);
@@ -977,12 +1194,12 @@ impl ExchangeAdapter for BinanceAdapter {
     ) -> Result<mpsc::Receiver<Vec<Candle>>, VenueError> {
         wire::validate_market(market)?;
         let history = self
-            .rest
+            .data()
             .klines(market, interval, CANDLE_HISTORY, None)
             .await?;
         let code = wire::interval_code(interval);
         let live = ws::subscribe(
-            self.endpoints.ws_market,
+            self.ws_market(),
             vec![format!("{}@kline_{code}", wire::stream_name(market))],
             move |push| match serde_json::from_value::<wire::WsKline>(push.data) {
                 Ok(k) if k.k.i == code => Handled::Emit(vec![Candle::from(k.k)]),
@@ -1001,102 +1218,14 @@ impl ExchangeAdapter for BinanceAdapter {
     async fn subscribe_market_summaries(
         &self,
     ) -> Result<mpsc::Receiver<Vec<MarketSummary>>, VenueError> {
-        let rest = &self.rest;
-        let (info, tickers, marks, intervals) = tokio::try_join!(
-            rest.exchange_info(),
-            rest.tickers(None),
-            rest.marks(None),
-            rest.funding_intervals(),
-        )?;
-        let live = live_markets(&info);
-        let meta = Arc::new(wire::meta(&info));
-        *self.meta.lock().await = Some(Arc::clone(&meta));
-        let order = by_volume(&live, &tickers);
-        let mut tickers: HashMap<String, Ticker> = tickers
-            .into_iter()
-            .filter(|t| live.contains(&t.symbol))
-            .map(|t| (t.symbol.clone(), t))
-            .collect();
-        let mut marks: HashMap<String, Mark> = marks
-            .into_iter()
-            .filter(|m| live.contains(&m.symbol))
-            .map(|m| (m.symbol.clone(), m))
-            .collect();
-        let open_interest: Arc<Mutex<HashMap<String, Decimal>>> = Arc::default();
-        let first = wire::market_summaries(
-            &order,
-            &tickers,
-            &marks,
-            &open_interest.lock().unwrap(),
-            &intervals,
-            &meta.scales,
-        );
-
-        // Walks the markets for open interest until the stream is dropped.
-        {
-            let weak = Arc::downgrade(&open_interest);
-            let rest = self.rest.clone();
-            let order = order.clone();
-            tokio::spawn(async move {
-                let mut pace = OI_PACE_FIRST;
-                loop {
-                    for market in &order {
-                        tokio::time::sleep(pace).await;
-                        if weak.strong_count() == 0 {
-                            return;
-                        }
-                        let Ok(oi) = rest.open_interest(market).await else {
-                            continue;
-                        };
-                        let Some(shared) = weak.upgrade() else { return };
-                        shared.lock().unwrap().insert(market.clone(), oi);
-                    }
-                    pace = OI_PACE;
-                }
-            });
-        }
-
-        let mut last_sent = Instant::now();
-        let streams = vec!["!ticker@arr".to_owned(), "!markPrice@arr@1s".to_owned()];
-        let live_rx = ws::subscribe(self.endpoints.ws_market, streams, move |push| {
-            if push.stream == "!ticker@arr" {
-                for t in wire::tickers_from_stream(push.data).unwrap_or_default() {
-                    if live.contains(&t.symbol) {
-                        tickers.insert(t.symbol.clone(), t);
-                    }
-                }
-                return Handled::Ignore;
-            }
-            if !push.stream.starts_with("!markPrice@arr") {
-                return Handled::Ignore;
-            }
-            for m in Mark::from_stream(push.data).unwrap_or_default() {
-                if live.contains(&m.symbol) {
-                    marks.insert(m.symbol.clone(), m);
-                }
-            }
-            if last_sent.elapsed() < SUMMARY_EVERY {
-                return Handled::Ignore;
-            }
-            last_sent = Instant::now();
-            Handled::Emit(wire::market_summaries(
-                &order,
-                &tickers,
-                &marks,
-                &open_interest.lock().unwrap(),
-                &intervals,
-                &meta.scales,
-            ))
-        })
-        .await?;
-        Ok(with_first(first, live_rx))
+        self.summaries_on(self.demo_data()).await
     }
 
     /// Walks the markets busiest first, one market's hourly candles every
     /// `HISTORY_PACE`, then starts over with a fresh volume ranking. A market
     /// whose fetch fails is skipped until the next pass.
     async fn subscribe_market_history(&self) -> Result<mpsc::Receiver<MarketHistory>, VenueError> {
-        let rest = self.rest.clone();
+        let rest = self.data().clone();
         let mut order = rest.markets_by_volume().await?;
 
         let (tx, rx) = mpsc::channel(8);
@@ -1134,7 +1263,7 @@ impl ExchangeAdapter for BinanceAdapter {
     /// most one a second per market (Binance's own throttle).
     async fn subscribe_liquidations(&self) -> Result<mpsc::Receiver<Vec<Liquidation>>, VenueError> {
         ws::subscribe(
-            self.endpoints.ws_market,
+            self.ws_market(),
             vec!["!forceOrder@arr".to_owned()],
             |push| match serde_json::from_value::<wire::ForceOrder>(push.data)
                 .ok()
@@ -1206,7 +1335,7 @@ impl ExchangeAdapter for BinanceAdapter {
             return Ok(Vec::new());
         }
         let candles = self
-            .rest
+            .data()
             .klines(
                 market,
                 interval,
@@ -1233,7 +1362,7 @@ impl ExchangeAdapter for BinanceAdapter {
         let mut from = start_time.max(1);
         for _ in 0..FUNDING_MAX_PAGES {
             let page: Vec<wire::FundingEntry> = self
-                .rest
+                .data()
                 .get(
                     "/fapi/v1/fundingRate",
                     &[

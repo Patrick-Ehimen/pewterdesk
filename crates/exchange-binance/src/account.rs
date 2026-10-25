@@ -90,8 +90,35 @@ pub struct WirePosition {
 pub struct SymbolConfig {
     pub symbol: String,
     /// "CROSSED" or "ISOLATED".
+    #[serde(default)]
     pub margin_type: String,
+    #[serde(deserialize_with = "whole")]
     pub leverage: u32,
+}
+
+/// A row of `GET /fapi/v2/positionRisk?symbol=`, as far as it's read: the
+/// older list, which still carries each position's leverage - asked only
+/// where `symbolConfig` gave none.
+#[derive(Deserialize)]
+pub struct WireLeverage {
+    pub symbol: String,
+    #[serde(deserialize_with = "whole")]
+    pub leverage: u32,
+}
+
+/// A whole number Binance sends as a number on one host and a string on
+/// another (`20` or `"20"`).
+fn whole<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Either {
+        Number(u32),
+        Text(String),
+    }
+    match Either::deserialize(d)? {
+        Either::Number(n) => Ok(n),
+        Either::Text(t) => t.trim().parse().map_err(serde::de::Error::custom),
+    }
 }
 
 /// A row of `GET /fapi/v1/openOrders`.
@@ -184,6 +211,28 @@ pub(crate) fn positive(value: Decimal) -> Option<Decimal> {
     (value.0 > RawDecimal::ZERO).then_some(value)
 }
 
+/// Java's largest long over 10^8: what Binance sends for an amount it has no
+/// figure for. Demo Trading has been seen to send it as a cross position's
+/// initial margin. Anything this large is read as absent, never as money.
+const NO_FIGURE: RawDecimal = RawDecimal::from_parts(4_294_967_295, 2_147_483_647, 0, false, 8);
+
+/// A margin figure that's really one: above zero and short of `NO_FIGURE`.
+fn real(value: Decimal) -> Option<Decimal> {
+    positive(value).filter(|v| v.0 < NO_FIGURE)
+}
+
+/// Whether `row` is an open cross position Binance gave no usable initial
+/// margin for: its leverage (`symbolConfig`) is needed to work it out.
+pub fn needs_leverage(row: &WirePosition) -> bool {
+    !row.position_amt.0.is_zero()
+        && row.isolated_wallet.and_then(real).is_none()
+        && row
+            .position_initial_margin
+            .or(row.initial_margin)
+            .and_then(real)
+            .is_none()
+}
+
 fn side(side: &str) -> Option<Side> {
     match side {
         "BUY" => Some(Side::Buy),
@@ -201,7 +250,9 @@ fn trigger_by(working_type: &str) -> Option<PriceSource> {
 }
 
 /// An open position, or `None` for a market the account holds nothing in.
-pub fn position(row: WirePosition) -> Option<Position> {
+/// `leverage` is the account's on the market, where it was read
+/// (`needs_leverage`); otherwise it's worked out from the margin.
+pub fn position(row: WirePosition, leverage: Option<u32>) -> Option<Position> {
     let amount = row.position_amt.0;
     if amount.is_zero() {
         return None;
@@ -213,21 +264,33 @@ pub fn position(row: WirePosition) -> Option<Position> {
         _ if amount > RawDecimal::ZERO => PositionSide::Long,
         _ => PositionSide::Short,
     };
-    let isolated_wallet = row.isolated_wallet.and_then(positive);
+    let isolated_wallet = row.isolated_wallet.and_then(real);
+    let given = leverage
+        .filter(|&l| l > 0)
+        .map(|l| Decimal(RawDecimal::from(l)));
+    // Its value: Binance's own figure, or the size at the mark without one.
+    let value = row
+        .notional
+        .and_then(|n| positive(Decimal(n.0.abs())))
+        .map(|n| n.0)
+        .or_else(|| positive(Decimal(amount.abs() * row.mark_price.0)).map(|v| v.0));
     let initial = row
         .position_initial_margin
         .or(row.initial_margin)
-        .and_then(positive);
+        .and_then(real)
+        // Without a figure from Binance: the value over the leverage.
+        .or_else(|| match (value, given) {
+            (Some(value), Some(l)) => positive(Decimal((value / l.0).round_dp(8))),
+            _ => None,
+        });
     // Isolated: what was posted to it. Cross: what its value ties up.
     let margin = isolated_wallet.or(initial).unwrap_or_default();
     // Binance's leverage is a whole number: the value over the margin it
     // ties up at that leverage.
-    let leverage = match (row.notional, initial) {
-        (Some(notional), Some(initial)) => {
-            Some(Decimal((notional.0.abs() / initial.0).round())).and_then(positive)
-        }
+    let leverage = given.or_else(|| match (value, initial) {
+        (Some(value), Some(initial)) => positive(Decimal((value / initial.0).round())),
         _ => None,
-    };
+    });
     Some(Position {
         venue: VenueId::Binance,
         market: row.symbol,
@@ -352,7 +415,7 @@ pub fn snapshot(
     address: &str,
     account: WireAccount,
     config: AccountConfig,
-    positions: Vec<WirePosition>,
+    positions: Vec<(WirePosition, Option<u32>)>,
     orders: Vec<WireOrder>,
     algo_orders: Vec<WireAlgoOrder>,
     time: u64,
@@ -366,7 +429,10 @@ pub fn snapshot(
         equity,
         available_margin,
         realized_pnl: None,
-        positions: positions.into_iter().filter_map(position).collect(),
+        positions: positions
+            .into_iter()
+            .filter_map(|(row, leverage)| position(row, leverage))
+            .collect(),
         open_orders,
         time,
     }
@@ -419,7 +485,7 @@ mod tests {
             ]"#,
         )
         .unwrap();
-        let positions: Vec<Position> = rows.into_iter().filter_map(position).collect();
+        let positions: Vec<Position> = rows.into_iter().filter_map(|r| position(r, None)).collect();
         assert_eq!(positions.len(), 2);
         let long = &positions[0];
         assert_eq!((long.side, long.size), (PositionSide::Long, dec("0.010")));
@@ -433,6 +499,64 @@ mod tests {
         assert_eq!(short.margin, dec("240"));
         assert_eq!(short.leverage, Some(dec("20")));
         assert_eq!(short.liquidation_price, None);
+    }
+
+    #[test]
+    fn leverage_reads_as_a_number_or_a_string() {
+        for raw in [
+            r#"[{"symbol":"BTCUSDT","marginType":"CROSSED","isAutoAddMargin":"false","leverage":20,"maxNotionalValue":"1000000"}]"#,
+            r#"[{"symbol":"BTCUSDT","marginType":"CROSSED","leverage":"20"}]"#,
+            r#"[{"symbol":"BTCUSDT","leverage":"20"}]"#,
+        ] {
+            let rows: Vec<SymbolConfig> = serde_json::from_str(raw).unwrap();
+            assert_eq!(rows[0].leverage, 20, "{raw}");
+        }
+        let v2: Vec<WireLeverage> = serde_json::from_str(
+            r#"[{"symbol":"BTCUSDT","positionAmt":"0.002","leverage":"10","marginType":"cross","notional":"99.88"}]"#,
+        )
+        .unwrap();
+        assert_eq!(v2[0].leverage, 10);
+    }
+
+    #[test]
+    fn a_position_without_a_notional_is_valued_at_the_mark() {
+        let row: WirePosition = serde_json::from_str(
+            r#"{"symbol":"BTCUSDT","positionSide":"BOTH","positionAmt":"-0.002","entryPrice":"50000","markPrice":"50000","unRealizedProfit":"0","initialMargin":"92233720368.54775807"}"#,
+        )
+        .unwrap();
+        let p = position(row, Some(10)).unwrap();
+        assert_eq!(p.margin, dec("10"));
+        assert_eq!(p.leverage, Some(dec("10")));
+    }
+
+    /// As Demo Trading answered for a small cross BTC long: no initial
+    /// margin, only Java's largest long where it would be.
+    #[test]
+    fn a_placeholder_margin_is_worked_out_from_the_leverage() {
+        let row = || -> WirePosition {
+            serde_json::from_str(
+                r#"{"symbol":"BTCUSDT","positionSide":"BOTH","positionAmt":"0.002","entryPrice":"50000","markPrice":"49940","unRealizedProfit":"-0.12","liquidationPrice":"0","isolatedMargin":"0","notional":"99.88","isolatedWallet":"0","initialMargin":"92233720368.54775807","positionInitialMargin":"92233720368.54775807","openOrderInitialMargin":"0","maintMargin":"0.39952","updateTime":1}"#,
+            )
+            .unwrap()
+        };
+        assert_eq!(NO_FIGURE.to_string(), "92233720368.54775807");
+        assert!(needs_leverage(&row()));
+        let with = position(row(), Some(20)).unwrap();
+        assert_eq!(with.margin, dec("4.994"));
+        assert_eq!(with.leverage, Some(dec("20")));
+        assert_eq!(with.margin_mode, Some(MarginMode::Cross));
+        // Unread, it's left out rather than counted as billions.
+        let without = position(row(), None).unwrap();
+        assert_eq!(without.margin, Decimal::default());
+        assert_eq!(without.leverage, None);
+        // An isolated wallet as large is no figure either.
+        let mut isolated = row();
+        isolated.isolated_wallet = Some(dec("92233720368.54775807"));
+        assert!(needs_leverage(&isolated));
+        // A position with a real figure needs nothing more.
+        let mut fine = row();
+        fine.position_initial_margin = Some(dec("4.994"));
+        assert!(!needs_leverage(&fine));
     }
 
     #[test]

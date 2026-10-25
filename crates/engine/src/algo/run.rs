@@ -156,7 +156,9 @@ impl Run {
         let account = algos.feeds.account(&host, venue, &self.job.spec.account);
         let needs_book = self.job.exec.needs_book();
         // The book for the start price, and for executors that act on it.
-        let book = algos.feeds.book(&host, venue, &self.job.spec.market);
+        let book = algos
+            .feeds
+            .book(&host, venue, &self.job.spec.account, &self.job.spec.market);
         let mut book_rx = book.watch();
         let mut account_rx = account.watch();
         if self.job.native_order.is_none() {

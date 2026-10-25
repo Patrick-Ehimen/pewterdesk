@@ -521,7 +521,14 @@ With an API key connected (the API key dialog, as Bybit's), an account's
 balances, positions, open orders (ordinary and conditional), fills, closed
 trades built from them, order history and funding, polled every 10
 seconds; orders as above. One-way position mode only: an account in Hedge
-Mode is refused, and its key details say so.
+Mode is refused, and its key details say so. While the active Binance account is a Demo
+Trading one, Binance's market data is Demo Trading's own exchange (other
+markets, its own prices), as on Binance's demo site: each window tells Rust
+at start (`lib/binanceData.ts`, `set_binance_demo_data`) and reloads when
+that changes, and Binance's on-disk caches are kept apart (`dataKey`). Its
+positioning history stays mainnet's (the demo hosts serve none). Algos read
+the book of the exchange their own account trades on
+(`subscribe_account_order_book`), whatever is on screen.
 
 The desktop frontend is a trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
@@ -578,20 +585,21 @@ out by day after Bybit's Market Calendar - `components/news/NewsCalendar.tsx`,
 their start times and each position's next funding; token unlocks wait on
 a data source, none free and allowed), Maps (an RSI heatmap of every market from its own
 candles, a market heatmap of coins by sector from CoinGecko, liquidations
-from Bybit's public live feed and OKX's public history whichever venue is
-on screen, and an estimated liquidation heatmap from hourly open interest
+from a venue's public live feed (the one on screen's where it has one -
+Bybit, Binance - Bybit's otherwise) and OKX's public history, and an estimated liquidation heatmap from hourly open interest
 (from volume where a venue publishes no open-interest history) -
 `components/maps/` in `packages/ui`; in five groups - Momentum, Positioning,
 Liquidations, Market, Time - with each group's views as chips beside them.
 The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
 `hooks/useMapData.ts`): performance and volatility from every market's
-hourly history, funding and price spread across all three venues from
-their summaries, open interest against price (Bybit's hourly history, or on
+hourly history, funding and price spread across all four venues from
+their summaries, open interest against price (Bybit's and Binance's hourly history, or on
 Hyperliquid and Aster samples the app takes every 5 minutes while it runs,
 the change so far shown until they cover the window - `lib/oiStore.ts`), correlation, a live order-book heatmap, and seasonality
-and sessions from a market's last 30 days of hourly candles; plus Bybit's
+and sessions from a market's last 30 days of hourly candles; plus the
 public long / short account ratio (`long_short_ratio`, a read-only market
-data request), whichever venue is on screen. A Crypto / All filter keeps
+data request) of the venue on screen where it publishes one (Bybit,
+Binance), Bybit's otherwise. A Crypto / All filter keeps
 stocks and metals out of the rankings, and saved views (`lib/mapViews.ts`,
 `pd.maps.saved`) keep a view with its settings and market under a name).
 

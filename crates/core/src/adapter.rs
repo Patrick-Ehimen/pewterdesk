@@ -72,6 +72,20 @@ pub trait ExchangeAdapter: Send + Sync {
         Err(VenueError::Unsupported("order book"))
     }
 
+    /// `market`'s order book as `account` trades it, until the receiver is
+    /// dropped: the same as `subscribe_order_book`, except on a venue whose
+    /// demo accounts trade on an exchange of their own (Binance's Demo
+    /// Trading, with its own book and prices), where a demo account's is
+    /// that exchange's. For what prices an account's orders, such as an
+    /// algo's. Read-only.
+    async fn subscribe_account_order_book(
+        &self,
+        _account: &str,
+        market: &str,
+    ) -> Result<mpsc::Receiver<OrderBook>, VenueError> {
+        self.subscribe_order_book(market).await
+    }
+
     /// The market's most recent trades, newest first, re-sent whole whenever
     /// one prints - a snapshot like the other streams, so a consumer that
     /// misses an update misses nothing. Until the receiver is dropped.

@@ -132,9 +132,21 @@ pub struct Feeds {
 }
 
 impl Feeds {
-    /// `market`'s order book on `venue`, shared.
-    pub fn book(&self, host: &Arc<dyn Host>, venue: VenueId, market: &str) -> Arc<Feed<OrderBook>> {
-        let key = (venue, market.to_owned());
+    /// `market`'s order book on `venue` as `account` trades it (a demo
+    /// account's exchange can be its own: `subscribe_account_order_book`),
+    /// shared between the algos that see the same book.
+    pub fn book(
+        &self,
+        host: &Arc<dyn Host>,
+        venue: VenueId,
+        account: &str,
+        market: &str,
+    ) -> Arc<Feed<OrderBook>> {
+        let demo = account.starts_with(pewterdesk_core::accounts::DEMO_PREFIX);
+        let key = (
+            venue,
+            format!("{}{market}", if demo { "demo:" } else { "" }),
+        );
         let mut books = self.books.lock().unwrap();
         if let Some(feed) = books.get(&key).and_then(Weak::upgrade) {
             return feed;
@@ -142,13 +154,15 @@ impl Feeds {
         let (tx, rx) = watch::channel(Sample::default());
         let host = Arc::clone(host);
         let market = market.to_owned();
+        let account = account.to_owned();
         let subscribe: Subscribe<OrderBook> = Box::new(move || {
             let host = Arc::clone(&host);
             let market = market.clone();
+            let account = account.clone();
             Box::pin(async move {
                 host.venues()
                     .adapter(venue)?
-                    .subscribe_order_book(&market)
+                    .subscribe_account_order_book(&account, &market)
                     .await
             })
         });

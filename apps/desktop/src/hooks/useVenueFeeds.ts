@@ -27,6 +27,7 @@ import {
   type StreamHandlers,
   venueClient,
 } from "../api/venueClient";
+import { showsDemoData } from "../lib/binanceData";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
 import { RETRY_MS, useRetry } from "./useRetry";
@@ -413,10 +414,21 @@ interface SharedSummaries {
   /** When a failed stream was last started again, so listeners retry it once. */
   restartedAt?: number;
 }
-const sharedSummaries = new Map<VenueId, SharedSummaries>();
+const sharedSummaries = new Map<string, SharedSummaries>();
 
-/** Every market's summary, for the screener and market picker; `enabled: false` lets go of it. */
-export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<MarketSummary[]> {
+/**
+ * Every market's summary, for the screener and market picker; `enabled:
+ * false` lets go of it. `mainnet` asks for Binance's mainnet figures while
+ * its market data is Demo Trading's (a comparison across venues, where demo
+ * funds' volume would mean nothing); elsewhere it changes nothing.
+ */
+export function useMarketSummaries(
+  venue: VenueId,
+  enabled: boolean,
+  { mainnet = false }: { mainnet?: boolean } = {},
+): Feed<MarketSummary[]> {
+  const live = mainnet && venue === "binance" && showsDemoData();
+  const key = live ? `${venue}:mainnet` : venue;
   const [feed, setFeed] = useState<Feed<MarketSummary[]>>({ status: "idle" });
   const retry = useRetry(feed.status === "error" || feed.status === "closed");
   // biome-ignore lint/correctness/useExhaustiveDependencies: `retry` restarts a failed stream
@@ -425,10 +437,10 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
       setFeed({ status: "idle" });
       return;
     }
-    let shared = sharedSummaries.get(venue);
+    let shared = sharedSummaries.get(key);
     if (!shared) {
       shared = { listeners: new Set(), last: { status: "loading" } };
-      sharedSummaries.set(venue, shared);
+      sharedSummaries.set(key, shared);
     }
     const stream = shared;
     const emit = (next: Feed<MarketSummary[]>) => {
@@ -444,24 +456,28 @@ export function useMarketSummaries(venue: VenueId, enabled: boolean): Feed<Marke
       stream.stop = undefined;
       stream.restartedAt = Date.now();
     }
-    stream.stop ??= venueClient.subscribeMarketSummaries(venue, {
-      onUpdate: (data) => emit({ status: "live", data }),
-      onClosed: () =>
-        emit(
-          stream.last.status === "live"
-            ? { status: "closed", data: stream.last.data }
-            : { status: "error", message: t("error.feedClosed") },
-        ),
-      onError: (message) => emit({ status: "error", message }),
-    });
+    stream.stop ??= venueClient.subscribeMarketSummaries(
+      venue,
+      {
+        onUpdate: (data) => emit({ status: "live", data }),
+        onClosed: () =>
+          emit(
+            stream.last.status === "live"
+              ? { status: "closed", data: stream.last.data }
+              : { status: "error", message: t("error.feedClosed") },
+          ),
+        onError: (message) => emit({ status: "error", message }),
+      },
+      live,
+    );
     return () => {
       stream.listeners.delete(setFeed);
       if (stream.listeners.size === 0) {
         stream.stop?.();
-        sharedSummaries.delete(venue);
+        sharedSummaries.delete(key);
       }
     };
-  }, [venue, enabled, retry]);
+  }, [venue, key, live, enabled, retry]);
   return feed;
 }
 

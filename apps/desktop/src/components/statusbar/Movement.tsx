@@ -16,11 +16,12 @@ function MovementPanel({
   markets: readonly Market[];
   onOpenMarket: (venue: VenueId, market: string) => void;
 }) {
-  // One hook per venue, in a fixed order.
+  // One hook per venue, in a fixed order. Binance's are mainnet's even with a
+  // Demo Trading account on screen: demo funds' volume isn't market movement.
   const hl = useMarketSummaries("hyperliquid", true);
   const aster = useMarketSummaries("aster", true);
   const bybit = useMarketSummaries("bybit", true);
-  const binance = useMarketSummaries("binance", true);
+  const binance = useMarketSummaries("binance", true, { mainnet: true });
   const hlMarkets = useMarkets(venue === "hyperliquid" ? undefined : "hyperliquid");
   const asterMarkets = useMarkets(venue === "aster" ? undefined : "aster");
   const bybitMarkets = useMarkets(venue === "bybit" ? undefined : "bybit");
