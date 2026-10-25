@@ -40,6 +40,17 @@ describe("market logo sources", () => {
     ]);
   });
 
+  it("asks Binance, then borrows the same way", () => {
+    expect(iconSources("binance", "1000PEPEUSDT")).toEqual([
+      ["binance", "1000PEPEUSDT"],
+      ["hyperliquid", "1000PEPE"],
+      ["hyperliquid", "PEPE"],
+      ["hyperliquid", "kPEPE"],
+      ["aster", "1000PEPEUSDT"],
+      ["aster", "PEPEUSDT"],
+    ]);
+  });
+
   it("takes Bybit's own logo when its list has one", async () => {
     const fetchIcon = vi.fn(async (venue: string) => (venue === "bybit" ? "<svg/>" : undefined));
     await expect(firstIcon(iconSources("bybit", "BTCUSDT"), fetchIcon)).resolves.toBe("<svg/>");

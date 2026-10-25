@@ -5,20 +5,21 @@
 //! Security-relevant - review any change here against
 //! `.claude/commands/security-review.md`: turning it on asks the venue again
 //! what the stored key may do, and refuses a key that isn't trade-only
-//! (Bybit's `auth::ALLOWED`; on Hyperliquid and Aster, an API wallet still
+//! (Bybit's and Binance's `auth::ALLOWED`; on Hyperliquid and Aster, an API wallet still
 //! approved for that account, which on Aster can't withdraw), belongs to
 //! another account, or can't be checked (offline included): it fails closed.
 
 use pewterdesk_core::{VenueError, VenueId};
-use pewterdesk_engine::live::{live_uid, wallet_id};
+use pewterdesk_engine::live::{binance_id, live_uid, wallet_id};
 use pewterdesk_engine::Engine;
 use tauri::State;
 
 use crate::venues::Venues;
-use crate::{bybit_key, wallet};
+use crate::{binance_key, bybit_key, wallet};
 
-/// The live accounts with trading on: Bybit UIDs, and Hyperliquid and Aster
-/// accounts as `<venue>:<address>`. Public ids only.
+/// The live accounts with trading on: Bybit UIDs, Binance accounts as
+/// `binance:<uid>`, and Hyperliquid and Aster accounts as `<venue>:<address>`.
+/// Public ids only.
 #[tauri::command]
 pub fn live_trading_accounts(engine: State<'_, Engine>) -> Vec<String> {
     engine.live().list()
@@ -57,6 +58,23 @@ pub async fn set_wallet_trading(
     let id = wallet_id(venue, &address)?;
     if on {
         wallet::verify_trade_only(&venues, venue, &address).await?;
+    }
+    engine.live().set(&id, on)
+}
+
+/// Turns live trading on or off for Binance account `uid`. Turning it on
+/// checks the stored key with Binance first: it must be this account's and
+/// trade-only, or it stays off.
+#[tauri::command]
+pub async fn set_binance_trading(
+    venues: State<'_, Venues>,
+    engine: State<'_, Engine>,
+    uid: String,
+    on: bool,
+) -> Result<(), VenueError> {
+    let id = binance_id(&uid)?;
+    if on {
+        binance_key::verify_trade_only(&venues, uid.trim()).await?;
     }
     engine.live().set(&id, on)
 }

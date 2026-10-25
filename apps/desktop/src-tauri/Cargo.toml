@@ -37,6 +37,7 @@ pewterdesk-keychain = { path = "../../../crates/keychain" }
 pewterdesk-link = { path = "../../../crates/link" }
 pewterdesk-protocol = { path = "../../../crates/protocol" }
 pewterdesk-exchange-aster = { path = "../../../crates/exchange-aster" }
+pewterdesk-exchange-binance = { path = "../../../crates/exchange-binance" }
 pewterdesk-exchange-bybit = { path = "../../../crates/exchange-bybit" }
 pewterdesk-exchange-hyperliquid = { path = "../../../crates/exchange-hyperliquid" }
 serde = { version = "1", features = ["derive"] }

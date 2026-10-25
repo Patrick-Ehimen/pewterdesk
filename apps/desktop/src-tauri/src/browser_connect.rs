@@ -70,6 +70,9 @@ fn page_config(venue: VenueId) -> Result<serde_json::Value, VenueError> {
         VenueId::Bybit => Err(VenueError::Unsupported(
             "connecting a wallet to Bybit (it connects with an API key)",
         )),
+        VenueId::Binance => Err(VenueError::Unsupported(
+            "connecting a wallet to Binance (it connects with an API key)",
+        )),
     }
 }
 

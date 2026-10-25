@@ -87,6 +87,14 @@ export const venues = {
         live: true,
       },
       {
+        id: "binance",
+        name: "Binance",
+        kind: "Centralised",
+        chain: "—",
+        status: "Trading",
+        live: true,
+      },
+      {
         id: "hyperliquid",
         name: "Hyperliquid",
         kind: "Perp DEX",
@@ -107,7 +115,6 @@ export const venues = {
   coming: {
     label: "Coming",
     items: [
-      { id: "binance", name: "Binance", kind: "Centralised" },
       { id: "okx", name: "OKX", kind: "Centralised" },
       { id: "coinbase", name: "Coinbase", kind: "Centralised" },
       { id: "kraken", name: "Kraken", kind: "Centralised" },
@@ -129,15 +136,18 @@ export const status = {
   works: {
     title: "Works today",
     items: [
-      "Market data on Bybit, Hyperliquid and Aster",
-      "Orders on Bybit (demo and live), Hyperliquid and Aster",
-      "Balances, positions and open orders on all three",
+      "Market data on Bybit, Binance, Hyperliquid and Aster",
+      "Orders on Bybit and Binance (demo and live), Hyperliquid and Aster",
+      "Balances, positions and open orders on all four",
       "Maps, multi-chart, alerts and trading rules",
     ],
   },
   notYet: {
     title: "Not yet",
-    items: ["Trailing stops on Hyperliquid and Aster", "The nine venues listed as coming"],
+    items: [
+      "Trailing stops on Binance, Hyperliquid and Aster",
+      "The eight venues listed as coming",
+    ],
   },
   report: "Report a problem",
 };

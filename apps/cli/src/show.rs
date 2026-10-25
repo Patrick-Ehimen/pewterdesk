@@ -13,6 +13,7 @@ pub fn venue(venue: VenueId) -> &'static str {
         VenueId::Hyperliquid => "Hyperliquid",
         VenueId::Aster => "Aster",
         VenueId::Bybit => "Bybit",
+        VenueId::Binance => "Binance",
     }
 }
 

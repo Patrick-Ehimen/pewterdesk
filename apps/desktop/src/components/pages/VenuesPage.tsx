@@ -11,6 +11,7 @@ import { accountName } from "../wallet/AccountList";
 /** What each venue runs on. */
 const CHAIN: Record<VenueId, MessageKey> = {
   bybit: "onb.chain.bybit",
+  binance: "onb.chain.binance",
   hyperliquid: "onb.chain.hyperliquid",
   aster: "onb.chain.aster",
 };
@@ -18,12 +19,12 @@ const CHAIN: Record<VenueId, MessageKey> = {
 /** The kind of trade-only key each venue uses. */
 const KEY_KIND: Record<VenueId, MessageKey> = {
   bybit: "venues.key.apiKey",
+  binance: "venues.key.apiKey",
   hyperliquid: "venues.key.apiWallet",
   aster: "venues.key.apiWallet",
 };
 
 const UPCOMING = [
-  { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
   { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
   { id: "coinbase", name: "Coinbase", chain: "onb.chain.bybit" },
   { id: "kraken", name: "Kraken", chain: "onb.chain.bybit" },

@@ -6,6 +6,7 @@ import {
   canTrade,
   isAccountId,
   isDemoAccount,
+  liveId,
   migrateLegacy,
   NAME_MAX,
   parseAccounts,
@@ -50,6 +51,33 @@ describe("connected accounts", () => {
     const mixed = { venue: "hyperliquid", id: `0x${"aB".repeat(20)}` } as const;
     expect(canTrade(mixed, [`hyperliquid:0x${"ab".repeat(20)}`])).toBe(true);
     expect(canTrade(undefined, ["24617703"])).toBe(false);
+  });
+
+  it("trades on Binance demo accounts, and on live ones turned on, apart from Bybit's", () => {
+    expect(isAccountId("binance", "354937868")).toBe(true);
+    expect(isAccountId("binance", "demo:354937868")).toBe(true);
+    expect(isAccountId("binance", A)).toBe(false);
+    const demo = { venue: "binance" as const, id: "demo:354937868" };
+    const live = { venue: "binance" as const, id: "354937868" };
+    expect(isDemoAccount(demo) && canTrade(demo, [])).toBe(true);
+    expect(liveId(live)).toBe("binance:354937868");
+    expect(canTrade(live, [])).toBe(false);
+    // Bybit's switch for the same UID isn't Binance's, nor the other way round.
+    expect(canTrade(live, ["354937868"])).toBe(false);
+    expect(canTrade({ venue: "bybit", id: "354937868" }, ["binance:354937868"])).toBe(false);
+    expect(canTrade(live, ["binance:354937868"])).toBe(true);
+    // Stored Binance accounts read back.
+    const state = parseAccounts(
+      JSON.stringify({
+        accounts: [
+          { venue: "binance", id: "demo:354937868", name: "Demo" },
+          { venue: "binance", id: A, name: "" },
+        ],
+        active: { binance: "demo:354937868" },
+      }),
+    );
+    expect(state.accounts).toEqual([{ venue: "binance", id: "demo:354937868", name: "Demo" }]);
+    expect(activeAccount(state, "binance")?.id).toBe("demo:354937868");
   });
 
   it("adds accounts, making the newest active, without repeats", () => {

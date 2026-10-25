@@ -35,11 +35,11 @@ export const firstRun = {
     },
     {
       title: "Connect an account",
-      body: "A Bybit API key, or a Hyperliquid or Aster wallet. You'll need your own; pewterdesk doesn't create venue accounts.",
+      body: "A Bybit or Binance API key, or a Hyperliquid or Aster wallet. You'll need your own; pewterdesk doesn't create venue accounts.",
     },
     {
       title: "Start on demo",
-      body: "A Bybit Demo Trading key trades with demo funds on the same screen. Learn the ticket there first.",
+      body: "A Bybit or Binance Demo Trading key trades with demo funds on the same screen. Learn the ticket there first.",
     },
     {
       title: "Go live when you choose",

@@ -2,6 +2,7 @@ import type { VenueId } from "@pewterdesk/core";
 import { Switch, t } from "@pewterdesk/ui";
 import { useState, useSyncExternalStore } from "react";
 import { LuTriangleAlert } from "react-icons/lu";
+import { isUidVenue } from "../../lib/account";
 import {
   liveId,
   liveTradingUids,
@@ -19,7 +20,8 @@ const message = (err: unknown) => (err instanceof Error ? err.message : t("error
  */
 export function LiveTradingSwitch({ account }: { account: { venue: VenueId; id: string } }) {
   const on = useSyncExternalStore(subscribeLiveTrading, liveTradingUids).includes(liveId(account));
-  const bybit = account.venue === "bybit";
+  // An exchange account's API key, or a wallet's API wallet.
+  const apiKey = isUidVenue(account.venue);
   const venue = VENUES[account.venue].label;
   // The warning shows before it's turned on; nothing changes until it's accepted.
   const [asking, setAsking] = useState(false);
@@ -61,7 +63,7 @@ export function LiveTradingSwitch({ account }: { account: { venue: VenueId; id: 
         <div className="apikey-live-ask" role="alert">
           <p>
             <LuTriangleAlert size={14} aria-hidden />{" "}
-            {bybit ? t("live.warning") : t("live.warningWallet", { venue })}
+            {apiKey ? t("live.warning", { venue }) : t("live.warningWallet", { venue })}
           </p>
           <div className="wallet-actions">
             <button
@@ -71,8 +73,8 @@ export function LiveTradingSwitch({ account }: { account: { venue: VenueId; id: 
               onClick={() => void change(true)}
             >
               {busy
-                ? bybit
-                  ? t("live.checking")
+                ? apiKey
+                  ? t("live.checking", { venue })
                   : t("live.checkingWallet", { venue })
                 : t("live.confirm")}
             </button>

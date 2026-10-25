@@ -6,7 +6,13 @@ import { LuArrowRight, LuCheck, LuCircleCheck, LuCircleX, LuLoader, LuX } from "
 import { appClient } from "../../api/appClient";
 import { THEMES, type Theme } from "../../hooks/useAppearance";
 import { useVenueProbe } from "../../hooks/useVenueProbe";
-import { connectedBybit, connectedWallet, subscribeAccounts } from "../../lib/account";
+import {
+  accountsState,
+  activeAccount,
+  connectedWallet,
+  isUidVenue,
+  subscribeAccounts,
+} from "../../lib/account";
 import type { OnboardingState } from "../../lib/onboarding";
 import { VENUE_IDS, VENUES } from "../../lib/venues";
 import { tauriSecretStore } from "../../secrets/tauriSecretStore";
@@ -30,6 +36,7 @@ const STEP_TITLE: Record<StepId, MessageKey> = {
 /** What each launch venue runs on, under its name. */
 const VENUE_CHAIN: Record<VenueId, MessageKey> = {
   bybit: "onb.chain.bybit",
+  binance: "onb.chain.binance",
   hyperliquid: "onb.chain.hyperliquid",
   aster: "onb.chain.aster",
 };
@@ -40,7 +47,6 @@ const UPCOMING: readonly {
   name: string;
   chain: MessageKey;
 }[] = [
-  { id: "binance", name: "Binance", chain: "onb.chain.bybit" },
   { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
@@ -274,22 +280,31 @@ function Venues({
   );
 }
 
+/** The connect step's lead without a wallet: one exchange by name, or several. */
+function keyLead(venues: readonly VenueId[]): string {
+  const keyed = venues.filter(isUidVenue);
+  const [only] = keyed;
+  return keyed.length === 1 && only
+    ? t("onb.connect.keyLead", { venue: VENUES[only].label })
+    : t("onb.connect.keysLead");
+}
+
 function Connect({ venues }: { venues: readonly VenueId[] }) {
   const [method, setMethod] = useState<MethodId>("browser");
   return (
     <>
       {venues.includes("aster") && <p className="onb-note">{t("onb.connect.asterNote")}</p>}
-      {/* Only Hyperliquid connects with a wallet today; Bybit takes an API key. */}
+      {/* Only Hyperliquid connects with a wallet here; Bybit and Binance take an API key. */}
       {venues.includes("hyperliquid") && (
         <div className="onb-connect">
           <ConnectWalletBody selected={method} onSelect={setMethod} />
         </div>
       )}
-      {venues.includes("bybit") && (
-        <div className="onb-connect onb-connect-key">
-          <ApiKeyBody venue="bybit" />
+      {venues.filter(isUidVenue).map((venue) => (
+        <div key={venue} className="onb-connect onb-connect-key">
+          <ApiKeyBody venue={venue} />
         </div>
-      )}
+      ))}
     </>
   );
 }
@@ -326,8 +341,12 @@ function Ready({
   onEdit: (step: StepId) => void;
 }) {
   const wallet = useSyncExternalStore(subscribeAccounts, connectedWallet);
-  const bybitUid = useSyncExternalStore(subscribeAccounts, connectedBybit);
-  const keys = (wallet ? 1 : 0) + (bybitUid ? 1 : 0);
+  const accounts = useSyncExternalStore(subscribeAccounts, accountsState);
+  const bybitUid = activeAccount(accounts, "bybit")?.id;
+  const binanceUid = activeAccount(accounts, "binance")?.id;
+  const keys = (wallet ? 1 : 0) + (bybitUid ? 1 : 0) + (binanceUid ? 1 : 0);
+  const uidRow = (label: MessageKey, uid: string | undefined): [MessageKey, string, StepId][] =>
+    uid ? [[label, t("onb.ready.bybitUid", { uid: uid.replace(/^demo:/, "") }), "connect"]] : [];
   const rows: [MessageKey, string, StepId][] = [
     ["onb.ready.network", t("onb.mainnet"), "venues"],
     ["onb.ready.venues", state.venues.map((v) => VENUES[v].label).join(", "), "venues"],
@@ -338,15 +357,8 @@ function Ready({
         : t("onb.ready.noWallet"),
       "connect",
     ],
-    ...(bybitUid
-      ? [
-          ["onb.ready.bybit", t("onb.ready.bybitUid", { uid: bybitUid }), "connect"] satisfies [
-            MessageKey,
-            string,
-            StepId,
-          ],
-        ]
-      : []),
+    ...uidRow("onb.ready.bybit", bybitUid),
+    ...uidRow("onb.ready.binance", binanceUid),
     [
       "onb.ready.trading",
       keys === 0
@@ -458,11 +470,11 @@ export function Onboarding({
 
       <main className="onb-main">
         <div className="onb-content">
-          {/* Without Hyperliquid there's no wallet to connect, only Bybit's API key. */}
+          {/* Without Hyperliquid there's no wallet to connect, only the exchanges' API keys. */}
           {step === "connect" && !state.venues.includes("hyperliquid") ? (
             <>
               <h1>{t("onb.connect.keyTitle")}</h1>
-              <p className="onb-lead">{t("onb.connect.keyLead")}</p>
+              <p className="onb-lead">{keyLead(state.venues)}</p>
             </>
           ) : (
             <>

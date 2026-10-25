@@ -504,6 +504,47 @@ export const bybitKeyClient = {
   setLive: (uid: string, on: boolean) => call<void>("set_live_trading", { uid, on }),
 };
 
+/**
+ * A connected Binance API key, as `binance_key.rs` describes it: the account
+ * and what the key may do, never the key. Keep in sync with `BinanceKeyInfo`
+ * there.
+ */
+export interface BinanceKeyInfo {
+  /** The Binance account: its UID, or `demo:` and the UID for Demo Trading. */
+  uid: string;
+  /** A Demo Trading account: demo funds, on Binance's demo host. */
+  demo: boolean;
+  /** Whether Binance answered just now; offline, only `uid` is known. */
+  checked: boolean;
+  ipRestricted: boolean;
+  /** The futures account is in Hedge Mode, whose orders pewterdesk doesn't send. */
+  hedgeMode: boolean;
+  /** What it has on, by Binance's name (`enableFutures`); empty for a demo key. */
+  permissions: string[];
+  /** Why a stored key no longer passes the check, if it doesn't. */
+  problem: string | null;
+}
+
+/**
+ * Connecting Binance with an API key, as `bybitKeyClient` does for Bybit:
+ * Rust asks Binance what the key may do and stores it only if it can trade
+ * futures and nothing else. Nothing returns either half.
+ */
+export const binanceKeyClient = {
+  connect: (apiKey: string, apiSecret: string, demo: boolean) =>
+    call<BinanceKeyInfo>("connect_binance_key", { apiKey, apiSecret, demo }),
+
+  status: (uid: string) => call<BinanceKeyInfo | null>("binance_key_status", { uid }),
+
+  disconnect: (uid: string) => call<void>("disconnect_binance_key", { uid }),
+
+  /**
+   * Turns live trading on or off for a live account. Turning it on has Rust
+   * check the stored key with Binance again, and refuses if it isn't trade-only.
+   */
+  setLive: (uid: string, on: boolean) => call<void>("set_binance_trading", { uid, on }),
+};
+
 /** What a coin link is, for its label and icon. Mirrors `LinkKind` in `coin_info.rs`. */
 export type CoinLinkKind =
   | "explorer"

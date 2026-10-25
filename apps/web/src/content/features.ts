@@ -103,7 +103,7 @@ export const rules = {
     "Trading hours",
     "Cool-off after losses",
   ],
-  note: "Enforced where orders are placed today: Bybit.",
+  note: "Enforced on every venue's orders, before anything is signed.",
 };
 
 export const edges = {

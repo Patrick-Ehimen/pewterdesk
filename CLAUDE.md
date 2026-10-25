@@ -55,7 +55,7 @@ a key before storing it.
   a 127.0.0.1 WebSocket to paired clients
 - `apps/cli` (`pd`) - the command line
 - `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
-- `crates/exchange-hyperliquid`, `-aster`, `-bybit` - one adapter per venue
+- `crates/exchange-hyperliquid`, `-aster`, `-bybit`, `-binance` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -92,7 +92,7 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk-keychain -- --ignored` - the keychain tests that
   touch the real OS store, skipped by default
-- `make rust-live` - read-only tests against Hyperliquid and Aster mainnet
+- `make rust-live` - read-only tests against Hyperliquid, Aster, Bybit and Binance mainnet
   (needs the network, no key), one at a time so they stay inside rate limits
 
 Packages are consumed from source: every `package.json` points `main`/`types`
@@ -154,6 +154,18 @@ discover it on their own. The reasoning behind the rules is in
   skip the allowlist (demo funds only); they're still checked on the demo
   host, where live keys don't authenticate. The commands return the UID and
   permissions only.
+- `apps/desktop/src-tauri/src/binance_key.rs` and `crates/exchange-binance/src/auth.rs`
+  - Binance onboarding, as Bybit's. The API key and secret cross IPC once,
+  into `connect_binance_key`, which asks Binance with three signed, read-only
+  requests whose key it is (`/api/v3/account`, for the UID, on the spot
+  host), whether it reaches the futures account (`/fapi/v1/accountConfig`)
+  and, for a live key, what it may do (`/sapi/v1/account/apiRestrictions`);
+  it stores a live key only if futures trading is on and every other switch
+  that's on is on `auth::ALLOWED` (reading, futures, FIX read-only, an IP
+  binding) - an allowlist, so a switch Binance adds later refuses the key.
+  Demo Trading keys skip the allowlist and are checked on the demo hosts
+  (`demo-fapi.binance.com`, `demo-api.binance.com`). HMAC keys only, not
+  Ed25519 or RSA. The commands return the UID and permissions only.
 - `apps/desktop/src-tauri/src/browser_connect.rs` - connecting a browser
   extension wallet. It serves a one-time page on 127.0.0.1 (random port, a
   random token in every path, the exact Host checked, posts only from the
@@ -265,6 +277,23 @@ discover it on their own. The reasoning behind the rules is in
   signed, read-only request (`/v5/asset/exchange/query-coin-list`, only the
   logos are read), and the images from Bybit's image host, `t1.bycsi.com` -
   a listed logo anywhere else is ignored.
+  Binance's: `crates/exchange-binance/src/orders.rs` builds the parameters
+  of `POST`/`DELETE`/`PUT /fapi/v1/order` (limit and market orders; `PUT`
+  changes a limit order's price and size only), the Algo Service's
+  `POST`/`DELETE /fapi/v1/algoOrder` (trigger orders and a position's
+  exits - since 2025-12-09 Binance takes conditional orders only there;
+  their ids are kept as `algo:<algoId>`), `/fapi/v1/leverage` (checked
+  against the account's own brackets), `/fapi/v1/marginType` and the
+  dead-man's switch (`/fapi/v1/countdownCancelAll`, per market). Every
+  field a constant or checked against the live market's grid; a market
+  order is an IOC limit at the slippage bound, pulled inside the market's
+  `PERCENT_PRICE` band (only ever tighter). `lib.rs` signs exactly the query
+  string sent (HMAC-SHA256, values percent-encoded first, `timestamp` by
+  Binance's clock, `recvWindow` 5 seconds), checked against the docs'
+  example. Demo accounts (ids `demo:{uid}`, keys under `binance:demo:{uid}`)
+  use the demo host, whose book has its own prices: a demo order is priced
+  from there. No trailing stop (Binance's moves by a percentage), and no
+  request that withdraws, transfers or touches another product.
 - Hyperliquid's and Aster's order signing.
   `crates/exchange-hyperliquid/src/orders.rs` builds the `order` and
   `cancel` actions (the asset number from the venue's own list, size and
@@ -319,10 +348,11 @@ discover it on their own. The reasoning behind the rules is in
   log's engine id + the command's sequence number), written to the log
   before the order is sent. An opening order whose id can't be logged is
   refused (`Blocked("unrecorded")`); reduce-only orders, cancels and the
-  rest still go through: a Bybit demo account trades as soon as it's
-  connected, every live account (Bybit, Hyperliquid, Aster) only once live
-  trading is turned on for it. Every venue implements all six, but for a
-  trailing stop on Hyperliquid and Aster.
+  rest still go through: a Bybit demo or Binance Demo Trading account
+  trades as soon as it's connected, every live account (Bybit, Binance,
+  Hyperliquid, Aster) only once live trading is turned on for it. Every
+  venue implements all six, but for a trailing stop on Hyperliquid, Aster
+  and Binance.
 - `crates/engine/src/algo/` (its commands in
   `apps/desktop/src-tauri/src/algos.rs`) - algo orders: a chaser, a TWAP
   (on this machine, or the venue's own on Hyperliquid), a scaled ladder.
@@ -338,7 +368,7 @@ discover it on their own. The reasoning behind the rules is in
   While one runs on this machine the engine keeps the venue's dead-man's
   switch armed (`heartbeat.rs`: every 30 seconds, a 2-minute countdown;
   on Hyperliquid it would cancel every open order of the account, on
-  Aster that market's; Bybit has none we can use). `halt` stops every algo
+  Aster and Binance that market's; Bybit has none we can use). `halt` stops every algo
   and cancels what they placed. Giving algos a way to the venue that skips
   the router is a security-relevant change.
 - `apps/daemon` (`pdd`), `crates/protocol`, `crates/link` and `apps/cli`
@@ -376,7 +406,8 @@ discover it on their own. The reasoning behind the rules is in
   signature, a signed payload or a keychain reference.
 - `crates/engine/src/live.rs` (its commands in
   `apps/desktop/src-tauri/src/live_trading.rs`) - the per-account switch for
-  live trading, kept and enforced in Rust (Bybit UIDs, and Hyperliquid and
+  live trading, kept and enforced in Rust (Bybit UIDs, Binance accounts as
+  `binance:<uid>` - a bare UID would be Bybit's - and Hyperliquid and
   Aster accounts as `<venue>:<address>`, in `live-trading.json` in the app's
   config folder; no key material). Off by default. Turning it on asks the
   venue again what the stored key may do and refuses anything but that
@@ -443,8 +474,8 @@ discover it on their own. The reasoning behind the rules is in
   menu bar, and a paper share card says "Paper". Routing a paper order to a
   venue, or a live one to the paper account, is a security-relevant change.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
-  wallet, Aster API wallet with withdraw off), not the
-  user's main wallet key.
+  wallet, Aster API wallet with withdraw off, a Bybit or Binance API key
+  that can't move funds), not the user's main wallet key.
 
 The webview CSP in `apps/desktop/src-tauri/tauri.conf.json` is part of this
 surface, not cosmetic. `connect-src` allows `'self'`, IPC, and WalletConnect's
@@ -479,6 +510,18 @@ stop-loss, and changes leverage and margin mode. Its fills, closed trades,
 order history and funding come from signed reads (`history.rs`): fills a
 week at a time, on the markets its fee records name, closed trades built
 from them.
+`crates/exchange-binance` serves Binance's USDⓈ-M perpetuals (the crypto
+ones and its TradFi ones - stocks, metals, FX - as categories; dated
+futures left out): markets, an order book kept locally from the diff
+stream, aggregate trades, candles, stats, summaries and history, funding
+history, open interest history and the long / short account ratio, and
+liquidations, over REST and the split stream routes (`/public` for book
+streams, `/market` for the rest - a stream on the wrong one stays silent).
+With an API key connected (the API key dialog, as Bybit's), an account's
+balances, positions, open orders (ordinary and conditional), fills, closed
+trades built from them, order history and funding, polled every 10
+seconds; orders as above. One-way position mode only: an account in Hedge
+Mode is refused, and its key details say so.
 
 The desktop frontend is a trading screen (after the main-screen
 mockup in the local, gitignored `design/`): market list, live order book and trade tape, and the account panels (balances, positions, orders and their history, and an order
@@ -567,16 +610,17 @@ Rust-side backlog (notifications, deep links, local persistence), not started.
 
 ## Live trading
 
-Orders work on Bybit (demo accounts, and live accounts with live trading
-turned on in the account's details - the API key dialog), and on Hyperliquid
+Orders work on Bybit and Binance (Demo Trading accounts, and live accounts
+with live trading turned on in the account's details - the API key dialog),
+and on Hyperliquid
 and Aster once live trading is turned on for the connected wallet (the
 Connect wallet dialog; there is no demo there, so every account is live).
 `components/wallet/LiveTradingSwitch.tsx` is the switch in both dialogs, and
 `lib/liveTrading.ts` mirrors Rust's list for the page. A trading live
-account shows a "Live" badge on the ticket. Everything works on all three
-but a trailing stop on Hyperliquid and Aster, which answers "not supported
-by this venue"; there, only a resting limit order's price and size can be
-changed.
+account shows a "Live" badge on the ticket. Everything works on all four
+but a trailing stop on Hyperliquid, Aster and Binance, which answers "not
+supported by this venue"; there, only a resting limit order's price and
+size can be changed.
 
 ## Paper trading
 

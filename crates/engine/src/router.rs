@@ -6,10 +6,11 @@
 //! `.claude/commands/security-review.md` and `docs/bots/safety.md`:
 //! - The router builds the account's key reference itself
 //!   (`trading_account`): the caller names an account, never a key.
-//! - A Bybit demo account (demo funds, on Bybit's demo host) trades as soon
-//!   as it's connected. Every other account is live - a Bybit live account,
-//!   and any Hyperliquid or Aster account - and trades only once live
-//!   trading has been turned on for it (`live`).
+//! - A Bybit demo account or a Binance Demo Trading account (demo funds, on
+//!   the venue's demo host) trades as soon as it's connected. Every other
+//!   account is live - a Bybit or Binance live account, and any Hyperliquid
+//!   or Aster account - and trades only once live trading has been turned
+//!   on for it (`live`).
 //! - The trader's rules (`rules`) are checked before an order is placed, an
 //!   order is amended, or a position's protection is changed. A cancel, and
 //!   leverage and margin mode (which open nothing), pass the switch only.
@@ -27,7 +28,8 @@
 use std::path::{Path, PathBuf};
 
 use pewterdesk_core::accounts::{
-    bybit_account, bybit_key_entry, normalize_address, wallet_key_entry,
+    binance_account, binance_key_entry, bybit_account, bybit_key_entry, normalize_address,
+    wallet_key_entry,
 };
 use pewterdesk_core::{
     Decimal, MarginMode, Order, OrderAmend, OrderRequest, Origin, PositionProtection,
@@ -62,6 +64,18 @@ pub fn trading_account(
                 key: bybit_key_entry(account)?,
             })
         }
+        VenueId::Binance => {
+            let (demo, _) = binance_account(account)?;
+            if !demo && !live.is_on(&live::binance_id(account)?) {
+                return Err(VenueError::Rejected(
+                    "live trading is off for this account; turn it on under Accounts".into(),
+                ));
+            }
+            Ok(TradingAccount {
+                address: account.to_owned(),
+                key: binance_key_entry(account)?,
+            })
+        }
         // Always real funds, so always behind the switch.
         VenueId::Hyperliquid | VenueId::Aster => {
             let address = normalize_address(account)?;
@@ -81,7 +95,8 @@ pub fn trading_account(
 
 /// The client order id for command `seq` in a log with `engine_id`: 16
 /// bytes as `0x` hex, which every venue takes (Hyperliquid's `cloid`,
-/// Bybit's `orderLinkId`, Aster's `newClientOrderId`).
+/// Bybit's `orderLinkId`, Aster's and Binance's `newClientOrderId`, and
+/// Binance's `clientAlgoId`).
 pub fn client_id(engine_id: u64, seq: u64) -> String {
     format!("0x{engine_id:016x}{seq:016x}")
 }
@@ -786,8 +801,8 @@ mod tests {
     fn client_ids_fit_every_venue() {
         let id = client_id(u64::MAX, 1);
         assert_eq!(id, format!("0x{}{:016x}", "f".repeat(16), 1));
-        // Hyperliquid: 0x and 32 lowercase hex. Bybit and Aster: up to 36
-        // letters, digits, - and _.
+        // Hyperliquid: 0x and 32 lowercase hex. Bybit, Aster and Binance:
+        // up to 36 letters, digits, - and _.
         assert_eq!(id.len(), 34);
         assert!(id[2..]
             .bytes()
@@ -849,6 +864,35 @@ mod tests {
             trading_account(VenueId::Hyperliquid, "24617703", &on),
             Err(VenueError::InvalidRequest(_))
         ));
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_binance_account_is_gated_like_a_bybit_one_but_apart() {
+        let path = std::env::temp_dir()
+            .join(format!("pewterdesk-gate-binance-{}", std::process::id()))
+            .join(live::FILE);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // Bybit's switch for the same UID is on: it doesn't reach Binance.
+        std::fs::write(&path, br#"["354937868"]"#).unwrap();
+        let live = LiveTrading::load(Some(path.clone()));
+        let demo = trading_account(VenueId::Binance, "demo:354937868", &live).unwrap();
+        assert_eq!(demo.key, "binance:demo:354937868");
+        assert!(matches!(
+            trading_account(VenueId::Binance, "354937868", &live),
+            Err(VenueError::Rejected(_))
+        ));
+        std::fs::write(&path, br#"["binance:354937868"]"#).unwrap();
+        let on = LiveTrading::load(Some(path.clone()));
+        let account = trading_account(VenueId::Binance, "354937868", &on).unwrap();
+        assert_eq!(account.address, "354937868");
+        assert_eq!(account.key, "binance:354937868");
+        // And Binance's switch doesn't reach Bybit's account.
+        assert!(matches!(
+            trading_account(VenueId::Bybit, "354937868", &on),
+            Err(VenueError::Rejected(_))
+        ));
+        assert!(trading_account(VenueId::Binance, "0xabc", &on).is_err());
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

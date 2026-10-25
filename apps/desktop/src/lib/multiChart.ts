@@ -83,7 +83,7 @@ export const SET_NAME_MAX = 24;
 const MAX_SETS = 12;
 /** Longest look kept with a chart; a longer one isn't one of ours. */
 const CHART_MAX = 200_000;
-const VENUES: readonly VenueId[] = ["bybit", "hyperliquid", "aster"];
+const VENUES: readonly VenueId[] = ["bybit", "hyperliquid", "aster", "binance"];
 
 const isInterval = (v: unknown): v is CandleInterval => ALL_INTERVALS.some((i) => i === v);
 const isVenue = (v: unknown): v is VenueId => VENUES.some((id) => id === v);

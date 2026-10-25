@@ -8,8 +8,9 @@ import { removeAvatar } from "./avatars";
 // keychain under its id, and nothing reads it back to JS.
 //
 // An account's id is what its venue knows it by: the main address (lowercase
-// `0x` hex) on Hyperliquid and Aster, the UID on Bybit - with `demo:` in
-// front for a Bybit Demo Trading account (demo funds, Bybit's demo host).
+// `0x` hex) on Hyperliquid and Aster, the UID on Bybit and Binance - with
+// `demo:` in front for a Demo Trading account (demo funds, the venue's demo
+// host).
 
 const KEY = "pd.accounts";
 /** Where earlier versions kept their one wallet, and their one Bybit UID. */
@@ -21,7 +22,7 @@ export const NAME_MAX = 32;
 
 export interface VenueAccount {
   venue: VenueId;
-  /** The main address (`0x` hex) or, on Bybit, the UID. */
+  /** The main address (`0x` hex) or, on Bybit and Binance, the UID. */
   id: string;
   /** The user's name for it; empty until they give one (see `accountLabel`). */
   name: string;
@@ -43,25 +44,37 @@ export interface ConnectedWallet {
 
 const EMPTY: AccountsState = { accounts: [], active: {} };
 
+/** The venues whose accounts are an exchange account's UID, connected by API key. */
+export type UidVenue = "bybit" | "binance";
+
+export const isUidVenue = (venue: VenueId): venue is UidVenue =>
+  venue === "bybit" || venue === "binance";
+
 /** Whether `id` is a valid account id on `venue`. */
 export function isAccountId(venue: VenueId, id: string): boolean {
-  return venue === "bybit" ? /^(demo:)?\d{1,20}$/.test(id) : /^0x[0-9a-f]{40}$/.test(id);
+  return isUidVenue(venue) ? /^(demo:)?\d{1,20}$/.test(id) : /^0x[0-9a-f]{40}$/.test(id);
 }
 
-/** Whether an account is a Bybit Demo Trading one: demo funds, not real ones. */
+/** Whether an account is a Demo Trading one (Bybit, Binance): demo funds, not real ones. */
 export const isDemoAccount = (account: { venue: VenueId; id: string }) =>
-  account.venue === "bybit" && account.id.startsWith("demo:");
+  isUidVenue(account.venue) && account.id.startsWith("demo:");
 
-/** How Rust's live-trading list names an account: a Bybit UID, or its venue and address. */
+/**
+ * How Rust's live-trading list names an account: a Bybit UID, `binance:`
+ * and a Binance UID, or a wallet's venue and address.
+ */
 export const liveId = (account: { venue: VenueId; id: string }) =>
   account.venue === "bybit"
     ? account.id
-    : // Rust keeps a wallet's address in lower case, however it was typed.
-      `${account.venue}:${account.id.trim().toLowerCase()}`;
+    : account.venue === "binance"
+      ? `binance:${account.id.trim()}`
+      : // Rust keeps a wallet's address in lower case, however it was typed.
+        `${account.venue}:${account.id.trim().toLowerCase()}`;
 
 /**
- * Whether orders can be placed for an account: a Bybit demo account, or a
- * live one (Bybit, Hyperliquid, Aster) with live trading turned on
+ * Whether orders can be placed for an account: a Demo Trading account
+ * (Bybit, Binance), or a live one (Bybit, Binance, Hyperliquid, Aster) with
+ * live trading turned on
  * (`liveUids`, see `lib/liveTrading`). Rust refuses the rest too; this just
  * keeps the UI from offering it.
  */
@@ -70,7 +83,8 @@ export const canTrade = (
   liveUids: readonly string[],
 ) => account !== undefined && (isDemoAccount(account) || liveUids.includes(liveId(account)));
 
-const isVenue = (v: unknown): v is VenueId => v === "hyperliquid" || v === "aster" || v === "bybit";
+const isVenue = (v: unknown): v is VenueId =>
+  v === "hyperliquid" || v === "aster" || v === "bybit" || v === "binance";
 
 const cleanName = (name: string) => name.trim().replace(/\s+/g, " ").slice(0, NAME_MAX);
 
@@ -274,11 +288,6 @@ export function connectedWallet(): ConnectedWallet | undefined {
     walletCached = a ? { venue: a.venue, address: a.id } : undefined;
   }
   return walletCached;
-}
-
-/** The active Bybit account's UID, if any. */
-export function connectedBybit(): string | undefined {
-  return activeAccount(accountsState(), "bybit")?.id;
 }
 
 /** Earlier versions could watch any address; forget one they stored. */

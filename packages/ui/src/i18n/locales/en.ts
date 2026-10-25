@@ -1497,16 +1497,16 @@ export const en = {
   "accounts.demo": "Demo",
   "apiKey.envLabel": "Account type",
   "apiKey.live": "Live",
-  "apiKey.liveHint": "Real funds on Bybit",
+  "apiKey.liveHint": "Real funds on {venue}",
   "apiKey.demoHint": "Demo Trading funds",
-  "apiKey.step.demo": "For a demo account, switch Bybit to Demo Trading and make the key there.",
+  "apiKey.step.demo": "For a demo account, switch {venue} to Demo Trading and make the key there.",
   "live.title": "Live trading",
   "live.offHint": "Off. Orders can't be placed on this account.",
   "live.onHint": "On. Orders on this account use real funds.",
   "live.warning":
-    "Orders on this account use real funds on Bybit. Once on, the ticket, quick trade, the floating window and the command palette can place, change and cancel orders, set TP/SL, and change leverage and margin mode. There is no size limit.",
+    "Orders on this account use real funds on {venue}. Once on, the ticket, quick trade, the floating window and the command palette can place, change and cancel orders, set TP/SL, and change leverage and margin mode. There is no size limit.",
   "live.confirm": "Turn on live trading",
-  "live.checking": "Checking the key with Bybit…",
+  "live.checking": "Checking the key with {venue}…",
   "live.warningWallet":
     "Orders on this account use real funds on {venue}. Once on, the ticket, quick trade, the floating window and the command palette can place and cancel orders. There is no size limit.",
   "live.checkingWallet": "Checking the API wallet with {venue}…",
@@ -1580,6 +1580,9 @@ export const en = {
   "apiKey.step.subaccount":
     "Make it on a sub-account, so the terminal only reaches the funds you move there.",
   "apiKey.step.permissions": "Give it contract trading only - withdrawals and transfers off.",
+  "apiKey.step.hmac": "Choose a system-generated (HMAC) key.",
+  "apiKey.step.permissionsBinance":
+    "Tick Enable Futures only - leave withdrawals, transfers and spot & margin trading off.",
   "apiKey.step.ip": "Restrict it to your IP address.",
   "apiKey.can": "Can place and cancel orders",
   "apiKey.cannot": "Can't withdraw or transfer",
@@ -1587,7 +1590,8 @@ export const en = {
     "The key lives in your OS keychain and is only ever sent from this device, to the exchange.",
   "apiKey.keyLabel": "API key",
   "apiKey.secretLabel": "API secret",
-  "apiKey.secretHint": "Checked with Bybit, then kept in your OS keychain. It's never shown again.",
+  "apiKey.secretHint":
+    "Checked with {venue}, then kept in your OS keychain. It's never shown again.",
   "apiKey.submit": "Check and connect",
   "apiKey.checking": "Checking with {venue}…",
   "apiKey.uid": "UID",
@@ -1598,19 +1602,24 @@ export const en = {
   "apiKey.permissions": "Permissions",
   "apiKey.readOnly": "Read-only",
   "apiKey.yes": "Yes",
-  "apiKey.unchecked": "Bybit couldn't be reached, so the key wasn't checked just now.",
+  "apiKey.unchecked": "{venue} couldn't be reached, so the key wasn't checked just now.",
+  "apiKey.hedgeMode":
+    "This account is in Hedge Mode. pewterdesk trades One-way Mode, so switch it in {venue}'s futures preferences or orders will be refused.",
   "apiKey.ipAdvice":
-    "This key isn't bound to an IP address. Binding it to yours on Bybit makes a leaked key useless anywhere else.",
+    "This key isn't bound to an IP address. Binding it to yours on {venue} makes a leaked key useless anywhere else.",
   "apiKey.disconnectHint":
-    "Disconnecting deletes the key from this computer. Delete it on Bybit too if you won't use it again.",
+    "Disconnecting deletes the key from this computer. Delete it on {venue} too if you won't use it again.",
   "onb.ready.bybit": "Bybit",
+  "onb.ready.binance": "Binance",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "{count} trading keys in your keychain · can't withdraw",
   "pnl.connectApiKey": "Connect an API key to track PnL",
   "portfolio.emptyApiKey": "Connect a {venue} API key to see a portfolio.",
   "onb.connect.keyTitle": "Connect your accounts.",
+  "onb.connect.keysLead":
+    "Each exchange connects with an API key you make on its own site. You can skip this and connect them later.",
   "onb.connect.keyLead":
-    "Bybit connects with an API key you make on Bybit. You can skip this and connect it later.",
+    "{venue} connects with an API key you make on {venue}. You can skip this and connect it later.",
   "wallet.close": "Close",
   "wallet.wc": "WalletConnect",
   "wallet.wcDetail": "Scan a QR code with your phone wallet",
@@ -2118,6 +2127,7 @@ export const en = {
   "onb.venues.lead":
     "Choose the perp venues you want in one terminal. You can change this later in Settings.",
   "onb.chain.bybit": "Centralized exchange",
+  "onb.chain.binance": "Centralized exchange",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",

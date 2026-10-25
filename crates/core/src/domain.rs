@@ -20,10 +20,11 @@ pub enum VenueId {
     Hyperliquid,
     Aster,
     Bybit,
+    Binance,
 }
 
 impl VenueId {
-    pub const ALL: [VenueId; 3] = [Self::Hyperliquid, Self::Aster, Self::Bybit];
+    pub const ALL: [VenueId; 4] = [Self::Hyperliquid, Self::Aster, Self::Bybit, Self::Binance];
 }
 
 /// A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes
@@ -57,7 +58,7 @@ pub enum PositionSide {
 pub struct Market {
     pub venue: VenueId,
     /// The venue's own identifier, passed back to the adapter unchanged: "BTC"
-    /// on Hyperliquid, "BTCUSDT" on Aster. Opaque outside the adapter.
+    /// on Hyperliquid, "BTCUSDT" on Aster and Binance. Opaque outside the adapter.
     pub id: String,
     /// Display symbol, e.g. "BTC-USDC".
     pub symbol: String,

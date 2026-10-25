@@ -3159,6 +3159,7 @@ dependencies = [
  "pewterdesk-core",
  "pewterdesk-engine",
  "pewterdesk-exchange-aster",
+ "pewterdesk-exchange-binance",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
  "pewterdesk-keychain",
@@ -3199,6 +3200,7 @@ dependencies = [
  "libc",
  "pewterdesk-core",
  "pewterdesk-exchange-aster",
+ "pewterdesk-exchange-binance",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
  "pewterdesk-keychain",
@@ -3237,6 +3239,7 @@ dependencies = [
  "pewterdesk-core",
  "pewterdesk-engine",
  "pewterdesk-exchange-aster",
+ "pewterdesk-exchange-binance",
  "pewterdesk-exchange-bybit",
  "pewterdesk-exchange-hyperliquid",
  "pewterdesk-keychain",
@@ -3279,6 +3282,25 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3",
+ "tokio",
+ "tokio-tungstenite",
+ "zeroize",
+]
+
+[[package]]
+name = "pewterdesk-exchange-binance"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "futures-util",
+ "hex",
+ "hmac 0.12.1",
+ "pewterdesk-core",
+ "reqwest",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
  "tokio",
  "tokio-tungstenite",
  "zeroize",

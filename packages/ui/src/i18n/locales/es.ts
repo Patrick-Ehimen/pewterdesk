@@ -1567,16 +1567,16 @@ export const messages: Messages = {
   "accounts.demo": "Demo",
   "apiKey.envLabel": "Tipo de cuenta",
   "apiKey.live": "Real",
-  "apiKey.liveHint": "Fondos reales en Bybit",
+  "apiKey.liveHint": "Fondos reales en {venue}",
   "apiKey.demoHint": "Fondos de Demo Trading",
-  "apiKey.step.demo": "Para una cuenta demo, cambia Bybit a Demo Trading y crea la clave allí.",
+  "apiKey.step.demo": "Para una cuenta demo, cambia {venue} a Demo Trading y crea la clave allí.",
   "live.title": "Trading en real",
   "live.offHint": "Desactivado. No se pueden enviar órdenes en esta cuenta.",
   "live.onHint": "Activado. Las órdenes de esta cuenta usan fondos reales.",
   "live.warning":
-    "Las órdenes de esta cuenta usan fondos reales en Bybit. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar, modificar y cancelar órdenes, fijar TP/SL y cambiar el apalancamiento y el modo de margen. No hay límite de tamaño.",
+    "Las órdenes de esta cuenta usan fondos reales en {venue}. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar, modificar y cancelar órdenes, fijar TP/SL y cambiar el apalancamiento y el modo de margen. No hay límite de tamaño.",
   "live.confirm": "Activar trading en real",
-  "live.checking": "Comprobando la clave con Bybit…",
+  "live.checking": "Comprobando la clave con {venue}…",
   "live.warningWallet":
     "Las órdenes de esta cuenta usan fondos reales en {venue}. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar y cancelar órdenes. No hay límite de tamaño.",
   "live.checkingWallet": "Comprobando la wallet de API con {venue}…",
@@ -1652,6 +1652,9 @@ export const messages: Messages = {
     "Créala en una subcuenta, para que el terminal solo alcance los fondos que muevas allí.",
   "apiKey.step.permissions":
     "Dale solo trading de contratos, con retiros y transferencias desactivados.",
+  "apiKey.step.hmac": "Elige una clave generada por el sistema (HMAC).",
+  "apiKey.step.permissionsBinance":
+    "Marca solo Enable Futures: deja desactivados los retiros, las transferencias y el trading spot y de margen.",
   "apiKey.step.ip": "Restríngela a tu dirección IP.",
   "apiKey.can": "Puede abrir y cancelar órdenes",
   "apiKey.cannot": "No puede retirar ni transferir",
@@ -1660,7 +1663,7 @@ export const messages: Messages = {
   "apiKey.keyLabel": "Clave API",
   "apiKey.secretLabel": "Secreto API",
   "apiKey.secretHint":
-    "Se comprueba con Bybit y se guarda en el llavero del sistema. No se vuelve a mostrar.",
+    "Se comprueba con {venue} y se guarda en el llavero del sistema. No se vuelve a mostrar.",
   "apiKey.submit": "Comprobar y conectar",
   "apiKey.checking": "Comprobando con {venue}…",
   "apiKey.uid": "UID",
@@ -1671,19 +1674,24 @@ export const messages: Messages = {
   "apiKey.permissions": "Permisos",
   "apiKey.readOnly": "Solo lectura",
   "apiKey.yes": "Sí",
-  "apiKey.unchecked": "No se pudo contactar con Bybit, así que la clave no se comprobó ahora.",
+  "apiKey.unchecked": "No se pudo contactar con {venue}, así que la clave no se comprobó ahora.",
+  "apiKey.hedgeMode":
+    "Esta cuenta está en modo cobertura (Hedge Mode). pewterdesk opera en modo unidireccional, así que cámbialo en las preferencias de futuros de {venue} o se rechazarán las órdenes.",
   "apiKey.ipAdvice":
-    "Esta clave no está vinculada a una IP. Vincularla a la tuya en Bybit hace inútil una clave filtrada en cualquier otro lugar.",
+    "Esta clave no está vinculada a una IP. Vincularla a la tuya en {venue} hace inútil una clave filtrada en cualquier otro lugar.",
   "apiKey.disconnectHint":
-    "Desconectar borra la clave de este ordenador. Bórrala también en Bybit si no vas a volver a usarla.",
+    "Desconectar borra la clave de este ordenador. Bórrala también en {venue} si no vas a volver a usarla.",
   "onb.ready.bybit": "Bybit",
+  "onb.ready.binance": "Binance",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "{count} claves de trading en tu llavero · no pueden retirar",
   "pnl.connectApiKey": "Conecta una clave API para seguir el PnL",
   "portfolio.emptyApiKey": "Conecta una clave API de {venue} para ver un portafolio.",
   "onb.connect.keyTitle": "Conecta tus cuentas.",
+  "onb.connect.keysLead":
+    "Cada exchange se conecta con una clave API creada en su propio sitio. Puedes omitir este paso y conectarlas más tarde.",
   "onb.connect.keyLead":
-    "Bybit se conecta con una clave API creada en Bybit. Puedes omitir este paso y conectarla más tarde.",
+    "{venue} se conecta con una clave API creada en {venue}. Puedes omitir este paso y conectarla más tarde.",
   "wallet.close": "Cerrar",
   "wallet.wc": "WalletConnect",
   "wallet.wcDetail": "Escanea un código QR con la wallet de tu móvil",
@@ -2193,6 +2201,7 @@ export const messages: Messages = {
   "onb.venues.lead":
     "Elige los exchanges de perpetuos que quieres en un solo terminal. Puedes cambiarlo después en Ajustes.",
   "onb.chain.bybit": "Exchange centralizado",
+  "onb.chain.binance": "Exchange centralizado",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",

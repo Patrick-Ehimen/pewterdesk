@@ -10,6 +10,7 @@ use pewterdesk_core::{AlgoView, ExchangeAdapter, VenueError, VenueId};
 use pewterdesk_engine::algo::Host;
 use pewterdesk_engine::{Adapters, Calendar, Engine, EventLog};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
+use pewterdesk_exchange_binance::{constants::MAINNET as BINANCE_MAINNET, BinanceAdapter};
 use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use pewterdesk_keychain::KeychainKeySource;
@@ -24,6 +25,7 @@ pub struct Venues {
     hyperliquid: HyperliquidAdapter,
     aster: AsterAdapter,
     bybit: BybitAdapter,
+    binance: BinanceAdapter,
 }
 
 impl Venues {
@@ -32,6 +34,7 @@ impl Venues {
             hyperliquid: HyperliquidAdapter::new(&MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             aster: AsterAdapter::new(&ASTER_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             bybit: BybitAdapter::new(&BYBIT_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
+            binance: BinanceAdapter::new(&BINANCE_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
         })
     }
 }
@@ -42,6 +45,7 @@ impl Adapters for Venues {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
             VenueId::Aster => Ok(&self.aster),
             VenueId::Bybit => Ok(&self.bybit),
+            VenueId::Binance => Ok(&self.binance),
         }
     }
 }

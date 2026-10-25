@@ -132,7 +132,7 @@ const MAX_AHEAD_MS: u64 = 90 * 86_400_000;
 /// earlier reasoning both stay valid from one turn to the next.
 const SYSTEM: &str = "You are PewterDesk AI, the market analyst inside PewterDesk, a crypto \
 derivatives trading terminal running on the trader's own machine. You help with perpetual \
-futures on Hyperliquid, Aster and Bybit: price action, structure, funding, positioning, \
+futures on Hyperliquid, Aster, Bybit and Binance: price action, structure, funding, positioning, \
 narratives and risk.
 
 How to work:
@@ -238,7 +238,7 @@ fn tools() -> Vec<Value> {
         },
         {
             "name": "get_long_short_ratio",
-            "description": "The share of the market's accounts long and short, hourly, oldest first. Bybit only; other venues answer that they don't publish it.",
+            "description": "The share of the market's accounts long and short, hourly, oldest first. Bybit and Binance only; other venues answer that they don't publish it.",
             "input_schema": {
                 "type": "object",
                 "properties": {
@@ -431,7 +431,7 @@ fn with_venue(mut tool: Value) -> Value {
     let schema = &mut tool["input_schema"];
     schema["properties"]["venue"] = json!({
         "type": "string",
-        "enum": ["hyperliquid", "aster", "bybit"],
+        "enum": ["hyperliquid", "aster", "bybit", "binance"],
         "description": "The venue to read: the one in the context unless another is asked about.",
     });
     if let Some(required) = schema["required"].as_array_mut() {
@@ -535,7 +535,8 @@ pub struct AccountRef {
     account: String,
 }
 
-/// An account id as the adapters take it: an address, a Bybit UID, `demo:<uid>`.
+/// An account id as the adapters take it: an address, a Bybit or Binance UID,
+/// `demo:<uid>`.
 fn account_id_ok(id: &str) -> bool {
     !id.is_empty() && id.len() <= 80 && id.chars().all(|c| c.is_ascii_alphanumeric() || c == ':')
 }
@@ -724,6 +725,7 @@ fn venue_name(venue: VenueId) -> &'static str {
         VenueId::Hyperliquid => "Hyperliquid",
         VenueId::Aster => "Aster",
         VenueId::Bybit => "Bybit",
+        VenueId::Binance => "Binance",
     }
 }
 
