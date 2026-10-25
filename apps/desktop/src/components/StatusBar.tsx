@@ -51,7 +51,10 @@ function useSideScroll() {
   }, []);
   const onWheel = (e: WheelEvent<HTMLDivElement>) => {
     const el = ref.current;
-    if (!el || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+    // A button's panel is portalled out of the bar, but React still bubbles
+    // its wheel events here: scrolling the panel mustn't slide the bar.
+    if (!el?.contains(e.target as Node)) return;
+    if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
     el.scrollLeft += e.deltaY;
   };
   return { ref, ...edges, onWheel };
