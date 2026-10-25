@@ -32,6 +32,7 @@ import {
 } from "../../lib/ticketChecks";
 import { Hint } from "../common/ColumnHeader";
 import { FloatingTip, Tooltip, useTipTrigger } from "../common/Tooltip";
+import { useKept } from "../common/useKept";
 import { type ConfirmChange, type ConfirmRow, OrderConfirmDialog } from "./OrderConfirmDialog";
 import { SizeCalculator } from "./SizeCalculator";
 import { NumberField } from "./TicketField";
@@ -152,20 +153,24 @@ export function OrderTicket({
 }: OrderTicketProps) {
   const [confirming, setConfirming] = useState<OrderRequest>();
   const [editing, setEditing] = useState<"leverage" | "margin">();
-  const [type, setType] = useState<TicketType>("market");
-  const [side, setSide] = useState<TicketSide>("buy");
-  const [size, setSize] = useState("");
-  const [unit, setUnit] = useState<"base" | "quote">("base");
-  const [limitPrice, setLimitPrice] = useState("");
-  const [trigger, setTrigger] = useState("");
-  const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
-  const [count, setCount] = useState("5");
-  const [minutes, setMinutes] = useState("30");
-  const [reduceOnly, setReduceOnly] = useState(false);
-  const [tpsl, setTpsl] = useState(false);
-  const [tp, setTp] = useState("");
-  const [sl, setSl] = useState("");
+  // What's typed is kept for the session (`useKept`): switching pages and
+  // back leaves the order as it was, until a reload.
+  const [type, setType] = useKept<TicketType>("ticket.type", "market");
+  const [side, setSide] = useKept<TicketSide>("ticket.side", "buy");
+  const [size, setSize] = useKept("ticket.size", "");
+  const [unit, setUnit] = useKept<"base" | "quote">("ticket.unit", "base");
+  const [limitPrice, setLimitPrice] = useKept("ticket.limitPrice", "");
+  const [trigger, setTrigger] = useKept("ticket.trigger", "");
+  const [start, setStart] = useKept("ticket.start", "");
+  const [end, setEnd] = useKept("ticket.end", "");
+  const [count, setCount] = useKept("ticket.count", "5");
+  const [minutes, setMinutes] = useKept("ticket.minutes", "30");
+  const [reduceOnly, setReduceOnly] = useKept("ticket.reduceOnly", false);
+  const [tpsl, setTpsl] = useKept("ticket.tpsl", false);
+  const [tp, setTp] = useKept("ticket.tp", "");
+  const [sl, setSl] = useKept("ticket.sl", "");
+  // The market those prices and sizes were typed for.
+  const [typedFor, setTypedFor] = useKept<string | undefined>("ticket.market", undefined);
   const [proOpen, setProOpen] = useState(false);
   const proRef = useRef<HTMLDivElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
@@ -173,13 +178,18 @@ export function OrderTicket({
   const [sending, setSending] = useState(false);
   const reasonId = useId();
 
-  // A new market starts a fresh order.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on the market's id only
+  // A new market starts a fresh order; the same one, come back to, doesn't.
+  const marketKey = market ? `${market.venue}:${market.id}` : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on the market only
   useEffect(() => {
-    for (const reset of [setSize, setLimitPrice, setTrigger, setStart, setEnd, setTp, setSl]) {
-      reset("");
+    if (marketKey === undefined || marketKey === typedFor) return;
+    if (typedFor !== undefined) {
+      for (const reset of [setSize, setLimitPrice, setTrigger, setStart, setEnd, setTp, setSl]) {
+        reset("");
+      }
     }
-  }, [market?.id]);
+    setTypedFor(marketKey);
+  }, [marketKey]);
 
   // The Pro menu closes on a click elsewhere.
   useEffect(() => {

@@ -1,5 +1,5 @@
 import type { Market } from "@pewterdesk/core";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useEffect, useId } from "react";
 import { LuCalculator, LuChevronDown } from "react-icons/lu";
 import { type MessageKey, t } from "../../i18n";
 import { liquidationPrice, maxOpen, targetPrice, tradePnl } from "../../lib/calculator";
@@ -13,6 +13,7 @@ import {
 import type { TicketSide } from "../../lib/ticket";
 import { Hint } from "../common/ColumnHeader";
 import { Tooltip } from "../common/Tooltip";
+import { useKept } from "../common/useKept";
 import { NumberField } from "./TicketField";
 
 type CalcTab = "pnl" | "target" | "liq" | "maxOpen";
@@ -72,29 +73,38 @@ export function SizeCalculator({
   /** Folded away behind its title until opened (in the ticket); otherwise always open. */
   folded?: boolean;
 }) {
-  const [open, setOpen] = useState(!folded);
-  const [tab, setTab] = useState<CalcTab>("pnl");
-  const [side, setSide] = useState<TicketSide>(ticketSide);
-  const [leverage, setLeverage] = useState(String(ticketLeverage));
-  const [entry, setEntry] = useState("");
-  const [exit, setExit] = useState("");
-  const [size, setSize] = useState("");
-  const [roi, setRoi] = useState("");
-  const [balance, setBalance] = useState("");
+  // What's typed is kept for the session (`useKept`): switching pages and
+  // back leaves it as it was, until a reload. Folded or not is kept per kind.
+  const [open, setOpen] = useKept(`calc.open.${folded}`, !folded);
+  const [tab, setTab] = useKept<CalcTab>("calc.tab", "pnl");
+  const [side, setSide] = useKept<TicketSide>("calc.side", ticketSide);
+  const [leverage, setLeverage] = useKept("calc.leverage", String(ticketLeverage));
+  const [entry, setEntry] = useKept("calc.entry", "");
+  const [exit, setExit] = useKept("calc.exit", "");
+  const [size, setSize] = useKept("calc.size", "");
+  const [roi, setRoi] = useKept("calc.roi", "");
+  const [balance, setBalance] = useKept("calc.balance", "");
+  // The market its prices and sizes were typed for.
+  const [typedFor, setTypedFor] = useKept<string | undefined>("calc.market", undefined);
   const bodyId = useId();
 
-  // Opening it starts from the ticket's side and leverage.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: copies the ticket's values on open only
+  // Opening it starts from the ticket's side and leverage; coming back to
+  // it open keeps what it had.
+  const toggle = () => {
+    if (!open) {
+      setSide(ticketSide);
+      setLeverage(String(ticketLeverage));
+    }
+    setOpen(!open);
+  };
+  // Prices and sizes belong to one market; the same one, come back to, keeps them.
+  const marketKey = market ? `${market.venue}:${market.id}` : undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on the market only
   useEffect(() => {
-    if (!open) return;
-    setSide(ticketSide);
-    setLeverage(String(ticketLeverage));
-  }, [open]);
-  // Prices and sizes belong to one market.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: resets on the market's id only
-  useEffect(() => {
-    for (const reset of [setEntry, setExit, setSize]) reset("");
-  }, [market?.id]);
+    if (marketKey === undefined || marketKey === typedFor) return;
+    if (typedFor !== undefined) for (const reset of [setEntry, setExit, setSize]) reset("");
+    setTypedFor(marketKey);
+  }, [marketKey]);
 
   const quote = market?.quote ?? "USDC";
   const base = market?.base ?? "";
@@ -139,7 +149,7 @@ export function SizeCalculator({
           className="pd-calc-toggle"
           aria-expanded={open}
           aria-controls={bodyId}
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggle}
         >
           <span className="pd-calc-title">
             <LuCalculator size={14} aria-hidden />
