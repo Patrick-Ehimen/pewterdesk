@@ -479,22 +479,24 @@ export function MultiChartPage({
   };
 
   // Every venue in the terminal: its markets for the pickers, its prices for
-  // the headers. Three fixed calls; a venue that isn't in the terminal is idle.
+  // the headers. One fixed call per venue; a venue that isn't in the terminal is idle.
   const has = (id: VenueId) => id === venue || venues.some((v) => v.id === id);
   const data: Record<VenueId, ReturnType<typeof useVenueData>> = {
     bybit: useVenueData("bybit", has("bybit")),
     hyperliquid: useVenueData("hyperliquid", has("hyperliquid")),
     aster: useVenueData("aster", has("aster")),
+    binance: useVenueData("binance", has("binance")),
   };
   const bybit = data.bybit.markets;
   const hyperliquid = data.hyperliquid.markets;
   const aster = data.aster.markets;
+  const binance = data.binance.markets;
   // As each venue's markets arrive: its charts are checked against them, and
   // the venue on screen fills in any charts still missing.
   useEffect(() => {
     setState((now) => {
       let next = now;
-      const lists = { bybit, hyperliquid, aster };
+      const lists = { bybit, hyperliquid, aster, binance };
       // The venue on screen last, so its charts fill what's left.
       const order = (Object.keys(lists) as VenueId[]).sort(
         (a, b) => Number(a === venue) - Number(b === venue),
@@ -505,7 +507,7 @@ export function MultiChartPage({
       if (next !== now) saveMultiChart(next);
       return next;
     });
-  }, [venue, bybit, hyperliquid, aster]);
+  }, [venue, bybit, hyperliquid, aster, binance]);
 
   // The chart given the whole page, by its place in the grid.
   const [maximised, setMaximised] = useState<number>();

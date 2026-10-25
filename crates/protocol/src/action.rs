@@ -24,6 +24,9 @@ pub fn default_slippage_bps(venue: VenueId) -> u32 {
     match venue {
         VenueId::Hyperliquid => 800,
         VenueId::Bybit | VenueId::Aster => 500,
+        // Binance refuses a limit price outside the market's band around
+        // the mark (3% on BTCUSDT), so a wider bound would only be pulled in.
+        VenueId::Binance => 300,
     }
 }
 

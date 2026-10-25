@@ -20,9 +20,11 @@ function MovementPanel({
   const hl = useMarketSummaries("hyperliquid", true);
   const aster = useMarketSummaries("aster", true);
   const bybit = useMarketSummaries("bybit", true);
+  const binance = useMarketSummaries("binance", true);
   const hlMarkets = useMarkets(venue === "hyperliquid" ? undefined : "hyperliquid");
   const asterMarkets = useMarkets(venue === "aster" ? undefined : "aster");
   const bybitMarkets = useMarkets(venue === "bybit" ? undefined : "bybit");
+  const binanceMarkets = useMarkets(venue === "binance" ? undefined : "binance");
   const data = (f: typeof hl) =>
     f.status === "live" || f.status === "closed" ? f.data : undefined;
   const list = (id: VenueId, f: typeof hlMarkets) =>
@@ -36,6 +38,13 @@ function MovementPanel({
           logo: venueLogos.bybit,
           summaries: data(bybit),
           markets: list("bybit", bybitMarkets),
+        },
+        {
+          id: "binance",
+          label: VENUES.binance.label,
+          logo: venueLogos.binance,
+          summaries: data(binance),
+          markets: list("binance", binanceMarkets),
         },
         {
           id: "hyperliquid",

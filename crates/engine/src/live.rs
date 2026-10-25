@@ -1,7 +1,7 @@
-//! Which live accounts may trade. A Bybit demo account trades as soon as
-//! it's connected (demo funds); a live Bybit account, and a Hyperliquid or
-//! Aster account (always real funds), doesn't until the user turns live
-//! trading on for it, here. The trading commands ask this before they sign
+//! Which live accounts may trade. A Bybit demo account, or a Binance Demo
+//! Trading one, trades as soon as it's connected (demo funds); a live Bybit
+//! or Binance account, and a Hyperliquid or Aster account (always real
+//! funds), doesn't until the user turns live trading on for it, here. The trading commands ask this before they sign
 //! anything (the router's `trading_account`).
 //!
 //! Security invariants - review any change here against
@@ -9,12 +9,12 @@
 //! - The switch is kept and checked in Rust: a live order is refused unless
 //!   this module says the account is on, whatever the page believes.
 //! - Turning it on asks the venue again what the stored key may do, and
-//!   refuses a key that isn't trade-only (Bybit's `auth::ALLOWED`; on
-//!   Hyperliquid and Aster, an API wallet still approved for that account,
+//!   refuses a key that isn't trade-only (Bybit's and Binance's
+//!   `auth::ALLOWED`; on Hyperliquid and Aster, an API wallet still approved for that account,
 //!   which on Aster can't withdraw), belongs to another account, or can't
 //!   be checked (offline included): it fails closed.
-//! - Only the account's id is kept (a Bybit UID, or the venue and the main
-//!   wallet's public address), in a small file in the app's config folder.
+//! - Only the account's id is kept (a Bybit UID, `binance:` and a Binance
+//!   UID, or the venue and the main wallet's public address), in a small file in the app's config folder.
 //!   No key material: keys stay in the keychain.
 //! - It guards against an order sent to a live account by mistake. It is
 //!   not a defence against the page itself, which can call these commands.
@@ -23,7 +23,7 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 
-use pewterdesk_core::accounts::{bybit_account, normalize_address};
+use pewterdesk_core::accounts::{binance_account, bybit_account, normalize_address};
 
 use crate::kept::{Change, Kept};
 use pewterdesk_core::{VenueError, VenueId};
@@ -42,6 +42,18 @@ pub fn live_uid(uid: &str) -> Result<String, VenueError> {
     }
 }
 
+/// How a live Binance account is kept in the list: `binance:` and its UID,
+/// so it can't be mistaken for a Bybit UID (also digits). An error for a
+/// Demo Trading account, which needs no switch.
+pub fn binance_id(uid: &str) -> Result<String, VenueError> {
+    match binance_account(uid.trim())? {
+        (false, bare) => Ok(format!("binance:{bare}")),
+        (true, _) => Err(VenueError::InvalidRequest(
+            "a Demo Trading account trades without this switch".into(),
+        )),
+    }
+}
+
 /// How a Hyperliquid or Aster account is kept in the list: its venue, then
 /// its main wallet's address (lowercase). Bybit accounts are bare UIDs,
 /// which are all digits, so the two can't be mistaken for each other.
@@ -53,12 +65,23 @@ pub fn wallet_id(venue: VenueId, address: &str) -> Result<String, VenueError> {
         VenueId::Bybit => Err(VenueError::InvalidRequest(
             "a Bybit account is switched by its UID".into(),
         )),
+        VenueId::Binance => Err(VenueError::InvalidRequest(
+            "a Binance account is switched by its UID".into(),
+        )),
     }
 }
 
-/// Whether `id` is one this module writes: a live Bybit UID or a wallet id.
+/// Whether `id` is one this module writes: a live Bybit UID, a live
+/// Binance id or a wallet id.
 fn known_id(id: &str) -> bool {
     if live_uid(id).is_ok_and(|bare| bare == id) {
+        return true;
+    }
+    if id
+        .strip_prefix("binance:")
+        .and_then(|uid| binance_id(uid).ok())
+        .is_some_and(|whole| whole == id)
+    {
         return true;
     }
     [VenueId::Hyperliquid, VenueId::Aster]
@@ -70,7 +93,7 @@ fn known_id(id: &str) -> bool {
         })
 }
 
-/// The live accounts with trading on: Bybit UIDs and wallet ids.
+/// The live accounts with trading on: Bybit UIDs, Binance ids and wallet ids.
 pub struct LiveTrading {
     on: Mutex<BTreeSet<String>>,
     /// Where they're kept between runs, which another engine (the app's, or
@@ -119,13 +142,15 @@ impl LiveTrading {
         on
     }
 
-    /// Whether the live account `uid` (a Bybit UID or a `wallet_id`) may trade.
+    /// Whether the live account `uid` (a Bybit UID, a `binance_id` or a
+    /// `wallet_id`) may trade.
     pub fn is_on(&self, uid: &str) -> bool {
         self.current().contains(uid)
     }
 
-    /// The live accounts with trading on: Bybit UIDs, and Hyperliquid and
-    /// Aster accounts as `<venue>:<address>`. Public ids only.
+    /// The live accounts with trading on: Bybit UIDs, Binance accounts as
+    /// `binance:<uid>`, and Hyperliquid and Aster accounts as
+    /// `<venue>:<address>`. Public ids only.
     pub fn list(&self) -> Vec<String> {
         self.current().iter().cloned().collect()
     }
@@ -166,6 +191,13 @@ impl LiveTrading {
     pub fn forget(&self, uid: &str) {
         if let Ok(bare) = live_uid(uid) {
             let _ = self.set(&bare, false);
+        }
+    }
+
+    /// Turns a live Binance account off when its key is removed.
+    pub fn forget_binance(&self, uid: &str) {
+        if let Ok(id) = binance_id(uid) {
+            let _ = self.set(&id, false);
         }
     }
 
@@ -288,6 +320,42 @@ mod tests {
         assert_eq!(
             LiveTrading::load(Some(path.clone())).list(),
             [format!("aster:{address}")]
+        );
+        let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
+    }
+
+    #[test]
+    fn binance_accounts_are_kept_apart_from_bybits() {
+        assert_eq!(binance_id(" 354937868 ").unwrap(), "binance:354937868");
+        assert!(binance_id("demo:354937868").is_err());
+        assert!(binance_id("0x12").is_err());
+        assert!(wallet_id(
+            VenueId::Binance,
+            "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
+        )
+        .is_err());
+
+        let path = scratch("binance");
+        let live = LiveTrading::load(Some(path.clone()));
+        let id = binance_id("354937868").unwrap();
+        live.set(&id, true).unwrap();
+        // The same UID on Bybit stays off.
+        assert!(live.is_on(&id) && !live.is_on("354937868"));
+        assert_eq!(
+            LiveTrading::load(Some(path.clone())).list(),
+            std::slice::from_ref(&id)
+        );
+        live.forget_binance("354937868");
+        assert!(!live.is_on(&id));
+        // Only well-formed ids are read back.
+        std::fs::write(
+            &path,
+            br#"["binance:354937868","binance:demo:1","binance:","binance:x","binance:1 "]"#,
+        )
+        .unwrap();
+        assert_eq!(
+            LiveTrading::load(Some(path.clone())).list(),
+            ["binance:354937868"]
         );
         let _ = std::fs::remove_dir_all(path.parent().unwrap().parent().unwrap());
     }

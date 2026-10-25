@@ -8,24 +8,35 @@
 
 use crate::{VenueError, VenueId};
 
-/// What a Bybit demo account's id starts with, before its UID.
-pub const BYBIT_DEMO_PREFIX: &str = "demo:";
+/// What a demo account's id starts with, before its UID, on the venues
+/// whose accounts are API keys (Bybit, Binance).
+pub const DEMO_PREFIX: &str = "demo:";
 
-/// A Bybit account id: its UID (digits, as Bybit numbers its accounts),
+/// What a Bybit demo account's id starts with, before its UID.
+pub const BYBIT_DEMO_PREFIX: &str = DEMO_PREFIX;
+
+/// An account id on a venue that numbers its accounts: its UID (digits),
 /// with `demo:` in front for a demo account. Returns whether it's demo, and
-/// the UID.
-pub fn bybit_account(id: &str) -> Result<(bool, &str), VenueError> {
-    let (demo, uid) = match id.strip_prefix(BYBIT_DEMO_PREFIX) {
+/// the UID; `venue` names it in the error.
+fn uid_account<'a>(venue: &str, id: &'a str) -> Result<(bool, &'a str), VenueError> {
+    let (demo, uid) = match id.strip_prefix(DEMO_PREFIX) {
         Some(uid) => (true, uid),
         None => (false, id),
     };
     if !uid.is_empty() && uid.len() <= 20 && uid.bytes().all(|b| b.is_ascii_digit()) {
         Ok((demo, uid))
     } else {
-        Err(VenueError::InvalidRequest(
-            "a Bybit account is its UID (digits), or demo: and its UID".into(),
-        ))
+        Err(VenueError::InvalidRequest(format!(
+            "a {venue} account is its UID (digits), or demo: and its UID"
+        )))
     }
+}
+
+/// A Bybit account id: its UID (digits, as Bybit numbers its accounts),
+/// with `demo:` in front for a demo account. Returns whether it's demo, and
+/// the UID.
+pub fn bybit_account(id: &str) -> Result<(bool, &str), VenueError> {
+    uid_account("Bybit", id)
 }
 
 /// The keychain entry the API key for Bybit account `id` lives under:
@@ -33,6 +44,19 @@ pub fn bybit_account(id: &str) -> Result<(bool, &str), VenueError> {
 pub fn bybit_key_entry(id: &str) -> Result<String, VenueError> {
     bybit_account(id)?;
     Ok(format!("bybit:{id}"))
+}
+
+/// A Binance account id: its UID, with `demo:` in front for a Demo Trading
+/// account, as on Bybit. Returns whether it's demo, and the UID.
+pub fn binance_account(id: &str) -> Result<(bool, &str), VenueError> {
+    uid_account("Binance", id)
+}
+
+/// The keychain entry the API key for Binance account `id` lives under:
+/// `binance:{uid}`, or `binance:demo:{uid}` for a Demo Trading account.
+pub fn binance_key_entry(id: &str) -> Result<String, VenueError> {
+    binance_account(id)?;
+    Ok(format!("binance:{id}"))
 }
 
 /// A wallet address as accounts are kept: lowercase `0x` + 40 hex, or an
@@ -56,6 +80,7 @@ pub fn wallet_key_entry(venue: VenueId, address: &str) -> String {
         VenueId::Hyperliquid => format!("hyperliquid:{address}"),
         VenueId::Aster => format!("aster:{address}"),
         VenueId::Bybit => format!("bybit:{address}"),
+        VenueId::Binance => format!("binance:{address}"),
     }
 }
 
@@ -83,6 +108,33 @@ mod tests {
             "bybit:demo:24617703"
         );
         assert!(bybit_key_entry("x").is_err());
+    }
+
+    #[test]
+    fn binance_accounts_are_digit_uids_under_their_own_entries() {
+        assert_eq!(binance_account("354937868").unwrap(), (false, "354937868"));
+        assert_eq!(
+            binance_account("demo:354937868").unwrap(),
+            (true, "354937868")
+        );
+        for bad in ["", "demo:", "0xabc", "demo:demo:1", "1 2"] {
+            assert!(binance_account(bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(binance_key_entry("354937868").unwrap(), "binance:354937868");
+        assert_eq!(
+            binance_key_entry("demo:354937868").unwrap(),
+            "binance:demo:354937868"
+        );
+        // The same UID on Bybit is a different entry: one venue's key can't
+        // be read for the other's account.
+        assert_ne!(
+            binance_key_entry("354937868").unwrap(),
+            bybit_key_entry("354937868").unwrap()
+        );
+        assert!(binance_account("x")
+            .unwrap_err()
+            .to_string()
+            .contains("Binance"));
     }
 
     #[test]

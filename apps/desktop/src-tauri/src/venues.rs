@@ -1,7 +1,7 @@
 //! Tauri commands exposing the venue adapters - the only way the UI reaches a
 //! venue: markets, order books, trades, candles, market stats, summaries and
-//! history, funding history and account state from Hyperliquid, Aster and
-//! Bybit, and the trading commands.
+//! history, funding history and account state from Hyperliquid, Aster,
+//! Bybit and Binance, and the trading commands.
 //!
 //! Security invariants - review any change here against
 //! `.claude/commands/security-review.md`:
@@ -12,19 +12,20 @@
 //!   the trading parameters `set_leverage` and `set_margin_mode` (they move
 //!   no funds and open nothing), nothing else. Each is a thin wrapper
 //!   around the engine's router (`pewterdesk_engine::Engine`), which builds
-//!   the account's key reference itself and signs only for a Bybit demo
-//!   account, or a live account (Bybit, Hyperliquid, Aster) with live
-//!   trading turned on, once the trader's rules pass. Every venue
-//!   implements all six, except a trailing stop on Hyperliquid and Aster.
+//!   the account's key reference itself and signs only for a Bybit demo or
+//!   Binance Demo Trading account, or a live account (Bybit, Binance,
+//!   Hyperliquid, Aster) with live trading turned on, once the trader's
+//!   rules pass. Every venue implements all six, except a trailing stop on
+//!   Hyperliquid, Aster and Binance.
 //! - With "always on" (`daemon.rs`) the same six go to the daemon's engine
 //!   instead - the same router and gate, in `pdd` - and are refused, not
 //!   sent from here, while it can't be reached (cancels excepted).
 //! - No command takes a URL or host. Adapters connect only to the endpoints
 //!   fixed in their own crate.
-//! - Bybit's account reads are signed with its stored API key: the adapter
-//!   gets the keychain as a `KeySource` and signs only its own fixed,
-//!   read-only requests (balance, positions, open orders, leverage and
-//!   margin mode).
+//! - Bybit's and Binance's account reads are signed with the stored API
+//!   key: the adapter gets the keychain as a `KeySource` and signs only its
+//!   own fixed, read-only requests (balance, positions, open orders, history,
+//!   leverage and margin mode).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -38,6 +39,7 @@ use pewterdesk_core::{
 };
 use pewterdesk_engine::{Adapters, Engine};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
+use pewterdesk_exchange_binance::{constants::MAINNET as BINANCE_MAINNET, BinanceAdapter};
 use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
@@ -70,6 +72,7 @@ pub struct Venues {
     hyperliquid: HyperliquidAdapter,
     aster: AsterAdapter,
     bybit: BybitAdapter,
+    binance: BinanceAdapter,
     /// Each live stream's forwarding task, and the webview it streams to.
     subscriptions: Arc<Mutex<HashMap<u32, Subscription>>>,
     next_id: AtomicU32,
@@ -84,6 +87,8 @@ impl Venues {
             aster: AsterAdapter::new(&ASTER_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             // Account reads take the stored API key from the keychain.
             bybit: BybitAdapter::new(&BYBIT_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
+            // Account reads and orders take the stored API key from the keychain.
+            binance: BinanceAdapter::new(&BINANCE_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             subscriptions: Arc::default(),
             next_id: AtomicU32::new(1),
         })
@@ -103,11 +108,17 @@ impl Venues {
         &self.bybit
     }
 
+    /// Binance's own methods beyond `ExchangeAdapter`, for onboarding.
+    pub fn binance(&self) -> &BinanceAdapter {
+        &self.binance
+    }
+
     pub(crate) fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
             VenueId::Aster => Ok(&self.aster),
             VenueId::Bybit => Ok(&self.bybit),
+            VenueId::Binance => Ok(&self.binance),
         }
     }
 

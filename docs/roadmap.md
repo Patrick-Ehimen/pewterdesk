@@ -31,6 +31,23 @@ three (Hyperliquid's and Aster's closed trades are built from their fills).
   exactly. Either offer the percentage on Aster or leave it.
 - **Aster can't attach a TP / SL to a new order**; it's set on the position
   once it's open.
+- **Binance against a real account.** Its public data is checked live
+  (`make rust-live`), and a made-up key is refused as it should be, but no
+  key has connected yet. With a Demo Trading key first: that the UID comes
+  back from Demo Trading's spot host (`/api/v3/account` on
+  `demo-api.binance.com`), the account and history reads, a place and a
+  cancel, a trigger order and a position's TP / SL through the Algo Service
+  (`/fapi/v1/algoOrder`, whose open-order list is read whether it answers
+  with the list or under `orders`), changing a limit order, leverage and
+  margin mode. Then a live key with Enable Futures only, and one with
+  withdrawals on (it must be refused).
+- **Binance's account is polled**, every 10 seconds (about 95 request
+  weight a time), not streamed: its user data stream (a listen key on the
+  `/private` route) would cut that to near nothing.
+- **Binance in Hedge Mode** refuses pewterdesk's orders (they're one-way);
+  the key's details say so. Orders could send `positionSide` instead.
+- **Binance's demo book has its own prices**, unlike Bybit's: a demo order
+  is priced from the demo host, but the charts and book show mainnet's.
 - **Paper trading** (Hyperliquid and Aster, on the Trade page) only moves
   while the app runs and the venue is on screen, and fills at the best bid
   and ask only; trading rules aren't checked on paper orders.

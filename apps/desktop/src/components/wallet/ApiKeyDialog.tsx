@@ -10,14 +10,21 @@ import {
   LuTriangleAlert,
   LuX,
 } from "react-icons/lu";
-import { type BybitKeyInfo, bybitKeyClient } from "../../api/venueClient";
+import {
+  type BinanceKeyInfo,
+  type BybitKeyInfo,
+  binanceKeyClient,
+  bybitKeyClient,
+} from "../../api/venueClient";
 import {
   type AccountsState,
   accountsState,
   activeAccount,
   addAccount,
+  isUidVenue,
   removeAccount,
   subscribeAccounts,
+  type UidVenue,
   venueAccounts,
 } from "../../lib/account";
 import { refreshLiveTrading } from "../../lib/liveTrading";
@@ -25,25 +32,91 @@ import { VENUES } from "../../lib/venues";
 import { AccountList } from "./AccountList";
 import { LiveTradingSwitch } from "./LiveTradingSwitch";
 
-/** How the key should be made, in order. */
-const STEPS: readonly MessageKey[] = [
-  "apiKey.step.subaccount",
-  "apiKey.step.permissions",
-  "apiKey.step.ip",
-  "apiKey.step.demo",
-];
-
 const message = (err: unknown) => (err instanceof Error ? err.message : t("error.failed"));
 
+/** A connected key, as either venue's Rust command describes it. */
+type KeyInfo = BybitKeyInfo | BinanceKeyInfo;
+
 /**
- * The key and secret, handed to Rust once on submit. Rust asks Bybit what
- * the key may do and stores it only if it trades contracts and nothing
- * else. Both fields are cleared straight away, pass or fail.
+ * What differs between the API-key venues: their commands (each checks the
+ * key with its own venue before storing it), how the key should be made,
+ * and what's worth showing about a connected one.
  */
-function KeyForm({ venue }: { venue: VenueId }) {
+interface KeyVenue {
+  connect: (apiKey: string, apiSecret: string, demo: boolean) => Promise<{ uid: string }>;
+  status: (uid: string) => Promise<KeyInfo | null>;
+  disconnect: (uid: string) => Promise<void>;
+  /** How the key should be made, in order. */
+  steps: readonly MessageKey[];
+  /** The connected key's details, after its UID. */
+  rows: (info: KeyInfo | null | undefined) => [MessageKey, string][];
+}
+
+const yesNo = (info: KeyInfo | null | undefined, v: boolean | undefined) =>
+  info?.checked && v !== undefined ? t(v ? "apiKey.yes" : "venues.no") : "-";
+
+const KEY_VENUES: Record<UidVenue, KeyVenue> = {
+  bybit: {
+    connect: bybitKeyClient.connect,
+    status: bybitKeyClient.status,
+    disconnect: bybitKeyClient.disconnect,
+    steps: [
+      "apiKey.step.subaccount",
+      "apiKey.step.permissions",
+      "apiKey.step.ip",
+      "apiKey.step.demo",
+    ],
+    rows: (info) => {
+      const key = info && "subAccount" in info ? info : undefined;
+      return [
+        ["apiKey.subAccount", yesNo(info, key?.subAccount)],
+        ["apiKey.ipBound", yesNo(info, key?.ipRestricted)],
+        [
+          "apiKey.expires",
+          key?.checked
+            ? key.expiresAt
+              ? dateFormat({ dateStyle: "medium" }).format(new Date(key.expiresAt))
+              : t("apiKey.never")
+            : "-",
+        ],
+        [
+          "apiKey.permissions",
+          key?.checked ? (key.readOnly ? t("apiKey.readOnly") : key.permissions.join(", ")) : "-",
+        ],
+      ];
+    },
+  },
+  binance: {
+    connect: binanceKeyClient.connect,
+    status: binanceKeyClient.status,
+    disconnect: binanceKeyClient.disconnect,
+    steps: [
+      "apiKey.step.hmac",
+      "apiKey.step.subaccount",
+      "apiKey.step.permissionsBinance",
+      "apiKey.step.ip",
+      "apiKey.step.demo",
+    ],
+    rows: (info) => [
+      ["apiKey.ipBound", info?.demo ? "-" : yesNo(info, info?.ipRestricted)],
+      [
+        "apiKey.permissions",
+        info?.checked && info.permissions.length > 0 ? info.permissions.join(", ") : "-",
+      ],
+    ],
+  },
+};
+
+/**
+ * The key and secret, handed to Rust once on submit. Rust asks the venue
+ * what the key may do and stores it only if it trades derivatives and
+ * nothing else. Both fields are cleared straight away, pass or fail.
+ */
+function KeyForm({ venue }: { venue: UidVenue }) {
   const [apiKey, setApiKey] = useState("");
   const [secret, setSecret] = useState("");
-  // A key made in Bybit's Demo Trading only works on its demo host.
+  const label = VENUES[venue].label;
+  // A key made in the venue's Demo Trading only works on its demo host.
   const [demo, setDemo] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -56,8 +129,8 @@ function KeyForm({ venue }: { venue: VenueId }) {
     setBusy(true);
     setError(undefined);
     try {
-      const info = await bybitKeyClient.connect(key, pasted, demo);
-      addAccount("bybit", info.uid);
+      const info = await KEY_VENUES[venue].connect(key, pasted, demo);
+      addAccount(venue, info.uid);
     } catch (err) {
       setError(message(err));
     } finally {
@@ -79,7 +152,7 @@ function KeyForm({ venue }: { venue: VenueId }) {
             onClick={() => setDemo(isDemo)}
           >
             <strong>{t(isDemo ? "accounts.demo" : "apiKey.live")}</strong>
-            <span>{t(isDemo ? "apiKey.demoHint" : "apiKey.liveHint")}</span>
+            <span>{isDemo ? t("apiKey.demoHint") : t("apiKey.liveHint", { venue: label })}</span>
           </button>
         ))}
       </div>
@@ -104,7 +177,7 @@ function KeyForm({ venue }: { venue: VenueId }) {
           spellCheck={false}
           required
         />
-        <small>{t("apiKey.secretHint")}</small>
+        <small>{t("apiKey.secretHint", { venue: label })}</small>
       </label>
       {error && (
         <p className="wallet-error" role="alert">
@@ -112,35 +185,37 @@ function KeyForm({ venue }: { venue: VenueId }) {
         </p>
       )}
       <button type="submit" className="wallet-primary" disabled={busy}>
-        {busy ? t("apiKey.checking", { venue: VENUES[venue].label }) : t("apiKey.submit")}
+        {busy ? t("apiKey.checking", { venue: label }) : t("apiKey.submit")}
       </button>
     </form>
   );
 }
 
-/** The connected account: what Bybit says the key may do, and disconnect. */
-function Connected({ uid }: { uid: string }) {
-  const [info, setInfo] = useState<BybitKeyInfo | null>();
+/** The connected account: what the venue says the key may do, and disconnect. */
+function Connected({ venue, uid }: { venue: UidVenue; uid: string }) {
+  const keys = KEY_VENUES[venue];
+  const label = VENUES[venue].label;
+  const [info, setInfo] = useState<KeyInfo | null>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     let live = true;
-    bybitKeyClient.status(uid).then(
+    keys.status(uid).then(
       (next) => live && setInfo(next),
       (err) => live && setError(message(err)),
     );
     return () => {
       live = false;
     };
-  }, [uid]);
+  }, [keys, uid]);
 
   const disconnect = async () => {
     setBusy(true);
     setError(undefined);
     try {
-      await bybitKeyClient.disconnect(uid);
-      removeAccount("bybit", uid);
+      await keys.disconnect(uid);
+      removeAccount(venue, uid);
       // Rust turned live trading off with the key; the page's copy follows.
       void refreshLiveTrading();
     } catch (err) {
@@ -149,25 +224,11 @@ function Connected({ uid }: { uid: string }) {
     }
   };
 
-  const yesNo = (v: boolean | undefined) =>
-    info?.checked && v !== undefined ? t(v ? "apiKey.yes" : "venues.no") : "-";
   const rows: [MessageKey, string][] = [
     ["apiKey.uid", uid.replace(/^demo:/, "")],
-    ["apiKey.subAccount", yesNo(info?.subAccount)],
-    ["apiKey.ipBound", yesNo(info?.ipRestricted)],
-    [
-      "apiKey.expires",
-      info?.checked
-        ? info.expiresAt
-          ? dateFormat({ dateStyle: "medium" }).format(new Date(info.expiresAt))
-          : t("apiKey.never")
-        : "-",
-    ],
-    [
-      "apiKey.permissions",
-      info?.checked ? (info.readOnly ? t("apiKey.readOnly") : info.permissions.join(", ")) : "-",
-    ],
+    ...keys.rows(info),
   ];
+  const hedgeMode = info && "hedgeMode" in info && info.hedgeMode;
 
   return (
     <section className="apikey-connected" aria-labelledby="apikey-pane-title">
@@ -190,30 +251,42 @@ function Connected({ uid }: { uid: string }) {
         </p>
       )}
       {info && !info.checked && !info.problem && (
-        <p className="wallet-note">{t("apiKey.unchecked")}</p>
+        <p className="wallet-note">{t("apiKey.unchecked", { venue: label })}</p>
       )}
-      {info?.checked && !info.ipRestricted && <p className="wallet-note">{t("apiKey.ipAdvice")}</p>}
+      {hedgeMode && (
+        <p className="wallet-error" role="alert">
+          <LuTriangleAlert size={14} aria-hidden /> {t("apiKey.hedgeMode", { venue: label })}
+        </p>
+      )}
+      {info?.checked && !info.demo && !info.ipRestricted && (
+        <p className="wallet-note">{t("apiKey.ipAdvice", { venue: label })}</p>
+      )}
       {error && (
         <p className="wallet-error" role="alert">
           {error}
         </p>
       )}
-      {!uid.startsWith("demo:") && <LiveTradingSwitch account={{ venue: "bybit", id: uid }} />}
+      {!uid.startsWith("demo:") && <LiveTradingSwitch account={{ venue, id: uid }} />}
       <div className="wallet-actions">
         <button type="button" className="wallet-danger" disabled={busy} onClick={disconnect}>
           {t("wallet.disconnect")}
         </button>
       </div>
-      <p className="wallet-note">{t("apiKey.disconnectHint")}</p>
+      <p className="wallet-note">{t("apiKey.disconnectHint", { venue: label })}</p>
     </section>
   );
 }
 
 /**
  * How the key should be made and the form for it, or the connected account:
- * the dialog's body, also onboarding's connect step for Bybit.
+ * the dialog's body, also onboarding's connect step for Bybit and Binance.
+ * Nothing for a venue that connects with a wallet.
  */
 export function ApiKeyBody({ venue }: { venue: VenueId }) {
+  return isUidVenue(venue) ? <KeyVenueBody venue={venue} /> : null;
+}
+
+function KeyVenueBody({ venue }: { venue: UidVenue }) {
   const state = useSyncExternalStore(subscribeAccounts, accountsState);
   const uid = activeAccount(state, venue)?.id;
   // Adding another key shows the form until one connects: any change to
@@ -230,7 +303,7 @@ export function ApiKeyBody({ venue }: { venue: VenueId }) {
       {uid && !adding ? (
         <>
           <AccountList venue={venue} onAdd={() => setAddingFrom(state)} />
-          <Connected key={uid} uid={uid} />
+          <Connected key={uid} venue={venue} uid={uid} />
         </>
       ) : (
         <>
@@ -242,7 +315,7 @@ export function ApiKeyBody({ venue }: { venue: VenueId }) {
           )}
           <p className="apikey-label">{t("apiKey.howTo")}</p>
           <ol className="apikey-steps">
-            {STEPS.map((key) => (
+            {KEY_VENUES[venue].steps.map((key) => (
               <li key={key}>{t(key)}</li>
             ))}
           </ol>
@@ -271,9 +344,9 @@ interface ApiKeyDialogProps {
 }
 
 /**
- * Connect an exchange account (Bybit) with an API key rather than a wallet:
- * how the key should be made, then the key and secret, which Rust checks
- * with Bybit before storing. Once connected, the account and what the key
+ * Connect an exchange account (Bybit, Binance) with an API key rather than a
+ * wallet: how the key should be made, then the key and secret, which Rust
+ * checks with the venue before storing. Once connected, the account and what the key
  * may do, and disconnect.
  */
 export function ApiKeyDialog({ open, onClose, venue }: ApiKeyDialogProps) {

@@ -4358,6 +4358,9 @@ fieldset.pd-alerts-chips {
 .pd-move-bar[data-venue="aster"] {
   background: var(--pd-brass);
 }
+.pd-move-bar[data-venue="binance"] {
+  background: var(--pd-text);
+}
 .pd-skel.pd-move-bar-skel {
   width: 100%;
   height: 6px;
@@ -7928,6 +7931,9 @@ button.pd-drawer-exit:hover {
 }
 .pd-mx-venue-dot[data-venue="aster"] {
   background: var(--pd-brass);
+}
+.pd-mx-venue-dot[data-venue="binance"] {
+  background: var(--pd-text);
 }
 .pd-mx-venue-key {
   display: inline-flex;

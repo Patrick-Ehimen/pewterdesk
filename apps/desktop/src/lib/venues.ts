@@ -43,6 +43,19 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     auth: "wallet",
     connectable: true,
   },
+  // USDⓈ-M futures, with Demo Trading for demo accounts.
+  binance: {
+    label: "Binance",
+    defaultMarket: "BTCUSDT",
+    // Binance's regular-tier USDⓈ-M fees.
+    fees: { taker: 0.0005, maker: 0.0002 },
+    // Binance refuses a limit price outside the market's band around the
+    // mark (3% on BTCUSDT); Rust pulls a wider bound in to it.
+    maxSlippage: 0.03,
+    majors: ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "HYPEUSDT", "ASTERUSDT"],
+    auth: "apiKey",
+    connectable: true,
+  },
   aster: {
     label: "Aster",
     defaultMarket: "BTCUSDT",

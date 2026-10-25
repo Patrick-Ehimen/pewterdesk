@@ -78,7 +78,8 @@ function useStarredCounts(venues: readonly VenueId[]): Record<VenueId, number> {
   const bybit = useWatchlist("bybit").starred.size;
   const hyperliquid = useWatchlist("hyperliquid").starred.size;
   const aster = useWatchlist("aster").starred.size;
-  const all: Record<VenueId, number> = { bybit, hyperliquid, aster };
+  const binance = useWatchlist("binance").starred.size;
+  const all: Record<VenueId, number> = { bybit, hyperliquid, aster, binance };
   return Object.fromEntries(venues.map((v) => [v, all[v]])) as Record<VenueId, number>;
 }
 

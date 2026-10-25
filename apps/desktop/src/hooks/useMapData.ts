@@ -83,20 +83,23 @@ export function useCrossVenue(enabled: boolean) {
   const hlMarkets = marketsOf(useMarkets(enabled ? "hyperliquid" : undefined));
   const asterMarkets = marketsOf(useMarkets(enabled ? "aster" : undefined));
   const bybitMarkets = marketsOf(useMarkets(enabled ? "bybit" : undefined));
+  const binanceMarkets = marketsOf(useMarkets(enabled ? "binance" : undefined));
   const hl = summariesOf(useMarketSummaries("hyperliquid", enabled));
   const aster = summariesOf(useMarketSummaries("aster", enabled));
   const bybit = summariesOf(useMarketSummaries("bybit", enabled));
+  const binance = summariesOf(useMarketSummaries("binance", enabled));
   const rows = useMemo<CoinRow[]>(() => {
     const bases: Record<VenueId, Map<string, string>> = {
       hyperliquid: cryptoBases(hlMarkets),
       aster: cryptoBases(asterMarkets),
       bybit: cryptoBases(bybitMarkets),
+      binance: cryptoBases(binanceMarkets),
     };
-    return joinByCoin({ hyperliquid: hl, aster, bybit }, (venue, market) =>
+    return joinByCoin({ hyperliquid: hl, aster, bybit, binance }, (venue, market) =>
       bases[venue].get(market),
     );
-  }, [hl, aster, bybit, hlMarkets, asterMarkets, bybitMarkets]);
-  return { rows, loading: !hl && !aster && !bybit };
+  }, [hl, aster, bybit, binance, hlMarkets, asterMarkets, bybitMarkets, binanceMarkets]);
+  return { rows, loading: !hl && !aster && !bybit && !binance };
 }
 
 /** Samples Hyperliquid's and Aster's open interest once an hour while the app runs. */
@@ -122,7 +125,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const NONE: string[] = [];
 
 /** The venues that publish an hourly open-interest history. */
-export const OI_HISTORY_VENUES: readonly VenueId[] = ["bybit"];
+export const OI_HISTORY_VENUES: readonly VenueId[] = ["bybit", "binance"];
 
 /**
  * The venue's own hourly open-interest history for its busiest markets

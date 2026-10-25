@@ -76,6 +76,7 @@ export const venueLogos = {
   hyperliquid: venueHyperliquid,
   aster: venueAster,
   bybit: venueBybit,
+  binance: venueBinance,
 } as const;
 
 /** Wallet marks on their brand tiles, for the Connect wallet dialog. Source and license: wallets/README.md. */
@@ -94,7 +95,6 @@ export const walletLogos = {
 
 /** Venues pewterdesk will support but doesn't yet, for "coming soon" in onboarding and on the Venues page. Sources: venues/README.md. */
 export const upcomingVenueLogos = {
-  binance: venueBinance,
   okx: venueOkx,
   coinbase: venueCoinbase,
   kraken: venueKraken,

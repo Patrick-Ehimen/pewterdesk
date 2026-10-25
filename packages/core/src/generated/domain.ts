@@ -397,7 +397,7 @@ export type MarginMode = "cross" | "isolated";
 export type Market = { venue: VenueId, 
 /**
  * The venue's own identifier, passed back to the adapter unchanged: "BTC"
- * on Hyperliquid, "BTCUSDT" on Aster. Opaque outside the adapter.
+ * on Hyperliquid, "BTCUSDT" on Aster and Binance. Opaque outside the adapter.
  */
 id: string, 
 /**
@@ -828,4 +828,4 @@ export type Unfilled = "market" | "skip" | "stop";
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "blocked", "detail": string } | { "kind": "key", "detail": KeyError };
 
-export type VenueId = "hyperliquid" | "aster" | "bybit";
+export type VenueId = "hyperliquid" | "aster" | "bybit" | "binance";

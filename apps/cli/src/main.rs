@@ -17,6 +17,7 @@ use std::time::Duration;
 
 use pewterdesk_core::{AccountSnapshot, Market, Order, StopMode, VenueId};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
+use pewterdesk_exchange_binance::{constants::MAINNET as BINANCE_MAINNET, BinanceAdapter};
 use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use pewterdesk_protocol::action::{action_for, default_slippage_bps, Action, For};
@@ -94,6 +95,7 @@ struct Opts {
 fn venue_named(word: &str) -> Option<VenueId> {
     match word.to_ascii_lowercase().as_str() {
         "bybit" => Some(VenueId::Bybit),
+        "binance" => Some(VenueId::Binance),
         "hyperliquid" | "hl" => Some(VenueId::Hyperliquid),
         "aster" => Some(VenueId::Aster),
         _ => None,
@@ -249,6 +251,12 @@ async fn read_markets(venue: VenueId) -> Result<Vec<Market>, String> {
                 .markets()
                 .await
         }
+        VenueId::Binance => {
+            BinanceAdapter::new(&BINANCE_MAINNET)
+                .map_err(err)?
+                .markets()
+                .await
+        }
     }
     .map_err(err)
 }
@@ -271,6 +279,12 @@ async fn read_book(venue: VenueId, market: &str) -> Result<pewterdesk_core::Orde
         }
         VenueId::Bybit => {
             BybitAdapter::new(&BYBIT_MAINNET)
+                .map_err(err)?
+                .order_book(market)
+                .await
+        }
+        VenueId::Binance => {
+            BinanceAdapter::new(&BINANCE_MAINNET)
                 .map_err(err)?
                 .order_book(market)
                 .await

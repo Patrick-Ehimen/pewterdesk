@@ -1,11 +1,12 @@
 import type { VenueId } from "@pewterdesk/core";
-import { bybitKeyClient, walletClient } from "../api/venueClient";
+import { binanceKeyClient, bybitKeyClient, walletClient } from "../api/venueClient";
 import { liveId } from "./account";
 
 export { liveId };
 
-// Which live accounts have trading turned on: Bybit accounts by UID, and
-// Hyperliquid and Aster accounts as "<venue>:<address>". Rust keeps the list and
+// Which live accounts have trading turned on: Bybit accounts by UID, Binance
+// accounts as "binance:<uid>", and Hyperliquid and Aster accounts as
+// "<venue>:<address>". Rust keeps the list and
 // enforces it (`live_trading.rs`): this is its copy for the page, so the
 // ticket knows whether to offer orders. It's mirrored to localStorage only
 // so the app's other windows (the floating one) hear a change.
@@ -70,6 +71,7 @@ export async function setLiveTrading(
   on: boolean,
 ): Promise<void> {
   if (account.venue === "bybit") await bybitKeyClient.setLive(account.id, on);
+  else if (account.venue === "binance") await binanceKeyClient.setLive(account.id, on);
   else await walletClient.setLive(account.venue, account.id, on);
   const id = liveId(account);
   publish(on ? [...uids.filter((u) => u !== id), id] : uids.filter((u) => u !== id));

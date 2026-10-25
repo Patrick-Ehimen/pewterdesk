@@ -1540,17 +1540,17 @@ export const messages: Messages = {
   "accounts.demo": "デモ",
   "apiKey.envLabel": "アカウントの種類",
   "apiKey.live": "本番",
-  "apiKey.liveHint": "Bybit の実際の資金",
+  "apiKey.liveHint": "{venue} の実際の資金",
   "apiKey.demoHint": "デモ取引の資金",
   "apiKey.step.demo":
-    "デモアカウントの場合は、Bybit をデモ取引に切り替えてそこでキーを作成します。",
+    "デモアカウントの場合は、{venue} をデモ取引に切り替えてそこでキーを作成します。",
   "live.title": "ライブ取引",
   "live.offHint": "オフ。このアカウントでは注文できません。",
   "live.onHint": "オン。このアカウントの注文は実資金を使います。",
   "live.warning":
-    "このアカウントの注文はBybitの実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから、注文の発注・変更・取消、TP/SLの設定、レバレッジと証拠金モードの変更ができます。サイズの上限はありません。",
+    "このアカウントの注文は{venue}の実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから、注文の発注・変更・取消、TP/SLの設定、レバレッジと証拠金モードの変更ができます。サイズの上限はありません。",
   "live.confirm": "ライブ取引をオンにする",
-  "live.checking": "Bybitでキーを確認中…",
+  "live.checking": "{venue}でキーを確認中…",
   "live.warningWallet":
     "このアカウントの注文は{venue}の実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから注文の発注と取消ができます。サイズの上限はありません。",
   "live.checkingWallet": "{venue}でAPIウォレットを確認中…",
@@ -1624,13 +1624,16 @@ export const messages: Messages = {
   "apiKey.step.subaccount":
     "サブアカウントで作成し、ターミナルが触れる資金をそこに移した分だけにします。",
   "apiKey.step.permissions": "権限は契約取引のみ。出金と振替はオフにします。",
+  "apiKey.step.hmac": "システム生成(HMAC)キーを選びます。",
+  "apiKey.step.permissionsBinance":
+    "Enable Futures だけにチェックし、出金・振替・現物とマージン取引はオフのままにします。",
   "apiKey.step.ip": "使用するIPアドレスに制限します。",
   "apiKey.can": "注文の発注と取消ができる",
   "apiKey.cannot": "出金・振替はできない",
   "apiKey.footer": "キーはOSのキーチェーンに保存され、この端末から取引所へのみ送信されます。",
   "apiKey.keyLabel": "APIキー",
   "apiKey.secretLabel": "APIシークレット",
-  "apiKey.secretHint": "Bybitで確認したあとOSのキーチェーンに保存し、二度と表示しません。",
+  "apiKey.secretHint": "{venue}で確認したあとOSのキーチェーンに保存し、二度と表示しません。",
   "apiKey.submit": "確認して接続",
   "apiKey.checking": "{venue} で確認中…",
   "apiKey.uid": "UID",
@@ -1641,19 +1644,24 @@ export const messages: Messages = {
   "apiKey.permissions": "権限",
   "apiKey.readOnly": "読み取り専用",
   "apiKey.yes": "はい",
-  "apiKey.unchecked": "Bybitに接続できなかったため、今回はキーを確認していません。",
+  "apiKey.unchecked": "{venue}に接続できなかったため、今回はキーを確認していません。",
+  "apiKey.hedgeMode":
+    "このアカウントはヘッジモードです。pewterdesk は片方向モードで取引するため、{venue} の先物設定で切り替えてください。切り替えないと注文は拒否されます。",
   "apiKey.ipAdvice":
-    "このキーはIPアドレスに制限されていません。BybitであなたのIPに制限すると、漏れたキーを他所で使えなくなります。",
+    "このキーはIPアドレスに制限されていません。{venue}であなたのIPに制限すると、漏れたキーを他所で使えなくなります。",
   "apiKey.disconnectHint":
-    "接続を解除すると、このコンピューターからキーが削除されます。今後使わない場合はBybitでも削除してください。",
+    "接続を解除すると、このコンピューターからキーが削除されます。今後使わない場合は{venue}でも削除してください。",
   "onb.ready.bybit": "Bybit",
+  "onb.ready.binance": "Binance",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "キーチェーンに取引キー{count}件 · 出金不可",
   "pnl.connectApiKey": "損益を見るにはAPIキーを接続してください",
   "portfolio.emptyApiKey": "ポートフォリオを見るには{venue}のAPIキーを接続してください。",
   "onb.connect.keyTitle": "アカウントを接続。",
+  "onb.connect.keysLead":
+    "各取引所は、その取引所のサイトで作成したAPIキーで接続します。このステップを飛ばして、後から接続できます。",
   "onb.connect.keyLead":
-    "BybitはBybitで作成したAPIキーで接続します。このステップを飛ばして、後から接続できます。",
+    "{venue}は{venue}で作成したAPIキーで接続します。このステップを飛ばして、後から接続できます。",
   "wallet.close": "閉じる",
   "wallet.wc": "WalletConnect",
   "wallet.wcDetail": "スマホのウォレットで QR コードを読み取り",
@@ -2161,6 +2169,7 @@ export const messages: Messages = {
   "onb.venues.lead":
     "ひとつのターミナルで使う無期限先物の取引所を選びます。あとで設定画面から変更できます。",
   "onb.chain.bybit": "中央集権型取引所",
+  "onb.chain.binance": "中央集権型取引所",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",

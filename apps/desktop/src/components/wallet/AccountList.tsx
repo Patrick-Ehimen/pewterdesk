@@ -7,6 +7,7 @@ import {
   accountLabel,
   accountsState,
   isDemoAccount,
+  isUidVenue,
   NAME_MAX,
   renameAccount,
   selectAccount,
@@ -23,9 +24,9 @@ export function accountName(state: AccountsState, account: VenueAccount): string
   return "name" in label ? label.name : t("accounts.default", { n: label.index });
 }
 
-/** How an account's id reads: a short address, or the Bybit UID as is. */
+/** How an account's id reads: a short address, or the exchange UID as is. */
 export const accountId = (account: VenueAccount) =>
-  account.venue === "bybit" ? `UID ${account.id.replace(/^demo:/, "")}` : shortAddress(account.id);
+  isUidVenue(account.venue) ? `UID ${account.id.replace(/^demo:/, "")}` : shortAddress(account.id);
 
 function Edit({
   account,
