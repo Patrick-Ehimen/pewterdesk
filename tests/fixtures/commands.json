@@ -1,18 +1,7 @@
 {
   "note": "The command language's contract: apps/desktop/tests/commandFixtures.test.ts and crates/protocol both read it. Regenerate with UPDATE_FIXTURES=1.",
   "version": 1,
-  "pages": [
-    "trade",
-    "charts",
-    "maps",
-    "portfolio",
-    "rules",
-    "venues",
-    "news",
-    "ai",
-    "bots",
-    "settings"
-  ],
+  "pages": ["trade", "charts", "maps", "portfolio", "rules", "venues", "news", "ai", "settings"],
   "contexts": {
     "main": {
       "markets": [

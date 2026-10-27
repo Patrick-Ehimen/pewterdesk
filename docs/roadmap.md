@@ -119,7 +119,8 @@ scaled), native venue algos and venue-side protection, and the `pdd`
 daemon with the `pd` command line are built (`docs/bots/plan.md`, ADR
 0003). Bots are not part of pewterdesk: automated strategies run in
 FreqTrade, on its own, with its own key. The bot engine that was built
-here is kept, unmerged, on the `bots-engine` branch.
+here is kept, unmerged, on the `bots-engine` branch; the bots' UI and the
+NautilusTrader backtests and signals on `archive/bots-signals`.
 
 ## Suggested next steps
 

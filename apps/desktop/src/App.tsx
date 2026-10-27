@@ -88,7 +88,6 @@ import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { AiPage } from "./components/pages/AiPage";
-import { BotsPage } from "./components/pages/BotsPage";
 import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
@@ -96,7 +95,6 @@ import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { AlgoChartChips, AlgosPanel } from "./components/panels/AlgosPanel";
-import { BotsPanel } from "./components/panels/BotsPanel";
 import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
@@ -125,7 +123,6 @@ import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAlgos } from "./hooks/useAlgos";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
-import { useBots } from "./hooks/useBots";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
 import { useOiRecorder } from "./hooks/useMapData";
@@ -1293,8 +1290,6 @@ export function App() {
   // Algo orders: the engine runs them; this keeps them on screen and says
   // when one ends, or stops or pauses on its own.
   const algoBook = useAlgos(symbolFor);
-  // Bots: no engine runs them in this build, so the panel and page say so.
-  const botBook = useBots(symbolFor);
   /** Who a new algo trades for: the live (or demo) account on screen, never paper. */
   const algoTarget: AlgoTarget | undefined =
     route === "live" && trading
@@ -1560,21 +1555,6 @@ export function App() {
             onResume={algoBook.resume}
             onStop={algoBook.stop}
             onHalt={algoBook.halt}
-          />
-        );
-      case "bots":
-        // Bots started from saved backtests: shown here, run by the engine through the router.
-        return (
-          <BotsPanel
-            book={botBook}
-            venue={venue}
-            venueLabel={venueInfo.label}
-            market={selected}
-            symbolFor={symbolFor}
-            account={activeOnVenue?.id}
-            tradingOn={trading !== undefined}
-            onOpenWallet={() => openConnect()}
-            onOpenPage={() => goTo("bots")}
           />
         );
       case "cli":
@@ -1890,8 +1870,6 @@ export function App() {
             onRemove={tradingRules.remove}
             onConnect={() => openConnect()}
           />
-        ) : page === "bots" ? (
-          <BotsPage book={botBook} symbolFor={symbolFor} onTrade={() => goTo("trade")} />
         ) : page === "news" ? (
           <NewsPage
             venue={venue}
