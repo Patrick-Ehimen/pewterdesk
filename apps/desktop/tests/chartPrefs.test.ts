@@ -30,6 +30,7 @@ describe("chart prefs", () => {
       indicators: ["rsi" as const, "sma" as const],
       favoriteIntervals: ["30m" as const, "12h" as const],
       favoriteTypes: ["area" as const],
+      favoriteChartTypes: ["tpo", "renko"],
     };
     saveChartPrefs(prefs, store);
     expect(loadChartPrefs(store)).toEqual(prefs);
@@ -44,6 +45,7 @@ describe("chart prefs", () => {
         indicators: ["sma", "ichimoku", "sma"],
         favoriteIntervals: ["1m", "7m"],
         favoriteTypes: "bars",
+        favoriteChartTypes: ["kagi", 7, "<b>", "kagi"],
       }),
     );
     expect(loadChartPrefs(store)).toEqual({
@@ -51,6 +53,7 @@ describe("chart prefs", () => {
       indicators: ["sma"],
       favoriteIntervals: ["1m"],
       favoriteTypes: DEFAULT_CHART_PREFS.favoriteTypes,
+      favoriteChartTypes: ["kagi"],
     });
     store.items.set("pd.chart.prefs", "{not json");
     expect(loadChartPrefs(store)).toEqual(DEFAULT_CHART_PREFS);

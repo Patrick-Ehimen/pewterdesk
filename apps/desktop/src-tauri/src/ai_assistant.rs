@@ -183,7 +183,7 @@ fn tools() -> Vec<Value> {
                 "type": "object",
                 "properties": {
                     "market": {"type": "string", "description": "The market: its id on the venue or its symbol (\"SOL\", \"SOL-USDT\" and \"SOLUSDT\" all work)."},
-                    "interval": {"type": "string", "enum": intervals},
+                    "interval": {"type": "string", "enum": intervals, "description": "Lowercase m is minutes, capital M months (\"1M\" is a month)."},
                     "count": {"type": "integer", "description": "How many candles, 10 to 300."}
                 },
                 "required": ["market", "interval", "count"],
@@ -441,7 +441,8 @@ fn with_venue(mut tool: Value) -> Value {
 }
 
 /// The intervals the model may ask for, by their wire names.
-const INTERVALS: [(&str, CandleInterval); 12] = [
+/// "1M" and on are months; "1m" is a minute.
+const INTERVALS: [(&str, CandleInterval); 16] = [
     ("1m", CandleInterval::OneMinute),
     ("5m", CandleInterval::FiveMinutes),
     ("15m", CandleInterval::FifteenMinutes),
@@ -454,6 +455,10 @@ const INTERVALS: [(&str, CandleInterval); 12] = [
     ("1d", CandleInterval::OneDay),
     ("3d", CandleInterval::ThreeDays),
     ("1w", CandleInterval::OneWeek),
+    ("1M", CandleInterval::OneMonth),
+    ("3M", CandleInterval::ThreeMonths),
+    ("6M", CandleInterval::SixMonths),
+    ("12M", CandleInterval::TwelveMonths),
 ];
 
 fn interval_named(name: &str) -> Option<CandleInterval> {
@@ -1380,8 +1385,7 @@ async fn run_tool(
                 .and_then(Value::as_u64)
                 .unwrap_or(100)
                 .clamp(MIN_CANDLES as u64, MAX_CANDLES as u64) as u32;
-            match adapter
-                .candles(&market, interval, now_ms() + 1, count)
+            match crate::venues::candles_before(adapter, &market, interval, now_ms() + 1, count)
                 .await
             {
                 Ok(candles) if candles.is_empty() => failed("no candles for that market"),

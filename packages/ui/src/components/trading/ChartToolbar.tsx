@@ -92,6 +92,29 @@ export function TypeIcon({ type }: { type: ChartType }) {
   }
 }
 
+/** The session volume profile's and TPO's glyphs, as TradingView draws them. */
+export function ProfileTypeIcon({ tpo }: { tpo: boolean }) {
+  const common = {
+    width: 18,
+    height: 18,
+    viewBox: "0 0 18 18",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+  } as const;
+  return tpo ? (
+    <svg {...common} aria-hidden>
+      <path d="M3 3.5v11h12" />
+      <path d="M6 5.5h3v3H6zM6 8.5h6v3H6zM9 5.5h3v3M9 11.5h3v3H6v-3" />
+    </svg>
+  ) : (
+    <svg {...common} aria-hidden>
+      <path d="M3.5 2.5v13" />
+      <path d="M3.5 4h5v3h-5M3.5 7h9v3h-9M3.5 10h6.5v3H3.5" />
+    </svg>
+  );
+}
+
 const TYPE_LABEL: Record<ChartType, MessageKey> = {
   bars: "chart.type.bars",
   candles: "chart.type.candles",
@@ -105,6 +128,7 @@ const GROUP_LABEL: Record<(typeof INTERVAL_GROUPS)[number]["id"], MessageKey> = 
   minutes: "chart.minutes",
   hours: "chart.hours",
   days: "chart.days",
+  months: "chart.months",
 };
 const INDICATOR_LABEL: Record<IndicatorId, MessageKey> = {
   volume: "indicator.volume",
@@ -183,7 +207,15 @@ export function usePopover<T extends HTMLElement>(trigger: RefObject<T | null>) 
 }
 
 /** A pin beside a menu row: favorites get a button on the toolbar. */
-function FavoriteStar({ on, name, onToggle }: { on: boolean; name: string; onToggle: () => void }) {
+export function FavoriteStar({
+  on,
+  name,
+  onToggle,
+}: {
+  on: boolean;
+  name: string;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"

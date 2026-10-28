@@ -17,6 +17,11 @@ export interface ChartPrefs {
   /** Intervals and chart styles with a toolbar button of their own. */
   favoriteIntervals: CandleInterval[];
   favoriteTypes: ChartType[];
+  /**
+   * The chart types starred in the chart's type menu (the chart library's
+   * ids, any it offers): a button each on the toolbar. None to start with.
+   */
+  favoriteChartTypes: string[];
 }
 
 export const DEFAULT_CHART_PREFS: ChartPrefs = {
@@ -24,6 +29,7 @@ export const DEFAULT_CHART_PREFS: ChartPrefs = {
   indicators: ["volume"],
   favoriteIntervals: ["1m", "15m", "1h", "4h", "1d"],
   favoriteTypes: ["bars", "candles", "line"],
+  favoriteChartTypes: [],
 };
 
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem">;
@@ -34,6 +40,17 @@ function storage(): Storage | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Saved chart type ids, once each. Any id is kept: the chart offers only
+ * those it knows, so one it no longer has just doesn't show.
+ */
+export function chartTypeIds(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return [
+    ...new Set(raw.filter((v): v is string => typeof v === "string" && /^[a-z-]{1,40}$/.test(v))),
+  ];
 }
 
 /** The known values in `raw`, once each, in their saved order. */
@@ -54,6 +71,7 @@ export function loadChartPrefs(from: Storage | undefined = storage()): ChartPref
       favoriteIntervals:
         known(s.favoriteIntervals, ALL_INTERVALS) ?? DEFAULT_CHART_PREFS.favoriteIntervals,
       favoriteTypes: known(s.favoriteTypes, CHART_TYPES) ?? DEFAULT_CHART_PREFS.favoriteTypes,
+      favoriteChartTypes: chartTypeIds(s.favoriteChartTypes),
     };
   } catch {
     return DEFAULT_CHART_PREFS;

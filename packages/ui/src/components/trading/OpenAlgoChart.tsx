@@ -53,6 +53,7 @@ import {
 } from "react-icons/lu";
 import { type MessageKey, t as tr } from "../../i18n";
 import { INTERVAL_MS } from "../../lib/chart";
+import { favoriteChartTypes, groupedChartTypes } from "../../lib/chartTypes";
 import { decimalsOf, formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import { ALL_INTERVALS, type ChartType } from "../../lib/indicators";
 import {
@@ -61,11 +62,13 @@ import {
   type BarSource,
   barFeed,
   type ChartAnalysis,
+  chartCode,
   keptLayout,
   levelLine,
   levelLineId,
   marketOfSymbol,
   outOfAutoscale,
+  registerMonthIntervals,
 } from "../../lib/openAlgoChart";
 import { toastError } from "../../lib/toasts";
 import {
@@ -76,8 +79,21 @@ import {
   tradeLevels,
 } from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
-import { IntervalPicker, TypeIcon, usePopover } from "./ChartToolbar";
+import {
+  FavoriteStar,
+  IntervalPicker,
+  ProfileTypeIcon,
+  TypeIcon,
+  usePopover,
+} from "./ChartToolbar";
 import { type Tokens, tokens, withAlpha } from "./chartTheme";
+import {
+  isProfileType,
+  registerProfileChartTypes,
+  SESSION_PROFILE_TYPE,
+  SessionProfile,
+  TPO_TYPE,
+} from "./SessionProfiles";
 import { TokenIcon } from "./TokenIcon";
 import {
   type Profiles,
@@ -309,10 +325,23 @@ const OWN_TYPE: Record<string, ChartType> = {
   baseline: "baseline",
   "heikin-ashi": "heikinAshi",
 };
+/** The app's own chart types, which the library draws through a primitive of ours. */
+const PROFILE_LABEL: Record<string, MessageKey> = {
+  [SESSION_PROFILE_TYPE]: "chart.type.sessionProfile",
+  [TPO_TYPE]: "chart.type.tpo",
+};
 const typeName = (id: string) => {
   const own = OWN_TYPE[id];
+  const profile = PROFILE_LABEL[id];
+  if (profile) return tr(profile);
   return own ? tr(`chart.type.${own}` as MessageKey) : chartTypeLabel(id);
 };
+const typeIcon = (id: string) =>
+  isProfileType(id) ? (
+    <ProfileTypeIcon tpo={id === TPO_TYPE} />
+  ) : (
+    <TypeIcon type={OWN_TYPE[id] ?? "line"} />
+  );
 
 type ShotResult = "copied" | "saved" | "failed";
 
@@ -326,6 +355,8 @@ function Toolbar({
   onInterval,
   favoriteIntervals,
   onToggleFavoriteInterval,
+  favoriteTypes = [],
+  onToggleFavoriteType,
   onScreenshot,
   compact,
   tools,
@@ -335,6 +366,8 @@ function Toolbar({
   onInterval: (interval: CandleInterval) => void;
   favoriteIntervals?: readonly CandleInterval[];
   onToggleFavoriteInterval?: (interval: CandleInterval) => void;
+  favoriteTypes?: readonly string[];
+  onToggleFavoriteType?: (type: string) => void;
   onScreenshot?: (shot: HTMLCanvasElement | undefined) => Promise<ShotResult>;
   compact?: boolean;
   tools?: ReactNode;
@@ -349,7 +382,15 @@ function Toolbar({
     return () => clearTimeout(id);
   }, [shot]);
 
+  // The chart keeps its type: a pick redraws the bar to show it.
+  const [, picked] = useReducer((n: number) => n + 1, 0);
+  const pick = (id: string) => {
+    widget?.setChartType(id);
+    picked();
+  };
   const type = widget?.chartType() ?? "candlestick";
+  const choices = chartTypeChoices();
+  const quickTypes = favoriteChartTypes(choices, favoriteTypes);
   const count = widget?.chart.indicators().length ?? 0;
   const openIndicators = () => {
     if (widget) mountIndicatorPicker(widget.context, indicatorRef.current ?? undefined);
@@ -371,6 +412,25 @@ function Toolbar({
 
       <span className="pd-chart-divider" aria-hidden />
 
+      {quickTypes.length > 0 && (
+        <div className="pd-chart-group" role="radiogroup" aria-label={tr("chart.type")}>
+          {quickTypes.map((id) => (
+            // biome-ignore lint/a11y/useSemanticElements: toolbar-style radio, like the intervals
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={id === type}
+              aria-label={typeName(id)}
+              title={typeName(id)}
+              className="pd-chart-tool pd-chart-icon"
+              onClick={() => pick(id)}
+            >
+              {typeIcon(id)}
+            </button>
+          ))}
+        </div>
+      )}
       <button
         ref={typeRef}
         type="button"
@@ -381,25 +441,36 @@ function Toolbar({
         aria-expanded={typeMenu.open}
         onClick={() => typeMenu.setOpen(!typeMenu.open)}
       >
-        <TypeIcon type={OWN_TYPE[type] ?? "line"} />
+        {typeIcon(type)}
         <LuChevronDown size={14} aria-hidden />
       </button>
       {typeMenu.render(
         tr("chart.type"),
-        chartTypeChoices().map((id) => (
-          <div key={id} className="pd-chart-menu-row" aria-current={id === type || undefined}>
-            <button
-              type="button"
-              className="pd-chart-menu-pick"
-              onClick={() => {
-                widget?.setChartType(id);
-                typeMenu.close();
-              }}
-            >
-              <TypeIcon type={OWN_TYPE[id] ?? "line"} />
-              {typeName(id)}
-            </button>
-          </div>
+        groupedChartTypes(choices).map((group) => (
+          <section key={group[0]} className="pd-chart-menu-group">
+            {group.map((id) => (
+              <div key={id} className="pd-chart-menu-row" aria-current={id === type || undefined}>
+                <button
+                  type="button"
+                  className="pd-chart-menu-pick"
+                  onClick={() => {
+                    pick(id);
+                    typeMenu.close();
+                  }}
+                >
+                  {typeIcon(id)}
+                  {typeName(id)}
+                </button>
+                {onToggleFavoriteType && (
+                  <FavoriteStar
+                    on={favoriteTypes.includes(id)}
+                    name={typeName(id)}
+                    onToggle={() => onToggleFavoriteType(id)}
+                  />
+                )}
+              </div>
+            ))}
+          </section>
         )),
         "pd-chart-menu-types",
       )}
@@ -421,6 +492,13 @@ function Toolbar({
         )}
         {count > 0 && <span className="pd-chart-count">{count}</span>}
       </button>
+
+        <button
+          type="button"
+          className="pd-chart-tool"
+        >
+        </button>
+      )}
 
       <div className="pd-chart-spacer" />
 
@@ -703,6 +781,10 @@ interface OpenAlgoChartProps {
   /** Intervals with a button of their own on the toolbar. */
   favoriteIntervals?: readonly CandleInterval[];
   onToggleFavoriteInterval?: (interval: CandleInterval) => void;
+  /** Chart types (the library's ids) with a button of their own on the toolbar. */
+  favoriteTypes?: readonly string[];
+  /** Offered as a star beside each type in the menu; none without it. */
+  onToggleFavoriteType?: (type: string) => void;
   /** Takes the chart's picture; resolves to what happened to it. No button without it. */
   onScreenshot?: (shot: HTMLCanvasElement | undefined) => Promise<ShotResult>;
   /** The account's position and open orders in this market, drawn as lines. */
@@ -754,6 +836,8 @@ export function OpenAlgoChart({
   onInterval,
   favoriteIntervals,
   onToggleFavoriteInterval,
+  favoriteTypes,
+  onToggleFavoriteType,
   onScreenshot,
   position,
   orders = NO_ORDERS,
@@ -801,6 +885,8 @@ export function OpenAlgoChart({
   const kept = onLayout !== undefined;
   /** The visible range volume profiles drawn, by study. */
   const profiles = useRef<Profiles>(new Map());
+  /** The session volume profile or TPO, drawn while one is the chart type. */
+  const sessionProfiles = useRef<SessionProfile>(undefined);
 
   // Create once per venue; restyle whenever the theme or market colors change.
   useLayoutEffect(() => {
@@ -808,13 +894,15 @@ export function OpenAlgoChart({
     if (!host) return;
     const store = kept ? null : storage();
     registerVisibleRangeProfile();
+    registerMonthIntervals();
+    registerProfileChartTypes();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
       feed: barFeed(source, () => latestProps.current.markets),
       symbol: firstMarket.current,
       exchange: venue,
-      interval: latestProps.current.interval,
-      intervals: ALL_INTERVALS,
+      interval: chartCode(latestProps.current.interval),
+      intervals: ALL_INTERVALS.map(chartCode),
       theme,
       // The app's own bar and readout stand in for the library's.
       topbar: false,
@@ -844,6 +932,15 @@ export function OpenAlgoChart({
     applyTokens(made.root, BRAND_FONTS);
 
     const { chart } = made;
+    // Draws a session volume profile or TPO when one is the chart type.
+    const sessionProfile = new SessionProfile(() => made.chartType());
+    sessionProfile.setColors(tokens(host));
+    sessionProfiles.current = sessionProfile;
+    /** On the price pane, once: again after a layout put back replaces the panes. */
+    const putProfile = () => {
+      chart.removePrimitive(sessionProfile);
+      chart.addPrimitive(sessionProfile, 0);
+    };
     let saving: ReturnType<typeof setTimeout> | undefined;
     /** Hands the caller the layout, once it has stopped changing. */
     const layoutChanged = () => {
@@ -943,6 +1040,7 @@ export function OpenAlgoChart({
       chart.on("indicatorRemoved", studiesChanged),
       chart.on("paneCollapsed", redraw),
       chart.on("state:restore:end", studiesChanged),
+      chart.on("state:restore:end", putProfile),
       chart.on("layout:change", layoutChanged),
       chart.on("crosshair:move", (e) => {
         // A price only on the price pane: a volume profile's row is read there,
@@ -1000,6 +1098,7 @@ export function OpenAlgoChart({
       }
       styleVolume(made, tokens(host));
       studiesChanged();
+      putProfile();
     });
 
     const observer = new MutationObserver(() => {
@@ -1007,6 +1106,7 @@ export function OpenAlgoChart({
       theme = chartTheme(t);
       made.setTheme(theme);
       styleVolume(made, t);
+      sessionProfile.setColors(t);
       restyled();
     });
     observer.observe(document.documentElement, {
@@ -1044,11 +1144,12 @@ export function OpenAlgoChart({
       widget.setSymbol(marketId, venue);
     }
     if (tick > 0) widget.chart.applyOptions({ priceScale: { minMove: tick } });
+    sessionProfiles.current?.setTick(tick);
   }, [widget, marketId, tick, venue]);
   useEffect(() => {
-    if (!widget || widget.interval() === interval) return;
+    if (!widget || widget.interval() === chartCode(interval)) return;
     zoom.current = barsOnScreen(widget) ?? zoom.current;
-    widget.setInterval(interval);
+    widget.setInterval(chartCode(interval));
   }, [widget, interval]);
 
   // The look the caller keeps for this chart: put on when it isn't the one
@@ -1187,6 +1288,8 @@ export function OpenAlgoChart({
         onInterval={onInterval}
         favoriteIntervals={favoriteIntervals}
         onToggleFavoriteInterval={onToggleFavoriteInterval}
+        favoriteTypes={favoriteTypes}
+        onToggleFavoriteType={onToggleFavoriteType}
         onScreenshot={onScreenshot}
         compact={compact}
         tools={tools}

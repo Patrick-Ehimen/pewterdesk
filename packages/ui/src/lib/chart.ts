@@ -35,7 +35,10 @@ const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
-/** Each candle width in milliseconds. */
+/**
+ * Each candle width in milliseconds; for months, the longest it can be (31
+ * days a month), as Rust's `CandleInterval::millis`.
+ */
 export const INTERVAL_MS: Record<CandleInterval, number> = {
   "1m": MINUTE,
   "3m": 3 * MINUTE,
@@ -50,6 +53,10 @@ export const INTERVAL_MS: Record<CandleInterval, number> = {
   "1d": DAY,
   "3d": 3 * DAY,
   "1w": 7 * DAY,
+  "1M": 31 * DAY,
+  "3M": 3 * 31 * DAY,
+  "6M": 6 * 31 * DAY,
+  "12M": 12 * 31 * DAY,
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");

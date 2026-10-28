@@ -58,6 +58,8 @@ import {
   saveSets,
   swapped,
   withCell,
+  withFavoriteInterval,
+  withFavoriteType,
   withInterval,
   withMarket,
   withoutSet,
@@ -170,6 +172,13 @@ interface CellProps {
   onVenue?: (venue: VenueId) => void;
   onMarket: (id: string) => void;
   onInterval: (interval: CandleInterval) => void;
+  /** The page's starred timeframes, a button each on the chart's toolbar. */
+  favoriteIntervals?: readonly CandleInterval[];
+  /** Stars or unstars a timeframe in the interval menu, for every chart on the page. */
+  onToggleFavoriteInterval?: (interval: CandleInterval) => void;
+  /** The page's starred chart types, and starring one, the same way. */
+  favoriteTypes?: readonly string[];
+  onToggleFavoriteType?: (type: string) => void;
   /** The chart's own look (style, indicators, settings) changed: kept with the cell. */
   onLayout: (layout: string) => void;
   /** Whether this chart draws the position's and orders' lines. */
@@ -223,6 +232,10 @@ export function Cell({
   onVenue,
   onMarket,
   onInterval,
+  favoriteIntervals,
+  onToggleFavoriteInterval,
+  favoriteTypes,
+  onToggleFavoriteType,
   onLayout,
   onSettings,
   onTrade,
@@ -390,6 +403,10 @@ export function Cell({
             market={market}
             interval={cell.interval}
             onInterval={onInterval}
+            favoriteIntervals={favoriteIntervals}
+            onToggleFavoriteInterval={onToggleFavoriteInterval}
+            favoriteTypes={favoriteTypes}
+            onToggleFavoriteType={onToggleFavoriteType}
             layout={cell.chart}
             onLayout={onLayout}
             link={link}
@@ -757,6 +774,12 @@ export function MultiChartPage({
                 }}
                 onMarket={(id) => update(withMarket(state, i, cell.venue, id))}
                 onInterval={(interval) => update(withInterval(state, i, interval))}
+                favoriteIntervals={state.favoriteIntervals}
+                onToggleFavoriteInterval={(interval) =>
+                  update(withFavoriteInterval(state, interval))
+                }
+                favoriteTypes={state.favoriteChartTypes}
+                onToggleFavoriteType={(type) => update(withFavoriteType(state, type))}
                 onLayout={(chart) => update(withCell(state, i, { chart }))}
                 onSettings={(settings) => update(withCell(state, i, { settings }))}
                 onTrade={() => onTrade(cell.venue, cell.market)}

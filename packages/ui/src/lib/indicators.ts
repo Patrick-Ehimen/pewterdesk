@@ -18,12 +18,13 @@ export const CHART_TYPES: readonly ChartType[] = [
 
 /** The interval menu, grouped as in TradingView. */
 export const INTERVAL_GROUPS: readonly {
-  id: "minutes" | "hours" | "days";
+  id: "minutes" | "hours" | "days" | "months";
   intervals: readonly CandleInterval[];
 }[] = [
   { id: "minutes", intervals: ["1m", "3m", "5m", "15m", "30m"] },
   { id: "hours", intervals: ["1h", "2h", "4h", "8h", "12h"] },
   { id: "days", intervals: ["1d", "3d", "1w"] },
+  { id: "months", intervals: ["1M", "3M", "6M", "12M"] },
 ];
 export const ALL_INTERVALS: readonly CandleInterval[] = INTERVAL_GROUPS.flatMap((g) => g.intervals);
 

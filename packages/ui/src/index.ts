@@ -214,6 +214,7 @@ export {
 } from "./lib/alerts";
 export { roundToStep } from "./lib/calculator";
 export { formatCountdown, INTERVAL_MS } from "./lib/chart";
+export { CHART_TYPE_GROUPS, favoriteChartTypes, groupedChartTypes } from "./lib/chartTypes";
 export {
   avgFillTo,
   type DepthLevel,

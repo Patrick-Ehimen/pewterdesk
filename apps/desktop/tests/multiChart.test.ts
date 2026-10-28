@@ -15,6 +15,8 @@ import {
   setsFrom,
   swapped,
   withCell,
+  withFavoriteInterval,
+  withFavoriteType,
   withInterval,
   withMarket,
   withoutSet,
@@ -97,6 +99,8 @@ describe("multi-chart state", () => {
       syncCrosshair: true,
       syncRange: false,
       tradeBar: false,
+      favoriteIntervals: [],
+      favoriteChartTypes: [],
     });
   });
 
@@ -124,6 +128,26 @@ describe("multi-chart state", () => {
     expect(repaired(saved, "bybit", [], majors)).toBe(saved);
     // Without filling (a venue that isn't on screen): fixed, not added to.
     expect(repaired(saved, "bybit", markets, majors, false).cells).toHaveLength(3);
+  });
+
+  it("stars timeframes for every chart, in the menu's order", () => {
+    const starred = withFavoriteInterval(withFavoriteInterval(base(), "1M"), "1h");
+    expect(starred.favoriteIntervals).toEqual(["1h", "1M"]);
+    expect(withFavoriteInterval(starred, "1h").favoriteIntervals).toEqual(["1M"]);
+    // Kept, with anything unknown dropped.
+    expect(restore({ favoriteIntervals: ["12M", "2y", "1m"] }).favoriteIntervals).toEqual([
+      "1m",
+      "12M",
+    ]);
+  });
+
+  it("stars chart types for every chart", () => {
+    const starred = withFavoriteType(withFavoriteType(base(), "renko"), "line");
+    expect(starred.favoriteChartTypes).toEqual(["renko", "line"]);
+    expect(withFavoriteType(starred, "renko").favoriteChartTypes).toEqual(["line"]);
+    expect(restore({ favoriteChartTypes: ["tpo", 3, "Bad Id", "tpo"] }).favoriteChartTypes).toEqual(
+      ["tpo"],
+    );
   });
 
   it("changes one chart and no other, unless a sync says so", () => {

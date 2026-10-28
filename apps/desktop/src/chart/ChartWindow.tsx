@@ -3,7 +3,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import { Cell, useVenueData } from "../components/pages/MultiChartPage";
-import { popoutCell } from "../lib/multiChart";
+import { loadMultiChart, popoutCell } from "../lib/multiChart";
 import { VENUES } from "../lib/venues";
 
 /**
@@ -13,6 +13,9 @@ import { VENUES } from "../lib/venues";
  */
 export function ChartWindow() {
   const [cell, setCell] = useState(() => popoutCell(location.hash));
+  // The Multi-chart page's starred timeframes and chart types, as they were
+  // when it opened; they're starred and unstarred on the page.
+  const [favorites] = useState(loadMultiChart);
   const data = useVenueData(cell?.venue ?? "bybit", cell !== undefined);
   const markets = data.markets ?? [];
   const symbol = markets.find((m) => m.id === cell?.market)?.symbol ?? cell?.market;
@@ -43,6 +46,8 @@ export function ChartWindow() {
         summary={data.summaries?.find((s) => s.market === cell.market)}
         onMarket={(market) => change({ market })}
         onInterval={(interval) => change({ interval })}
+        favoriteIntervals={favorites.favoriteIntervals}
+        favoriteTypes={favorites.favoriteChartTypes}
         onLayout={(chart) => change({ chart })}
         onSettings={(settings) => change({ settings })}
         markSize={56}

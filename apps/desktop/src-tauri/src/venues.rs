@@ -32,10 +32,11 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use pewterdesk_core::{
-    AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal, ExchangeAdapter,
-    Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode, Market,
-    MarketHistory, MarketStats, MarketSummary, OpenInterestPoint, Order, OrderAmend, OrderBook,
-    OrderRequest, Origin, PositionProtection, Trade, TradeSettings, VenueError, VenueId,
+    group_months, AccountSnapshot, Announcement, Candle, CandleInterval, ClosedTrade, Decimal,
+    ExchangeAdapter, Fill, FundingPayment, FundingRate, Liquidation, LongShortPoint, MarginMode,
+    Market, MarketHistory, MarketStats, MarketSummary, MonthGroups, OpenInterestPoint, Order,
+    OrderAmend, OrderBook, OrderRequest, Origin, PositionProtection, Trade, TradeSettings,
+    VenueError, VenueId,
 };
 use pewterdesk_engine::{Adapters, Engine};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
@@ -315,10 +316,29 @@ pub async fn subscribe_candles(
     interval: CandleInterval,
     on_event: Channel<StreamEvent<Vec<Candle>>>,
 ) -> Result<u32, VenueError> {
-    let rx = venues
-        .adapter(venue)?
-        .subscribe_candles(&market, interval)
-        .await?;
+    let adapter = venues.adapter(venue)?;
+    let Some((base, months)) = interval.grouped() else {
+        let rx = adapter.subscribe_candles(&market, interval).await?;
+        return Ok(venues.forward(rx, on_event, &webview));
+    };
+    let mut parts = adapter.subscribe_candles(&market, base).await?;
+    let (tx, rx) = mpsc::channel(16);
+    async_runtime::spawn(async move {
+        let Some(history) = parts.recv().await else {
+            return;
+        };
+        // Every venue's history is 500 months, so it starts at the market's
+        // first: a first group without its first month is still whole.
+        let mut groups = MonthGroups::new(months, &history);
+        if tx.send(group_months(&history, months, true)).await.is_err() {
+            return;
+        }
+        while let Some(update) = parts.recv().await {
+            if tx.send(groups.update(update)).await.is_err() {
+                return;
+            }
+        }
+    });
     Ok(venues.forward(rx, on_event, &webview))
 }
 
@@ -422,10 +442,29 @@ pub async fn candles(
     before: u64,
     count: u32,
 ) -> Result<Vec<Candle>, VenueError> {
-    venues
-        .adapter(venue)?
-        .candles(&market, interval, before, count)
-        .await
+    candles_before(venues.adapter(venue)?, &market, interval, before, count).await
+}
+
+/// Up to `count` candles that opened before `before`, oldest first, as
+/// `ExchangeAdapter::candles` - but for the widths no venue serves too,
+/// built from its monthly candles.
+pub(crate) async fn candles_before(
+    adapter: &dyn ExchangeAdapter,
+    market: &str,
+    interval: CandleInterval,
+    before: u64,
+    count: u32,
+) -> Result<Vec<Candle>, VenueError> {
+    let Some((base, months)) = interval.grouped() else {
+        return adapter.candles(market, interval, before, count).await;
+    };
+    let asked = count.saturating_mul(months);
+    let parts = adapter.candles(market, base, before, asked).await?;
+    // Fewer than asked: the venue has nothing older, so the first is the market's.
+    let complete = parts.len() < asked as usize;
+    // A chart pages back from its oldest candle, a group's open, so the
+    // newest group here is whole.
+    Ok(group_months(&parts, months, complete))
 }
 
 #[tauri::command]

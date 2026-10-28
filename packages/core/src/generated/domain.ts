@@ -191,9 +191,11 @@ openTime: number, open: Decimal, high: Decimal, low: Decimal, close: Decimal,
 volume: Decimal, };
 
 /**
- * Candle widths the terminal offers: the ones every launch venue serves.
+ * Candle widths the terminal offers: the ones every launch venue serves,
+ * and 3, 6 and 12 months, which are built from monthly candles
+ * ([`CandleInterval::grouped`]) rather than asked of the venue.
  */
-export type CandleInterval = "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "8h" | "12h" | "1d" | "3d" | "1w";
+export type CandleInterval = "1m" | "3m" | "5m" | "15m" | "30m" | "1h" | "2h" | "4h" | "8h" | "12h" | "1d" | "3d" | "1w" | "1M" | "3M" | "6M" | "12M";
 
 /**
  * What a venue supports, so the UI can offer only what will work.

@@ -4,6 +4,7 @@ import {
   asInterval,
   type BarSource,
   barFeed,
+  chartCode,
   levelLine,
   MAX_BARS_PAGE,
   marketOfSymbol,
@@ -78,6 +79,14 @@ describe("asInterval", () => {
   it("accepts only the venue intervals", () => {
     expect(asInterval("4h")).toBe("4h");
     expect(asInterval("1mo")).toBeUndefined();
+  });
+
+  it("names months so the chart can't take them for minutes", () => {
+    expect(chartCode("1m")).toBe("1m");
+    expect(chartCode("1M")).toBe("1MN");
+    expect(chartCode("12M")).toBe("12MN");
+    expect(asInterval("1MN")).toBe("1M");
+    expect(asInterval("1M")).toBeUndefined();
   });
 });
 

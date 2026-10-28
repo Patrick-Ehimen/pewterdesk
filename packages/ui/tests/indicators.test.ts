@@ -81,7 +81,7 @@ describe("indicators", () => {
     expect(b?.low).toBe(10);
   });
 
-  it("offers every interval the venues serve, in order", () => {
+  it("offers every interval the venues serve, and months grouped from them, in order", () => {
     expect(ALL_INTERVALS).toEqual([
       "1m",
       "3m",
@@ -96,6 +96,10 @@ describe("indicators", () => {
       "1d",
       "3d",
       "1w",
+      "1M",
+      "3M",
+      "6M",
+      "12M",
     ]);
   });
 });

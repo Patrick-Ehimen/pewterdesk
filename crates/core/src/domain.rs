@@ -164,7 +164,9 @@ pub struct MarketStats {
     pub time: u64,
 }
 
-/// Candle widths the terminal offers: the ones every launch venue serves.
+/// Candle widths the terminal offers: the ones every launch venue serves,
+/// and 3, 6 and 12 months, which are built from monthly candles
+/// ([`CandleInterval::grouped`]) rather than asked of the venue.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[ts(export, export_to = TS_FILE)]
 pub enum CandleInterval {
@@ -194,10 +196,19 @@ pub enum CandleInterval {
     ThreeDays,
     #[serde(rename = "1w")]
     OneWeek,
+    #[serde(rename = "1M")]
+    OneMonth,
+    #[serde(rename = "3M")]
+    ThreeMonths,
+    #[serde(rename = "6M")]
+    SixMonths,
+    #[serde(rename = "12M")]
+    TwelveMonths,
 }
 
 impl CandleInterval {
-    /// The interval's length in milliseconds.
+    /// The interval's length in milliseconds; for months, the longest it
+    /// can be (31 days a month), so a span of them is never short.
     pub fn millis(self) -> u64 {
         const MINUTE: u64 = 60_000;
         match self {
@@ -214,6 +225,22 @@ impl CandleInterval {
             Self::OneDay => 1440 * MINUTE,
             Self::ThreeDays => 3 * 1440 * MINUTE,
             Self::OneWeek => 7 * 1440 * MINUTE,
+            Self::OneMonth => 31 * 1440 * MINUTE,
+            Self::ThreeMonths => 3 * 31 * 1440 * MINUTE,
+            Self::SixMonths => 6 * 31 * 1440 * MINUTE,
+            Self::TwelveMonths => 12 * 31 * 1440 * MINUTE,
+        }
+    }
+
+    /// For a width no venue serves, the monthly candles it's built from and
+    /// how many make one (see [`crate::group_months`]); `None` for the rest,
+    /// which a venue serves itself.
+    pub fn grouped(self) -> Option<(CandleInterval, u32)> {
+        match self {
+            Self::ThreeMonths => Some((Self::OneMonth, 3)),
+            Self::SixMonths => Some((Self::OneMonth, 6)),
+            Self::TwelveMonths => Some((Self::OneMonth, 12)),
+            _ => None,
         }
     }
 }

@@ -6,10 +6,12 @@
 pub mod accounts;
 mod adapter;
 mod algo;
+mod candles;
 mod domain;
 mod keys;
 
 pub use adapter::{ExchangeAdapter, VenueError};
 pub use algo::*;
+pub use candles::{group_months, MonthGroups};
 pub use domain::*;
 pub use keys::{KeyError, KeySource};

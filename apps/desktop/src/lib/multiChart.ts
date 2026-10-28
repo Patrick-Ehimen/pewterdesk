@@ -1,5 +1,6 @@
 import type { CandleInterval, Market, VenueId } from "@pewterdesk/core";
 import { ALL_INTERVALS } from "@pewterdesk/ui";
+import { chartTypeIds } from "./chartPrefs";
 
 // The Multi-chart page's state: how many charts, what each one shows, and
 // what moves together. Each chart carries its own venue, so one page can
@@ -63,6 +64,13 @@ export interface MultiChartState {
   syncRange: boolean;
   /** Buy and sell buttons under each chart. Off unless asked for. */
   tradeBar: boolean;
+  /**
+   * The timeframes starred in a chart's interval menu: a button of their
+   * own on every chart's toolbar, in the menu's order. None to start with.
+   */
+  favoriteIntervals: CandleInterval[];
+  /** The chart types starred in a chart's type menu, the same way. */
+  favoriteChartTypes: string[];
 }
 
 /** A named set of charts, to come back to. */
@@ -149,6 +157,10 @@ export function restore(saved: unknown): MultiChartState {
     syncCrosshair: raw.syncCrosshair !== false,
     syncRange: raw.syncRange === true,
     tradeBar: raw.tradeBar === true,
+    favoriteIntervals: Array.isArray(raw.favoriteIntervals)
+      ? ALL_INTERVALS.filter((i) => (raw.favoriteIntervals as unknown[]).includes(i))
+      : [],
+    favoriteChartTypes: chartTypeIds(raw.favoriteChartTypes),
   };
 }
 
@@ -218,6 +230,31 @@ export function withInterval(
   return {
     ...state,
     cells: state.cells.map((c, i) => (state.syncInterval || i === index ? { ...c, interval } : c)),
+  };
+}
+
+/** `state` with `interval` starred, or unstarred if it was. */
+export function withFavoriteInterval(
+  state: MultiChartState,
+  interval: CandleInterval,
+): MultiChartState {
+  const on = state.favoriteIntervals.includes(interval);
+  return {
+    ...state,
+    favoriteIntervals: ALL_INTERVALS.filter((i) =>
+      i === interval ? !on : state.favoriteIntervals.includes(i),
+    ),
+  };
+}
+
+/** `state` with chart type `type` starred, or unstarred if it was. */
+export function withFavoriteType(state: MultiChartState, type: string): MultiChartState {
+  const on = state.favoriteChartTypes.includes(type);
+  return {
+    ...state,
+    favoriteChartTypes: on
+      ? state.favoriteChartTypes.filter((t) => t !== type)
+      : [...state.favoriteChartTypes, type],
   };
 }
 

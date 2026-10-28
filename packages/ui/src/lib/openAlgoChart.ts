@@ -7,6 +7,7 @@ import type {
   DataFeed,
   PriceLineOptions,
 } from "openalgo-charts";
+import { registerInterval } from "openalgo-charts";
 import type { DrawingInput, DrawingStyle } from "openalgo-charts/draw";
 import { ALL_INTERVALS } from "./indicators";
 import type { ChartLevel } from "./tradeMarks";
@@ -59,9 +60,47 @@ export function toBar(candle: Candle): Bar {
   };
 }
 
+/**
+ * Months, as the chart names them. Its interval codes ignore case, so "1M"
+ * would be read as a minute: months go to it as TradingView's "MN".
+ */
+const MONTH_CODES: Partial<Record<CandleInterval, string>> = {
+  "1M": "1MN",
+  "3M": "3MN",
+  "6M": "6MN",
+  "12M": "12MN",
+};
+
+let monthsRegistered = false;
+
+/**
+ * Tells the chart what the month codes mean: calendar months in UTC, as the
+ * venues' candles (and Rust's grouped ones) open on the 1st at 00:00 UTC.
+ */
+export function registerMonthIntervals() {
+  if (monthsRegistered) return;
+  monthsRegistered = true;
+  for (const [interval, code] of Object.entries(MONTH_CODES)) {
+    registerInterval({
+      code,
+      bucketing: {
+        mode: "calendar",
+        unit: "month",
+        count: Number.parseInt(interval, 10),
+        timezone: "UTC",
+      },
+    });
+  }
+}
+
+/** One of our intervals as the chart's interval code. */
+export function chartCode(interval: CandleInterval): string {
+  return MONTH_CODES[interval] ?? interval;
+}
+
 /** The chart's interval code as one of ours, if it is one. */
 export function asInterval(code: string): CandleInterval | undefined {
-  return ALL_INTERVALS.find((i) => i === code);
+  return ALL_INTERVALS.find((i) => chartCode(i) === code);
 }
 
 /**
@@ -158,7 +197,7 @@ export function barFeed(source: BarSource, markets: () => readonly Market[]): Da
 }
 
 function intervalSeconds(interval: CandleInterval) {
-  const unit = { m: 60, h: 3600, d: 86_400, w: 604_800 }[interval.slice(-1)] ?? 60;
+  const unit = { m: 60, h: 3600, d: 86_400, w: 604_800, M: 31 * 86_400 }[interval.slice(-1)] ?? 60;
   return Number.parseInt(interval, 10) * unit;
 }
 

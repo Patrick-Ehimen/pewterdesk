@@ -155,6 +155,8 @@ export function MarketsPanel({
       ...p,
       favoriteIntervals: inOrder(toggled(p.favoriteIntervals, i), ALL_INTERVALS),
     }));
+  const toggleFavoriteType = (type: string) =>
+    updatePrefs((p) => ({ ...p, favoriteChartTypes: toggled(p.favoriteChartTypes, type) }));
   const chartTitle = [market?.symbol, interval, venueName, market?.listedBy]
     .filter(Boolean)
     .join(" · ");
@@ -320,6 +322,8 @@ export function MarketsPanel({
                     onInterval={setInterval}
                     favoriteIntervals={prefs.favoriteIntervals}
                     onToggleFavoriteInterval={toggleFavoriteInterval}
+                    favoriteTypes={prefs.favoriteChartTypes}
+                    onToggleFavoriteType={toggleFavoriteType}
                     onScreenshot={(shot) => exportChartImage(shot, shotName)}
                     position={views.chart.levels ? position : undefined}
                     orders={views.chart.levels ? orders : undefined}

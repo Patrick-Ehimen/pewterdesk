@@ -292,6 +292,11 @@ pub fn interval_code(interval: CandleInterval) -> &'static str {
         CandleInterval::OneDay => "1d",
         CandleInterval::ThreeDays => "3d",
         CandleInterval::OneWeek => "1w",
+        CandleInterval::OneMonth => "1M",
+        // Never asked of the venue: built from monthly candles (`CandleInterval::grouped`).
+        CandleInterval::ThreeMonths | CandleInterval::SixMonths | CandleInterval::TwelveMonths => {
+            "1M"
+        }
     }
 }
 
