@@ -5,6 +5,7 @@ import {
   createLinkGroup,
   getIndicator,
   type IndicatorApi,
+  isReplaying,
   type LinkGroup,
   type PriceLine,
   registerIndicator,
@@ -45,6 +46,7 @@ import {
   LuChevronUp,
   LuEye,
   LuEyeOff,
+  LuHistory,
   LuMaximize2,
   LuMinimize2,
   LuSettings,
@@ -79,6 +81,7 @@ import {
   tradeLevels,
 } from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
+import { type ChartReplay, newLiveGate, ReplayControls, useChartReplay } from "./ChartReplay";
 import {
   FavoriteStar,
   IntervalPicker,
@@ -357,6 +360,7 @@ function Toolbar({
   onToggleFavoriteInterval,
   favoriteTypes = [],
   onToggleFavoriteType,
+  replay,
   onScreenshot,
   compact,
   tools,
@@ -368,6 +372,7 @@ function Toolbar({
   onToggleFavoriteInterval?: (interval: CandleInterval) => void;
   favoriteTypes?: readonly string[];
   onToggleFavoriteType?: (type: string) => void;
+  replay?: ChartReplay;
   onScreenshot?: (shot: HTMLCanvasElement | undefined) => Promise<ShotResult>;
   compact?: boolean;
   tools?: ReactNode;
@@ -493,10 +498,17 @@ function Toolbar({
         {count > 0 && <span className="pd-chart-count">{count}</span>}
       </button>
 
+      {replay && (
         <button
           type="button"
           className="pd-chart-tool"
+          aria-pressed={replay.mode !== "off"}
+          aria-label={tr("chart.replay")}
+          title={tr("chart.replay")}
+          onClick={replay.mode === "off" ? replay.pick : replay.exit}
         >
+          <LuHistory size={17} aria-hidden />
+          {!compact && tr("chart.replay")}
         </button>
       )}
 
@@ -867,8 +879,14 @@ export function OpenAlgoChart({
   // shows them before it would have appeared.
   const [slow, setSlow] = useState(false);
   // Read by the widget's callbacks, which outlive a render.
-  const latestProps = useRef({ markets, interval, onInterval, onMoveExit, onLayout });
-  latestProps.current = { markets, interval, onInterval, onMoveExit, onLayout };
+  // Bar replay: live candles wait in the gate while it has the chart, and
+  // nothing can be dragged into an order on a chart showing the past.
+  const liveGate = useRef(newLiveGate());
+  const replay = useChartReplay(widget, liveGate.current, `${market.id}|${interval}`);
+  const replaying = replay.mode !== "off";
+  const movable = replaying ? undefined : onMoveExit;
+  const latestProps = useRef({ markets, interval, onInterval, onMoveExit: movable, onLayout });
+  latestProps.current = { markets, interval, onInterval, onMoveExit: movable, onLayout };
   const firstMarket = useRef(market.id);
   /** The layout as last given to, or taken from, the caller. */
   const keptRef = useRef<string | undefined>(undefined);
@@ -898,7 +916,7 @@ export function OpenAlgoChart({
     registerProfileChartTypes();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
-      feed: barFeed(source, () => latestProps.current.markets),
+      feed: barFeed(source, () => latestProps.current.markets, liveGate.current),
       symbol: firstMarket.current,
       exchange: venue,
       interval: chartCode(latestProps.current.interval),
@@ -986,7 +1004,8 @@ export function OpenAlgoChart({
     };
     const toLatest = () => {
       const count = made.series.getData().length;
-      if (!pinned || count === 0) return;
+      // A replay keeps the view where the trader cut it.
+      if (!pinned || count === 0 || isReplaying(chart)) return;
       const { from, to } = chart.getVisibleLogicalRange();
       const span = zoom.current ?? Math.max(10, to - from);
       const end = count - 1 + LATEST_MARGIN_BARS;
@@ -1194,7 +1213,7 @@ export function OpenAlgoChart({
     () => (position || orders.length ? tradeLevels(position, orders) : []),
     [position, orders],
   );
-  const canMove = onMoveExit !== undefined;
+  const canMove = movable !== undefined;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `themed` recolours the lines, `settled` lets a moved one go
   useEffect(() => {
     const host = hostRef.current;
@@ -1290,6 +1309,7 @@ export function OpenAlgoChart({
         onToggleFavoriteInterval={onToggleFavoriteInterval}
         favoriteTypes={favoriteTypes}
         onToggleFavoriteType={onToggleFavoriteType}
+        replay={replay}
         onScreenshot={onScreenshot}
         compact={compact}
         tools={tools}
@@ -1297,6 +1317,7 @@ export function OpenAlgoChart({
       <div className="pd-oachart-stage">
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
+        <ReplayControls replay={replay} />
         {widget && (
           <Legend
             widget={widget}

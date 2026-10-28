@@ -9,6 +9,7 @@ import type {
 } from "openalgo-charts";
 import { registerInterval } from "openalgo-charts";
 import type { DrawingInput, DrawingStyle } from "openalgo-charts/draw";
+import type { LiveGate } from "../components/trading/ChartReplay";
 import { ALL_INTERVALS } from "./indicators";
 import type { ChartLevel } from "./tradeMarks";
 
@@ -120,9 +121,14 @@ function clampCount(count: number) {
 
 /**
  * A `BarSource` as the chart's data feed. `markets` is read on every
- * request, so the feed outlives a refreshed market list.
+ * request, so the feed outlives a refreshed market list. While `gate` is
+ * held (a bar replay has the chart) live candles wait in it.
  */
-export function barFeed(source: BarSource, markets: () => readonly Market[]): DataFeed {
+export function barFeed(
+  source: BarSource,
+  markets: () => readonly Market[],
+  gate?: LiveGate,
+): DataFeed {
   const resolve = (req: BarsRequest) => {
     const market = marketOfSymbol(markets(), req.symbol);
     const interval = asInterval(req.interval);
@@ -189,7 +195,8 @@ export function barFeed(source: BarSource, markets: () => readonly Market[]): Da
           const bar = toBar(candle);
           if (bar.time < newest) continue;
           newest = bar.time;
-          onBar(bar);
+          if (gate?.held) gate.pending.set(bar.time, () => onBar(bar));
+          else onBar(bar);
         }
       });
     },

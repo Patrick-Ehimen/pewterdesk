@@ -1834,6 +1834,47 @@ input {
   place-items: center;
   background: var(--pd-chart-bg, var(--pd-surface));
 }
+/* Bar replay's transport, over the chart's foot */
+.pd-replay {
+  position: absolute;
+  left: 50%;
+  bottom: 36px;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 4px 6px;
+  color: var(--pd-pewter);
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.28);
+  white-space: nowrap;
+}
+.pd-replay .pd-chart-tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pd-replay-hint {
+  padding: 0 6px;
+  color: var(--pd-text);
+  font-size: 12px;
+}
+.pd-replay-time {
+  padding: 0 6px;
+  color: var(--pd-text);
+  font-family: var(--pd-font-mono);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pd-chart-tool[aria-pressed="true"] {
+  color: var(--pd-text);
+  box-shadow: inset 0 -2px 0 var(--pd-brass);
+}
+
 /* Folding the indicator list away, and back */
 .pd-oachart-fold {
   display: inline-flex;
