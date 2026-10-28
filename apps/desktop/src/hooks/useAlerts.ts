@@ -48,10 +48,12 @@ export function useAlerts(popoverOpen: boolean, account?: AccountSnapshot) {
   const aster = useMarketSummaries("aster", watching("aster"));
   const bybit = useMarketSummaries("bybit", watching("bybit"));
   const binance = useMarketSummaries("binance", watching("binance"));
+  const blofin = useMarketSummaries("blofin", watching("blofin"));
   const hyperliquidSummaries = summaryOf(hyperliquid);
   const asterSummaries = summaryOf(aster);
   const bybitSummaries = summaryOf(bybit);
   const binanceSummaries = summaryOf(binance);
+  const blofinSummaries = summaryOf(blofin);
   // Each venue's summaries by market id.
   const byVenue = useMemo(() => {
     const index = (list: readonly MarketSummary[] | undefined) =>
@@ -61,8 +63,9 @@ export function useAlerts(popoverOpen: boolean, account?: AccountSnapshot) {
       ["aster", index(asterSummaries)],
       ["bybit", index(bybitSummaries)],
       ["binance", index(binanceSummaries)],
+      ["blofin", index(blofinSummaries)],
     ]);
-  }, [hyperliquidSummaries, asterSummaries, bybitSummaries, binanceSummaries]);
+  }, [hyperliquidSummaries, asterSummaries, bybitSummaries, binanceSummaries, blofinSummaries]);
 
   // RSI(14) on hourly candles, per market: for the RSI alerts, and for any
   // market the form asks about (`currentOf`).

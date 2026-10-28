@@ -8,9 +8,9 @@ import { removeAvatar } from "./avatars";
 // keychain under its id, and nothing reads it back to JS.
 //
 // An account's id is what its venue knows it by: the main address (lowercase
-// `0x` hex) on Hyperliquid and Aster, the UID on Bybit and Binance - with
-// `demo:` in front for a Demo Trading account (demo funds, the venue's demo
-// host).
+// `0x` hex) on Hyperliquid and Aster, the UID on Bybit, Binance and BloFin -
+// with `demo:` in front for a Demo Trading account (demo funds, the venue's
+// demo host). BloFin connects Demo Trading accounts only.
 
 const KEY = "pd.accounts";
 /** Where earlier versions kept their one wallet, and their one Bybit UID. */
@@ -22,7 +22,7 @@ export const NAME_MAX = 32;
 
 export interface VenueAccount {
   venue: VenueId;
-  /** The main address (`0x` hex) or, on Bybit and Binance, the UID. */
+  /** The main address (`0x` hex) or, on Bybit, Binance and BloFin, the UID. */
   id: string;
   /** The user's name for it; empty until they give one (see `accountLabel`). */
   name: string;
@@ -45,29 +45,30 @@ export interface ConnectedWallet {
 const EMPTY: AccountsState = { accounts: [], active: {} };
 
 /** The venues whose accounts are an exchange account's UID, connected by API key. */
-export type UidVenue = "bybit" | "binance";
+export type UidVenue = "bybit" | "binance" | "blofin";
 
 export const isUidVenue = (venue: VenueId): venue is UidVenue =>
-  venue === "bybit" || venue === "binance";
+  venue === "bybit" || venue === "binance" || venue === "blofin";
 
 /** Whether `id` is a valid account id on `venue`. */
 export function isAccountId(venue: VenueId, id: string): boolean {
   return isUidVenue(venue) ? /^(demo:)?\d{1,20}$/.test(id) : /^0x[0-9a-f]{40}$/.test(id);
 }
 
-/** Whether an account is a Demo Trading one (Bybit, Binance): demo funds, not real ones. */
+/** Whether an account is a Demo Trading one (Bybit, Binance, BloFin): demo funds, not real ones. */
 export const isDemoAccount = (account: { venue: VenueId; id: string }) =>
   isUidVenue(account.venue) && account.id.startsWith("demo:");
 
 /**
  * How Rust's live-trading list names an account: a Bybit UID, `binance:`
- * and a Binance UID, or a wallet's venue and address.
+ * and a Binance UID, or a wallet's venue and address. A live BloFin account
+ * is never on it (only Demo Trading accounts trade there).
  */
 export const liveId = (account: { venue: VenueId; id: string }) =>
   account.venue === "bybit"
     ? account.id
-    : account.venue === "binance"
-      ? `binance:${account.id.trim()}`
+    : account.venue === "binance" || account.venue === "blofin"
+      ? `${account.venue}:${account.id.trim()}`
       : // Rust keeps a wallet's address in lower case, however it was typed.
         `${account.venue}:${account.id.trim().toLowerCase()}`;
 
@@ -84,7 +85,7 @@ export const canTrade = (
 ) => account !== undefined && (isDemoAccount(account) || liveUids.includes(liveId(account)));
 
 const isVenue = (v: unknown): v is VenueId =>
-  v === "hyperliquid" || v === "aster" || v === "bybit" || v === "binance";
+  v === "hyperliquid" || v === "aster" || v === "bybit" || v === "binance" || v === "blofin";
 
 const cleanName = (name: string) => name.trim().replace(/\s+/g, " ").slice(0, NAME_MAX);
 

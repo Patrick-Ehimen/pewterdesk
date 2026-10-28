@@ -343,7 +343,7 @@ export const venueClient = {
     handlers: StreamHandlers<Candle[]>,
   ) => subscribe("subscribe_candles", { venue, market, interval }, handlers),
 
-  /** `mainnet`: Binance's mainnet figures even while its market data is Demo Trading's. */
+  /** `mainnet`: Binance's or BloFin's mainnet figures even while its market data is Demo Trading's. */
   subscribeMarketSummaries: (
     venue: VenueId,
     handlers: StreamHandlers<MarketSummary[]>,
@@ -553,6 +553,45 @@ export const binanceKeyClient = {
    * markets and prices of its own, or mainnet's. True if it changed.
    */
   setDemoData: (demo: boolean) => call<boolean>("set_binance_demo_data", { demo }),
+};
+
+/**
+ * A connected BloFin Demo Trading key, as `blofin_key.rs` describes it: the
+ * account, never the key. Keep in sync with `BlofinKeyInfo` there.
+ */
+export interface BlofinKeyInfo {
+  /** The BloFin account: `demo:` and its UID. */
+  uid: string;
+  /** Always true: only Demo Trading accounts connect. */
+  demo: boolean;
+  /** Whether BloFin answered just now; offline, only `uid` is known. */
+  checked: boolean;
+  ipRestricted: boolean;
+  /** The account is in Hedge Mode, where pewterdesk places nothing. */
+  hedgeMode: boolean;
+  /** Why a stored key no longer passes the check, if it doesn't. */
+  problem: string | null;
+}
+
+/**
+ * Connecting a BloFin Demo Trading account with an API key, its secret and
+ * passphrase (empty for a key made without one), handed to Rust once. Rust refuses a live key (BloFin can't
+ * say whether one may transfer funds) and stores a demo one once BloFin has
+ * answered for it. Nothing returns the key, secret or passphrase.
+ */
+export const blofinKeyClient = {
+  connect: (apiKey: string, apiSecret: string, demo: boolean, passphrase: string) =>
+    call<BlofinKeyInfo>("connect_blofin_key", { apiKey, apiSecret, passphrase, demo }),
+
+  status: (uid: string) => call<BlofinKeyInfo | null>("blofin_key_status", { uid }),
+
+  disconnect: (uid: string) => call<void>("disconnect_blofin_key", { uid }),
+
+  /**
+   * Reads BloFin's market data from Demo Trading's exchange, which lists
+   * markets of its own, or mainnet's. True if it changed.
+   */
+  setDemoData: (demo: boolean) => call<boolean>("set_blofin_demo_data", { demo }),
 };
 
 /** What a coin link is, for its label and icon. Mirrors `LinkKind` in `coin_info.rs`. */

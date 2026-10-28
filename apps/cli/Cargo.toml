@@ -17,6 +17,7 @@ path = "src/main.rs"
 pewterdesk-core = { path = "../../crates/core" }
 pewterdesk-exchange-aster = { path = "../../crates/exchange-aster" }
 pewterdesk-exchange-binance = { path = "../../crates/exchange-binance" }
+pewterdesk-exchange-blofin = { path = "../../crates/exchange-blofin" }
 pewterdesk-exchange-bybit = { path = "../../crates/exchange-bybit" }
 pewterdesk-exchange-hyperliquid = { path = "../../crates/exchange-hyperliquid" }
 pewterdesk-keychain = { path = "../../crates/keychain" }

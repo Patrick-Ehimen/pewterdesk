@@ -40,6 +40,7 @@ use pewterdesk_core::{
 use pewterdesk_engine::{Adapters, Engine};
 use pewterdesk_exchange_aster::{constants::MAINNET as ASTER_MAINNET, AsterAdapter};
 use pewterdesk_exchange_binance::{constants::MAINNET as BINANCE_MAINNET, BinanceAdapter};
+use pewterdesk_exchange_blofin::{constants::MAINNET as BLOFIN_MAINNET, BlofinAdapter};
 use pewterdesk_exchange_bybit::{constants::MAINNET as BYBIT_MAINNET, BybitAdapter};
 use pewterdesk_exchange_hyperliquid::{constants::MAINNET, HyperliquidAdapter};
 use serde::Serialize;
@@ -73,6 +74,7 @@ pub struct Venues {
     aster: AsterAdapter,
     bybit: BybitAdapter,
     binance: BinanceAdapter,
+    blofin: BlofinAdapter,
     /// Each live stream's forwarding task, and the webview it streams to.
     subscriptions: Arc<Mutex<HashMap<u32, Subscription>>>,
     next_id: AtomicU32,
@@ -89,6 +91,8 @@ impl Venues {
             bybit: BybitAdapter::new(&BYBIT_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             // Account reads and orders take the stored API key from the keychain.
             binance: BinanceAdapter::new(&BINANCE_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
+            // Account reads and orders (Demo Trading only) take the stored API key from the keychain.
+            blofin: BlofinAdapter::new(&BLOFIN_MAINNET)?.with_keys(Arc::new(KeychainKeySource)),
             subscriptions: Arc::default(),
             next_id: AtomicU32::new(1),
         })
@@ -113,12 +117,18 @@ impl Venues {
         &self.binance
     }
 
+    /// BloFin's own methods beyond `ExchangeAdapter`, for onboarding.
+    pub fn blofin(&self) -> &BlofinAdapter {
+        &self.blofin
+    }
+
     pub(crate) fn adapter(&self, venue: VenueId) -> Result<&dyn ExchangeAdapter, VenueError> {
         match venue {
             VenueId::Hyperliquid => Ok(&self.hyperliquid),
             VenueId::Aster => Ok(&self.aster),
             VenueId::Bybit => Ok(&self.bybit),
             VenueId::Binance => Ok(&self.binance),
+            VenueId::Blofin => Ok(&self.blofin),
         }
     }
 
@@ -321,9 +331,11 @@ pub async fn subscribe_market_summaries(
     mainnet: Option<bool>,
     on_event: Channel<StreamEvent<Vec<MarketSummary>>>,
 ) -> Result<u32, VenueError> {
-    // Binance's mainnet figures, while its market data is Demo Trading's.
+    // Binance's or BloFin's mainnet figures, while its market data is Demo Trading's.
     let rx = if venue == VenueId::Binance && mainnet == Some(true) {
         venues.binance().subscribe_mainnet_summaries().await?
+    } else if venue == VenueId::Blofin && mainnet == Some(true) {
+        venues.blofin().subscribe_mainnet_summaries().await?
     } else {
         venues.adapter(venue)?.subscribe_market_summaries().await?
     };
@@ -362,6 +374,13 @@ pub async fn subscribe_liquidations(
 #[tauri::command]
 pub fn set_binance_demo_data(venues: State<'_, Venues>, demo: bool) -> bool {
     venues.binance().set_demo_market_data(demo)
+}
+
+/// The same for BloFin: Demo Trading's market data (87 markets of its own)
+/// while the BloFin account on screen is a Demo Trading one.
+#[tauri::command]
+pub fn set_blofin_demo_data(venues: State<'_, Venues>, demo: bool) -> bool {
+    venues.blofin().set_demo_market_data(demo)
 }
 
 /// A market's hourly open interest over the last `hours` hours, oldest first.

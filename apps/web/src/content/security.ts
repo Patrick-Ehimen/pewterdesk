@@ -47,6 +47,12 @@ export const delegated = {
         "The app asks Binance what the key may do and keeps it only if futures trading is on and nothing else is: no withdrawals, transfers, spot, margin or options.",
     },
     {
+      name: "BloFin",
+      key: "API key (Demo Trading)",
+      check:
+        "BloFin can't say whether a key may transfer funds, so the app takes Demo Trading keys only, which reach demo funds alone. A live key is refused before it's sent anywhere.",
+    },
+    {
       name: "Hyperliquid",
       key: "Agent wallet",
       check:
@@ -78,14 +84,14 @@ export const surface = {
     title: "Can't",
     items: ["Withdraw", "Transfer", "Approve another key", "Sign data a page hands it"],
   },
-  note: "All of it on Bybit. On Binance, Hyperliquid and Aster, everything but a trailing stop.",
+  note: "All of it on Bybit and BloFin (Demo Trading). On Binance, Hyperliquid and Aster, everything but a trailing stop.",
 };
 
 export const live = {
   label: "§ 05 — Live trading",
   title: "Off until you turn it on.",
   body: [
-    "A Bybit or Binance Demo Trading account can trade as soon as it's connected. A live account can't: live trading is a switch per account, off by default.",
+    "A Bybit, Binance or BloFin Demo Trading account can trade as soon as it's connected. A live account can't: live trading is a switch per account, off by default. BloFin has no such switch: its live accounts don't connect at all.",
     "Turning it on asks the venue again what the stored key may do, and refuses anything but that account's own trade-only key. If the answer can't be read, it stays off.",
   ],
 };

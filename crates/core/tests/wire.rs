@@ -34,7 +34,8 @@ fn venue_ids_are_lowercase() {
             json!("hyperliquid"),
             json!("aster"),
             json!("bybit"),
-            json!("binance")
+            json!("binance"),
+            json!("blofin")
         ]
     );
 }

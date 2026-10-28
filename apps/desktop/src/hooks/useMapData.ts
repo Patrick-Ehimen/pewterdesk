@@ -84,34 +84,55 @@ export function useCrossVenue(enabled: boolean) {
   const asterMarkets = marketsOf(useMarkets(enabled ? "aster" : undefined));
   const bybitMarkets = marketsOf(useMarkets(enabled ? "bybit" : undefined));
   const binanceMarkets = marketsOf(useMarkets(enabled ? "binance" : undefined));
+  const blofinMarkets = marketsOf(useMarkets(enabled ? "blofin" : undefined));
   const hl = summariesOf(useMarketSummaries("hyperliquid", enabled));
   const aster = summariesOf(useMarketSummaries("aster", enabled));
   const bybit = summariesOf(useMarketSummaries("bybit", enabled));
   const binance = summariesOf(useMarketSummaries("binance", enabled));
+  const blofin = summariesOf(useMarketSummaries("blofin", enabled));
   const rows = useMemo<CoinRow[]>(() => {
     const bases: Record<VenueId, Map<string, string>> = {
       hyperliquid: cryptoBases(hlMarkets),
       aster: cryptoBases(asterMarkets),
       bybit: cryptoBases(bybitMarkets),
       binance: cryptoBases(binanceMarkets),
+      blofin: cryptoBases(blofinMarkets),
     };
-    return joinByCoin({ hyperliquid: hl, aster, bybit, binance }, (venue, market) =>
+    return joinByCoin({ hyperliquid: hl, aster, bybit, binance, blofin }, (venue, market) =>
       bases[venue].get(market),
     );
-  }, [hl, aster, bybit, binance, hlMarkets, asterMarkets, bybitMarkets, binanceMarkets]);
-  return { rows, loading: !hl && !aster && !bybit && !binance };
+  }, [
+    hl,
+    aster,
+    bybit,
+    binance,
+    blofin,
+    hlMarkets,
+    asterMarkets,
+    bybitMarkets,
+    binanceMarkets,
+    blofinMarkets,
+  ]);
+  return { rows, loading: !hl && !aster && !bybit && !binance && !blofin };
 }
 
-/** Samples Hyperliquid's and Aster's open interest once an hour while the app runs. */
+/**
+ * Samples open interest once an hour while the app runs, on the venues that
+ * publish no history of it: Hyperliquid, Aster and BloFin.
+ */
 export function useOiRecorder() {
   const hl = summariesOf(useMarketSummaries("hyperliquid", true));
   const aster = summariesOf(useMarketSummaries("aster", true));
+  const blofin = summariesOf(useMarketSummaries("blofin", true));
   useEffect(() => {
     if (hl) recordOi("hyperliquid", hl, Date.now());
   }, [hl]);
   useEffect(() => {
     if (aster) recordOi("aster", aster, Date.now());
   }, [aster]);
+  useEffect(() => {
+    if (blofin) recordOi("blofin", blofin, Date.now());
+  }, [blofin]);
 }
 
 /** Markets whose open-interest history is fetched, busiest by open interest first. */

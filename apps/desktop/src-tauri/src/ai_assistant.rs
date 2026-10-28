@@ -132,7 +132,7 @@ const MAX_AHEAD_MS: u64 = 90 * 86_400_000;
 /// earlier reasoning both stay valid from one turn to the next.
 const SYSTEM: &str = "You are PewterDesk AI, the market analyst inside PewterDesk, a crypto \
 derivatives trading terminal running on the trader's own machine. You help with perpetual \
-futures on Hyperliquid, Aster, Bybit and Binance: price action, structure, funding, positioning, \
+futures on Hyperliquid, Aster, Bybit, Binance and BloFin: price action, structure, funding, positioning, \
 narratives and risk.
 
 How to work:
@@ -431,7 +431,7 @@ fn with_venue(mut tool: Value) -> Value {
     let schema = &mut tool["input_schema"];
     schema["properties"]["venue"] = json!({
         "type": "string",
-        "enum": ["hyperliquid", "aster", "bybit", "binance"],
+        "enum": ["hyperliquid", "aster", "bybit", "binance", "blofin"],
         "description": "The venue to read: the one in the context unless another is asked about.",
     });
     if let Some(required) = schema["required"].as_array_mut() {
@@ -726,6 +726,7 @@ fn venue_name(venue: VenueId) -> &'static str {
         VenueId::Aster => "Aster",
         VenueId::Bybit => "Bybit",
         VenueId::Binance => "Binance",
+        VenueId::Blofin => "BloFin",
     }
 }
 

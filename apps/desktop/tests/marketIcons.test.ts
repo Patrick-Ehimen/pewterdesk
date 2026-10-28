@@ -51,6 +51,18 @@ describe("market logo sources", () => {
     ]);
   });
 
+  it("borrows BloFin's logos by the coin before the dash", () => {
+    expect(bybitBase("BTC-USDT")).toBe("BTC");
+    expect(iconSources("blofin", "1000PEPE-USDT")).toEqual([
+      ["blofin", "1000PEPE-USDT"],
+      ["hyperliquid", "1000PEPE"],
+      ["hyperliquid", "PEPE"],
+      ["hyperliquid", "kPEPE"],
+      ["aster", "1000PEPEUSDT"],
+      ["aster", "PEPEUSDT"],
+    ]);
+  });
+
   it("takes Bybit's own logo when its list has one", async () => {
     const fetchIcon = vi.fn(async (venue: string) => (venue === "bybit" ? "<svg/>" : undefined));
     await expect(firstIcon(iconSources("bybit", "BTCUSDT"), fetchIcon)).resolves.toBe("<svg/>");

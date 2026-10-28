@@ -21,10 +21,17 @@ pub enum VenueId {
     Aster,
     Bybit,
     Binance,
+    Blofin,
 }
 
 impl VenueId {
-    pub const ALL: [VenueId; 4] = [Self::Hyperliquid, Self::Aster, Self::Bybit, Self::Binance];
+    pub const ALL: [VenueId; 5] = [
+        Self::Hyperliquid,
+        Self::Aster,
+        Self::Bybit,
+        Self::Binance,
+        Self::Blofin,
+    ];
 }
 
 /// A base-10 number, carried over IPC as a string (`"0.0015"`). Prices, sizes

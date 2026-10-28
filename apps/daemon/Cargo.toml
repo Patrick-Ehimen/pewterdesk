@@ -21,6 +21,7 @@ pewterdesk-core = { path = "../../crates/core" }
 pewterdesk-engine = { path = "../../crates/engine" }
 pewterdesk-exchange-aster = { path = "../../crates/exchange-aster" }
 pewterdesk-exchange-binance = { path = "../../crates/exchange-binance" }
+pewterdesk-exchange-blofin = { path = "../../crates/exchange-blofin" }
 pewterdesk-exchange-bybit = { path = "../../crates/exchange-bybit" }
 pewterdesk-exchange-hyperliquid = { path = "../../crates/exchange-hyperliquid" }
 pewterdesk-keychain = { path = "../../crates/keychain" }

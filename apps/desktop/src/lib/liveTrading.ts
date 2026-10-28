@@ -1,4 +1,5 @@
 import type { VenueId } from "@pewterdesk/core";
+import { t } from "@pewterdesk/ui";
 import { binanceKeyClient, bybitKeyClient, walletClient } from "../api/venueClient";
 import { liveId } from "./account";
 
@@ -70,6 +71,8 @@ export async function setLiveTrading(
   account: { venue: VenueId; id: string },
   on: boolean,
 ): Promise<void> {
+  // Only Demo Trading accounts connect on BloFin: there's nothing to turn on.
+  if (account.venue === "blofin") throw new Error(t("apiKey.liveUnavailable", { venue: "BloFin" }));
   if (account.venue === "bybit") await bybitKeyClient.setLive(account.id, on);
   else if (account.venue === "binance") await binanceKeyClient.setLive(account.id, on);
   else await walletClient.setLive(account.venue, account.id, on);

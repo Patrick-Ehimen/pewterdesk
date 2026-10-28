@@ -828,4 +828,4 @@ export type Unfilled = "market" | "skip" | "stop";
  */
 export type VenueError = { "kind": "unsupported", "detail": string } | { "kind": "invalidRequest", "detail": string } | { "kind": "rejected", "detail": string } | { "kind": "network", "detail": string } | { "kind": "blocked", "detail": string } | { "kind": "key", "detail": KeyError };
 
-export type VenueId = "hyperliquid" | "aster" | "bybit" | "binance";
+export type VenueId = "hyperliquid" | "aster" | "bybit" | "binance" | "blofin";

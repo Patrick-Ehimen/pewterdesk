@@ -11,6 +11,8 @@
 //! - Aster: weight-based, as Binance's futures API.
 //! - Binance: 300 orders per 10 seconds and 1,200 a minute per account,
 //!   and a 2,400-weight-a-minute IP budget the app's reads share.
+//! - BloFin: 30 trading requests every 10 seconds per account, and 500
+//!   requests a minute per IP that the app's reads share.
 //! - Hyperliquid: an address limit that, once an account's buffer is spent,
 //!   allows about one request per USDC traded and throttles a low-volume
 //!   account to one every 10 seconds - the tight one.
@@ -28,6 +30,7 @@ fn limits(venue: VenueId) -> (f64, f64) {
         VenueId::Bybit => (10.0, 5.0),
         VenueId::Aster => (10.0, 5.0),
         VenueId::Binance => (10.0, 5.0),
+        VenueId::Blofin => (6.0, 2.0),
         VenueId::Hyperliquid => (5.0, 0.5),
     }
 }

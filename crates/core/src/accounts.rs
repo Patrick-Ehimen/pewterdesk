@@ -9,7 +9,7 @@
 use crate::{VenueError, VenueId};
 
 /// What a demo account's id starts with, before its UID, on the venues
-/// whose accounts are API keys (Bybit, Binance).
+/// whose accounts are API keys (Bybit, Binance, BloFin).
 pub const DEMO_PREFIX: &str = "demo:";
 
 /// What a Bybit demo account's id starts with, before its UID.
@@ -59,6 +59,21 @@ pub fn binance_key_entry(id: &str) -> Result<String, VenueError> {
     Ok(format!("binance:{id}"))
 }
 
+/// A BloFin account id: its UID, with `demo:` in front for a Demo Trading
+/// account, as on Bybit. Returns whether it's demo, and the UID. Only demo
+/// accounts trade (the router refuses a live one): BloFin can't say whether
+/// a key may transfer funds.
+pub fn blofin_account(id: &str) -> Result<(bool, &str), VenueError> {
+    uid_account("BloFin", id)
+}
+
+/// The keychain entry the API key for BloFin account `id` lives under:
+/// `blofin:{uid}`, or `blofin:demo:{uid}` for a Demo Trading account.
+pub fn blofin_key_entry(id: &str) -> Result<String, VenueError> {
+    blofin_account(id)?;
+    Ok(format!("blofin:{id}"))
+}
+
 /// A wallet address as accounts are kept: lowercase `0x` + 40 hex, or an
 /// error saying what an address looks like.
 pub fn normalize_address(address: &str) -> Result<String, VenueError> {
@@ -81,6 +96,7 @@ pub fn wallet_key_entry(venue: VenueId, address: &str) -> String {
         VenueId::Aster => format!("aster:{address}"),
         VenueId::Bybit => format!("bybit:{address}"),
         VenueId::Binance => format!("binance:{address}"),
+        VenueId::Blofin => format!("blofin:{address}"),
     }
 }
 
@@ -135,6 +151,32 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Binance"));
+    }
+
+    #[test]
+    fn blofin_accounts_are_digit_uids_under_their_own_entries() {
+        assert_eq!(blofin_account("demo:20923487").unwrap(), (true, "20923487"));
+        assert_eq!(blofin_account("20923487").unwrap(), (false, "20923487"));
+        for bad in ["", "demo:", "0xabc", "demo:demo:1", "1 2"] {
+            assert!(blofin_account(bad).is_err(), "{bad:?}");
+        }
+        assert_eq!(
+            blofin_key_entry("demo:20923487").unwrap(),
+            "blofin:demo:20923487"
+        );
+        // The same UID on another venue is a different entry.
+        assert_ne!(
+            blofin_key_entry("demo:20923487").unwrap(),
+            binance_key_entry("demo:20923487").unwrap()
+        );
+        assert_ne!(
+            blofin_key_entry("demo:20923487").unwrap(),
+            bybit_key_entry("demo:20923487").unwrap()
+        );
+        assert!(blofin_account("x")
+            .unwrap_err()
+            .to_string()
+            .contains("BloFin"));
     }
 
     #[test]

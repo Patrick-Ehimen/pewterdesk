@@ -1584,6 +1584,17 @@ export const en = {
   "apiKey.step.permissionsBinance":
     "Tick Enable Futures only - leave withdrawals, transfers and spot & margin trading off.",
   "apiKey.step.ip": "Restrict it to your IP address.",
+  "apiKey.step.demoBlofin":
+    "Switch BloFin to Demo Trading and make the key there: pewterdesk connects Demo Trading accounts only.",
+  "apiKey.step.permissionsBlofin": "Give it Read and Trade - leave Transfer off.",
+  "apiKey.step.passphrase":
+    "If you set a passphrase for it, keep it: BloFin asks for it with every request.",
+  "apiKey.passphraseLabel": "Passphrase",
+  "apiKey.optional": "Optional",
+  "apiKey.passphraseHint": "Only if you set one when you made the key on {venue}.",
+  "apiKey.demoOnly":
+    "{venue}'s API can't confirm a live key has Transfer switched off, so pewterdesk connects {venue} Demo Trading accounts only.",
+  "apiKey.liveUnavailable": "Live trading isn't available on {venue}.",
   "apiKey.can": "Can place and cancel orders",
   "apiKey.cannot": "Can't withdraw or transfer",
   "apiKey.footer":
@@ -1611,6 +1622,7 @@ export const en = {
     "Disconnecting deletes the key from this computer. Delete it on {venue} too if you won't use it again.",
   "onb.ready.bybit": "Bybit",
   "onb.ready.binance": "Binance",
+  "onb.ready.blofin": "BloFin",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "{count} trading keys in your keychain · can't withdraw",
   "pnl.connectApiKey": "Connect an API key to track PnL",
@@ -2128,10 +2140,13 @@ export const en = {
     "Choose the perp venues you want in one terminal. You can change this later in Settings.",
   "onb.chain.bybit": "Centralized exchange",
   "onb.chain.binance": "Centralized exchange",
+  "onb.chain.blofin": "Centralized exchange",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",
   "onb.chain.dydx": "dYdX Chain",
+  "onb.chain.grvt": "ZKsync",
+  "onb.chain.paradex": "Starknet",
   "onb.network": "Network",
   "onb.mainnet": "Mainnet",
   "onb.mainnetBody": "Real funds, on each venue's main network.",
@@ -2197,6 +2212,10 @@ export const en = {
   "venues.soon.gmx":
     "Perps on Arbitrum, filled against oracle prices, with one-click trading keys. Coming soon.",
   "venues.soon.dydx": "An order-book perp chain with permissioned trading keys. Coming soon.",
+  "venues.soon.grvt":
+    "A hybrid perp exchange on ZKsync: an order book, funds held on-chain. Coming soon.",
+  "venues.soon.paradex":
+    "A perp exchange on its own Starknet appchain, with trade-only subkeys. Coming soon.",
   "venues.missing": "Missing a venue?",
   "venues.missingBody":
     "Every venue is one adapter in the open-source repo. Request one, or build it.",

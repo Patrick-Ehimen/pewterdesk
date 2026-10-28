@@ -7,7 +7,7 @@ const EVERY_MS = 5 * 60_000;
 const MARKETS = 150;
 
 // Open-interest samples for the venues that publish no history of it
-// (Hyperliquid, Aster), for the Maps page's open-interest view. Taken from
+// (Hyperliquid, Aster, BloFin), for the Maps page's open-interest view. Taken from
 // the summaries the app streams anyway, every few minutes while it runs
 // (thinned to hourly after two hours), with the price at the time, and kept
 // on this machine for a day and a bit, for the largest markets only.

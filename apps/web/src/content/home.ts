@@ -95,6 +95,14 @@ export const venues = {
         live: true,
       },
       {
+        id: "blofin",
+        name: "BloFin",
+        kind: "Centralised",
+        chain: "—",
+        status: "Demo Trading",
+        live: true,
+      },
+      {
         id: "hyperliquid",
         name: "Hyperliquid",
         kind: "Perp DEX",
@@ -123,6 +131,8 @@ export const venues = {
       { id: "backpack", name: "Backpack", kind: "Centralised" },
       { id: "gmx", name: "GMX", kind: "Perp DEX" },
       { id: "dydx", name: "dYdX", kind: "Perp DEX" },
+      { id: "grvt", name: "GRVT", kind: "Perp DEX" },
+      { id: "paradex", name: "Paradex", kind: "Perp DEX" },
     ],
   },
 } as const;
@@ -136,9 +146,9 @@ export const status = {
   works: {
     title: "Works today",
     items: [
-      "Market data on Bybit, Binance, Hyperliquid and Aster",
-      "Orders on Bybit and Binance (demo and live), Hyperliquid and Aster",
-      "Balances, positions and open orders on all four",
+      "Market data on Bybit, Binance, BloFin, Hyperliquid and Aster",
+      "Orders on Bybit and Binance (demo and live), BloFin (Demo Trading), Hyperliquid and Aster",
+      "Balances, positions and open orders on all five",
       "Maps, multi-chart, alerts and trading rules",
     ],
   },
@@ -146,7 +156,8 @@ export const status = {
     title: "Not yet",
     items: [
       "Trailing stops on Binance, Hyperliquid and Aster",
-      "The eight venues listed as coming",
+      "Live trading on BloFin",
+      "The ten venues listed as coming",
     ],
   },
   report: "Report a problem",

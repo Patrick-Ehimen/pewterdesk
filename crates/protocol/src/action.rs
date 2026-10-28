@@ -27,6 +27,9 @@ pub fn default_slippage_bps(venue: VenueId) -> u32 {
         // Binance refuses a limit price outside the market's band around
         // the mark (3% on BTCUSDT), so a wider bound would only be pulled in.
         VenueId::Binance => 300,
+        // BloFin refuses a price outside its limit range around the mark; a
+        // bound outside it is pulled in by the adapter.
+        VenueId::Blofin => 300,
     }
 }
 

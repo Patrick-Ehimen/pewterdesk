@@ -27,9 +27,9 @@ import {
   type StreamHandlers,
   venueClient,
 } from "../api/venueClient";
-import { showsDemoData } from "../lib/binanceData";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
+import { showsDemoData } from "../lib/demoData";
 import { RETRY_MS, useRetry } from "./useRetry";
 
 /** How often a live series is written back to the cache, at most. */
@@ -418,7 +418,7 @@ const sharedSummaries = new Map<string, SharedSummaries>();
 
 /**
  * Every market's summary, for the screener and market picker; `enabled:
- * false` lets go of it. `mainnet` asks for Binance's mainnet figures while
+ * false` lets go of it. `mainnet` asks for Binance's or BloFin's mainnet figures while
  * its market data is Demo Trading's (a comparison across venues, where demo
  * funds' volume would mean nothing); elsewhere it changes nothing.
  */
@@ -427,7 +427,7 @@ export function useMarketSummaries(
   enabled: boolean,
   { mainnet = false }: { mainnet?: boolean } = {},
 ): Feed<MarketSummary[]> {
-  const live = mainnet && venue === "binance" && showsDemoData();
+  const live = mainnet && showsDemoData(venue);
   const key = live ? `${venue}:mainnet` : venue;
   const [feed, setFeed] = useState<Feed<MarketSummary[]>>({ status: "idle" });
   const retry = useRetry(feed.status === "error" || feed.status === "closed");

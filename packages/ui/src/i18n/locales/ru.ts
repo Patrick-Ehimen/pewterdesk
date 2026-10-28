@@ -1641,6 +1641,18 @@ export const messages: Messages = {
   "apiKey.step.permissionsBinance":
     "Отметьте только Enable Futures: вывод, переводы, спот и маржинальную торговлю оставьте выключенными.",
   "apiKey.step.ip": "Ограничьте его своим IP-адресом.",
+  "apiKey.step.demoBlofin":
+    "Переключите BloFin в Demo Trading и создайте ключ там: pewterdesk подключает только аккаунты Demo Trading.",
+  "apiKey.step.permissionsBlofin":
+    "Дайте ему права на чтение и торговлю, а перевод оставьте выключенным.",
+  "apiKey.step.passphrase":
+    "Если вы задали для него кодовую фразу, сохраните её: BloFin требует её в каждом запросе.",
+  "apiKey.passphraseLabel": "Кодовая фраза",
+  "apiKey.optional": "Необязательно",
+  "apiKey.passphraseHint": "Только если вы задали её при создании ключа на {venue}.",
+  "apiKey.demoOnly":
+    "API {venue} не может подтвердить, что у реального ключа выключен перевод, поэтому pewterdesk подключает только аккаунты Demo Trading на {venue}.",
+  "apiKey.liveUnavailable": "Реальная торговля на {venue} недоступна.",
   "apiKey.can": "Может выставлять и отменять ордера",
   "apiKey.cannot": "Не может выводить и переводить",
   "apiKey.footer":
@@ -1668,6 +1680,7 @@ export const messages: Messages = {
     "Отключение удаляет ключ с этого компьютера. Удалите его и на {venue}, если больше не будете им пользоваться.",
   "onb.ready.bybit": "Bybit",
   "onb.ready.binance": "Binance",
+  "onb.ready.blofin": "BloFin",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "Торговых ключей в связке: {count} · без вывода",
   "pnl.connectApiKey": "Подключите API-ключ, чтобы следить за PnL",
@@ -2186,10 +2199,13 @@ export const messages: Messages = {
     "Выберите площадки бессрочных контрактов для одного терминала. Это можно изменить позже в настройках.",
   "onb.chain.bybit": "Централизованная биржа",
   "onb.chain.binance": "Централизованная биржа",
+  "onb.chain.blofin": "Централизованная биржа",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",
   "onb.chain.dydx": "dYdX Chain",
+  "onb.chain.grvt": "ZKsync",
+  "onb.chain.paradex": "Starknet",
   "onb.network": "Сеть",
   "onb.mainnet": "Mainnet",
   "onb.mainnetBody": "Реальные средства в основной сети каждой площадки.",
@@ -2257,6 +2273,10 @@ export const messages: Messages = {
     "Бессрочные контракты на Arbitrum с исполнением по цене оракула и торговыми ключами в один клик. Скоро.",
   "venues.soon.dydx":
     "Сеть бессрочных контрактов со стаканом и торговыми ключами с разрешениями. Скоро.",
+  "venues.soon.grvt":
+    "Гибридная биржа бессрочных контрактов на ZKsync: стакан, средства в сети. Скоро.",
+  "venues.soon.paradex":
+    "Биржа бессрочных контрактов в собственной сети на Starknet, с подключами только для торговли. Скоро.",
   "venues.missing": "Не хватает площадки?",
   "venues.missingBody":
     "Каждая площадка — это адаптер в открытом репозитории. Запросите её или напишите сами.",

@@ -23,14 +23,17 @@ import venueAster from "./venues/aster.svg";
 import venueBackpack from "./venues/backpack.svg";
 import venueBinance from "./venues/binance.svg";
 import venueBitget from "./venues/bitget.svg";
+import venueBlofin from "./venues/blofin.png";
 import venueBybit from "./venues/bybit.svg";
 import venueCoinbase from "./venues/coinbase.svg";
 import venueDydx from "./venues/dydx.svg";
 import venueGmx from "./venues/gmx.svg";
+import venueGrvt from "./venues/grvt.png";
 import venueHyperliquid from "./venues/hyperliquid.svg";
 import venueKraken from "./venues/kraken.svg";
 import venueKucoin from "./venues/kucoin.svg";
 import venueOkx from "./venues/okx.svg";
+import venueParadex from "./venues/paradex.svg";
 import walletCoinbase from "./wallets/coinbase.svg";
 import walletLedger from "./wallets/ledger.svg";
 import walletMetamask from "./wallets/metamask.svg";
@@ -77,6 +80,7 @@ export const venueLogos = {
   aster: venueAster,
   bybit: venueBybit,
   binance: venueBinance,
+  blofin: venueBlofin,
 } as const;
 
 /** Wallet marks on their brand tiles, for the Connect wallet dialog. Source and license: wallets/README.md. */
@@ -103,4 +107,6 @@ export const upcomingVenueLogos = {
   backpack: venueBackpack,
   gmx: venueGmx,
   dydx: venueDydx,
+  grvt: venueGrvt,
+  paradex: venueParadex,
 } as const;

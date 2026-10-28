@@ -68,6 +68,9 @@ pub fn wallet_id(venue: VenueId, address: &str) -> Result<String, VenueError> {
         VenueId::Binance => Err(VenueError::InvalidRequest(
             "a Binance account is switched by its UID".into(),
         )),
+        VenueId::Blofin => Err(VenueError::InvalidRequest(
+            "live trading isn't available on BloFin".into(),
+        )),
     }
 }
 

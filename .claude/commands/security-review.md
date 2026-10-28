@@ -45,7 +45,9 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    domain, types, and action shape for EIP-712 (Hyperliquid over the
    action's msgpack hash, Aster over the exact parameter string sent), and
    for Bybit and Binance an HMAC over exactly the bytes sent (Binance's:
-   the query string as sent, values percent-encoded first). Every field of an order is
+   the query string as sent, values percent-encoded first; BloFin's: the
+   path with its query string, method, timestamp, nonce and JSON body as
+   sent, its hex digest base64-encoded). Every field of an order is
    a constant or checked against the live market's rules. A subtly wrong
    field can produce a signature that's valid-looking but authorizes
    something other than what the user intended.
@@ -58,7 +60,8 @@ rules come from `docs/adr/0001-venues-in-rust.md`.
    through the engine's router, which builds the account's keychain
    reference itself (`trading_account`) and refuses unless live trading is
    on for that account (`crates/engine/src/live.rs`; a Bybit demo or
-   Binance Demo Trading account excepted), then checks the trader's rules (`crates/engine/src/rules.rs`)
+   Binance or BloFin Demo Trading account excepted - and a live BloFin
+   account is refused outright, with no switch to turn it on), then checks the trader's rules (`crates/engine/src/rules.rs`)
    before anything is signed. Nothing else calls an adapter's trading
    methods. The rules only ever
    refuse: an order that reduces a position, a cancel and a stop moved

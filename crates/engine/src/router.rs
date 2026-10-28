@@ -6,11 +6,13 @@
 //! `.claude/commands/security-review.md` and `docs/bots/safety.md`:
 //! - The router builds the account's key reference itself
 //!   (`trading_account`): the caller names an account, never a key.
-//! - A Bybit demo account or a Binance Demo Trading account (demo funds, on
-//!   the venue's demo host) trades as soon as it's connected. Every other
-//!   account is live - a Bybit or Binance live account, and any Hyperliquid
-//!   or Aster account - and trades only once live trading has been turned
-//!   on for it (`live`).
+//! - A Bybit demo account or a Binance or BloFin Demo Trading account (demo
+//!   funds, on the venue's demo host) trades as soon as it's connected.
+//!   Every other account is live - a Bybit or Binance live account, and any
+//!   Hyperliquid or Aster account - and trades only once live trading has
+//!   been turned on for it (`live`). A live BloFin account never trades:
+//!   BloFin can't say whether a key may transfer funds, so there's no
+//!   switch for one.
 //! - The trader's rules (`rules`) are checked before an order is placed, an
 //!   order is amended, or a position's protection is changed. A cancel, and
 //!   leverage and margin mode (which open nothing), pass the switch only.
@@ -28,8 +30,8 @@
 use std::path::{Path, PathBuf};
 
 use pewterdesk_core::accounts::{
-    binance_account, binance_key_entry, bybit_account, bybit_key_entry, normalize_address,
-    wallet_key_entry,
+    binance_account, binance_key_entry, blofin_account, blofin_key_entry, bybit_account,
+    bybit_key_entry, normalize_address, wallet_key_entry,
 };
 use pewterdesk_core::{
     Decimal, MarginMode, Order, OrderAmend, OrderRequest, Origin, PositionProtection,
@@ -74,6 +76,19 @@ pub fn trading_account(
             Ok(TradingAccount {
                 address: account.to_owned(),
                 key: binance_key_entry(account)?,
+            })
+        }
+        // Demo Trading only: a live key can't be shown to be trade-only.
+        VenueId::Blofin => {
+            let (demo, _) = blofin_account(account)?;
+            if !demo {
+                return Err(VenueError::Rejected(
+                    "live trading isn't available on BloFin; use a Demo Trading account".into(),
+                ));
+            }
+            Ok(TradingAccount {
+                address: account.to_owned(),
+                key: blofin_key_entry(account)?,
             })
         }
         // Always real funds, so always behind the switch.
@@ -893,6 +908,30 @@ mod tests {
             Err(VenueError::Rejected(_))
         ));
         assert!(trading_account(VenueId::Binance, "0xabc", &on).is_err());
+        let _ = std::fs::remove_dir_all(path.parent().unwrap());
+    }
+
+    #[test]
+    fn a_blofin_account_trades_only_on_demo() {
+        let path = std::env::temp_dir()
+            .join(format!("pewterdesk-gate-blofin-{}", std::process::id()))
+            .join(live::FILE);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        // Every other venue's switch for this UID is on: none reaches BloFin.
+        std::fs::write(
+            &path,
+            br#"["20923487","binance:20923487","blofin:20923487"]"#,
+        )
+        .unwrap();
+        let live = LiveTrading::load(Some(path.clone()));
+        let demo = trading_account(VenueId::Blofin, "demo:20923487", &live).unwrap();
+        assert_eq!(demo.address, "demo:20923487");
+        assert_eq!(demo.key, "blofin:demo:20923487");
+        assert!(matches!(
+            trading_account(VenueId::Blofin, "20923487", &live),
+            Err(VenueError::Rejected(_))
+        ));
+        assert!(trading_account(VenueId::Blofin, "demo:0xabc", &live).is_err());
         let _ = std::fs::remove_dir_all(path.parent().unwrap());
     }
 }

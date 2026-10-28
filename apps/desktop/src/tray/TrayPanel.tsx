@@ -214,9 +214,11 @@ export function TrayPanel() {
   const hyperliquid = useVenueData("hyperliquid", open);
   const aster = useVenueData("aster", open);
   const binance = useVenueData("binance", open);
+  const blofin = useVenueData("blofin", open);
   const venues = [
     { venue: "bybit" as const, ...bybit },
     { venue: "binance" as const, ...binance },
+    { venue: "blofin" as const, ...blofin },
     { venue: "hyperliquid" as const, ...hyperliquid },
     { venue: "aster" as const, ...aster },
   ];

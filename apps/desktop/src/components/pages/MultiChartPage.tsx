@@ -486,17 +486,19 @@ export function MultiChartPage({
     hyperliquid: useVenueData("hyperliquid", has("hyperliquid")),
     aster: useVenueData("aster", has("aster")),
     binance: useVenueData("binance", has("binance")),
+    blofin: useVenueData("blofin", has("blofin")),
   };
   const bybit = data.bybit.markets;
   const hyperliquid = data.hyperliquid.markets;
   const aster = data.aster.markets;
   const binance = data.binance.markets;
+  const blofin = data.blofin.markets;
   // As each venue's markets arrive: its charts are checked against them, and
   // the venue on screen fills in any charts still missing.
   useEffect(() => {
     setState((now) => {
       let next = now;
-      const lists = { bybit, hyperliquid, aster, binance };
+      const lists = { bybit, hyperliquid, aster, binance, blofin };
       // The venue on screen last, so its charts fill what's left.
       const order = (Object.keys(lists) as VenueId[]).sort(
         (a, b) => Number(a === venue) - Number(b === venue),
@@ -507,7 +509,7 @@ export function MultiChartPage({
       if (next !== now) saveMultiChart(next);
       return next;
     });
-  }, [venue, bybit, hyperliquid, aster, binance]);
+  }, [venue, bybit, hyperliquid, aster, binance, blofin]);
 
   // The chart given the whole page, by its place in the grid.
   const [maximised, setMaximised] = useState<number>();

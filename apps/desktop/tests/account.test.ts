@@ -80,6 +80,23 @@ describe("connected accounts", () => {
     expect(activeAccount(state, "binance")?.id).toBe("demo:354937868");
   });
 
+  it("trades on BloFin Demo Trading accounts only", () => {
+    expect(isAccountId("blofin", "demo:20923487")).toBe(true);
+    expect(isAccountId("blofin", A)).toBe(false);
+    const demo = { venue: "blofin" as const, id: "demo:20923487" };
+    const live = { venue: "blofin" as const, id: "20923487" };
+    expect(isDemoAccount(demo) && canTrade(demo, [])).toBe(true);
+    // No switch turns a live BloFin account on; another venue's never reaches it.
+    expect(canTrade(live, ["20923487", "binance:20923487"])).toBe(false);
+    const state = parseAccounts(
+      JSON.stringify({
+        accounts: [{ venue: "blofin", id: "demo:20923487", name: "Demo" }],
+        active: { blofin: "demo:20923487" },
+      }),
+    );
+    expect(activeAccount(state, "blofin")?.id).toBe("demo:20923487");
+  });
+
   it("adds accounts, making the newest active, without repeats", () => {
     let s = withAccount(EMPTY, "hyperliquid", A, "Main");
     s = withAccount(s, "hyperliquid", B, "");

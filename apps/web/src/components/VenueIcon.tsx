@@ -1,37 +1,43 @@
 // A venue's own mark from assets/venues, on a rounded tile. Most come with
-// their tile; Hyperliquid's and Aster's are bare marks drawn for a dark
-// background, so those sit on the dark palette's.
+// their tile; Hyperliquid's, Aster's and GRVT's are bare marks drawn
+// for a dark background, so those sit on the dark palette's.
 import aster from "@pewterdesk/assets/venues/aster.svg";
 import backpack from "@pewterdesk/assets/venues/backpack.svg";
 import binance from "@pewterdesk/assets/venues/binance.svg";
 import bitget from "@pewterdesk/assets/venues/bitget.svg";
+import blofin from "@pewterdesk/assets/venues/blofin.png";
 import bybit from "@pewterdesk/assets/venues/bybit.svg";
 import coinbase from "@pewterdesk/assets/venues/coinbase.svg";
 import dydx from "@pewterdesk/assets/venues/dydx.svg";
 import gmx from "@pewterdesk/assets/venues/gmx.svg";
+import grvt from "@pewterdesk/assets/venues/grvt.png";
 import hyperliquid from "@pewterdesk/assets/venues/hyperliquid.svg";
 import kraken from "@pewterdesk/assets/venues/kraken.svg";
 import kucoin from "@pewterdesk/assets/venues/kucoin.svg";
 import okx from "@pewterdesk/assets/venues/okx.svg";
+import paradex from "@pewterdesk/assets/venues/paradex.svg";
 
 const icons = {
   aster,
   backpack,
   binance,
   bitget,
+  blofin,
   bybit,
   coinbase,
   dydx,
   gmx,
+  grvt,
   hyperliquid,
   kraken,
   kucoin,
   okx,
+  paradex,
 };
 
 export type VenueIconId = keyof typeof icons;
 
-const bare: readonly VenueIconId[] = ["hyperliquid", "aster"];
+const bare: readonly VenueIconId[] = ["hyperliquid", "aster", "grvt"];
 
 export function VenueIcon({ id, small }: { id: VenueIconId; small?: boolean }) {
   const isBare = bare.includes(id);

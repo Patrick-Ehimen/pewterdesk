@@ -270,6 +270,7 @@ input {
 .pd-book-row {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
+  column-gap: 8px;
   padding: 0 12px;
 }
 .pd-book-head {
@@ -304,6 +305,11 @@ input {
 }
 .pd-book-row span {
   position: relative;
+  /* A figure too wide for its column is cut, never drawn over the next. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pd-book-row span:last-child {
   color: var(--pd-pewter);
@@ -4365,6 +4371,9 @@ fieldset.pd-alerts-chips {
 .pd-move-bar[data-venue="binance"] {
   background: var(--pd-text);
 }
+.pd-move-bar[data-venue="blofin"] {
+  background: var(--pd-pewter-dim);
+}
 .pd-skel.pd-move-bar-skel {
   width: 100%;
   height: 6px;
@@ -7938,6 +7947,9 @@ button.pd-drawer-exit:hover {
 }
 .pd-mx-venue-dot[data-venue="binance"] {
   background: var(--pd-text);
+}
+.pd-mx-venue-dot[data-venue="blofin"] {
+  background: var(--pd-pewter-dim);
 }
 .pd-mx-venue-key {
   display: inline-flex;

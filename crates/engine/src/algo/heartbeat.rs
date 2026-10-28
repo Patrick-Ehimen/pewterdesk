@@ -8,7 +8,8 @@
 //! would cancel every open order the account has - the trader's own too -
 //! not only the algo's; where it's per market (Aster's and Binance's
 //! `countdownCancelAll`), that market's. Bybit's (DCP) is a websocket
-//! feature for institutional accounts only, so a Bybit algo has none.
+//! feature for institutional accounts only, so a Bybit algo has none;
+//! BloFin has none at all.
 //! Hyperliquid's fires at most 10 times a day; re-arming doesn't count.
 
 use std::collections::HashSet;

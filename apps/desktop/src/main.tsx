@@ -21,7 +21,7 @@ import { SPLASH_FADE_MS, Splash, SWITCH_SPLASH_MS } from "./components/Splash";
 import { FloatWindow } from "./float/FloatWindow";
 import { applyStoredAppearance } from "./hooks/useAppearance";
 import { forgetWatchedAddress } from "./lib/account";
-import { syncBinanceData } from "./lib/binanceData";
+import { syncDemoData } from "./lib/demoData";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
 import { installReloadShortcut, wasReloaded } from "./lib/reload";
 import { TrayPanel } from "./tray/TrayPanel";
@@ -36,7 +36,7 @@ async function startTrayPanel() {
   // The panel reads accounts: not before the main window's keychain note.
   await appClient.keychainNoticeCleared().catch(() => {});
   const locale = storedLanguage();
-  await Promise.all([loadLocale(locale), syncBinanceData()]);
+  await Promise.all([loadLocale(locale), syncDemoData()]);
   document.documentElement.lang = locale;
   root.render(
     <StrictMode>
@@ -57,7 +57,7 @@ async function start() {
   root.render(<Splash />);
   const [, , , notice] = await Promise.all([
     loadLocale(locale),
-    syncBinanceData(),
+    syncDemoData(),
     holdSplash ? new Promise((resolve) => setTimeout(resolve, SWITCH_SPLASH_MS)) : null,
     appClient.keychainNotice().catch(() => false),
   ]);
@@ -104,7 +104,7 @@ async function startFloatWindow() {
   // The floating window reads accounts: not before the main window's keychain note.
   await appClient.keychainNoticeCleared().catch(() => {});
   const locale = storedLanguage();
-  await Promise.all([loadLocale(locale), syncBinanceData()]);
+  await Promise.all([loadLocale(locale), syncDemoData()]);
   document.documentElement.lang = locale;
   root.render(
     <StrictMode>
@@ -117,7 +117,7 @@ async function startFloatWindow() {
 async function startChartWindow() {
   applyStoredAppearance();
   const locale = storedLanguage();
-  await Promise.all([loadLocale(locale), syncBinanceData()]);
+  await Promise.all([loadLocale(locale), syncDemoData()]);
   document.documentElement.lang = locale;
   root.render(
     <StrictMode>

@@ -12,8 +12,10 @@ import {
 } from "react-icons/lu";
 import {
   type BinanceKeyInfo,
+  type BlofinKeyInfo,
   type BybitKeyInfo,
   binanceKeyClient,
+  blofinKeyClient,
   bybitKeyClient,
 } from "../../api/venueClient";
 import {
@@ -34,8 +36,8 @@ import { LiveTradingSwitch } from "./LiveTradingSwitch";
 
 const message = (err: unknown) => (err instanceof Error ? err.message : t("error.failed"));
 
-/** A connected key, as either venue's Rust command describes it. */
-type KeyInfo = BybitKeyInfo | BinanceKeyInfo;
+/** A connected key, as each venue's Rust command describes it. */
+type KeyInfo = BybitKeyInfo | BinanceKeyInfo | BlofinKeyInfo;
 
 /**
  * What differs between the API-key venues: their commands (each checks the
@@ -43,13 +45,22 @@ type KeyInfo = BybitKeyInfo | BinanceKeyInfo;
  * and what's worth showing about a connected one.
  */
 interface KeyVenue {
-  connect: (apiKey: string, apiSecret: string, demo: boolean) => Promise<{ uid: string }>;
+  connect: (
+    apiKey: string,
+    apiSecret: string,
+    demo: boolean,
+    passphrase: string,
+  ) => Promise<{ uid: string }>;
   status: (uid: string) => Promise<KeyInfo | null>;
   disconnect: (uid: string) => Promise<void>;
   /** How the key should be made, in order. */
   steps: readonly MessageKey[];
   /** The connected key's details, after its UID. */
   rows: (info: KeyInfo | null | undefined) => [MessageKey, string][];
+  /** The key may come with a passphrase the user set when making it (optional). */
+  passphrase?: boolean;
+  /** Only Demo Trading keys are taken: the venue can't show a live one is trade-only. */
+  demoOnly?: boolean;
 }
 
 const yesNo = (info: KeyInfo | null | undefined, v: boolean | undefined) =>
@@ -101,35 +112,50 @@ const KEY_VENUES: Record<UidVenue, KeyVenue> = {
       ["apiKey.ipBound", info?.demo ? "-" : yesNo(info, info?.ipRestricted)],
       [
         "apiKey.permissions",
-        info?.checked && info.permissions.length > 0 ? info.permissions.join(", ") : "-",
+        info?.checked && "permissions" in info && info.permissions.length > 0
+          ? info.permissions.join(", ")
+          : "-",
       ],
     ],
+  },
+  blofin: {
+    connect: blofinKeyClient.connect,
+    status: blofinKeyClient.status,
+    disconnect: blofinKeyClient.disconnect,
+    steps: ["apiKey.step.demoBlofin", "apiKey.step.permissionsBlofin", "apiKey.step.passphrase"],
+    rows: (info) => [["apiKey.ipBound", yesNo(info, info?.ipRestricted)]],
+    passphrase: true,
+    demoOnly: true,
   },
 };
 
 /**
- * The key and secret, handed to Rust once on submit. Rust asks the venue
- * what the key may do and stores it only if it trades derivatives and
- * nothing else. Both fields are cleared straight away, pass or fail.
+ * The key and secret (and, where the venue has one, the passphrase), handed
+ * to Rust once on submit. Rust asks the venue what the key may do and
+ * stores it only if it trades derivatives and nothing else. Every field is
+ * cleared straight away, pass or fail.
  */
 function KeyForm({ venue }: { venue: UidVenue }) {
+  const keys = KEY_VENUES[venue];
   const [apiKey, setApiKey] = useState("");
   const [secret, setSecret] = useState("");
+  const [passphrase, setPassphrase] = useState("");
   const label = VENUES[venue].label;
   // A key made in the venue's Demo Trading only works on its demo host.
-  const [demo, setDemo] = useState(false);
+  const [demo, setDemo] = useState(keys.demoOnly === true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    const [key, pasted] = [apiKey, secret];
+    const [key, pasted, phrase] = [apiKey, secret, passphrase];
     setApiKey("");
     setSecret("");
+    setPassphrase("");
     setBusy(true);
     setError(undefined);
     try {
-      const info = await KEY_VENUES[venue].connect(key, pasted, demo);
+      const info = await keys.connect(key, pasted, demo, phrase);
       addAccount(venue, info.uid);
     } catch (err) {
       setError(message(err));
@@ -140,22 +166,26 @@ function KeyForm({ venue }: { venue: UidVenue }) {
 
   return (
     <form className="apikey-form" onSubmit={submit}>
-      <div className="apikey-env" role="radiogroup" aria-label={t("apiKey.envLabel")}>
-        {([false, true] as const).map((isDemo) => (
-          // biome-ignore lint/a11y/useSemanticElements: a segmented choice, like the app's others
-          <button
-            key={String(isDemo)}
-            type="button"
-            role="radio"
-            aria-checked={demo === isDemo}
-            className="apikey-env-option"
-            onClick={() => setDemo(isDemo)}
-          >
-            <strong>{t(isDemo ? "accounts.demo" : "apiKey.live")}</strong>
-            <span>{isDemo ? t("apiKey.demoHint") : t("apiKey.liveHint", { venue: label })}</span>
-          </button>
-        ))}
-      </div>
+      {keys.demoOnly ? (
+        <p className="wallet-note">{t("apiKey.demoOnly", { venue: label })}</p>
+      ) : (
+        <div className="apikey-env" role="radiogroup" aria-label={t("apiKey.envLabel")}>
+          {([false, true] as const).map((isDemo) => (
+            // biome-ignore lint/a11y/useSemanticElements: a segmented choice, like the app's others
+            <button
+              key={String(isDemo)}
+              type="button"
+              role="radio"
+              aria-checked={demo === isDemo}
+              className="apikey-env-option"
+              onClick={() => setDemo(isDemo)}
+            >
+              <strong>{t(isDemo ? "accounts.demo" : "apiKey.live")}</strong>
+              <span>{isDemo ? t("apiKey.demoHint") : t("apiKey.liveHint", { venue: label })}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <label className="wallet-field">
         <span>{t("apiKey.keyLabel")}</span>
         <input
@@ -179,6 +209,21 @@ function KeyForm({ venue }: { venue: UidVenue }) {
         />
         <small>{t("apiKey.secretHint", { venue: label })}</small>
       </label>
+      {keys.passphrase && (
+        <label className="wallet-field">
+          <span>
+            {t("apiKey.passphraseLabel")} ({t("apiKey.optional")})
+          </span>
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <small>{t("apiKey.passphraseHint", { venue: label })}</small>
+        </label>
+      )}
       {error && (
         <p className="wallet-error" role="alert">
           {error}
@@ -279,7 +324,8 @@ function Connected({ venue, uid }: { venue: UidVenue; uid: string }) {
 
 /**
  * How the key should be made and the form for it, or the connected account:
- * the dialog's body, also onboarding's connect step for Bybit and Binance.
+ * the dialog's body, also onboarding's connect step for Bybit, Binance and
+ * BloFin.
  * Nothing for a venue that connects with a wallet.
  */
 export function ApiKeyBody({ venue }: { venue: VenueId }) {
@@ -344,7 +390,7 @@ interface ApiKeyDialogProps {
 }
 
 /**
- * Connect an exchange account (Bybit, Binance) with an API key rather than a
+ * Connect an exchange account (Bybit, Binance, BloFin) with an API key rather than a
  * wallet: how the key should be made, then the key and secret, which Rust
  * checks with the venue before storing. Once connected, the account and what the key
  * may do, and disconnect.

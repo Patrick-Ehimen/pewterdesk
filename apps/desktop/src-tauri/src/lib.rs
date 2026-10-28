@@ -5,6 +5,7 @@ mod ai_assistant;
 mod ai_providers;
 mod algos;
 mod binance_key;
+mod blofin_key;
 mod browser_connect;
 mod bybit_key;
 mod chart_window;
@@ -220,11 +221,15 @@ pub fn run() {
             binance_key::connect_binance_key,
             binance_key::binance_key_status,
             binance_key::disconnect_binance_key,
+            blofin_key::connect_blofin_key,
+            blofin_key::blofin_key_status,
+            blofin_key::disconnect_blofin_key,
             live_trading::live_trading_accounts,
             live_trading::set_live_trading,
             live_trading::set_wallet_trading,
             live_trading::set_binance_trading,
             venues::set_binance_demo_data,
+            venues::set_blofin_demo_data,
             trading_rules::trading_rules,
             trading_rules::set_trading_rules,
             trading_rules::delete_trading_rules,

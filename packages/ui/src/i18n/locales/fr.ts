@@ -1666,6 +1666,17 @@ export const messages: Messages = {
   "apiKey.step.permissionsBinance":
     "Cochez uniquement Enable Futures : laissez les retraits, les transferts et le trading spot et sur marge désactivés.",
   "apiKey.step.ip": "Limitez-la à votre adresse IP.",
+  "apiKey.step.demoBlofin":
+    "Passez BloFin en Demo Trading et créez la clé là-bas : pewterdesk ne connecte que des comptes Demo Trading.",
+  "apiKey.step.permissionsBlofin": "Donnez-lui Lecture et Trading, et laissez Transfert désactivé.",
+  "apiKey.step.passphrase":
+    "Si vous lui choisissez une phrase secrète, gardez-la : BloFin la demande à chaque requête.",
+  "apiKey.passphraseLabel": "Phrase secrète",
+  "apiKey.optional": "Facultatif",
+  "apiKey.passphraseHint": "Seulement si vous en avez choisi une en créant la clé sur {venue}.",
+  "apiKey.demoOnly":
+    "L'API de {venue} ne peut pas confirmer qu'une clé réelle a le Transfert désactivé : pewterdesk ne connecte donc que des comptes Demo Trading {venue}.",
+  "apiKey.liveUnavailable": "Le trading réel n'est pas disponible sur {venue}.",
   "apiKey.can": "Peut passer et annuler des ordres",
   "apiKey.cannot": "Ne peut ni retirer ni transférer",
   "apiKey.footer":
@@ -1693,6 +1704,7 @@ export const messages: Messages = {
     "Se déconnecter supprime la clé de cet ordinateur. Supprimez-la aussi sur {venue} si vous ne la réutiliserez pas.",
   "onb.ready.bybit": "Bybit",
   "onb.ready.binance": "Binance",
+  "onb.ready.blofin": "BloFin",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "{count} clés de trading dans votre trousseau · sans retrait",
   "pnl.connectApiKey": "Connectez une clé API pour suivre le PnL",
@@ -2214,10 +2226,13 @@ export const messages: Messages = {
     "Choisissez les plateformes de perpétuels à réunir dans un seul terminal. Modifiable plus tard dans Réglages.",
   "onb.chain.bybit": "Plateforme centralisée",
   "onb.chain.binance": "Plateforme centralisée",
+  "onb.chain.blofin": "Plateforme centralisée",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",
   "onb.chain.dydx": "dYdX Chain",
+  "onb.chain.grvt": "ZKsync",
+  "onb.chain.paradex": "Starknet",
   "onb.network": "Réseau",
   "onb.mainnet": "Mainnet",
   "onb.mainnetBody": "Fonds réels, sur le réseau principal de chaque plateforme.",
@@ -2285,6 +2300,10 @@ export const messages: Messages = {
     "Perpétuels sur Arbitrum, exécutés aux prix d'oracle, avec des clés de trading en un clic. Bientôt.",
   "venues.soon.dydx":
     "Une chaîne de perpétuels à carnet d'ordres avec des clés de trading à permissions. Bientôt.",
+  "venues.soon.grvt":
+    "Une plateforme hybride de perpétuels sur ZKsync : carnet d'ordres, fonds on-chain. Bientôt.",
+  "venues.soon.paradex":
+    "Une plateforme de perpétuels sur sa propre appchain Starknet, avec des sous-clés de trading seul. Bientôt.",
   "venues.missing": "Une plateforme manque ?",
   "venues.missingBody":
     "Chaque plateforme est un adaptateur du dépôt open source. Demandez-la, ou construisez-la.",

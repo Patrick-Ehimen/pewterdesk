@@ -55,7 +55,7 @@ a key before storing it.
   a 127.0.0.1 WebSocket to paired clients
 - `apps/cli` (`pd`) - the command line
 - `crates/keychain` - the OS keychain bridge and `KeychainKeySource`
-- `crates/exchange-hyperliquid`, `-aster`, `-bybit`, `-binance` - one adapter per venue
+- `crates/exchange-hyperliquid`, `-aster`, `-bybit`, `-binance`, `-blofin` - one adapter per venue
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
@@ -92,7 +92,7 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk-keychain -- --ignored` - the keychain tests that
   touch the real OS store, skipped by default
-- `make rust-live` - read-only tests against Hyperliquid, Aster, Bybit and Binance mainnet
+- `make rust-live` - read-only tests against Hyperliquid, Aster, Bybit, Binance and BloFin mainnet
   (needs the network, no key), one at a time so they stay inside rate limits
 
 Packages are consumed from source: every `package.json` points `main`/`types`
@@ -166,6 +166,19 @@ discover it on their own. The reasoning behind the rules is in
   Demo Trading keys skip the allowlist and are checked on the demo hosts
   (`demo-fapi.binance.com`, `demo-api.binance.com`). HMAC keys only, not
   Ed25519 or RSA. The commands return the UID and permissions only.
+- `apps/desktop/src-tauri/src/blofin_key.rs` and `crates/exchange-blofin/src/auth.rs`
+  - BloFin onboarding, Demo Trading accounts only. BloFin's key
+  permissions are Read, Trade and Transfer, and the one request that
+  describes a key (`/api/v1/user/query-apikey`) says only whether it's
+  read-only, so a live key can't be shown to be trade-only: it's refused
+  (`auth::check_live`) before it's sent anywhere, there is no live-trading
+  switch for BloFin, and the router refuses a live BloFin account. The API
+  key, secret and passphrase (optional: a key can be made without one,
+  and then no `ACCESS-PASSPHRASE` is sent) cross IPC once, into `connect_blofin_key`,
+  which asks Demo Trading's host about the key (not read-only, an ordinary
+  trading key) and stores `key:secret:passphrase` under
+  `blofin:demo:{uid}`. The commands return the UID only. Taking live keys
+  is a security-relevant change.
 - `apps/desktop/src-tauri/src/browser_connect.rs` - connecting a browser
   extension wallet. It serves a one-time page on 127.0.0.1 (random port, a
   random token in every path, the exact Host checked, posts only from the
@@ -294,6 +307,27 @@ discover it on their own. The reasoning behind the rules is in
   use the demo host, whose book has its own prices: a demo order is priced
   from there. No trailing stop (Binance's moves by a percentage), and no
   request that withdraws, transfers or touches another product.
+  BloFin's: `crates/exchange-blofin/src/orders.rs` builds the JSON bodies
+  of `/api/v1/trade/order` (limit and market orders, with a TP / SL
+  attached), `order-algo` (trigger orders, kept as `algo:<id>`, and a
+  position's trailing stop, `trail:<id>`, by an absolute `callbackSpread`),
+  `order-tpsl` and `amend-tpsl` (a position's TP / SL as one
+  whole-position, reduce-only order, `tpsl:<id>`, changed leg by leg so the
+  position keeps its exits), `cancel-order` / `cancel-tpsl` /
+  `cancel-algo`, `amend-order` (a limit order's price, size and attached
+  TP / SL), `/api/v1/account/set-leverage` and `set-margin-mode`
+  (account-wide). Sizes are contracts: an order's base size must be a whole
+  number of the market's lots. A market order is an IOC limit at the
+  slippage bound, pulled inside BloFin's price limits (`order/price-range`),
+  and read back (`order-detail`) to say whether it filled. Nothing is
+  placed while the account is in Hedge Mode, where BloFin ignores
+  `reduceOnly`. `lib.rs` signs exactly the path, query and body sent
+  (HMAC-SHA256, its hex text base64-encoded, a fresh random nonce, the
+  passphrase, where the key has one, in a header), checked against the docs' own Python. The
+  router's client ids go without their `0x` (BloFin takes 32 alphanumerics)
+  and come back with it. Demo accounts only, on Demo Trading's hosts
+  (`demo-trading-openapi.blofin.com`), whose book and market list are its
+  own. No dead-man's switch, and no request that withdraws or transfers.
 - Hyperliquid's and Aster's order signing.
   `crates/exchange-hyperliquid/src/orders.rs` builds the `order` and
   `cancel` actions (the asset number from the venue's own list, size and
@@ -348,11 +382,11 @@ discover it on their own. The reasoning behind the rules is in
   log's engine id + the command's sequence number), written to the log
   before the order is sent. An opening order whose id can't be logged is
   refused (`Blocked("unrecorded")`); reduce-only orders, cancels and the
-  rest still go through: a Bybit demo or Binance Demo Trading account
-  trades as soon as it's connected, every live account (Bybit, Binance,
-  Hyperliquid, Aster) only once live trading is turned on for it. Every
-  venue implements all six, but for a trailing stop on Hyperliquid, Aster
-  and Binance.
+  rest still go through: a Bybit demo or Binance or BloFin Demo Trading
+  account trades as soon as it's connected, every live account (Bybit,
+  Binance, Hyperliquid, Aster) only once live trading is turned on for it,
+  and a live BloFin account never. Every venue implements all six, but for
+  a trailing stop on Hyperliquid, Aster and Binance.
 - `crates/engine/src/algo/` (its commands in
   `apps/desktop/src-tauri/src/algos.rs`) - algo orders: a chaser, a TWAP
   (on this machine, or the venue's own on Hyperliquid), a scaled ladder.
@@ -368,7 +402,8 @@ discover it on their own. The reasoning behind the rules is in
   While one runs on this machine the engine keeps the venue's dead-man's
   switch armed (`heartbeat.rs`: every 30 seconds, a 2-minute countdown;
   on Hyperliquid it would cancel every open order of the account, on
-  Aster and Binance that market's; Bybit has none we can use). `halt` stops every algo
+  Aster and Binance that market's; Bybit has none we can use, BloFin none
+  at all). `halt` stops every algo
   and cancels what they placed. Giving algos a way to the venue that skips
   the router is a security-relevant change.
 - `apps/daemon` (`pdd`), `crates/protocol`, `crates/link` and `apps/cli`
@@ -510,6 +545,22 @@ stop-loss, and changes leverage and margin mode. Its fills, closed trades,
 order history and funding come from signed reads (`history.rs`): fills a
 week at a time, on the markets its fee records name, closed trades built
 from them.
+`crates/exchange-blofin` serves BloFin's USDT-M (and USDC-M) perpetuals,
+coin-margined ones left out: markets (sizes turned from contracts into base
+units), an order book kept from the `books` channel (by sequence id, a
+gap reconnecting for a fresh snapshot), trades, candles, stats (the mark
+from the minute mark-price candle), summaries polled every 5 seconds,
+history and funding history, and open interest from an endpoint BloFin
+serves but doesn't document (`/api/v1/market/open-interest`; zero where it
+fails). BloFin publishes no open-interest history, long / short ratio or
+liquidation feed. With a Demo Trading key connected, the
+account (balances, positions, every kind of open order), fills, closed
+trades from its position history, order history and funding, polled every
+10 seconds from Demo Trading's host; orders as above. While the active
+BloFin account is a Demo Trading one, BloFin's market data is Demo
+Trading's own exchange (87 markets to mainnet's 527), as Binance's is
+(`lib/demoData.ts`, `set_blofin_demo_data`), so a market only mainnet
+lists isn't offered; the status bar's comparison stays on mainnet.
 `crates/exchange-binance` serves Binance's USDⓈ-M perpetuals (the crypto
 ones and its TradFi ones - stocks, metals, FX - as categories; dated
 futures left out): markets, an order book kept locally from the diff
@@ -524,7 +575,7 @@ seconds; orders as above. One-way position mode only: an account in Hedge
 Mode is refused, and its key details say so. While the active Binance account is a Demo
 Trading one, Binance's market data is Demo Trading's own exchange (other
 markets, its own prices), as on Binance's demo site: each window tells Rust
-at start (`lib/binanceData.ts`, `set_binance_demo_data`) and reloads when
+at start (`lib/demoData.ts`, `set_binance_demo_data`) and reloads when
 that changes, and Binance's on-disk caches are kept apart (`dataKey`). Its
 positioning history stays mainnet's (the demo hosts serve none). Algos read
 the book of the exchange their own account trades on
@@ -592,9 +643,9 @@ Bybit, Binance - Bybit's otherwise) and OKX's public history, and an estimated l
 Liquidations, Market, Time - with each group's views as chips beside them.
 The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
 `hooks/useMapData.ts`): performance and volatility from every market's
-hourly history, funding and price spread across all four venues from
+hourly history, funding and price spread across all five venues from
 their summaries, open interest against price (Bybit's and Binance's hourly history, or on
-Hyperliquid and Aster samples the app takes every 5 minutes while it runs,
+Hyperliquid, Aster and BloFin samples the app takes every 5 minutes while it runs,
 the change so far shown until they cover the window - `lib/oiStore.ts`), correlation, a live order-book heatmap, and seasonality
 and sessions from a market's last 30 days of hourly candles; plus the
 public long / short account ratio (`long_short_ratio`, a read-only market
@@ -618,7 +669,9 @@ Rust-side backlog (notifications, deep links, local persistence), not started.
 
 ## Live trading
 
-Orders work on Bybit and Binance (Demo Trading accounts, and live accounts
+Orders work on BloFin's Demo Trading accounts (the API key dialog takes a
+key, secret and an optional passphrase, and only a Demo Trading key - see
+`blofin_key.rs`), on Bybit and Binance (Demo Trading accounts, and live accounts
 with live trading turned on in the account's details - the API key dialog),
 and on Hyperliquid
 and Aster once live trading is turned on for the connected wallet (the

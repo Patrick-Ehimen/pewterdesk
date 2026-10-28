@@ -1616,6 +1616,17 @@ export const messages: Messages = {
   "apiKey.step.permissionsBinance":
     "Enable Futures만 체크하고, 출금·이체·현물 및 마진 거래는 끄세요.",
   "apiKey.step.ip": "사용하는 IP 주소로 제한하세요.",
+  "apiKey.step.demoBlofin":
+    "BloFin을 데모 트레이딩으로 전환하고 거기서 키를 만드세요. pewterdesk는 데모 트레이딩 계정만 연결합니다.",
+  "apiKey.step.permissionsBlofin": "읽기와 거래 권한을 주고, 이체는 꺼 두세요.",
+  "apiKey.step.passphrase":
+    "패스프레이즈를 정했다면 보관하세요. BloFin은 모든 요청에 이를 요구합니다.",
+  "apiKey.passphraseLabel": "패스프레이즈",
+  "apiKey.optional": "선택",
+  "apiKey.passphraseHint": "{venue}에서 키를 만들 때 정한 경우에만 입력하세요.",
+  "apiKey.demoOnly":
+    "{venue}의 API로는 실거래 키의 이체가 꺼져 있는지 확인할 수 없어, pewterdesk는 {venue} 데모 트레이딩 계정만 연결합니다.",
+  "apiKey.liveUnavailable": "{venue}에서는 실거래를 할 수 없습니다.",
   "apiKey.can": "주문 실행 및 취소 가능",
   "apiKey.cannot": "출금·이체 불가",
   "apiKey.footer": "키는 OS 키체인에 보관되며 이 기기에서 거래소로만 전송됩니다.",
@@ -1641,6 +1652,7 @@ export const messages: Messages = {
     "연결을 해제하면 이 컴퓨터에서 키가 삭제됩니다. 다시 쓰지 않을 거라면 {venue}에서도 삭제하세요.",
   "onb.ready.bybit": "Bybit",
   "onb.ready.binance": "Binance",
+  "onb.ready.blofin": "BloFin",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "키체인의 거래 키 {count}개 · 출금 불가",
   "pnl.connectApiKey": "손익을 보려면 API 키를 연결하세요",
@@ -2153,10 +2165,13 @@ export const messages: Messages = {
     "한 터미널에서 쓸 무기한 선물 거래소를 고르세요. 나중에 설정에서 바꿀 수 있습니다.",
   "onb.chain.bybit": "중앙화 거래소",
   "onb.chain.binance": "중앙화 거래소",
+  "onb.chain.blofin": "중앙화 거래소",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",
   "onb.chain.dydx": "dYdX Chain",
+  "onb.chain.grvt": "ZKsync",
+  "onb.chain.paradex": "Starknet",
   "onb.network": "네트워크",
   "onb.mainnet": "메인넷",
   "onb.mainnetBody": "각 거래소 메인 네트워크의 실제 자금.",
@@ -2219,6 +2234,9 @@ export const messages: Messages = {
   "venues.soon.gmx":
     "Arbitrum의 무기한 선물. 오라클 가격으로 체결되며 원클릭 거래 키를 씁니다. 곧 지원.",
   "venues.soon.dydx": "호가창 기반 무기한 선물 체인. 권한이 있는 거래 키를 씁니다. 곧 지원.",
+  "venues.soon.grvt": "ZKsync 위의 하이브리드 무기한 선물 거래소. 호가창, 자금은 온체인. 곧 지원.",
+  "venues.soon.paradex":
+    "Starknet 기반 자체 앱체인의 무기한 선물 거래소. 거래 전용 서브키를 씁니다. 곧 지원.",
   "venues.missing": "원하는 거래소가 없나요?",
   "venues.missingBody":
     "각 거래소는 오픈소스 저장소의 어댑터 하나입니다. 요청하거나 직접 만들어 보세요.",

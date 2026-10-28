@@ -2,7 +2,13 @@ import type { BookLevel, OrderBook } from "@pewterdesk/core";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LuFlag } from "react-icons/lu";
 import { t } from "../../i18n";
-import { decimalsOf, formatNumber, formatPercent, formatSigned } from "../../lib/format";
+import {
+  decimalsOf,
+  formatCompact,
+  formatNumber,
+  formatPercent,
+  formatSigned,
+} from "../../lib/format";
 import { type Column, ColumnHeader, Hint, unitHint } from "../common/ColumnHeader";
 import { FloatingTip, TipRows, Tooltip, useHoveredRow } from "../common/Tooltip";
 
@@ -192,6 +198,18 @@ function useLevelFlashes(book: OrderBook): ReadonlyMap<string, number> {
   }, [book]);
 }
 
+/**
+ * From here up, a size or total shows compact ("120.98M"): a demo exchange's
+ * book (BloFin's Demo Trading) carries levels of billions, which in full
+ * don't fit the column.
+ */
+const COMPACT_FROM = 1_000_000;
+
+/** An amount in the book: in full, or compact once it's that large. */
+function bookAmount(value: number, decimals?: number): string {
+  return Math.abs(value) >= COMPACT_FROM ? formatCompact(value) : formatNumber(value, decimals);
+}
+
 /** Sizes and totals in the coin (HYPE), or valued in the quote asset (USDC). */
 export type BookUnit = "base" | "quote";
 export const BOOK_UNITS: readonly BookUnit[] = ["base", "quote"];
@@ -218,12 +236,14 @@ function Row({
 }) {
   const size =
     unit === "quote"
-      ? formatNumber(Number(row.size) * Number(row.price), quoteDecimals)
-      : formatNumber(row.size);
+      ? bookAmount(Number(row.size) * Number(row.price), quoteDecimals)
+      : Number(row.size) >= COMPACT_FROM
+        ? formatCompact(Number(row.size))
+        : formatNumber(row.size);
   const total =
     unit === "quote"
-      ? formatNumber(row.notional, quoteDecimals)
-      : formatNumber(row.total, sizeDecimals);
+      ? bookAmount(row.notional, quoteDecimals)
+      : bookAmount(row.total, sizeDecimals);
   return (
     <div className="pd-book-row" data-side={side} data-key={rowKey(side, row.price)}>
       <div className="pd-book-depth" style={{ width: `${row.depth * 100}%` }} />

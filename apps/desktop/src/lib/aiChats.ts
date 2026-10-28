@@ -53,7 +53,7 @@ export interface AiChat {
   updated: number;
 }
 
-const VENUE_IDS: readonly string[] = ["hyperliquid", "aster", "bybit", "binance"];
+const VENUE_IDS: readonly string[] = ["hyperliquid", "aster", "bybit", "binance", "blofin"];
 
 function parseMessage(v: unknown): ChatMessage | undefined {
   if (!v || typeof v !== "object") return undefined;

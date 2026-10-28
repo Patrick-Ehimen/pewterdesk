@@ -5,19 +5,23 @@ import type { Market, VenueId } from "@pewterdesk/core";
 // to a connected account's key and doesn't have every coin, so its markets
 // also borrow the same coin's logo from Hyperliquid or Aster. Binance serves
 // none, so its markets borrow theirs the same way (its symbols are named as
-// Bybit's are: `BTCUSDT`, `1000PEPEUSDT`).
+// Bybit's are: `BTCUSDT`, `1000PEPEUSDT`), and so does BloFin (`BTC-USDT`,
+// `1000PEPE-USDT`).
 
 /** Bybit's multiplied tokens: `1000PEPE` is 1,000 PEPE. */
 const MULTIPLIER = /^(1000000|100000|10000|1000|100)(.+)$/;
 
-/** A Bybit market's base coin: `BTCUSDT` and `BTCPERP` are both BTC. */
+/**
+ * A Bybit, Binance or BloFin market's base coin: `BTCUSDT`, `BTCPERP` and
+ * `BTC-USDT` are all BTC.
+ */
 export function bybitBase(market: string): string {
-  return market.replace(/(USDT|USDC|PERP)$/, "") || market;
+  return market.replace(/-?(USDT|USDC|PERP)$/, "") || market;
 }
 
 /**
  * The `[venue, market]` pairs to ask for a market's logo, in order. Its own
- * venue first; for Bybit and Binance, then the coin as Hyperliquid names it (`BTC`, and
+ * venue first; for Bybit, Binance and BloFin, then the coin as Hyperliquid names it (`BTC`, and
  * `kPEPE` for a thousand PEPE), then as Aster does (`BTCUSDT`).
  *
  * A ticker alone doesn't make it the same asset (Bybit's PURR is a
@@ -25,7 +29,7 @@ export function bybitBase(market: string): string {
  * another venue's logo once `sameAsset` agrees.
  */
 export function iconSources(venue: VenueId, market: string): [VenueId, string][] {
-  if (venue !== "bybit" && venue !== "binance") return [[venue, market]];
+  if (venue !== "bybit" && venue !== "binance" && venue !== "blofin") return [[venue, market]];
   const base = bybitBase(market);
   const [, multiplier, coin] = MULTIPLIER.exec(base) ?? [];
   const sources: [VenueId, string][] = [

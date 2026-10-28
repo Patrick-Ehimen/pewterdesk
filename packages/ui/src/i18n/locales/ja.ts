@@ -1628,6 +1628,17 @@ export const messages: Messages = {
   "apiKey.step.permissionsBinance":
     "Enable Futures だけにチェックし、出金・振替・現物とマージン取引はオフのままにします。",
   "apiKey.step.ip": "使用するIPアドレスに制限します。",
+  "apiKey.step.demoBlofin":
+    "BloFinをデモ取引に切り替えてキーを作成します。pewterdeskはデモ取引のアカウントのみ接続します。",
+  "apiKey.step.permissionsBlofin": "読み取りと取引を許可し、送金はオフのままにします。",
+  "apiKey.step.passphrase":
+    "パスフレーズを設定した場合は控えておきます。BloFinはすべてのリクエストでこれを求めます。",
+  "apiKey.passphraseLabel": "パスフレーズ",
+  "apiKey.optional": "任意",
+  "apiKey.passphraseHint": "{venue}でキーを作成したときに設定した場合のみ入力します。",
+  "apiKey.demoOnly":
+    "{venue}のAPIでは本番用キーの送金がオフかどうかを確認できないため、pewterdeskは{venue}のデモ取引アカウントのみ接続します。",
+  "apiKey.liveUnavailable": "{venue}では本番取引は利用できません。",
   "apiKey.can": "注文の発注と取消ができる",
   "apiKey.cannot": "出金・振替はできない",
   "apiKey.footer": "キーはOSのキーチェーンに保存され、この端末から取引所へのみ送信されます。",
@@ -1653,6 +1664,7 @@ export const messages: Messages = {
     "接続を解除すると、このコンピューターからキーが削除されます。今後使わない場合は{venue}でも削除してください。",
   "onb.ready.bybit": "Bybit",
   "onb.ready.binance": "Binance",
+  "onb.ready.blofin": "BloFin",
   "onb.ready.bybitUid": "UID {uid}",
   "onb.ready.keys": "キーチェーンに取引キー{count}件 · 出金不可",
   "pnl.connectApiKey": "損益を見るにはAPIキーを接続してください",
@@ -2170,10 +2182,13 @@ export const messages: Messages = {
     "ひとつのターミナルで使う無期限先物の取引所を選びます。あとで設定画面から変更できます。",
   "onb.chain.bybit": "中央集権型取引所",
   "onb.chain.binance": "中央集権型取引所",
+  "onb.chain.blofin": "中央集権型取引所",
   "onb.chain.hyperliquid": "Hyperliquid L1",
   "onb.chain.aster": "Aster Chain",
   "onb.chain.gmx": "Arbitrum",
   "onb.chain.dydx": "dYdX Chain",
+  "onb.chain.grvt": "ZKsync",
+  "onb.chain.paradex": "Starknet",
   "onb.network": "ネットワーク",
   "onb.mainnet": "メインネット",
   "onb.mainnetBody": "各取引所のメインネットワークで実際の資金を使います。",
@@ -2235,6 +2250,10 @@ export const messages: Messages = {
   "venues.soon.gmx":
     "Arbitrum の無期限先物。オラクル価格で約定し、ワンクリックの取引用の鍵を使います。近日対応。",
   "venues.soon.dydx": "板取引の無期限先物チェーン。権限付きの取引用の鍵を使います。近日対応。",
+  "venues.soon.grvt":
+    "ZKsync上のハイブリッド型無期限先物取引所。板取引で、資金はオンチェーン。近日対応。",
+  "venues.soon.paradex":
+    "Starknet上の独自アプリチェーンの無期限先物取引所。取引専用のサブキーを使います。近日対応。",
   "venues.missing": "取引所が足りませんか？",
   "venues.missingBody":
     "各取引所はオープンソースのリポジトリ内のアダプター 1 つです。リクエストするか、作ってください。",

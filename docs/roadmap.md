@@ -48,6 +48,26 @@ three (Hyperliquid's and Aster's closed trades are built from their fills).
   the key's details say so. Orders could send `positionSide` instead.
 - **Binance's demo book has its own prices**, unlike Bybit's: a demo order
   is priced from the demo host, but the charts and book show mainnet's.
+- **Live trading on BloFin.** Only Demo Trading keys connect: BloFin's
+  permissions are Read, Trade and Transfer, and the one request that
+  describes a key (`/api/v1/user/query-apikey`) says only whether it's
+  read-only, so a live key can't be shown to have Transfer off. If BloFin
+  starts saying which permissions a key has, live keys can be taken the way
+  Bybit's and Binance's are (an allowlist), behind the live-trading switch.
+- **BloFin against a real account.** Its public data is checked live
+  (`make rust-live`), and a made-up Demo Trading key is refused as it
+  should be (152401, so the signed request reaches BloFin in its shape),
+  but no key has connected yet. With a Demo Trading key: the signature
+  itself, the key check, the account and history reads (sizes in contracts,
+  turned into base units), a place and a cancel, an IOC market order read
+  back from `order-detail`, a trigger order, a position's TP / SL (one
+  whole-position `order-tpsl`, changed with `amend-tpsl`) and trailing stop
+  (`callbackSpread`), changing a limit order, leverage and margin mode.
+- **BloFin in Hedge Mode** places nothing: BloFin ignores `reduceOnly`
+  there, so an exit could open a position. The key's details say so.
+- **BloFin's fills** don't say whether they opened or closed a position;
+  one that realised P&L is taken to have closed. They don't say maker or
+  taker either, and its funding bills name no rate.
 - **Paper trading** (Hyperliquid and Aster, on the Trade page) only moves
   while the app runs and the venue is on screen, and fills at the best bid
   and ask only; trading rules aren't checked on paper orders.

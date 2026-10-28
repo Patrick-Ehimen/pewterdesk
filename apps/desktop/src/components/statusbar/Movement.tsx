@@ -16,16 +16,18 @@ function MovementPanel({
   markets: readonly Market[];
   onOpenMarket: (venue: VenueId, market: string) => void;
 }) {
-  // One hook per venue, in a fixed order. Binance's are mainnet's even with a
+  // One hook per venue, in a fixed order. Binance's and BloFin's are mainnet's even with a
   // Demo Trading account on screen: demo funds' volume isn't market movement.
   const hl = useMarketSummaries("hyperliquid", true);
   const aster = useMarketSummaries("aster", true);
   const bybit = useMarketSummaries("bybit", true);
   const binance = useMarketSummaries("binance", true, { mainnet: true });
+  const blofin = useMarketSummaries("blofin", true, { mainnet: true });
   const hlMarkets = useMarkets(venue === "hyperliquid" ? undefined : "hyperliquid");
   const asterMarkets = useMarkets(venue === "aster" ? undefined : "aster");
   const bybitMarkets = useMarkets(venue === "bybit" ? undefined : "bybit");
   const binanceMarkets = useMarkets(venue === "binance" ? undefined : "binance");
+  const blofinMarkets = useMarkets(venue === "blofin" ? undefined : "blofin");
   const data = (f: typeof hl) =>
     f.status === "live" || f.status === "closed" ? f.data : undefined;
   const list = (id: VenueId, f: typeof hlMarkets) =>
@@ -46,6 +48,13 @@ function MovementPanel({
           logo: venueLogos.binance,
           summaries: data(binance),
           markets: list("binance", binanceMarkets),
+        },
+        {
+          id: "blofin",
+          label: VENUES.blofin.label,
+          logo: venueLogos.blofin,
+          summaries: data(blofin),
+          markets: list("blofin", blofinMarkets),
         },
         {
           id: "hyperliquid",

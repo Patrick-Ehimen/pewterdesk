@@ -37,6 +37,7 @@ const STEP_TITLE: Record<StepId, MessageKey> = {
 const VENUE_CHAIN: Record<VenueId, MessageKey> = {
   bybit: "onb.chain.bybit",
   binance: "onb.chain.binance",
+  blofin: "onb.chain.blofin",
   hyperliquid: "onb.chain.hyperliquid",
   aster: "onb.chain.aster",
 };
@@ -50,6 +51,8 @@ const UPCOMING: readonly {
   { id: "okx", name: "OKX", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
+  { id: "grvt", name: "GRVT", chain: "onb.chain.grvt" },
+  { id: "paradex", name: "Paradex", chain: "onb.chain.paradex" },
 ];
 
 type CheckStatus = "pending" | "ok" | "fail";
@@ -294,7 +297,7 @@ function Connect({ venues }: { venues: readonly VenueId[] }) {
   return (
     <>
       {venues.includes("aster") && <p className="onb-note">{t("onb.connect.asterNote")}</p>}
-      {/* Only Hyperliquid connects with a wallet here; Bybit and Binance take an API key. */}
+      {/* Only Hyperliquid connects with a wallet here; Bybit, Binance and BloFin take an API key. */}
       {venues.includes("hyperliquid") && (
         <div className="onb-connect">
           <ConnectWalletBody selected={method} onSelect={setMethod} />
@@ -344,7 +347,8 @@ function Ready({
   const accounts = useSyncExternalStore(subscribeAccounts, accountsState);
   const bybitUid = activeAccount(accounts, "bybit")?.id;
   const binanceUid = activeAccount(accounts, "binance")?.id;
-  const keys = (wallet ? 1 : 0) + (bybitUid ? 1 : 0) + (binanceUid ? 1 : 0);
+  const blofinUid = activeAccount(accounts, "blofin")?.id;
+  const keys = (wallet ? 1 : 0) + (bybitUid ? 1 : 0) + (binanceUid ? 1 : 0) + (blofinUid ? 1 : 0);
   const uidRow = (label: MessageKey, uid: string | undefined): [MessageKey, string, StepId][] =>
     uid ? [[label, t("onb.ready.bybitUid", { uid: uid.replace(/^demo:/, "") }), "connect"]] : [];
   const rows: [MessageKey, string, StepId][] = [
@@ -359,6 +363,7 @@ function Ready({
     ],
     ...uidRow("onb.ready.bybit", bybitUid),
     ...uidRow("onb.ready.binance", binanceUid),
+    ...uidRow("onb.ready.blofin", blofinUid),
     [
       "onb.ready.trading",
       keys === 0
@@ -390,7 +395,7 @@ function Ready({
 /**
  * First-run setup, after the design (design/screens/24-*): a sidebar of steps
  * with progress, and each step on the right. Only what works today is here:
- * system check, how keys work, venues (GMX and dYdX shown as coming soon) and
+ * system check, how keys work, venues (the ones to come shown as coming soon) and
  * network (testnet coming soon), connecting a wallet, theme, and a summary.
  */
 export function Onboarding({

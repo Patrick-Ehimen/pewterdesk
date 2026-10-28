@@ -12,6 +12,7 @@ import { accountName } from "../wallet/AccountList";
 const CHAIN: Record<VenueId, MessageKey> = {
   bybit: "onb.chain.bybit",
   binance: "onb.chain.binance",
+  blofin: "onb.chain.blofin",
   hyperliquid: "onb.chain.hyperliquid",
   aster: "onb.chain.aster",
 };
@@ -20,6 +21,7 @@ const CHAIN: Record<VenueId, MessageKey> = {
 const KEY_KIND: Record<VenueId, MessageKey> = {
   bybit: "venues.key.apiKey",
   binance: "venues.key.apiKey",
+  blofin: "venues.key.apiKey",
   hyperliquid: "venues.key.apiWallet",
   aster: "venues.key.apiWallet",
 };
@@ -33,6 +35,8 @@ const UPCOMING = [
   { id: "backpack", name: "Backpack", chain: "onb.chain.bybit" },
   { id: "gmx", name: "GMX", chain: "onb.chain.gmx" },
   { id: "dydx", name: "dYdX", chain: "onb.chain.dydx" },
+  { id: "grvt", name: "GRVT", chain: "onb.chain.grvt" },
+  { id: "paradex", name: "Paradex", chain: "onb.chain.paradex" },
 ] as const;
 
 function Status({ probe }: { probe: VenueProbe }) {
@@ -59,8 +63,8 @@ function Status({ probe }: { probe: VenueProbe }) {
 /**
  * The venues, after the design's venue hub (design/screens/34-VenueHub): each
  * one's status, trading key and markets, added to or removed from the
- * terminal here rather than by running setup again. GMX and dYdX are shown
- * as coming soon, and a missing venue can be requested.
+ * terminal here rather than by running setup again. The venues to come are
+ * shown as coming soon, and a missing venue can be requested.
  */
 export function VenuesPage({
   chosen,

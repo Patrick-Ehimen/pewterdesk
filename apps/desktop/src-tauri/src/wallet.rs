@@ -85,6 +85,9 @@ fn only_hyperliquid(venue: VenueId) -> Result<(), VenueError> {
         VenueId::Binance => Err(VenueError::Unsupported(
             "a Binance account connects with an API key, not a wallet",
         )),
+        VenueId::Blofin => Err(VenueError::Unsupported(
+            "a BloFin account connects with an API key, not a wallet",
+        )),
     }
 }
 
@@ -233,7 +236,7 @@ pub(crate) async fn verify_trade_only(
             drop(key);
             aster_agent::check_trade_only(&agent, approved, now_ms())?;
         }
-        VenueId::Bybit | VenueId::Binance => {
+        VenueId::Bybit | VenueId::Binance | VenueId::Blofin => {
             return Err(VenueError::Unsupported(
                 "this account is checked by its API key, not a wallet",
             ))
@@ -333,7 +336,7 @@ pub async fn begin(
             let typed = approval.typed_data();
             (key, Approval::Aster(approval), typed)
         }
-        VenueId::Bybit | VenueId::Binance => {
+        VenueId::Bybit | VenueId::Binance | VenueId::Blofin => {
             return Err(VenueError::Unsupported(
                 "connecting a wallet to this venue (it connects with an API key)",
             ))

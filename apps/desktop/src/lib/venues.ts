@@ -56,6 +56,19 @@ export const VENUES: Record<VenueId, VenueInfo> = {
     auth: "apiKey",
     connectable: true,
   },
+  // USDT-M perpetuals; Demo Trading accounts only (see `blofin_key.rs`).
+  blofin: {
+    label: "BloFin",
+    defaultMarket: "BTC-USDT",
+    // BloFin's base-tier perpetual fees.
+    fees: { taker: 0.0006, maker: 0.0002 },
+    // BloFin refuses a price outside its limits around the mark; Rust pulls
+    // a wider bound in to them.
+    maxSlippage: 0.03,
+    majors: ["BTC-USDT", "ETH-USDT", "SOL-USDT", "BNB-USDT", "HYPE-USDT", "ASTER-USDT"],
+    auth: "apiKey",
+    connectable: true,
+  },
   aster: {
     label: "Aster",
     defaultMarket: "BTCUSDT",
