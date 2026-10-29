@@ -119,6 +119,8 @@ export const messages: Messages = {
 
   "account.equity": "자산",
   "account.upnl": "미실현 손익",
+  "account.view": "계좌 보기",
+  "account.view.all": "전체 거래소",
   "account.marginUsed": "사용 증거금",
   "account.marginRatio": "증거금 비율",
   "account.summary": "계정 요약",
@@ -2628,6 +2630,21 @@ export const messages: Messages = {
     "최근 {days}일 동안 UTC 시간별 거래량 비중과 평균 변동폭. 세션이 겹치므로 비중의 합은 100%를 넘습니다.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "알고",
+  "panel.balances": "잔고",
+  "balances.live": "실계좌 합계",
+  "balances.demo": "데모",
+  "balances.demoTotal": "데모 트레이딩 합계",
+  "balances.accounts": "계좌 {count}개",
+  "balances.col.balance": "잔고",
+  "balances.col.upnl": "미실현 손익",
+  "balances.col.available": "사용 가능",
+  "balances.toTrade": "트레이드 페이지에서 보기",
+  "balances.loading": "불러오는 중",
+  "balances.unavailable": "사용할 수 없음",
+  "balances.empty":
+    "켜진 거래소에 연결된 계좌가 없습니다. 계좌를 연결하면 잔고가 여기에 표시됩니다.",
+  "balances.note":
+    "각 거래소의 금액은 견적 자산(USDT, USDC) 기준이며 달러로 합산합니다. 데모 트레이딩 자금은 따로 합산합니다.",
   "panel.paper": "모의",
   "paperPanel.unavailable":
     "모의 거래는 데모가 없는 거래소용입니다. {venue}에는 자체 데모 트레이딩 계정이 있으니 연결해 연습하세요.",

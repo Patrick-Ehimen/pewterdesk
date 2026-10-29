@@ -42,10 +42,16 @@ export const panelTitle = (kind: PanelKind) => t(PANELS[kind].titleKey);
 
 export const PANEL_KINDS = Object.keys(PANELS) as PanelKind[];
 
+/**
+ * Kinds that became a view of another: the Balances panel is the Account
+ * panel's all-venues view now (its panels open on it, `lib/accountView`).
+ */
+const FORMER: Readonly<Record<string, PanelKind>> = { balances: "account" };
+
 /** Panel ids are `<kind>:<suffix>`, so the kind survives a save and reload. */
 export function panelKindOf(id: string): PanelKind | undefined {
   const kind = id.slice(0, id.indexOf(":"));
-  return kind in PANELS ? (kind as PanelKind) : undefined;
+  return kind in PANELS ? (kind as PanelKind) : FORMER[kind];
 }
 
 export function newPanelId(kind: PanelKind): string {

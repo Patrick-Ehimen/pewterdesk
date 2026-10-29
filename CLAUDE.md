@@ -777,6 +777,29 @@ kept under `pd.calendar`), with the next high-impact event counted down.
 This week only: the source publishes no further ahead, and has no actual
 figures, only forecast and previous.
 It's in the Fundamental preset (`lib/workspace.ts`), under the news feed.
+## Account panel: all venues
+
+The Account panel has two views, picked by the switch in its title
+(`components/panels/AccountPanel.tsx`; each panel keeps its own,
+`lib/accountView.ts`, on the venue's view to start): the venue on screen's
+account as it always was, or All venues - after Tealstreet's unified
+balances (`components/panels/BalancesPanel.tsx`, `lib/balances.ts`). That
+shows every connected account on the venues turned on (the header's venue
+chips) as a tile, each from its own account feed (`useAccount`, the one
+the account panels use) - equity, unrealized PnL, available and its share
+- under the totals, and beside them the picked tile's summary: the Account
+panel's figures (`accountTotals`), in its own layout. Its way to the Trade
+page makes that account the active one, on its venue, and turns the panel
+to the venue's view. The tiles keep a readable size and scroll (a fade
+marks more above or below; the arrow keys move between them), the totals
+and the summary staying put. Each venue's figures are in its quote asset,
+added as dollars; Demo Trading accounts are totalled apart, never with
+real funds. Paper accounts aren't in it. Each account has a colour of its
+own, in turn from the theme's tokens (never green or red): its tile's
+outline, its share and its part of the allocation bar. There is no
+Balances panel of its own any more: a layout's former one is an Account
+panel open on All venues. It reads only; it places nothing.
+
 ## News feed panel
 
 A panel kind (`wire`; `components/panels/NewsWirePanel.tsx`,

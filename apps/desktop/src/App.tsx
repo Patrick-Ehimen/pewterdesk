@@ -94,6 +94,7 @@ import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
+import { AccountPanel, AccountViewSwitch } from "./components/panels/AccountPanel";
 import { AlgoChartChips, AlgosPanel } from "./components/panels/AlgosPanel";
 import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
@@ -156,6 +157,7 @@ import {
   activeAccount,
   canTrade,
   isDemoAccount,
+  selectAccount,
   subscribeAccounts,
 } from "./lib/account";
 import { accountEvents } from "./lib/accountEvents";
@@ -1469,19 +1471,33 @@ export function App() {
           />
         );
       case "account":
+        // The venue's account, or every venue's balances (the switch in its title).
         return (
-          <div className="app-scroll">
-            {/* Before a wallet is connected the summary reads zero, not a prompt. */}
-            {account.status === "idle" ? (
-              <AccountSummary />
-            ) : (
-              <FeedView
-                feed={account}
-                loading={<SummarySkeleton rows={5} />}
-                live={(data) => <AccountSummary snapshot={data} maxLeverageFor={maxLeverageFor} />}
-              />
-            )}
-          </div>
+          <AccountPanel
+            id={id}
+            accounts={accounts}
+            venues={venueChips.map((chip) => chip.id)}
+            onShowAccount={(shown) => {
+              selectAccount(shown.venue, shown.id);
+              showMarket(shown.venue);
+            }}
+            venueView={
+              <div className="app-scroll">
+                {/* Before a wallet is connected the summary reads zero, not a prompt. */}
+                {account.status === "idle" ? (
+                  <AccountSummary />
+                ) : (
+                  <FeedView
+                    feed={account}
+                    loading={<SummarySkeleton rows={5} />}
+                    live={(data) => (
+                      <AccountSummary snapshot={data} maxLeverageFor={maxLeverageFor} />
+                    )}
+                  />
+                )}
+              </div>
+            }
+          />
         );
       case "positions":
         return (
@@ -1630,12 +1646,12 @@ export function App() {
     }
   };
 
-  const renderAside = (kind: PanelKind): ReactNode => {
+  const renderAside = (kind: PanelKind, id: string): ReactNode => {
     switch (kind) {
       case "orderBook":
         return selected?.symbol;
       case "account":
-        return venueInfo.label;
+        return <AccountViewSwitch id={id} venue={venueInfo.label} />;
       default:
         return null;
     }

@@ -117,6 +117,8 @@ export const messages: Messages = {
 
   "account.equity": "权益",
   "account.upnl": "未实现盈亏",
+  "account.view": "账户视图",
+  "account.view.all": "全部交易所",
   "account.marginUsed": "已用保证金",
   "account.marginRatio": "保证金率",
   "account.summary": "账户概览",
@@ -2545,6 +2547,19 @@ export const messages: Messages = {
     "最近 {days} 天中每个 UTC 小时的成交额占比和平均波幅。时段相互重叠，因此占比之和超过 100%。",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "算法单",
+  "panel.balances": "余额",
+  "balances.live": "实盘合计",
+  "balances.demo": "模拟",
+  "balances.demoTotal": "模拟交易合计",
+  "balances.accounts": "{count} 个账户",
+  "balances.col.balance": "余额",
+  "balances.col.upnl": "未实现盈亏",
+  "balances.col.available": "可用",
+  "balances.toTrade": "在交易页面显示",
+  "balances.loading": "加载中",
+  "balances.unavailable": "不可用",
+  "balances.empty": "已开启的交易所没有连接账户。连接一个账户后，这里会显示它的余额。",
+  "balances.note": "各交易所的金额以其计价资产（USDT、USDC）计，按美元相加。模拟交易资金单独合计。",
   "panel.paper": "模拟",
   "paperPanel.unavailable":
     "模拟交易适用于没有模拟盘的交易所。{venue} 有自己的模拟交易账户：连接一个在那里练习。",

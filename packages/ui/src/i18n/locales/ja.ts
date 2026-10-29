@@ -119,6 +119,8 @@ export const messages: Messages = {
 
   "account.equity": "資産",
   "account.upnl": "含み損益",
+  "account.view": "口座の表示",
+  "account.view.all": "全取引所",
   "account.marginUsed": "使用証拠金",
   "account.marginRatio": "証拠金率",
   "account.summary": "アカウント概要",
@@ -2647,6 +2649,21 @@ export const messages: Messages = {
     "直近{days}日間の、UTCの各時間の出来高シェアと平均値幅。セッションは重なるため、シェアの合計は100%を超えます。",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "アルゴ",
+  "panel.balances": "残高",
+  "balances.live": "実口座の合計",
+  "balances.demo": "デモ",
+  "balances.demoTotal": "デモ取引の合計",
+  "balances.accounts": "{count}口座",
+  "balances.col.balance": "残高",
+  "balances.col.upnl": "含み損益",
+  "balances.col.available": "利用可能",
+  "balances.toTrade": "トレードページで表示",
+  "balances.loading": "読み込み中",
+  "balances.unavailable": "利用できません",
+  "balances.empty":
+    "有効な取引所に接続された口座はありません。口座を接続すると残高がここに表示されます。",
+  "balances.note":
+    "各取引所の金額は決済通貨（USDT、USDC）建てで、ドルとして合算しています。デモ取引の資金は別に合計します。",
   "panel.paper": "ペーパー",
   "paperPanel.unavailable":
     "ペーパートレードはデモのない取引所向けです。{venue}には独自のデモ取引口座があります。そちらを接続して練習してください。",

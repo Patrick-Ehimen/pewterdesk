@@ -120,6 +120,8 @@ export const messages: Messages = {
 
   "account.equity": "Capitaux",
   "account.upnl": "PnL latent",
+  "account.view": "Vue du compte",
+  "account.view.all": "Toutes les plateformes",
   "account.marginUsed": "Marge utilisée",
   "account.marginRatio": "Ratio de marge",
   "account.summary": "Résumé du compte",
@@ -2702,6 +2704,21 @@ export const messages: Messages = {
     "La part du volume et l'amplitude moyenne de chaque heure UTC sur les {days} derniers jours. Les sessions se chevauchent : leurs parts dépassent 100 % au total.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Algos",
+  "panel.balances": "Soldes",
+  "balances.live": "Total réel",
+  "balances.demo": "Démo",
+  "balances.demoTotal": "Total Demo Trading",
+  "balances.accounts": "{count} comptes",
+  "balances.col.balance": "Solde",
+  "balances.col.upnl": "PnL latent",
+  "balances.col.available": "Disponible",
+  "balances.toTrade": "Afficher sur la page Trading",
+  "balances.loading": "Chargement",
+  "balances.unavailable": "Indisponible",
+  "balances.empty":
+    "Aucun compte connecté sur les plateformes activées. Connectez-en un pour voir son solde ici.",
+  "balances.note":
+    "Les montants de chaque plateforme sont dans sa devise de cotation (USDT, USDC), additionnés comme des dollars. Les fonds Demo Trading sont totalisés à part.",
   "panel.paper": "Papier",
   "paperPanel.unavailable":
     "Le trading papier est pour les plateformes sans démo. {venue} a ses propres comptes Demo Trading : connectez-en un pour vous entraîner.",

@@ -120,6 +120,8 @@ export const messages: Messages = {
 
   "account.equity": "Капитал",
   "account.upnl": "Нереализованный PnL",
+  "account.view": "Вид счёта",
+  "account.view.all": "Все площадки",
   "account.marginUsed": "Использовано маржи",
   "account.marginRatio": "Уровень маржи",
   "account.summary": "Сводка по счёту",
@@ -2672,6 +2674,21 @@ export const messages: Messages = {
     "Доля объёма и средний диапазон каждого часа UTC за последние {days} дн. Сессии пересекаются, поэтому их доли в сумме больше 100%.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Алго",
+  "panel.balances": "Балансы",
+  "balances.live": "Итого (реальные)",
+  "balances.demo": "Демо",
+  "balances.demoTotal": "Итого Demo Trading",
+  "balances.accounts": "Счетов: {count}",
+  "balances.col.balance": "Баланс",
+  "balances.col.upnl": "Нереализ. PnL",
+  "balances.col.available": "Доступно",
+  "balances.toTrade": "Показать на странице торговли",
+  "balances.loading": "Загрузка",
+  "balances.unavailable": "Недоступно",
+  "balances.empty":
+    "На включённых площадках нет подключённых счетов. Подключите счёт, чтобы увидеть его баланс здесь.",
+  "balances.note":
+    "Суммы каждой площадки — в её валюте котировки (USDT, USDC) и складываются как доллары. Средства Demo Trading считаются отдельно.",
   "panel.paper": "Бумажный",
   "paperPanel.unavailable":
     "Бумажная торговля — для площадок без демо. У {venue} есть свои демо-счета: подключите один, чтобы тренироваться там.",

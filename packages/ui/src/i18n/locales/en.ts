@@ -126,6 +126,8 @@ export const en = {
   // Account, positions, orders
   "account.equity": "Equity",
   "account.upnl": "Unrealized PnL",
+  "account.view": "Account view",
+  "account.view.all": "All venues",
   "account.marginUsed": "Margin used",
   "account.marginRatio": "Margin Ratio",
   "account.summary": "Account Summary",
@@ -2608,6 +2610,21 @@ export const en = {
     "Each UTC hour's share of volume and average range over the last {days} days. Sessions overlap, so their shares add up past 100%.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Algos",
+  "panel.balances": "Balances",
+  "balances.live": "Live total",
+  "balances.demo": "Demo",
+  "balances.demoTotal": "Demo Trading total",
+  "balances.accounts": "{count} accounts",
+  "balances.col.balance": "Balance",
+  "balances.col.upnl": "Unrealized PnL",
+  "balances.col.available": "Available",
+  "balances.toTrade": "Show on the Trade page",
+  "balances.loading": "Loading",
+  "balances.unavailable": "Unavailable",
+  "balances.empty":
+    "No accounts connected on the venues turned on. Connect one to see its balance here.",
+  "balances.note":
+    "Each venue's figures are in its quote asset (USDT, USDC), added together as dollars. Demo Trading funds are totalled apart.",
   "panel.paper": "Paper",
   "paperPanel.unavailable":
     "Paper trading is for venues without a demo. {venue} has its own Demo Trading accounts: connect one to practise there.",

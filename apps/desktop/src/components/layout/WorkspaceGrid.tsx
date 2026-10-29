@@ -39,7 +39,7 @@ interface WorkspaceGridProps {
   onRemove: (id: string) => void;
   renderPanel: (kind: PanelKind, id: string) => ReactNode;
   /** Right side of a panel's title bar, e.g. the market it shows. */
-  renderAside?: (kind: PanelKind) => ReactNode;
+  renderAside?: (kind: PanelKind, id: string) => ReactNode;
   /** The fixed market stats bar (see STATS_BAR_ID). */
   renderStatsBar: () => ReactNode;
   /** A panel shown expanded over its neighbours, if any. */
@@ -167,7 +167,7 @@ export function WorkspaceGrid({
                         </button>
                       </>
                     ) : (
-                      <span className="ws-panel-aside">{renderAside?.(kind)}</span>
+                      <span className="ws-panel-aside">{renderAside?.(kind, p.i)}</span>
                     )}
                   </header>
                   {/* Kept mounted while editing so live feeds don't reconnect. */}

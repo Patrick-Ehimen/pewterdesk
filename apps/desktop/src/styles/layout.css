@@ -134,6 +134,16 @@
   color: var(--pd-pewter);
   font-size: 12px;
 }
+/* The Account panel's view switch, sized to the title bar. */
+.account-view {
+  padding: 1px;
+}
+.account-view label {
+  padding: 1px 8px;
+  font-size: 11.5px;
+  line-height: 18px;
+  white-space: nowrap;
+}
 .ws-panel-body {
   flex: 1;
   min-height: 0;

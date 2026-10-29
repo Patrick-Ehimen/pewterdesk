@@ -120,6 +120,8 @@ export const messages: Messages = {
 
   "account.equity": "Patrimonio",
   "account.upnl": "PnL no realizado",
+  "account.view": "Vista de la cuenta",
+  "account.view.all": "Todos los exchanges",
   "account.marginUsed": "Margen usado",
   "account.marginRatio": "Ratio de margen",
   "account.summary": "Resumen de la cuenta",
@@ -2686,6 +2688,21 @@ export const messages: Messages = {
     "La cuota de volumen y el rango medio de cada hora UTC en los últimos {days} días. Las sesiones se solapan, así que sus cuotas suman más del 100%.",
   // Algo orders (chaser, TWAP, scaled) and their panel and commands.
   "panel.algos": "Algos",
+  "panel.balances": "Saldos",
+  "balances.live": "Total real",
+  "balances.demo": "Demo",
+  "balances.demoTotal": "Total Demo Trading",
+  "balances.accounts": "{count} cuentas",
+  "balances.col.balance": "Saldo",
+  "balances.col.upnl": "PnL no realizado",
+  "balances.col.available": "Disponible",
+  "balances.toTrade": "Mostrar en la página de trading",
+  "balances.loading": "Cargando",
+  "balances.unavailable": "No disponible",
+  "balances.empty":
+    "No hay cuentas conectadas en los exchanges activados. Conecta una para ver su saldo aquí.",
+  "balances.note":
+    "Las cifras de cada exchange están en su activo de cotización (USDT, USDC), sumadas como dólares. Los fondos de Demo Trading se suman aparte.",
   "panel.paper": "Papel",
   "paperPanel.unavailable":
     "El trading en papel es para plataformas sin demo. {venue} tiene sus propias cuentas de Demo Trading: conecta una para practicar allí.",

@@ -2061,6 +2061,463 @@ button.coin-chip:hover {
 }
 
 /* The Calendar panel: the week's economic events, by day. */
+/* Balances: every connected account on the venues turned on, as tiles,
+   the totals over them and the picked account's summary beside them. It
+   fits its panel: the tiles shrink, and lines go before anything scrolls. */
+.bal {
+  container: bal / size;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+.bal-label {
+  color: var(--pd-pewter);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.bal-logo {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 4px;
+}
+
+/* The totals */
+.bal-totals {
+  display: flex;
+  gap: 10px 28px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  min-width: 0;
+}
+.bal-total {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bal-total + .bal-total {
+  flex-grow: 0.6;
+  padding-left: 28px;
+  border-left: 1px solid var(--pd-border);
+}
+.bal-total-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  min-width: 0;
+}
+.bal-total-equity {
+  color: var(--pd-text);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.bal-total + .bal-total .bal-total-equity {
+  font-size: 16px;
+  color: var(--pd-pewter);
+}
+.bal-total-parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.bal-total-parts b {
+  font-weight: 500;
+  color: var(--pd-text);
+}
+.bal-total-parts b.pd-up {
+  color: var(--pd-buy);
+}
+.bal-total-parts b.pd-down {
+  color: var(--pd-sell);
+}
+.bal-split {
+  display: flex;
+  gap: 2px;
+  height: 4px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+.bal-split-part {
+  flex-basis: 0;
+  min-width: 3px;
+  transition: opacity 120ms ease;
+}
+/* The picked account's part at full strength, the rest stepped back. */
+.bal-split[data-picked] .bal-split-part:not([data-on]) {
+  opacity: 0.45;
+}
+
+/* The tiles and the summary */
+.bal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 34%);
+  gap: 10px;
+  padding: 10px 12px 12px;
+  min-height: 0;
+}
+/* The tiles keep a readable size and scroll, the totals and the summary
+   staying put; a fade at an edge says there are more that way. */
+.bal-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  grid-auto-rows: 104px;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  padding: 2px 4px 2px 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pd-border-strong) transparent;
+  --bal-fade: 18px;
+}
+.bal-tiles[data-more-below] {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--bal-fade)), transparent);
+}
+.bal-tiles[data-more-above] {
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--bal-fade));
+}
+.bal-tiles[data-more-above][data-more-below] {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--bal-fade),
+    #000 calc(100% - var(--bal-fade)),
+    transparent
+  );
+}
+/* Each account's colour, in turn: its outline, its share, its part of the
+   allocation bar. Theme tokens only; green and red stay market data's. */
+.bal-tile,
+.bal-split-part {
+  --bal-tone: var(--pd-pewter);
+}
+[data-bal-tone="0"] {
+  --bal-tone: var(--pd-info);
+}
+[data-bal-tone="1"] {
+  --bal-tone: var(--pd-brass);
+}
+[data-bal-tone="2"] {
+  --bal-tone: var(--pd-warning);
+}
+[data-bal-tone="3"] {
+  --bal-tone: var(--pd-art-violet);
+}
+[data-bal-tone="4"] {
+  --bal-tone: var(--pd-art-cyan);
+}
+[data-bal-tone="5"] {
+  --bal-tone: var(--pd-pewter);
+}
+[data-bal-tone="6"] {
+  --bal-tone: var(--pd-text);
+}
+.bal-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 3px;
+  min-width: 0;
+  min-height: 0;
+  padding: 9px 10px 11px;
+  overflow: hidden;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  background: var(--pd-surface);
+  border: 1px solid color-mix(in srgb, var(--bal-tone) 40%, var(--pd-border));
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
+}
+.bal-tile:hover {
+  background: var(--pd-surface-raised);
+  border-color: color-mix(in srgb, var(--bal-tone) 75%, var(--pd-border));
+}
+.bal-tile[aria-checked="true"] {
+  background: color-mix(in srgb, var(--bal-tone) 7%, var(--pd-surface-raised));
+  border-color: var(--bal-tone);
+  box-shadow: inset 0 0 0 1px var(--bal-tone);
+}
+.bal-tile:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--bal-tone),
+    var(--pd-focus);
+}
+.bal-tile[data-kind="demo"] {
+  border-style: dashed;
+}
+.bal-tile[data-kind="demo"][aria-checked="true"] {
+  border-style: solid;
+}
+.bal-tile-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.bal-tile-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bal-badge {
+  flex: none;
+  padding: 0 5px;
+  color: var(--pd-pewter);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 15px;
+  text-transform: uppercase;
+}
+.bal-tile-sub {
+  overflow: hidden;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bal-tile-equity {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.bal-tile-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.bal-tile-free {
+  overflow: hidden;
+  color: var(--pd-pewter-dim);
+  text-overflow: ellipsis;
+}
+.bal-tile-free-value {
+  color: var(--pd-pewter);
+}
+.bal-tile-status {
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.bal-tile-share {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: var(--pd-border);
+}
+.bal-tile-share-fill {
+  display: block;
+  height: 100%;
+  opacity: 0.7;
+}
+.bal-split-part,
+.bal-tile-share-fill {
+  background: var(--bal-tone);
+}
+.bal-tile[aria-checked="true"] .bal-tile-share-fill {
+  opacity: 1;
+}
+
+.bal-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+  padding: 10px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--pd-border-strong) transparent;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+}
+.bal-summary-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.bal-summary-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.25;
+}
+.bal-summary-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bal-open {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--pd-pewter);
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.bal-open:hover {
+  color: var(--pd-text);
+}
+.bal-open:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.bal-ratio {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.bal-ratio-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+}
+.bal-ratio-meter {
+  height: 5px;
+  overflow: hidden;
+  background: var(--pd-border);
+  border-radius: 3px;
+}
+.bal-ratio-fill {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  background: var(--pd-buy);
+  border-radius: 3px;
+}
+.bal-ratio[data-level="warn"] .bal-ratio-fill {
+  background: var(--pd-warning);
+}
+.bal-ratio[data-level="danger"] .bal-ratio-fill {
+  background: var(--pd-sell);
+}
+.bal-ratio[data-level="warn"] .bal-ratio-head .pd-num {
+  color: var(--pd-warning);
+}
+.bal-ratio[data-level="danger"] .bal-ratio-head .pd-num {
+  color: var(--pd-sell);
+}
+.bal-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 0;
+  min-height: 0;
+}
+.bal-figure {
+  min-width: 0;
+}
+.bal-figure dt {
+  overflow: hidden;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bal-figure dd {
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: var(--pd-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bal-figure-note {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.bal-term {
+  cursor: help;
+  text-decoration: underline dotted var(--pd-border-strong);
+  text-underline-offset: 3px;
+}
+
+/* A narrow panel: the summary goes under the tiles, its figures in a row. */
+@container bal (max-width: 560px) {
+  .bal-body {
+    grid-template-columns: minmax(0, 1fr);
+    /* The tiles keep room for a row at least; the summary scrolls past its share. */
+    grid-template-rows: minmax(96px, 1fr) minmax(0, max-content);
+  }
+  .bal-figures {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .bal-totals {
+    flex-direction: column;
+    gap: 6px;
+  }
+  .bal-total + .bal-total {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+/* A short panel: tighter tiles, without the account line. */
+@container bal (max-height: 330px) {
+  .bal-tiles {
+    grid-auto-rows: 86px;
+  }
+  .bal-tile-sub,
+  .bal-split,
+  .bal-ratio-meter {
+    display: none;
+  }
+  .bal-total-equity {
+    font-size: 18px;
+  }
+  .bal-summary {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+}
+@container bal (max-height: 240px) {
+  .bal-total-parts {
+    display: none;
+  }
+}
+
 .calendar-panel {
   flex: 1;
   min-height: 0;
