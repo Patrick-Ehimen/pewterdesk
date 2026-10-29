@@ -111,7 +111,7 @@ export function PnlShareDialog({
     t("share.text", {
       market: card.market,
       side: card.position.value,
-      figure: `${headline.value} ${headline.short}`,
+      figure: `${headline.value} ${t(card.roi ? "share.roi" : "share.pnlShort")}`,
       venue: card.venue,
     }),
   );

@@ -302,7 +302,12 @@ export {
   sortRows,
   trackOpenInterest,
 } from "./lib/screener";
-export type { ShareCard } from "./lib/shareCard";
+export {
+  formatCardDollars,
+  formatCardPercent,
+  formatCardPrice,
+  type ShareCard,
+} from "./lib/shareCard";
 export { sizeFromPercent, ticketOrder } from "./lib/ticket";
 export {
   clearToasts,

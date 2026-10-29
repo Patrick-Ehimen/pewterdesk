@@ -30,6 +30,9 @@ import {
   decimalsOf,
   FundingHistoryTable,
   firedAlertText,
+  formatCardDollars,
+  formatCardPercent,
+  formatCardPrice,
   formatNumber,
   formatSigned,
   MarketPicker,
@@ -668,30 +671,33 @@ export function App() {
       },
       leverage: lev ? { label: t("share.leverage"), value: `${formatNumber(lev)}x` } : undefined,
     };
+    // A slide each: the return on the margin, and the P&L in dollars.
+    const roiFigure = (roi: number | undefined) =>
+      roi === undefined || !Number.isFinite(roi)
+        ? undefined
+        : { label: t("share.roi"), value: formatCardPercent(roi) };
     if ("position" in from) {
       const p = from.position;
       const pnl = Number(p.unrealizedPnl);
-      const margin = Number(p.margin);
+      // The venue's margin; without one, what the position's value at entry
+      // ties up at its leverage, as a closed trade's is reckoned.
+      const venueMargin = Number(p.margin);
+      const margin =
+        venueMargin > 0
+          ? venueMargin
+          : Math.abs(Number(p.size) * Number(p.entryPrice)) / (Number(p.leverage) || 1);
       setShareCard({
         ...base,
         market: symbolFor(p.market),
         profit: pnl >= 0,
-        roi:
-          margin > 0
-            ? {
-                label: t("share.roi"),
-                short: t("share.roi"),
-                value: `${formatSigned((pnl / margin) * 100)}%`,
-              }
-            : undefined,
+        roi: roiFigure(margin > 0 ? (pnl / margin) * 100 : undefined),
         pnl: {
           label: t("share.unrealized", { quote }),
-          short: t("share.pnlShort"),
-          value: formatSigned(pnl),
+          value: formatCardDollars(pnl),
         },
         prices: [
-          { label: t("share.entry"), value: formatNumber(p.entryPrice), kind: "entry" },
-          { label: t("share.market"), value: formatNumber(p.markPrice), kind: "mark" },
+          { label: t("share.entry"), value: formatCardPrice(p.entryPrice), kind: "entry" },
+          { label: t("share.market"), value: formatCardPrice(p.markPrice), kind: "mark" },
         ],
         footnote: t("share.asOf", { date: when(Date.now()) }),
       });
@@ -703,18 +709,14 @@ export function App() {
         ...base,
         market: symbolFor(c.market),
         profit: pnl >= 0,
-        roi:
-          roi === undefined
-            ? undefined
-            : { label: t("share.roi"), short: t("share.roi"), value: `${formatSigned(roi)}%` },
+        roi: roiFigure(roi),
         pnl: {
           label: t("share.realized", { quote }),
-          short: t("share.pnlShort"),
-          value: formatSigned(pnl),
+          value: formatCardDollars(pnl),
         },
         prices: [
-          { label: t("share.entry"), value: formatNumber(c.entryPrice), kind: "entry" },
-          { label: t("share.exit"), value: formatNumber(c.exitPrice), kind: "exit" },
+          { label: t("share.entry"), value: formatCardPrice(c.entryPrice), kind: "entry" },
+          { label: t("share.exit"), value: formatCardPrice(c.exitPrice), kind: "exit" },
         ],
         footnote: t("share.closedAt", { date: when(c.time) }),
       });

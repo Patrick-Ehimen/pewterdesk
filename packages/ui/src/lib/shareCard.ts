@@ -6,14 +6,55 @@
 // and violet for the rings. Everything is drawn as shapes, never images, so
 // it stays sharp at any export size.
 
-/** One of the card's two figures: the big number, and its name in the chip. */
+/** Most decimals a card shows a price with: a coin worth a fraction of a cent. */
+const PRICE_MAX_DECIMALS = 8;
+/** Figures kept on a price under 1, so a cheap coin's move still shows. */
+const PRICE_SIGNIFICANT = 4;
+
+/**
+ * A price as the card shows it: two decimals from 1 up ("68,412.50"), and
+ * under 1 as many as its first four figures need, eight at most, with no
+ * zeros trailing ("0.5432", "0.00009012", "0.00009").
+ */
+export function formatCardPrice(value: number | string): string {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return "-";
+  const abs = Math.abs(n);
+  if (abs >= 1 || abs === 0) {
+    return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  const lead = -Math.floor(Math.log10(abs)) - 1;
+  const decimals = Math.min(PRICE_MAX_DECIMALS, lead + PRICE_SIGNIFICANT);
+  return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: decimals });
+}
+
+/** A P&L in dollars, signed: "+$1,204.50", "-$38.20", "$0.00". */
+export function formatCardDollars(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  const text = Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  return `${sign}$${text}`;
+}
+
+/** A return as a signed percentage: "+14.17%". */
+export function formatCardPercent(value: number): string {
+  if (!Number.isFinite(value)) return "-";
+  const text = Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${value > 0 ? "+" : value < 0 ? "-" : ""}${text}%`;
+}
+
+/** One of the card's two figures, each the big number of its own slide. */
 export interface ShareFigure {
   /** Over the big number, e.g. "Realized P&L (USDT)". */
   label: string;
-  /** Already formatted, e.g. "+41.21" or "+14.17%". */
+  /** Already formatted, e.g. "+$41.21" or "+14.17%". */
   value: string;
-  /** In the chip under the art, on the other slide, e.g. "ROI". */
-  short: string;
 }
 
 /** What a card shows. Labels arrive already in the user's language. */
@@ -29,7 +70,7 @@ export interface ShareCard {
   /** The pill beside the market: "Position: Short", then "Leverage: 10x" when known. */
   position: { label: string; value: string };
   leverage?: { label: string; value: string };
-  /** The big figure on each slide; each slide's chip shows the other one. */
+  /** The big figure of each slide: the ROI on one, the P&L on the other, never both. */
   roi?: ShareFigure;
   pnl: ShareFigure;
   /** Whether the trade made money, for the figure's colour and the art. */
@@ -865,7 +906,6 @@ export function drawShareCard(
 
   // The figure, with a glow in its colour behind a crisp copy.
   const figure = slide === "roi" && card.roi ? card.roi : card.pnl;
-  const other = slide === "roi" ? card.pnl : card.roi;
   y += portrait ? 38 : 34;
   ctx.fillStyle = p.pewter;
   ctx.font = font(500, 16);
@@ -895,29 +935,11 @@ export function drawShareCard(
   ctx.fillText(figure.value, left - 2, fy);
   const figureW = ctx.measureText(figure.value).width;
 
-  // The art, right of the figure, and the other figure in a chip under it.
+  // The art, right of the figure. Each slide shows its own figure only.
   const artX = Math.max(right - artSize * 0.62, left + figureW + ART_GAP + artSize * 0.6);
   const artY = fy - figureSize * 0.45;
   // The horizon design has no art: its grid is the picture.
   if (style === "slabs") art(ctx, p, artX, artY, artSize, card.profit);
-  if (other) {
-    ctx.font = font(500, 13.5);
-    const lead = `${other.short}: `;
-    const cw = ctx.measureText(lead).width + ctx.measureText(other.value).width + 26;
-    const cx = Math.min(artX - cw / 2, right - cw);
-    const cy = artY + artSize * 0.48;
-    ctx.fillStyle = alpha(ctx, p.raised, 0.9);
-    roundRect(ctx, cx, cy, cw, 28, 14);
-    ctx.fill();
-    ctx.strokeStyle = alpha(ctx, p.pewter, 0.35);
-    ctx.stroke();
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = p.text;
-    ctx.fillText(lead, cx + 13, cy + 14.5);
-    ctx.fillStyle = tone;
-    ctx.fillText(other.value, cx + 13 + ctx.measureText(lead).width, cy + 14.5);
-    ctx.textBaseline = "alphabetic";
-  }
 
   // The two prices in tiles.
   const tilesY = fy + (portrait ? 62 : 26);
