@@ -11,6 +11,7 @@ import { useState } from "react";
 import { LuPencil, LuSquareArrowOutUpRight } from "react-icons/lu";
 import { dateFormat, type MessageKey, t } from "../../i18n";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
+import { heldParts } from "../../lib/positionDetail";
 import { toastError } from "../../lib/toasts";
 import { EmptyState } from "../common/Status";
 import { TpSlDialog, TrailingStopDialog } from "./ProtectionEditor";
@@ -453,9 +454,25 @@ function PnlCell({
   );
 }
 
+/** How long a closed trade was held, as the position drawer says it; none where its opening isn't known. */
+function heldText(c: ClosedTrade): string | undefined {
+  if (c.openedAt === undefined || c.openedAt > c.time) return undefined;
+  const held = heldParts(c.time - c.openedAt);
+  return held.d > 0
+    ? t("drawer.heldDh", { d: held.d, h: held.h })
+    : held.h > 0
+      ? t("drawer.heldHm", { h: held.h, m: held.m })
+      : t("drawer.heldM", { m: held.m });
+}
+
+/** The margin a closed trade used: its entry value over its leverage (1x without one). */
+export function closedMargin(c: ClosedTrade): number {
+  return Number(c.entryValue) / (c.leverage && Number(c.leverage) > 0 ? Number(c.leverage) : 1);
+}
+
 /** ROI on a closed trade: its PnL against the margin it used (entry value over leverage). */
 export function closedRoi(c: ClosedTrade): number | undefined {
-  const margin = Number(c.entryValue) / (c.leverage ? Number(c.leverage) : 1);
+  const margin = closedMargin(c);
   return margin > 0 ? (Number(c.closedPnl) / margin) * 100 : undefined;
 }
 
@@ -466,12 +483,18 @@ export function ClosedTradesTable({
   quoteFor,
   baseFor,
   onShare,
+  estimated,
 }: {
   trades: ClosedTrade[];
   symbolFor: SymbolFor;
   quoteFor?: (marketId: string) => string;
   baseFor?: (marketId: string) => string;
   onShare?: (trade: ClosedTrade) => void;
+  /**
+   * Trades whose leverage is the market's setting now, filled in where the
+   * venue records none per trade: shown as such.
+   */
+  estimated?: ReadonlySet<ClosedTrade>;
 }) {
   if (trades.length === 0) return <EmptyState>{t("closed.empty")}</EmptyState>;
   const coin = (fn: ((m: string) => string) | undefined, market: string) =>
@@ -487,6 +510,8 @@ export function ClosedTradesTable({
           <th className="pd-num">{t("col.exit")}</th>
           <th className="pd-num">{t("col.closedPnl")}</th>
           <th className="pd-num">{t("col.leverage")}</th>
+          <th className="pd-num">{t("col.margin")}</th>
+          <th className="pd-num">{t("drawer.held")}</th>
           <th>{t("col.time")}</th>
         </tr>
       </thead>
@@ -517,7 +542,18 @@ export function ClosedTradesTable({
                   }
                 }
               />
-              <td className="pd-num">{c.leverage ? `${formatNumber(c.leverage)}x` : "-"}</td>
+              <td
+                className={estimated?.has(c) ? "pd-num pd-muted" : "pd-num"}
+                title={estimated?.has(c) ? t("closed.leverageNow") : undefined}
+              >
+                {c.leverage ? `${formatNumber(c.leverage)}x` : "-"}
+              </td>
+              <td className="pd-num">
+                {c.leverage
+                  ? `${formatNumber(closedMargin(c), 2)}${coin(quoteFor, c.market)}`
+                  : "-"}
+              </td>
+              <td className="pd-num">{heldText(c) ?? "-"}</td>
               <td className="pd-muted">{dateFormat(TIME).format(c.time)}</td>
             </tr>
           );

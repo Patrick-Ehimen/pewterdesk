@@ -470,6 +470,8 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "Удалить",
   "tab.closedPnl": "Закрытый PnL",
   "closed.empty": "Нет закрытых сделок за последние 7 дней.",
+  "closed.leverageNow":
+    "Текущее плечо счёта на этом рынке: площадка не записывает его для каждой сделки.",
   "col.exit": "Выход",
   "col.leverage": "Плечо",
   "share.title": "Поделиться PnL",

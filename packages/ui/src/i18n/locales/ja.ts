@@ -466,6 +466,8 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "削除",
   "tab.closedPnl": "決済済み損益",
   "closed.empty": "過去 7 日間に決済した取引はありません。",
+  "closed.leverageNow":
+    "この市場での口座の現在のレバレッジです。取引所は取引ごとに記録していません。",
   "col.exit": "決済価格",
   "col.leverage": "レバレッジ",
   "share.title": "損益をシェア",

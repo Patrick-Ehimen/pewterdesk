@@ -474,6 +474,8 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "Retirer",
   "tab.closedPnl": "PnL clôturé",
   "closed.empty": "Aucun trade clôturé ces 7 derniers jours.",
+  "closed.leverageNow":
+    "L'effet de levier actuel du compte sur ce marché : la plateforme ne l'enregistre pas pour chaque transaction.",
   "col.exit": "Sortie",
   "col.leverage": "Levier",
   "share.title": "Partager le PnL",

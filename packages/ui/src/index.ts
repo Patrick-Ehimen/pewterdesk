@@ -208,6 +208,7 @@ export {
   canFire,
   crossed,
   distanceToFire,
+  closedMargin,
   type FiredAlert,
   isToday,
   type MarketAlert,

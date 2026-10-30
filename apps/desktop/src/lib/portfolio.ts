@@ -11,6 +11,8 @@ export interface AssetExposure {
   netSize: number;
   /** Signed notional at the mark price, in the quote asset. */
   netNotional: number;
+  /** Unrealized PnL of the asset's positions, in the quote asset. */
+  unrealizedPnl: number;
   /** This asset's |notional| over the gross, 0–1. */
   share: number;
 }
@@ -34,15 +36,23 @@ export interface PortfolioSummary {
 
 export function portfolioSummary(snapshot: AccountSnapshot): PortfolioSummary {
   const equity = Number(snapshot.equity);
-  const byMarket = new Map<string, { netSize: number; netNotional: number }>();
+  const byMarket = new Map<
+    string,
+    { netSize: number; netNotional: number; unrealizedPnl: number }
+  >();
   let unrealizedPnl = 0;
   let marginUsed = 0;
   for (const p of snapshot.positions) {
     const sign = p.side === "long" ? 1 : -1;
     const size = Number(p.size) * sign;
-    const entry = byMarket.get(p.market) ?? { netSize: 0, netNotional: 0 };
+    const entry = byMarket.get(p.market) ?? {
+      netSize: 0,
+      netNotional: 0,
+      unrealizedPnl: 0,
+    };
     entry.netSize += size;
     entry.netNotional += size * Number(p.markPrice);
+    entry.unrealizedPnl += Number(p.unrealizedPnl);
     byMarket.set(p.market, entry);
     unrealizedPnl += Number(p.unrealizedPnl);
     marginUsed += Number(p.margin);

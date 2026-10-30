@@ -465,6 +465,8 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "삭제",
   "tab.closedPnl": "청산 손익",
   "closed.empty": "최근 7일간 청산한 거래가 없습니다.",
+  "closed.leverageNow":
+    "이 마켓에 대한 계좌의 현재 레버리지입니다. 거래소가 거래마다 기록하지 않습니다.",
   "col.exit": "청산가",
   "col.leverage": "레버리지",
   "share.title": "손익 공유",

@@ -54,6 +54,8 @@ describe("portfolioSummary", () => {
     ]);
     expect(summary.byAsset[0]?.share).toBeCloseTo(9_500 / 13_000);
     expect(summary.byAsset[1]?.netNotional).toBeCloseTo(-3_500);
+    // Each asset's open P&L, summed over its positions.
+    for (const a of summary.byAsset) expect(Number.isFinite(a.unrealizedPnl)).toBe(true);
   });
 
   it("is all zeros for an empty account without dividing by zero", () => {

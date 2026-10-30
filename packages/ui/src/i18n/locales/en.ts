@@ -478,6 +478,8 @@ export const en = {
   "settings.coingeckoRemove": "Remove",
   "tab.closedPnl": "Closed P&L",
   "closed.empty": "No closed trades in the last 7 days.",
+  "closed.leverageNow":
+    "The account's leverage on this market now: the venue doesn't record it for each trade.",
   "col.exit": "Exit",
   "col.leverage": "Leverage",
   "share.title": "P&L share",

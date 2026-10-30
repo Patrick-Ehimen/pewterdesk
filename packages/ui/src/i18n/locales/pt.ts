@@ -470,6 +470,8 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "Remover",
   "tab.closedPnl": "PnL fechado",
   "closed.empty": "Nenhuma operação fechada nos últimos 7 dias.",
+  "closed.leverageNow":
+    "A alavancagem atual da conta neste mercado: a corretora não a registra em cada operação.",
   "col.exit": "Saída",
   "col.leverage": "Alavancagem",
   "share.title": "Compartilhar PnL",

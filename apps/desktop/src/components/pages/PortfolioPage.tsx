@@ -68,6 +68,8 @@ interface PortfolioPageProps {
   account: Feed<AccountSnapshot>;
   /** The account's closed positions over the last `HISTORY_MS`. */
   closed: Feed<ClosedTrade[]>;
+  /** Closed trades whose leverage is the market's setting now (the venue records none). */
+  leverageEstimated?: ReadonlySet<ClosedTrade>;
   /** Whose account is on screen (`venue:address`, or the paper one's): its history reset is kept by it. */
   accountKey?: string;
   markets: Market[];
@@ -199,6 +201,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: str
 export function PortfolioPage({
   account,
   closed,
+  leverageEstimated,
   accountKey,
   markets,
   venue,
@@ -772,7 +775,7 @@ export function PortfolioPage({
         </div>
         {tab === "open" ? (
           !s ? (
-            <TableSkeleton columns={5} />
+            <TableSkeleton columns={6} />
           ) : s.byAsset.length === 0 ? (
             <EmptyState>{t("positions.empty")}</EmptyState>
           ) : (
@@ -784,6 +787,7 @@ export function PortfolioPage({
                     <th>{t("portfolio.col.venue")}</th>
                     <th className="pd-num">{t("portfolio.col.netSize")}</th>
                     <th className="pd-num">{t("portfolio.col.netNotional")}</th>
+                    <th className="pd-num">{t("account.upnl")}</th>
                     <th className="pd-num">{t("portfolio.col.share")}</th>
                   </tr>
                 </thead>
@@ -801,6 +805,9 @@ export function PortfolioPage({
                         {formatSigned(a.netSize, 4).replace(/\.?0+$/, "")}
                       </td>
                       <td className="pd-num">{formatNumber(a.netNotional, 2)}</td>
+                      <td className={`pd-num ${trendClass(a.unrealizedPnl)}`}>
+                        {formatSigned(a.unrealizedPnl, 2)}
+                      </td>
                       <td className="pd-num">{formatPercent(a.share, 1)}</td>
                     </tr>
                   ))}
@@ -903,6 +910,7 @@ export function PortfolioPage({
                     symbolFor={(id) => marketOf(id)?.symbol ?? id}
                     baseFor={baseOf}
                     quoteFor={(id) => marketOf(id)?.quote ?? quote}
+                    estimated={leverageEstimated}
                     onShare={onShare}
                   />
                 </div>

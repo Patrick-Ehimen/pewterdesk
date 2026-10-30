@@ -127,6 +127,7 @@ import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAlgos } from "./hooks/useAlgos";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
+import { useClosedLeverage } from "./hooks/useClosedLeverage";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
 import { useOiRecorder } from "./hooks/useMapData";
@@ -315,12 +316,22 @@ function ActivityPanel({
   const venueFunding = useAccountFunding(venue, from, tab === "funding");
   const venueOrders = useOrderHistory(venue, from, tab === "orderHistory");
   const venueClosed = useClosedTrades(venue, from, tab === "closedPnl");
+  // Where the venue records no leverage per trade, the market's setting now.
+  const filled = useClosedLeverage(
+    venue,
+    from,
+    venueClosed.status === "live" || venueClosed.status === "closed" ? venueClosed.data : undefined,
+  );
   const fills: Feed<Fill[]> = paper ? { status: "live", data: paper.fills } : venueFills;
   const funding: Feed<FundingPayment[]> = paper
     ? { status: "live", data: paper.funding }
     : venueFunding;
   const orderHistory: Feed<Order[]> = paper ? { status: "live", data: paper.history } : venueOrders;
-  const closed: Feed<ClosedTrade[]> = paper ? { status: "live", data: paper.closed } : venueClosed;
+  const closed: Feed<ClosedTrade[]> = paper
+    ? { status: "live", data: paper.closed }
+    : venueClosed.status === "live" || venueClosed.status === "closed"
+      ? { status: venueClosed.status, data: filled.trades }
+      : venueClosed;
   const loading = <TableSkeleton columns={6} />;
   return (
     <>
@@ -354,6 +365,7 @@ function ActivityPanel({
                 symbolFor={symbolFor}
                 quoteFor={quoteFor}
                 baseFor={baseFor}
+                estimated={paper ? undefined : filled.estimated}
                 onShare={(c) => onShare({ closed: c })}
               />
             )}
@@ -1014,9 +1026,19 @@ export function App() {
     HISTORY_MS,
     page === "portfolio",
   );
-  const closedHistory: Feed<ClosedTrade[]> = paperOn
+  const closedRaw: Feed<ClosedTrade[]> = paperOn
     ? { status: "live", data: paper.state.closed }
     : venueClosed;
+  // Where the venue records no leverage per trade, the market's setting now.
+  const closedLeverage = useClosedLeverage(
+    venue,
+    paperOn ? undefined : address,
+    closedRaw.status === "live" || closedRaw.status === "closed" ? closedRaw.data : undefined,
+  );
+  const closedHistory: Feed<ClosedTrade[]> =
+    closedRaw.status === "live" || closedRaw.status === "closed"
+      ? { status: closedRaw.status, data: closedLeverage.trades }
+      : closedRaw;
   /** Whose account is on screen: the paper one, or the venue account's. */
   const accountKey = paperOn ? `paper:${venue}` : address && `${venue}:${address}`;
   // The position open in the drawer, followed live in the account; it goes
@@ -1858,6 +1880,7 @@ export function App() {
           <PortfolioPage
             account={account}
             closed={closedHistory}
+            leverageEstimated={closedLeverage.estimated}
             accountKey={accountKey || undefined}
             onShare={(c) => openShare({ closed: c })}
             markets={marketList}

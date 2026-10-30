@@ -457,6 +457,7 @@ export const messages: Messages = {
   "settings.coingeckoRemove": "移除",
   "tab.closedPnl": "已平仓盈亏",
   "closed.empty": "近 7 天没有已平仓的交易。",
+  "closed.leverageNow": "账户当前在该市场的杠杆：交易所不会为每笔交易记录杠杆。",
   "col.exit": "平仓价",
   "col.leverage": "杠杆",
   "share.title": "分享盈亏",
