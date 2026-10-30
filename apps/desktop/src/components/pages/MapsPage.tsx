@@ -1,29 +1,55 @@
 import type { Market, VenueId } from "@pewterdesk/core";
 import {
   atrShare,
+  BETA_HOURS,
+  BETA_WINDOWS,
+  BetaMap,
+  type BetaPoint,
   BOOK_SPANS,
   BookHeatmap,
+  BreadthMap,
+  BreakoutMap,
+  type BreakoutRow,
+  betaTo,
+  breadthNow,
+  breadthSeries,
   CORR_HOURS,
   CORR_SIZES,
   CORR_WINDOWS,
   type CoinRow,
   CorrelationMap,
+  CvdMap,
   changeSince,
   correlationMatrix,
   decimalsOf,
+  FLOW_BUCKETS,
+  FUNDING_BUCKET_MS,
+  FUNDING_BUCKETS,
+  FUNDING_HISTORY_PICKS,
+  FUNDING_HISTORY_SIZES,
   FUNDING_SORTS,
   FUNDING_UNITS,
+  FundingHistoryMap,
+  type FundingHistoryRow,
   FundingMap,
+  fundingBuckets,
+  fundingPerHour,
   HEAT_INDEXES,
   HEAT_PERIODS,
   HEAT_TOPS,
   hourProfile,
+  LARGE_SHARES,
+  LargeTradesMap,
+  LIQ_WINDOW_MS,
   LIQ_WINDOWS,
+  type LiqBoardRow,
   LiqHeatmap,
+  LiqLeaderboard,
   type LiqMap,
   Liquidations,
   LONG_SHORT_SORTS,
   LongShortMap,
+  liqByMarket,
   liquidationMap,
   MAP_TOPS,
   MapSeg,
@@ -41,16 +67,28 @@ import {
   PERF_WINDOWS,
   PerformanceMap,
   type PerfTile,
+  RANGE_HOURS,
+  RANGE_WINDOWS,
+  RelativeStrengthMap,
+  ROTATION_HOURS,
+  ROTATION_LENSES,
+  RotationMap,
+  type RotationPoint,
   RSI_FRAMES,
   RSI_SCOPES,
   RSI_VIEWS,
   RsiHeatmap,
   type RsiQuote,
+  rangePlace,
   realisedVol,
   SeasonalityMap,
   SessionsMap,
+  SPIKE_HOURS,
+  SPIKE_WINDOWS,
   SPREAD_SORTS,
+  type SpikeRow,
   SpreadMap,
+  type StrengthRow,
   seasonality,
   sessionStats,
   Tabs,
@@ -60,6 +98,8 @@ import {
   VOL_ROW_COUNTS,
   VolatilityMap,
   type VolRow,
+  VolumeSpikeMap,
+  volumeSpike,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { venueClient } from "../../api/venueClient";
@@ -73,10 +113,12 @@ import {
   SEASON_DAYS,
   useBookHeat,
   useCrossVenue,
+  useFundingHistory,
   useLongShort,
   useMarketHistories,
   useOiHistory,
   useSeasonCandles,
+  useTradeFlow,
 } from "../../hooks/useMapData";
 import { useRsiMap } from "../../hooks/useRsiMap";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
@@ -99,49 +141,94 @@ import { LoadingMark } from "../Splash";
 const VIEWS = [
   "rsi",
   "perf",
+  "rs",
+  "rotation",
+  "breakout",
   "vol",
+  "spikes",
   "funding",
+  "fundingHist",
   "oi",
   "ls",
   "liquidations",
+  "liqBoard",
   "liqmap",
   "book",
   "heatmap",
+  "breadth",
   "corr",
+  "beta",
   "spread",
   "season",
   "sessions",
+  "cvd",
+  "bigTrades",
 ] as const;
 type View = (typeof VIEWS)[number];
-const GROUPS = ["momentum", "positioning", "liquidations", "market", "time"] as const;
+const GROUPS = [
+  "momentum",
+  "volume",
+  "positioning",
+  "liquidations",
+  "market",
+  "flow",
+  "time",
+] as const;
 type Group = (typeof GROUPS)[number];
 /** Each group's views, in the order its chips show them. */
 const GROUP_VIEWS: Record<Group, readonly View[]> = {
-  momentum: ["rsi", "perf", "vol"],
-  positioning: ["funding", "oi", "ls"],
-  liquidations: ["liquidations", "liqmap", "book"],
-  market: ["heatmap", "corr", "spread"],
+  momentum: ["rsi", "perf", "rs", "rotation", "breakout", "vol"],
+  volume: ["spikes"],
+  positioning: ["funding", "fundingHist", "oi", "ls"],
+  liquidations: ["liquidations", "liqBoard", "liqmap", "book"],
+  market: ["heatmap", "breadth", "corr", "beta", "spread"],
+  flow: ["cvd", "bigTrades"],
   time: ["season", "sessions"],
 };
 const groupOf = (view: View) => GROUPS.find((g) => GROUP_VIEWS[g].includes(view)) ?? "momentum";
 const VIEW_LABEL: Record<View, MessageKey> = {
   rsi: "maps.rsi",
   perf: "maps.perf",
+  rs: "maps.rs",
+  rotation: "maps.rotation",
+  breakout: "maps.breakout",
   vol: "maps.vol",
+  spikes: "maps.spikes",
   funding: "maps.funding",
+  fundingHist: "maps.fundingHist",
   oi: "maps.oi",
   ls: "maps.ls",
   liquidations: "maps.liquidations",
+  liqBoard: "maps.liqBoard",
   liqmap: "maps.liqHeatmap",
   book: "maps.book",
   heatmap: "maps.heatmap",
+  breadth: "maps.breadth",
   corr: "maps.corr",
+  beta: "maps.beta",
   spread: "maps.spread",
   season: "maps.season",
   sessions: "maps.sessions",
+  cvd: "maps.cvd",
+  bigTrades: "maps.bigTrades",
 };
 /** The views that read every market's hourly history. */
-const HISTORY_VIEWS: readonly View[] = ["perf", "vol", "oi", "corr"];
+const HISTORY_VIEWS: readonly View[] = [
+  "perf",
+  "rs",
+  "rotation",
+  "breakout",
+  "vol",
+  "spikes",
+  "oi",
+  "breadth",
+  "corr",
+  "beta",
+];
+/** Dots on the rotation and beta charts: the busiest markets. */
+const SCATTER_POINTS = 60;
+/** The rankings leave out the thinnest markets, whose moves and volume spikes are noise. */
+const RANKED_MARKETS = 150;
 /** Dots on the open-interest map: the biggest by open interest. */
 const OI_POINTS = 60;
 
@@ -156,21 +243,31 @@ const isCrypto = (m: Market) => !m.category || m.category === "innovation";
 const VIEW_SETTINGS: Record<View, readonly string[]> = {
   rsi: ["frame", "scope", "rsiView"],
   perf: ["perfWindow", "perfTop", "mapScope"],
+  rs: ["rsWindow", "mapScope"],
+  rotation: ["rotationLens", "mapScope"],
+  breakout: ["rangeWindow", "mapScope"],
   vol: ["volMeasure", "volFilter", "volRows", "mapScope"],
+  spikes: ["spikeWindow", "mapScope"],
   funding: ["fundingUnit", "fundingSort"],
+  fundingHist: ["fundingPick", "fundingSize"],
   oi: ["oiWindow"],
   ls: ["lsSort"],
   liquidations: ["liqWindow"],
+  liqBoard: ["liqWindow"],
   liqmap: ["span"],
   book: ["bookSpan"],
   heatmap: ["heatIndex", "heatPeriod", "heatTop"],
+  breadth: ["mapScope"],
   corr: ["corrWindow", "corrSize", "mapScope"],
+  beta: ["betaWindow", "mapScope"],
   spread: ["spreadSort"],
   season: [],
   sessions: [],
+  cvd: ["flowBucket"],
+  bigTrades: ["largeShare"],
 };
 /** The views about one market, whose saved views keep it. */
-const MARKET_VIEWS: readonly View[] = ["liqmap", "book", "season", "sessions"];
+const MARKET_VIEWS: readonly View[] = ["liqmap", "book", "season", "sessions", "cvd", "bigTrades"];
 
 /** A stored choice as a saved view sees it: its value, and a setter that checks. */
 function choice<T extends string>(value: T, set: (v: T) => void, allowed: readonly T[]) {
@@ -286,6 +383,27 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [spreadSort, setSpreadSort] = useStoredChoice("pd.maps.spreadSort", SPREAD_SORTS, "volume");
   const [bookSpan, setBookSpan] = useStoredChoice("pd.maps.bookSpan", BOOK_SPANS, "1");
   const [mapScope, setMapScope] = useStoredChoice("pd.maps.scope", MAP_SCOPES, "crypto");
+  const [rsWindow, setRsWindow] = useStoredChoice("pd.maps.rsWindow", PERF_WINDOWS, "24h");
+  const [rotationLens, setRotationLens] = useStoredChoice(
+    "pd.maps.rotationLens",
+    ROTATION_LENSES,
+    "week",
+  );
+  const [rangeWindow, setRangeWindow] = useStoredChoice("pd.maps.rangeWindow", RANGE_WINDOWS, "7d");
+  const [spikeWindow, setSpikeWindow] = useStoredChoice("pd.maps.spikeWindow", SPIKE_WINDOWS, "1h");
+  const [betaWindow, setBetaWindow] = useStoredChoice("pd.maps.betaWindow", BETA_WINDOWS, "7d");
+  const [fundingPick, setFundingPick] = useStoredChoice(
+    "pd.maps.fundingPick",
+    FUNDING_HISTORY_PICKS,
+    "volume",
+  );
+  const [fundingSize, setFundingSize] = useStoredChoice(
+    "pd.maps.fundingSize",
+    FUNDING_HISTORY_SIZES,
+    "20",
+  );
+  const [flowBucket, setFlowBucket] = useStoredChoice("pd.maps.flowBucket", FLOW_BUCKETS, "1m");
+  const [largeShare, setLargeShare] = useStoredChoice("pd.maps.largeShare", LARGE_SHARES, "5");
   const [groupViews, setGroupViews] = useState(loadGroupViews);
   const group = groupOf(view);
   const openView = (next: View) => {
@@ -422,6 +540,128 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     });
   }, [view, scoped, summaryById, histories]);
 
+  // The busiest markets in scope, for the rankings and charts that leave out the thinnest.
+  const busiest = useMemo(
+    () =>
+      [...scoped]
+        .filter((m) => Number(summaryById.get(m.id)?.dayVolume ?? 0) > 0)
+        .sort(
+          (a, b) =>
+            Number(summaryById.get(b.id)?.dayVolume ?? 0) -
+            Number(summaryById.get(a.id)?.dayVolume ?? 0),
+        )
+        .slice(0, RANKED_MARKETS),
+    [scoped, summaryById],
+  );
+  // BTC is the benchmark the strength views measure against.
+  const btc = byBase.get("BTC");
+  const btcCandles = btc ? histories.get(btc.id)?.candles : undefined;
+  const strengthRows = useMemo<StrengthRow[]>(() => {
+    if (view !== "rs") return [];
+    const rows = [...busiest, ...(btc && !busiest.includes(btc) ? [btc] : [])];
+    return rows.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      if (!candles) return [];
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0) || undefined;
+      const changes: StrengthRow["changes"] = {};
+      for (const w of PERF_WINDOWS) changes[w] = changeSince(candles, PERF_HOURS[w], price);
+      return [{ market: m, changes }];
+    });
+  }, [view, busiest, btc, histories, summaryById]);
+  const rotationPoints = useMemo<RotationPoint[]>(() => {
+    if (view !== "rotation" || !btc || !btcCandles) return [];
+    const { trend, momentum } = ROTATION_HOURS[rotationLens];
+    const btcPrice = Number(summaryById.get(btc.id)?.markPrice ?? 0) || undefined;
+    const btcTrend = changeSince(btcCandles, trend, btcPrice);
+    const btcMomentum = changeSince(btcCandles, momentum, btcPrice);
+    if (btcTrend === undefined || btcMomentum === undefined) return [];
+    return busiest.slice(0, SCATTER_POINTS).flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      if (!candles || m.id === btc.id) return [];
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0) || undefined;
+      const t1 = changeSince(candles, trend, price);
+      const m1 = changeSince(candles, momentum, price);
+      if (t1 === undefined || m1 === undefined) return [];
+      return [
+        {
+          market: m,
+          trend: t1 - btcTrend,
+          momentum: m1 - btcMomentum,
+          volume: Number(summaryById.get(m.id)?.dayVolume ?? 0),
+        },
+      ];
+    });
+  }, [view, btc, btcCandles, rotationLens, busiest, histories, summaryById]);
+  const breakoutRows = useMemo<BreakoutRow[]>(() => {
+    if (view !== "breakout") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const place = candles && rangePlace(candles, RANGE_HOURS[rangeWindow], price);
+      return place ? [{ market: m, price, place }] : [];
+    });
+  }, [view, busiest, histories, summaryById, rangeWindow]);
+  const spikeRows = useMemo<SpikeRow[]>(() => {
+    if (view !== "spikes") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const spike = candles && volumeSpike(candles, SPIKE_HOURS[spikeWindow]);
+      return spike ? [{ market: m, spike }] : [];
+    });
+  }, [view, busiest, histories, spikeWindow]);
+  const breadth = useMemo(() => {
+    if (view !== "breadth") return undefined;
+    const sets = scoped.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      return candles ? [candles] : [];
+    });
+    return { now: breadthNow(sets), series: breadthSeries(sets) };
+  }, [view, scoped, histories]);
+  const betaPoints = useMemo<BetaPoint[]>(() => {
+    if (view !== "beta" || !btc || !btcCandles) return [];
+    return busiest.slice(0, SCATTER_POINTS * 1.5).flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      if (!candles || m.id === btc.id) return [];
+      const b = betaTo(candles, btcCandles, BETA_HOURS[betaWindow]);
+      return b ? [{ market: m, ...b, volume: Number(summaryById.get(m.id)?.dayVolume ?? 0) }] : [];
+    });
+  }, [view, btc, btcCandles, busiest, histories, summaryById, betaWindow]);
+
+  // Funding over the week, in 8-hour buckets ending with the one now.
+  const fundingStart =
+    Math.floor(now / FUNDING_BUCKET_MS) * FUNDING_BUCKET_MS -
+    (FUNDING_BUCKETS - 1) * FUNDING_BUCKET_MS;
+  const fundingPicks = useMemo(() => {
+    if (view !== "fundingHist" || !summaryList) return [];
+    const liquid = [...summaryList]
+      .filter((s) => byId.has(s.market))
+      .sort((a, b) => Number(b.dayVolume) - Number(a.dayVolume));
+    const picked =
+      fundingPick === "volume"
+        ? liquid
+        : liquid
+            .slice(0, 80)
+            .sort((a, b) => Math.abs(fundingPerHour(b) ?? 0) - Math.abs(fundingPerHour(a) ?? 0));
+    return picked.slice(0, Number(fundingSize)).map((s) => s.market);
+  }, [view, summaryList, byId, fundingPick, fundingSize]);
+  const fundingHistory = useFundingHistory(
+    venue,
+    fundingPicks,
+    fundingStart,
+    view === "fundingHist",
+  );
+  const fundingRows = useMemo<FundingHistoryRow[]>(
+    () =>
+      fundingPicks.flatMap((id) => {
+        const market = byId.get(id);
+        const rates = fundingHistory.rates.get(id);
+        return market && rates ? [{ market, buckets: fundingBuckets(rates, fundingStart) }] : [];
+      }),
+    [fundingPicks, byId, fundingHistory.rates, fundingStart],
+  );
+
+  const flow = useTradeFlow(venue, heatMarket, view === "cvd" || view === "bigTrades");
+
   const oiHistory = useOiHistory(venue, summaryList, view === "oi");
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again each minute, for the hour's new samples
   const oiSince = useMemo(
@@ -545,6 +785,15 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     corrWindow: choice(corrWindow, setCorrWindow, CORR_WINDOWS),
     corrSize: choice(corrSize, setCorrSize, CORR_SIZES),
     spreadSort: choice(spreadSort, setSpreadSort, SPREAD_SORTS),
+    rsWindow: choice(rsWindow, setRsWindow, PERF_WINDOWS),
+    rotationLens: choice(rotationLens, setRotationLens, ROTATION_LENSES),
+    rangeWindow: choice(rangeWindow, setRangeWindow, RANGE_WINDOWS),
+    spikeWindow: choice(spikeWindow, setSpikeWindow, SPIKE_WINDOWS),
+    betaWindow: choice(betaWindow, setBetaWindow, BETA_WINDOWS),
+    fundingPick: choice(fundingPick, setFundingPick, FUNDING_HISTORY_PICKS),
+    fundingSize: choice(fundingSize, setFundingSize, FUNDING_HISTORY_SIZES),
+    flowBucket: choice(flowBucket, setFlowBucket, FLOW_BUCKETS),
+    largeShare: choice(largeShare, setLargeShare, LARGE_SHARES),
   };
   const [saved, setSaved] = useState(loadSaved);
   const updateSaved = (next: SavedMapView[]) => {
@@ -601,11 +850,30 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const rankOfId = useMemo(() => new Map((order ?? []).map((id, i) => [id, i])), [order]);
   const liqSource = liveLiquidationSource(venue);
   const liquidations = useLiquidations(
-    view === "liquidations",
+    view === "liquidations" || view === "liqBoard",
     (base) => byBase.get(base)?.id ?? base,
     (base) => rankOfId.get(byBase.get(base)?.id ?? "") ?? Number.MAX_SAFE_INTEGER,
     `${venue}:${markets.length}`,
     liqSource,
+  );
+
+  const liqBoardRows = useMemo<LiqBoardRow[]>(() => {
+    if (view !== "liqBoard") return [];
+    return liqByMarket(liquidations.events, now, LIQ_WINDOW_MS[liqWindow]).map((m) => ({
+      market: byId.get(m.market) ?? byBase.get(m.market),
+      name: m.market,
+      long: m.long,
+      short: m.short,
+    }));
+  }, [view, liquidations.events, now, liqWindow, byId, byBase]);
+  const liqWindowSeg = (
+    <MapSeg
+      options={LIQ_WINDOWS}
+      value={liqWindow}
+      onChange={setLiqWindow}
+      label={t("mapx.window")}
+      text={(w) => w.toUpperCase()}
+    />
   );
 
   // The heatmap's history, fetched again every few minutes while it shows.
@@ -719,6 +987,114 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             loader={<LoadingMark size={44} />}
             extra={scopeSeg}
             onTrade={onTrade}
+          />
+        ) : view === "rs" ? (
+          <RelativeStrengthMap
+            rows={strengthRows}
+            benchmark={strengthRows.find((r) => r.market.id === btc?.id)}
+            window={rsWindow}
+            onWindow={setRsWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "rotation" ? (
+          <RotationMap
+            points={rotationPoints}
+            lens={rotationLens}
+            onLens={setRotationLens}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "breakout" ? (
+          <BreakoutMap
+            rows={breakoutRows}
+            window={rangeWindow}
+            onWindow={setRangeWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "spikes" ? (
+          <VolumeSpikeMap
+            rows={spikeRows}
+            window={spikeWindow}
+            onWindow={setSpikeWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "breadth" ? (
+          <BreadthMap
+            now={
+              breadth?.now ?? {
+                total: 0,
+                up24h: 0,
+                aboveEma20: 0,
+                aboveEma50: 0,
+                newHighs: 0,
+                newLows: 0,
+              }
+            }
+            series={breadth?.series ?? []}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+          />
+        ) : view === "beta" ? (
+          <BetaMap
+            points={betaPoints}
+            window={betaWindow}
+            onWindow={setBetaWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "fundingHist" ? (
+          <FundingHistoryMap
+            rows={fundingRows}
+            start={fundingStart}
+            pick={fundingPick}
+            onPick={setFundingPick}
+            size={fundingSize}
+            onSize={setFundingSize}
+            progress={{ done: fundingHistory.done, total: fundingHistory.total }}
+            loader={<LoadingMark size={44} />}
+            onTrade={onTrade}
+          />
+        ) : view === "liqBoard" ? (
+          <LiqLeaderboard
+            rows={liqBoardRows}
+            controls={liqWindowSeg}
+            loader={<LoadingMark size={44} />}
+            error={liquidations.error}
+            onTrade={onTrade}
+          />
+        ) : view === "cvd" ? (
+          <CvdMap
+            market={heatMarketInfo}
+            trades={flow.trades}
+            bucket={flowBucket}
+            onBucket={setFlowBucket}
+            controls={marketPicker}
+            loader={<LoadingMark size={44} />}
+            error={flow.error}
+          />
+        ) : view === "bigTrades" ? (
+          <LargeTradesMap
+            market={heatMarketInfo}
+            trades={flow.trades}
+            share={largeShare}
+            onShare={setLargeShare}
+            controls={marketPicker}
+            loader={<LoadingMark size={44} />}
+            error={flow.error}
           />
         ) : view === "vol" ? (
           <VolatilityMap

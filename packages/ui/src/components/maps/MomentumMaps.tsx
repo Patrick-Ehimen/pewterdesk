@@ -30,7 +30,12 @@ export type MapTop = "30" | "60" | "100";
 export const MAP_TOPS: readonly MapTop[] = ["30", "60", "100"];
 
 /** How far a window's change goes before its tile is at full colour. */
-const PERF_SCALE: Record<PerfWindow, number> = { "1h": 0.015, "4h": 0.03, "24h": 0.08, "7d": 0.2 };
+export const PERF_SCALE: Record<PerfWindow, number> = {
+  "1h": 0.015,
+  "4h": 0.03,
+  "24h": 0.08,
+  "7d": 0.2,
+};
 
 export interface PerfTile {
   market: Market;

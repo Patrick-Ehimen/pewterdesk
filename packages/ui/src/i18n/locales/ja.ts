@@ -2386,6 +2386,193 @@ export const messages: Messages = {
   "maps.group.liquidations": "清算",
   "maps.group.market": "マーケット",
   "maps.group.time": "時間",
+  "maps.group.volume": "出来高",
+  "maps.group.flow": "オーダーフロー",
+  "maps.rs": "相対力",
+  "maps.rotation": "ローテーション",
+  "maps.breakout": "ブレイクアウト",
+  "maps.spikes": "出来高急増",
+  "maps.fundingHist": "ファンディング履歴",
+  "maps.liqBoard": "ランキング",
+  "maps.breadth": "市場の広がり",
+  "maps.beta": "ベータ",
+  "maps.cvd": "CVD",
+  "maps.bigTrades": "大口取引",
+  "mapx.rs.title": "BTCに対する強さ",
+  "mapx.rs.benchmark": "BTC {change}",
+  "mapx.rs.ahead": "先行 {count}",
+  "mapx.rs.behind": "遅行 {count}",
+  "mapx.rs.aheadTitle": "BTCを上回る",
+  "mapx.rs.behindTitle": "BTCを下回る",
+  "mapx.rs.noBenchmark": "基準となるBTCの履歴を待っています",
+  "mapx.rs.note":
+    "各市場の期間リターンからBTCのリターンを引いたもの（1時間足から）。出来高上位150市場。",
+  "mapx.rotation.title": "BTCに対するローテーション",
+  "mapx.rotation.lens": "期間",
+  "mapx.rotation.lens.week": "7日 / 24時間",
+  "mapx.rotation.lens.day": "24時間 / 4時間",
+  "mapx.rotation.trend.week": "7日",
+  "mapx.rotation.trend.day": "24時間",
+  "mapx.rotation.momentum.week": "24時間",
+  "mapx.rotation.momentum.day": "4時間",
+  "mapx.rotation.trendAxis": "{hours}でBTCより先行 →",
+  "mapx.rotation.momentumAxis": "↑ {hours}でBTCとの差を広げる",
+  "mapx.rotation.trendShort": "BTC比、{hours}",
+  "mapx.rotation.momentumShort": "BTC比、{hours}",
+  "mapx.rotation.leading": "先行",
+  "mapx.rotation.weakening": "失速",
+  "mapx.rotation.lagging": "遅行",
+  "mapx.rotation.improving": "改善",
+  "mapx.rotation.leadingHint": "BTCより先行し、さらに差を広げています。",
+  "mapx.rotation.weakeningHint": "BTCより先行していますが、最近は差を縮められています。",
+  "mapx.rotation.laggingHint": "BTCに遅れ、さらに離されています。",
+  "mapx.rotation.improvingHint": "BTCに遅れていますが、最近は追い上げています。",
+  "mapx.rotation.note":
+    "各点は市場のリターンからBTCのリターンを引いたもの。横軸は長い期間、縦軸は短い期間。大きさは当日の出来高。",
+  "mapx.breakout.title": "レンジの端",
+  "mapx.breakout.nearHigh": "高値付近 {count}",
+  "mapx.breakout.nearLow": "安値付近 {count}",
+  "mapx.breakout.highsTitle": "{window}レンジの上端",
+  "mapx.breakout.lowsTitle": "{window}レンジの下端",
+  "mapx.breakout.none": "現在なし",
+  "mapx.breakout.note":
+    "期間中のレンジの上位または下位10%にある市場（1時間足の高値・安値から）。バーは価格の位置を、数値は端までの距離を示します。",
+  "mapx.spikes.title": "異常な出来高",
+  "mapx.spikes.window.1h": "直近1時間",
+  "mapx.spikes.window.4h": "直近4時間",
+  "mapx.spikes.surging": "2倍以上 {count}",
+  "mapx.spikes.median": "中央値 {ratio}×",
+  "mapx.spikes.note":
+    "直近の確定した時間の出来高を、前週の通常の1時間（中央値）と比べたもの。その間の価格変化つき。",
+  "mapx.breadth.title": "市場の広がり",
+  "mapx.breadth.up24h": "当日上昇",
+  "mapx.breadth.aboveEma20": "20時間EMA超え",
+  "mapx.breadth.aboveEma50": "50時間EMA超え",
+  "mapx.breadth.highsLows": "7日高値更新 / 安値更新（24時間）",
+  "mapx.breadth.counted": "{count}市場",
+  "mapx.breadth.lineEma": "20時間EMA超え",
+  "mapx.breadth.lineUp": "24時間で上昇",
+  "mapx.breadth.markets": "市場数",
+  "mapx.breadth.note": "対象市場に占める割合（各市場の直近7日分の1時間足から）。",
+  "mapx.beta.title": "BTCに対するベータ",
+  "mapx.beta.highest": "BTCに最も連動",
+  "mapx.beta.lowest": "BTCに最も連動しない",
+  "mapx.beta.oneLine": "ベータ 1",
+  "mapx.beta.betaAxis": "BTCに対するベータ →",
+  "mapx.beta.volAxis": "↑ ボラティリティ",
+  "mapx.beta.beta": "ベータ",
+  "mapx.beta.correlation": "相関",
+  "mapx.beta.vol": "ボラティリティ（年率）",
+  "mapx.beta.note":
+    "ベータ：期間中、BTCが1%動くごとに市場の1時間リターンがどれだけ動くか。大きさは当日の出来高。",
+  "mapx.fundingHist.title": "1週間のファンディング",
+  "mapx.fundingHist.pick": "市場",
+  "mapx.fundingHist.pick.volume": "出来高上位",
+  "mapx.fundingHist.pick.extreme": "現在最も極端",
+  "mapx.fundingHist.avg": "平均",
+  "mapx.fundingHist.note":
+    "直近7日間、8時間ごとに支払われたファンディング（8時間レート）。オレンジはロングがショートに、青はショートがロングに支払ったもの。",
+  "mapx.liqBoard.title": "市場別の清算",
+  "mapx.liqBoard.longs": "ロング {value}",
+  "mapx.liqBoard.shorts": "ショート {value}",
+  "mapx.liqBoard.longShare": "ロング偏り {value}",
+  "mapx.liqBoard.longsHead": "清算されたロング",
+  "mapx.liqBoard.shortsHead": "清算されたショート",
+  "mapx.liqBoard.note":
+    "「清算」と同じデータ元から：期間中に各市場で清算された額。ロングは左、ショートは右。",
+  "mapx.cvd.title": "累積出来高デルタ",
+  "mapx.cvd.bucket": "間隔",
+  "mapx.cvd.delta": "デルタ {value}",
+  "mapx.cvd.trades": "{count}件の取引",
+  "mapx.cvd.priceLabel": "価格",
+  "mapx.cvd.deltaLabel": "累積デルタ",
+  "mapx.cvd.bought": "買い（テイカー）",
+  "mapx.cvd.sold": "売り（テイカー）",
+  "mapx.cvd.buyShare": "買いの割合",
+  "mapx.cvd.note":
+    "このビューを開いている間、{since}以降の取引所の取引から作成しています。それ以前の全取引の履歴はありません。",
+  "mapx.flow.collecting": "取引を収集中…",
+  "mapx.large.title": "大口取引",
+  "mapx.large.share": "上位",
+  "mapx.large.top": "上位{share}%",
+  "mapx.large.threshold": "{value}以上",
+  "mapx.large.bought": "大口の買い",
+  "mapx.large.sold": "大口の売り",
+  "mapx.large.biggest": "最大",
+  "mapx.large.value": "金額",
+  "mapx.large.note":
+    "このビューを開いている間、{since}以降の金額上位の取引：時間と価格上のバブル（大きさは金額）。緑は買い手が、赤は売り手が流動性を取ったもの。",
+  "maphelp.rs.what": "期間中にBTCを上回った市場と、下回った市場。",
+  "maphelp.rs.how":
+    "各市場の期間（1時間〜7日）のリターンから同じ時間のBTCのリターンを引いたもの。1時間足から、対象の出来高上位150市場について。",
+  "maphelp.rs.read":
+    "BTCが横ばいや下落の中で上回るコインには独自の買い手がいます。強い相場では先行銘柄が先行し続けやすく、遅行銘柄は遅れたままになりがちです。",
+  "maphelp.rs.caveats":
+    "短い期間はノイズが多く、薄い市場は1件の取引で上位に来ることがあります。動いている理由はわかりません。",
+  "maphelp.rotation.what": "各市場がBTCに対するサイクルのどこにいるか：先行、失速、遅行、改善。",
+  "maphelp.rotation.how":
+    "横軸：長い期間（7日または24時間）のリターンからBTCのリターンを引いたもの。縦軸：短い期間（24時間または4時間）で同じもの。出来高上位60市場、大きさは当日の出来高。",
+  "maphelp.rotation.read":
+    "コインは時計回りに回りやすい：改善→先行→失速→遅行。改善中は追い上げ中で注目に値し、失速中は勢いを失いつつある先行銘柄です。",
+  "maphelp.rotation.caveats":
+    "相対ローテーショングラフの簡易版（平滑化や軌跡なし）なので、象限は目安です。サイクルはいつでも崩れたり逆転したりします。",
+  "maphelp.breakout.what": "直近のレンジの上端または下端に迫っている市場。",
+  "maphelp.breakout.how":
+    "各市場の期間（24時間または7日）の高値と安値（1時間足から）と、その間の現在価格の位置。上位または下位10%にあるものを、端に近い順に表示します。",
+  "maphelp.breakout.read":
+    "レンジの端にある市場は、上抜けや下抜けが始まる場所です。同じ方向に複数が同時に並ぶと、市場全体の様子がわかります。",
+  "maphelp.breakout.caveats":
+    "レンジの端を試す動きの多くは失敗します。ブレイクを信じる前に出来高（出来高急増）と合わせて見てください。",
+  "maphelp.spikes.what": "普段よりはるかに多く取引されている市場。",
+  "maphelp.spikes.how":
+    "直近の確定した1時間（または4時間）の出来高を、前週の中央値の1時間と比べた倍率。同じ時間の価格変化つき。対象の出来高上位150市場。",
+  "maphelp.spikes.read":
+    "急増はニュース、上場、清算の連鎖など大きな動きの前や最中によく起きます。価格がほとんど動かない急増は、買い手と売り手の攻防を示すことがあります。",
+  "maphelp.spikes.caveats":
+    "形成中の時間は数えないため、急増はその時間が確定してから表示されます。静かな市場は通常の出来高が小さいので、倍率が大きくなりがちです。",
+  "maphelp.breadth.what": "市場の動きの広がり：大半のコインが参加しているか、一部だけか。",
+  "maphelp.breadth.how":
+    "各市場の直近7日の1時間足から：当日上昇、20・50時間EMA超え、7日高値・安値更新の割合。そして1時間ごとの、20時間EMA超えの割合と前日比上昇の割合。",
+  "maphelp.breadth.read":
+    "広がりを伴う上昇は、BTCだけが支える上昇より堅調です。BTCが上がる中で広がりが落ちるのは早めの警告で、非常に低い水準から広がりが上向くと底になることが多いです。",
+  "maphelp.breadth.caveats":
+    "大小にかかわらず各市場を同じに数えます。暗号資産 / すべての切り替えで株式や金属を含めるかが決まります。",
+  "maphelp.beta.what": "各コインがどれだけBTCに連動するか、そして自力でどれだけ動くか。",
+  "maphelp.beta.how":
+    "期間（24時間または7日）中の各市場の1時間リターンをBTCのリターンに回帰した傾き。相関と市場の年率ボラティリティつき。出来高上位90市場。",
+  "maphelp.beta.read":
+    "ベータ2はBTCのおよそ2倍動く傾向を意味します。高ベータのコインはBTCの動きを上下とも増幅し、低ベータのものはほとんど連動しないため、BTCがもみ合う時に役立つことがあります。",
+  "maphelp.beta.caveats":
+    "ベータは相場とともに変わり、相関が低いとあまり意味がありません。短い期間はノイズが多くなります。",
+  "maphelp.fundingHist.what":
+    "出来高上位の市場、または現在ファンディングが最も極端な市場の直近1週間のファンディング。",
+  "maphelp.fundingHist.how":
+    "各市場の取引所のファンディング支払いを8時間ごとに合計（1時間ごとの取引所と8時間ごとの取引所を同じ尺度で読むため）。数市場ずつ読み込み、10分間保持します。",
+  "maphelp.fundingHist.read":
+    "数日間一方向に強く傾いたファンディングは混み合ったポジションを示し、急に解消されることがあります。急な反転はポジションの変化を示します。",
+  "maphelp.fundingHist.caveats":
+    "1リクエストが1市場なので、長いリストは埋まるまで少し時間がかかります。ファンディングだけでは混み合った取引がいつ解消されるかはわかりません。",
+  "maphelp.liqBoard.what": "最も清算が多かった市場と、その方向。",
+  "maphelp.liqBoard.how":
+    "「清算」ビューと同じデータ元（{venue}のライブフィードとOKXの履歴）の清算を、期間中の市場ごとにロングとショートに分けて合計したもの。",
+  "maphelp.liqBoard.read":
+    "主にロングの清算は下方向の投げ、主にショートの清算は上方向の踏み上げを意味します。一方が一掃された市場はその後落ち着くことが多いです。",
+  "maphelp.liqBoard.caveats":
+    "取引所によって清算の報告方法は異なり、報告しないところもあります。起きたことの一部のサンプルです。",
+  "maphelp.cvd.what": "ある市場で買い手と売り手のどちらが積極的だったか、価格と並べて。",
+  "maphelp.cvd.how":
+    "このビューを開いてから（開始時の直近の取引を含む）取引所のストリームのすべての取引を間隔ごとに：テイカーの買い出来高から売り出来高を引き、時間とともに累積したもの。",
+  "maphelp.cvd.read":
+    "価格がデルタとともに上がるなら買いが押し上げています。デルタが下がる中で価格が上がるなら売り手が上昇を吸収しており、反転の前兆になることがあります。逆も同様です。",
+  "maphelp.cvd.caveats":
+    "ビューを開いた時点までしか遡れません。取引所には全取引の履歴がありません。ビューを離れるとやり直しになります。",
+  "maphelp.bigTrades.what": "ある市場で大口がどこに入ったか：時間と価格上の最大の取引。",
+  "maphelp.bigTrades.how":
+    "このビューを開いてからの取引所のストリームのすべての取引のうち、金額上位1、5、10%をバブルで表示。緑は買い手が流動性を取ったもの、赤は売り手。",
+  "maphelp.bigTrades.read":
+    "ある価格に大口の買いが集まると、誰かが守っている水準かもしれません。上昇中の大口の売りは売り抜けを示すことがあります。",
+  "maphelp.bigTrades.caveats":
+    "大口注文は多数の小さな取引に分割されることが多く、このビューはそれをまとめません。ビューを開いてからの時間だけが対象です。",
   "maps.perf": "パフォーマンス",
   "maps.vol": "ボラティリティ",
   "maps.funding": "資金調達率",

@@ -9,7 +9,7 @@ import { TokenIcon } from "../trading/TokenIcon";
 
 export type LiqWindow = "1h" | "4h" | "12h" | "24h";
 export const LIQ_WINDOWS: readonly LiqWindow[] = ["1h", "4h", "12h", "24h"];
-const WINDOW_MS: Record<LiqWindow, number> = {
+export const LIQ_WINDOW_MS: Record<LiqWindow, number> = {
   "1h": HOUR_MS,
   "4h": 4 * HOUR_MS,
   "12h": 12 * HOUR_MS,
@@ -97,7 +97,7 @@ export function Liquidations({
   // Still reading (a total of 0 is the moment before the markets are known).
   const fetching =
     backfill !== undefined && (backfill.total === 0 || backfill.done < backfill.total);
-  const byMarket = liqByMarket(events, now, WINDOW_MS[window]);
+  const byMarket = liqByMarket(events, now, LIQ_WINDOW_MS[window]);
   const top: Leaf[] = byMarket.slice(0, TREEMAP_MARKETS);
   const others = byMarket.slice(TREEMAP_MARKETS).reduce<Leaf>(
     (o, m) => ({
@@ -125,7 +125,7 @@ export function Liquidations({
     const leaf = leaves.find((l) => l.market === hover.market);
     if (!leaf) return undefined;
     const inTop = new Set(top.map((l) => l.market));
-    const cutoff = now - WINDOW_MS[window];
+    const cutoff = now - LIQ_WINDOW_MS[window];
     let count = 0;
     let largest = 0;
     for (const e of events) {
@@ -282,7 +282,7 @@ export function Liquidations({
         <h2>{t("liq.totals")}</h2>
         <div className="pd-liq-cards">
           {LIQ_WINDOWS.map((w) => {
-            const sum = liqTotals(events, now, WINDOW_MS[w]);
+            const sum = liqTotals(events, now, LIQ_WINDOW_MS[w]);
             return (
               <div key={w} className="pd-liq-card" data-on={w === window || undefined}>
                 <div className="pd-liq-card-head">

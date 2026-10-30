@@ -2347,6 +2347,199 @@ export const en = {
   "maps.group.liquidations": "Liquidations",
   "maps.group.market": "Market",
   "maps.group.time": "Time",
+  "maps.group.volume": "Volume",
+  "maps.group.flow": "Order flow",
+  "maps.rs": "Relative strength",
+  "maps.rotation": "Rotation",
+  "maps.breakout": "Breakouts",
+  "maps.spikes": "Volume spikes",
+  "maps.fundingHist": "Funding history",
+  "maps.liqBoard": "Leaderboard",
+  "maps.breadth": "Breadth",
+  "maps.beta": "Beta",
+  "maps.cvd": "CVD",
+  "maps.bigTrades": "Large trades",
+  "mapx.rs.title": "Strength against BTC",
+  "mapx.rs.benchmark": "BTC {change}",
+  "mapx.rs.ahead": "{count} ahead",
+  "mapx.rs.behind": "{count} behind",
+  "mapx.rs.aheadTitle": "Outrunning BTC",
+  "mapx.rs.behindTitle": "Trailing BTC",
+  "mapx.rs.noBenchmark": "Waiting for BTC's history, the benchmark",
+  "mapx.rs.note":
+    "Each market's return over the window less BTC's, from hourly candles. The busiest 150 markets.",
+  "mapx.rotation.title": "Rotation against BTC",
+  "mapx.rotation.lens": "Windows",
+  "mapx.rotation.lens.week": "7D / 24H",
+  "mapx.rotation.lens.day": "24H / 4H",
+  "mapx.rotation.trend.week": "7D",
+  "mapx.rotation.trend.day": "24H",
+  "mapx.rotation.momentum.week": "24H",
+  "mapx.rotation.momentum.day": "4H",
+  "mapx.rotation.trendAxis": "Ahead of BTC over {hours} →",
+  "mapx.rotation.momentumAxis": "↑ Gaining on BTC over {hours}",
+  "mapx.rotation.trendShort": "Against BTC, {hours}",
+  "mapx.rotation.momentumShort": "Against BTC, {hours}",
+  "mapx.rotation.leading": "Leading",
+  "mapx.rotation.weakening": "Weakening",
+  "mapx.rotation.lagging": "Lagging",
+  "mapx.rotation.improving": "Improving",
+  "mapx.rotation.leadingHint": "Ahead of BTC and still pulling away.",
+  "mapx.rotation.weakeningHint": "Ahead of BTC, but losing ground lately.",
+  "mapx.rotation.laggingHint": "Behind BTC and still falling back.",
+  "mapx.rotation.improvingHint": "Behind BTC, but catching up lately.",
+  "mapx.rotation.note":
+    "Each dot is a market's return less BTC's: across over the longer window, up over the shorter one. Sized by the day's volume.",
+  "mapx.breakout.title": "Pressing the range",
+  "mapx.breakout.nearHigh": "{count} near highs",
+  "mapx.breakout.nearLow": "{count} near lows",
+  "mapx.breakout.highsTitle": "At the top of their {window} range",
+  "mapx.breakout.lowsTitle": "At the bottom of their {window} range",
+  "mapx.breakout.none": "None right now",
+  "mapx.breakout.note":
+    "Markets within the top or bottom tenth of their range over the window, from hourly highs and lows; the bar shows where the price sits, and the figures how far it is from the edge.",
+  "mapx.spikes.title": "Unusual volume",
+  "mapx.spikes.window.1h": "Last hour",
+  "mapx.spikes.window.4h": "Last 4 hours",
+  "mapx.spikes.surging": "{count} at 2× or more",
+  "mapx.spikes.median": "Median {ratio}×",
+  "mapx.spikes.note":
+    "The last whole hours' volume against the market's usual hour over the week before (its median), with the price's move over them.",
+  "mapx.breadth.title": "Market breadth",
+  "mapx.breadth.up24h": "Up on the day",
+  "mapx.breadth.aboveEma20": "Above 20-hour EMA",
+  "mapx.breadth.aboveEma50": "Above 50-hour EMA",
+  "mapx.breadth.highsLows": "New 7-day highs / lows (24h)",
+  "mapx.breadth.counted": "{count} markets",
+  "mapx.breadth.lineEma": "Above 20-hour EMA",
+  "mapx.breadth.lineUp": "Up on 24h",
+  "mapx.breadth.markets": "Markets",
+  "mapx.breadth.note":
+    "Shares of the markets in scope, from each one's hourly candles over the last 7 days.",
+  "mapx.beta.title": "Beta to BTC",
+  "mapx.beta.highest": "Moves most with BTC",
+  "mapx.beta.lowest": "Moves least with BTC",
+  "mapx.beta.oneLine": "Beta 1",
+  "mapx.beta.betaAxis": "Beta to BTC →",
+  "mapx.beta.volAxis": "↑ Volatility",
+  "mapx.beta.beta": "Beta",
+  "mapx.beta.correlation": "Correlation",
+  "mapx.beta.vol": "Volatility (annualised)",
+  "mapx.beta.note":
+    "Beta: how far a market's hourly returns move for each 1% of BTC's, over the window. Sized by the day's volume.",
+  "mapx.fundingHist.title": "Funding over the week",
+  "mapx.fundingHist.pick": "Markets",
+  "mapx.fundingHist.pick.volume": "Busiest",
+  "mapx.fundingHist.pick.extreme": "Most extreme now",
+  "mapx.fundingHist.avg": "Average",
+  "mapx.fundingHist.note":
+    "Funding paid in each 8 hours over the last 7 days, as an 8-hour rate: orange where longs paid shorts, blue where shorts paid longs.",
+  "mapx.liqBoard.title": "Liquidations by market",
+  "mapx.liqBoard.longs": "Longs {value}",
+  "mapx.liqBoard.shorts": "Shorts {value}",
+  "mapx.liqBoard.longShare": "Long tilt {value}",
+  "mapx.liqBoard.longsHead": "Longs liquidated",
+  "mapx.liqBoard.shortsHead": "Shorts liquidated",
+  "mapx.liqBoard.note":
+    "From the same feeds as Liquidations: what was liquidated on each market over the window, longs to the left, shorts to the right.",
+  "mapx.cvd.title": "Cumulative volume delta",
+  "mapx.cvd.bucket": "Bucket",
+  "mapx.cvd.delta": "Delta {value}",
+  "mapx.cvd.trades": "{count} trades",
+  "mapx.cvd.priceLabel": "Price",
+  "mapx.cvd.deltaLabel": "Cumulative delta",
+  "mapx.cvd.bought": "Bought (takers)",
+  "mapx.cvd.sold": "Sold (takers)",
+  "mapx.cvd.buyShare": "Buy share",
+  "mapx.cvd.note":
+    "Built from the venue's trades since {since}, while this view is open: there's no earlier history of every trade to read.",
+  "mapx.flow.collecting": "Collecting trades…",
+  "mapx.large.title": "Large trades",
+  "mapx.large.share": "Largest",
+  "mapx.large.top": "Top {share}%",
+  "mapx.large.threshold": "{value} and up",
+  "mapx.large.bought": "Bought in size",
+  "mapx.large.sold": "Sold in size",
+  "mapx.large.biggest": "Biggest",
+  "mapx.large.value": "Value",
+  "mapx.large.note":
+    "The largest trades by value since {since}, while this view is open: bubbles on time and price, sized by value, green where a buyer took liquidity, red a seller.",
+  "maphelp.rs.what":
+    "Which markets are beating BTC over a window, and which are falling behind it.",
+  "maphelp.rs.how":
+    "Each market's return over the window (1 hour to 7 days) less BTC's over the same hours, from hourly candles, for the busiest 150 markets in scope.",
+  "maphelp.rs.read":
+    "A coin outrunning BTC while BTC is flat or down has its own buyers. Leaders tend to keep leading in a strong market; laggards often stay behind.",
+  "maphelp.rs.caveats":
+    "Short windows are noisy, and a thin market can top the list on one trade. It says nothing about why a coin is moving.",
+  "maphelp.rotation.what":
+    "Where each market is in its cycle against BTC: leading, weakening, lagging or improving.",
+  "maphelp.rotation.how":
+    "Across: its return less BTC's over the longer window (7 days or 24 hours). Up: the same over the shorter one (24 hours or 4 hours). The busiest 60 markets, sized by the day's volume.",
+  "maphelp.rotation.read":
+    "Coins tend to rotate clockwise: improving, then leading, then weakening, then lagging. Improving coins are catching up and worth watching; weakening ones are leaders running out of steam.",
+  "maphelp.rotation.caveats":
+    "A simpler take on relative rotation charts (no smoothing, no history trails), so treat the quadrants as a guide. The cycle can break or reverse at any time.",
+  "maphelp.breakout.what": "Markets pressing the top or the bottom of their recent range.",
+  "maphelp.breakout.how":
+    "Each market's high and low over the window (24 hours or 7 days) from hourly candles, and where the current price sits between them. Those in the top or bottom tenth are listed, nearest the edge first.",
+  "maphelp.breakout.read":
+    "A market at the edge of its range is where a breakout or a breakdown starts. Several in the same direction at once says something about the whole market.",
+  "maphelp.breakout.caveats":
+    "Most tests of a range edge fail. Pair it with volume (Volume spikes) before reading a break as real.",
+  "maphelp.spikes.what": "Markets trading far more than they usually do.",
+  "maphelp.spikes.how":
+    "The last whole hour's (or 4 hours') volume against the market's median hour over the week before, as a multiple, with the price's move over the same hours. The busiest 150 markets in scope.",
+  "maphelp.spikes.read":
+    "A spike often comes before or with a big move: news, a listing, a liquidation cascade. A spike with little price change can mean a fight between buyers and sellers.",
+  "maphelp.spikes.caveats":
+    "The hour still forming isn't counted, so a spike shows once the hour closes. A quiet market's usual volume is small, so its multiples run high.",
+  "maphelp.breadth.what":
+    "How broad the market's move is: whether most coins are taking part, or only a few.",
+  "maphelp.breadth.how":
+    "From every market's hourly candles over the last 7 days: the share up on the day, above their 20- and 50-hour EMAs, and making new 7-day highs or lows; and hour by hour, the share above their 20-hour EMA and the share up on the day before.",
+  "maphelp.breadth.read":
+    "A rally with breadth rising behind it is sturdier than one carried by BTC alone. Breadth falling while BTC rises is an early warning; breadth turning up from very low levels often marks a bottom.",
+  "maphelp.breadth.caveats":
+    "Every market counts the same, small or large. The Crypto / All filter decides whether stocks and metals are in it.",
+  "maphelp.beta.what": "How strongly each coin follows BTC, against how much it moves on its own.",
+  "maphelp.beta.how":
+    "The slope of each market's hourly returns against BTC's over the window (24 hours or 7 days), with their correlation and the market's annualised volatility. The busiest 90 markets.",
+  "maphelp.beta.read":
+    "A beta of 2 means a coin tends to move about twice as far as BTC. High-beta coins amplify BTC's moves both ways; low-beta ones barely follow it, which can make them useful when BTC is choppy.",
+  "maphelp.beta.caveats":
+    "Beta changes with the market, and with a low correlation it says little. A short window is noisy.",
+  "maphelp.fundingHist.what":
+    "Funding over the last week for the busiest markets, or those with the most extreme funding now.",
+  "maphelp.fundingHist.how":
+    "The venue's funding payments for each market, summed into 8-hour buckets so an hourly venue and an 8-hourly one read the same. Read a few markets at a time and kept for ten minutes.",
+  "maphelp.fundingHist.read":
+    "Funding that has stayed strongly one way for days marks a crowded side, which can unwind sharply. A sudden flip shows positioning changing.",
+  "maphelp.fundingHist.caveats":
+    "Each request is one market, so a long list takes a little while to fill. Funding alone doesn't say when a crowded trade will unwind.",
+  "maphelp.liqBoard.what": "Which markets saw the most liquidated, and on which side.",
+  "maphelp.liqBoard.how":
+    "The liquidations from the same feeds as the Liquidations view ({venue}'s live feed and OKX's history), added up per market over the window, longs and shorts apart.",
+  "maphelp.liqBoard.read":
+    "Mostly longs liquidated means a flush down; mostly shorts, a squeeze up. A market where one side was wiped out often calms down afterwards.",
+  "maphelp.liqBoard.caveats":
+    "Venues report liquidations differently and some not at all, so it's a sample of what happened, not all of it.",
+  "maphelp.cvd.what":
+    "Whether buyers or sellers have been the aggressors in one market, against its price.",
+  "maphelp.cvd.how":
+    "Every trade from the venue's stream since this view opened (and the recent trades it starts with), in buckets: volume bought by takers less volume sold, added up over time.",
+  "maphelp.cvd.read":
+    "Price rising with the delta is buying driving it. Price rising while the delta falls means sellers are absorbing the rise, which can come before a turn, and the other way round.",
+  "maphelp.cvd.caveats":
+    "It only goes back to when the view opened: the venues have no history of every trade to read. Leaving the view starts it over.",
+  "maphelp.bigTrades.what":
+    "Where the size went in one market: its largest trades on time and price.",
+  "maphelp.bigTrades.how":
+    "Every trade from the venue's stream since this view opened; the top 1, 5 or 10% by value are drawn as bubbles, green for a buyer taking liquidity, red for a seller.",
+  "maphelp.bigTrades.read":
+    "Large buys clustering at a price can show an area someone is defending; large sells into a rally can show distribution.",
+  "maphelp.bigTrades.caveats":
+    "Large orders are often split into many small trades, which this doesn't join up. It only covers the time since the view opened.",
   "maps.perf": "Performance",
   "maps.vol": "Volatility",
   "maps.funding": "Funding",

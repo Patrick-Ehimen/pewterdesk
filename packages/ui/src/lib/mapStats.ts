@@ -505,3 +505,387 @@ export function bookStep(mid: number, span: number, rows: number): number {
   const unit = [1, 2, 2.5, 5, 10].find((u) => u * power >= raw) ?? 10;
   return unit * power;
 }
+
+// --- Relative strength and rotation ----------------------------------------
+
+/**
+ * A market's return over a window less the benchmark's (BTC's) over the
+ * same window: above 0 it outran the benchmark, below it fell behind.
+ */
+export function relativeStrength(
+  change: number | undefined,
+  benchmark: number | undefined,
+): number | undefined {
+  return change === undefined || benchmark === undefined ? undefined : change - benchmark;
+}
+
+/** A rotation chart's two windows: the trend's, and the momentum's within it. */
+export type RotationLens = "week" | "day";
+export const ROTATION_LENSES: readonly RotationLens[] = ["week", "day"];
+export const ROTATION_HOURS: Record<RotationLens, { trend: number; momentum: number }> = {
+  week: { trend: 168, momentum: 24 },
+  day: { trend: 24, momentum: 4 },
+};
+
+export type RotationQuadrant = "leading" | "weakening" | "lagging" | "improving";
+export const ROTATION_QUADRANTS: readonly RotationQuadrant[] = [
+  "leading",
+  "weakening",
+  "lagging",
+  "improving",
+];
+
+/**
+ * Where a market sits on the rotation chart: ahead of the benchmark over the
+ * trend window or behind it, and gaining on it lately or losing ground.
+ */
+export function rotationQuadrant(trend: number, momentum: number): RotationQuadrant {
+  if (trend >= 0) return momentum >= 0 ? "leading" : "weakening";
+  return momentum >= 0 ? "improving" : "lagging";
+}
+
+// --- Breakouts -------------------------------------------------------------
+
+export type RangeWindow = "24h" | "7d";
+export const RANGE_WINDOWS: readonly RangeWindow[] = ["24h", "7d"];
+export const RANGE_HOURS: Record<RangeWindow, number> = { "24h": 24, "7d": 168 };
+
+export interface RangePlace {
+  high: number;
+  low: number;
+  /** Where the price sits in the range: 0 at its low, 1 at its high. */
+  position: number;
+  /** How far the price is from the high and the low, as shares of it (≤ 0, ≥ 0). */
+  toHigh: number;
+  toLow: number;
+}
+
+/** Where `price` sits in the range of the last `hours` hourly candles. */
+export function rangePlace(
+  candles: readonly Candle[],
+  hours: number,
+  price: number,
+): RangePlace | undefined {
+  const recent = candles.slice(-hours);
+  if (recent.length < Math.min(hours, 12) || !(price > 0)) return undefined;
+  let high = price;
+  let low = price;
+  for (const c of recent) {
+    high = Math.max(high, num(c.high));
+    low = Math.min(low, num(c.low));
+  }
+  if (!(high > low) || !(low > 0)) return undefined;
+  return {
+    high,
+    low,
+    position: (price - low) / (high - low),
+    toHigh: price / high - 1,
+    toLow: price / low - 1,
+  };
+}
+
+// --- Volume spikes ---------------------------------------------------------
+
+export type SpikeWindow = "1h" | "4h";
+export const SPIKE_WINDOWS: readonly SpikeWindow[] = ["1h", "4h"];
+export const SPIKE_HOURS: Record<SpikeWindow, number> = { "1h": 1, "4h": 4 };
+
+export interface VolumeSpike {
+  /** The window's volume over what the market usually trades in as long. */
+  ratio: number;
+  /** The window's volume, in base units. */
+  recent: number;
+  /** The usual: the median hour of the rest of the history, times the window. */
+  usual: number;
+  /** The price's change over the window. */
+  change?: number;
+}
+
+/**
+ * The last `hours` whole hours' volume against the market's usual for as
+ * long (the median hour of the history before them). The newest candle is
+ * left out: it's still forming.
+ */
+export function volumeSpike(candles: readonly Candle[], hours: number): VolumeSpike | undefined {
+  const done = candles.slice(0, -1);
+  const recent = done.slice(-hours);
+  const before = done.slice(0, -hours);
+  if (recent.length < hours || before.length < 24) return undefined;
+  const usualHour = median(before.map((c) => num(c.volume)));
+  if (usualHour === undefined || !(usualHour > 0)) return undefined;
+  const volume = recent.reduce((a, c) => a + num(c.volume), 0);
+  const first = num(recent[0]?.open);
+  const last = num(recent[recent.length - 1]?.close);
+  return {
+    ratio: volume / (usualHour * hours),
+    recent: volume,
+    usual: usualHour * hours,
+    change: first > 0 && last > 0 ? last / first - 1 : undefined,
+  };
+}
+
+// --- Beta to the benchmark -------------------------------------------------
+
+export interface Beta {
+  /** How far the market moves for each 1% the benchmark does. */
+  beta: number;
+  /** How tightly: the correlation of their hourly returns. */
+  correlation: number;
+  /** The market's own volatility over the window, annualised. */
+  vol: number;
+}
+
+/**
+ * The market's beta to the benchmark over the last `hours` hours: the slope
+ * of its hourly returns against the benchmark's, over the hours both have.
+ */
+export function betaTo(
+  candles: readonly Candle[],
+  benchmark: readonly Candle[],
+  hours: number,
+): Beta | undefined {
+  const own = returnsByHour(candles, hours);
+  const bench = returnsByHour(benchmark, hours);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const [time, r] of own) {
+    const b = bench.get(time);
+    if (b !== undefined) {
+      xs.push(b);
+      ys.push(r);
+    }
+  }
+  if (xs.length < Math.min(hours / 2, 12)) return undefined;
+  const mx = mean(xs) ?? 0;
+  const my = mean(ys) ?? 0;
+  let cov = 0;
+  let vx = 0;
+  for (let i = 0; i < xs.length; i++) {
+    cov += ((xs[i] ?? 0) - mx) * ((ys[i] ?? 0) - my);
+    vx += ((xs[i] ?? 0) - mx) ** 2;
+  }
+  const correlation = pearson(xs, ys);
+  const sd = stdev(ys);
+  if (!(vx > 0) || correlation === undefined || sd === undefined) return undefined;
+  return { beta: cov / vx, correlation, vol: sd * Math.sqrt(YEAR_HOURS) };
+}
+
+// --- Breadth ---------------------------------------------------------------
+
+/** An exponential moving average of `values`, one per value, seeded with the first. */
+export function emaOf(values: readonly number[], period: number): number[] {
+  const k = 2 / (period + 1);
+  const out: number[] = [];
+  let prev: number | undefined;
+  for (const v of values) {
+    prev = prev === undefined ? v : v * k + prev * (1 - k);
+    out.push(prev);
+  }
+  return out;
+}
+
+export interface BreadthNow {
+  /** Markets counted: those with enough history. */
+  total: number;
+  /** Shares of them, 0 to 1. */
+  up24h: number;
+  aboveEma20: number;
+  aboveEma50: number;
+  /** Markets at a new 7-day high, and at a new 7-day low, within the last day. */
+  newHighs: number;
+  newLows: number;
+}
+
+/**
+ * How broad the market is now: the share of markets up on the day and above
+ * their 20- and 50-hour EMAs, and how many made a new 7-day high or low
+ * within the last 24 hours.
+ */
+export function breadthNow(histories: readonly (readonly Candle[])[]): BreadthNow {
+  let total = 0;
+  let up = 0;
+  let above20 = 0;
+  let above50 = 0;
+  let highs = 0;
+  let lows = 0;
+  for (const candles of histories) {
+    if (candles.length < 60) continue;
+    const closes = candles.map((c) => num(c.close));
+    const last = closes[closes.length - 1] ?? 0;
+    if (!(last > 0)) continue;
+    total++;
+    const dayAgo = num(candles[candles.length - 25]?.close);
+    if (dayAgo > 0 && last > dayAgo) up++;
+    if (last > (emaOf(closes, 20).at(-1) ?? Number.POSITIVE_INFINITY)) above20++;
+    if (last > (emaOf(closes, 50).at(-1) ?? Number.POSITIVE_INFINITY)) above50++;
+    const earlier = candles.slice(0, -24);
+    const day = candles.slice(-24);
+    const priorHigh = Math.max(...earlier.map((c) => num(c.high)));
+    const priorLow = Math.min(...earlier.map((c) => num(c.low)));
+    if (Math.max(...day.map((c) => num(c.high))) > priorHigh) highs++;
+    if (Math.min(...day.map((c) => num(c.low))) < priorLow) lows++;
+  }
+  const share = (n: number) => (total > 0 ? n / total : 0);
+  return {
+    total,
+    up24h: share(up),
+    aboveEma20: share(above20),
+    aboveEma50: share(above50),
+    newHighs: highs,
+    newLows: lows,
+  };
+}
+
+export interface BreadthPoint {
+  /** The hour, by its candle's open time. */
+  time: number;
+  /** Share of the markets with that hour whose close was above their 20-hour EMA. */
+  aboveEma: number;
+  /** Share of them up on the 24 hours before. */
+  up24h: number;
+  /** Markets counted that hour. */
+  count: number;
+}
+
+/**
+ * Breadth hour by hour over the history: for each hour, the share of
+ * markets above their 20-hour EMA and the share up on the day. The first
+ * day is left out while the EMAs and the day's change settle.
+ */
+export function breadthSeries(histories: readonly (readonly Candle[])[]): BreadthPoint[] {
+  const by = new Map<number, { above: number; up: number; count: number }>();
+  for (const candles of histories) {
+    const closes = candles.map((c) => num(c.close));
+    const ema = emaOf(closes, 20);
+    for (let i = 24; i < candles.length; i++) {
+      const time = candles[i]?.openTime;
+      const close = closes[i] ?? 0;
+      const dayAgo = closes[i - 24] ?? 0;
+      if (time === undefined || !(close > 0) || !(dayAgo > 0)) continue;
+      const at = by.get(time) ?? { above: 0, up: 0, count: 0 };
+      if (close > (ema[i] ?? Number.POSITIVE_INFINITY)) at.above++;
+      if (close > dayAgo) at.up++;
+      at.count++;
+      by.set(time, at);
+    }
+  }
+  const most = Math.max(0, ...[...by.values()].map((v) => v.count));
+  return (
+    [...by]
+      // Hours too few markets reach (the oldest, where histories begin) are left out.
+      .filter(([, v]) => v.count >= Math.max(1, most * 0.5))
+      .sort(([a], [b]) => a - b)
+      .map(([time, v]) => ({
+        time,
+        aboveEma: v.above / v.count,
+        up24h: v.up / v.count,
+        count: v.count,
+      }))
+  );
+}
+
+// --- Funding history -------------------------------------------------------
+
+/** Funding over the last 7 days, in 8-hour buckets: 21 of them. */
+export const FUNDING_BUCKET_MS = 8 * HOUR;
+export const FUNDING_BUCKETS = 21;
+
+/**
+ * Funding payments summed into 8-hour buckets from `start`: an hourly
+ * venue's eight payments come to its 8-hour rate, an 8-hour venue's one is.
+ * Undefined for a bucket with none.
+ */
+export function fundingBuckets(
+  rates: readonly { time: number; rate: number }[],
+  start: number,
+  bucketMs = FUNDING_BUCKET_MS,
+  count = FUNDING_BUCKETS,
+): (number | undefined)[] {
+  const out: (number | undefined)[] = Array.from({ length: count }, () => undefined);
+  for (const r of rates) {
+    const i = Math.floor((r.time - start) / bucketMs);
+    if (i < 0 || i >= count || !finite(r.rate)) continue;
+    out[i] = (out[i] ?? 0) + r.rate;
+  }
+  return out;
+}
+
+// --- Order flow ------------------------------------------------------------
+
+/** A trade as the order-flow views take it. */
+export interface FlowTrade {
+  id: string;
+  /** Milliseconds since the epoch. */
+  time: number;
+  price: number;
+  /** In base units. */
+  size: number;
+  /** The aggressor: a buy lifted the ask, a sell hit the bid. */
+  side: "buy" | "sell";
+}
+
+export type FlowBucket = "10s" | "1m" | "5m";
+export const FLOW_BUCKETS: readonly FlowBucket[] = ["10s", "1m", "5m"];
+export const FLOW_BUCKET_MS: Record<FlowBucket, number> = {
+  "10s": 10_000,
+  "1m": 60_000,
+  "5m": 300_000,
+};
+
+export interface FlowPoint {
+  /** The bucket's start. */
+  time: number;
+  /** The last trade's price in it. */
+  price: number;
+  /** Volume bought and sold by aggressors, in base units. */
+  buy: number;
+  sell: number;
+  /** Cumulative volume delta to the end of the bucket: buys less sells, since the first trade. */
+  cvd: number;
+}
+
+/** Trades (any order) in buckets, oldest first, with the delta running across them. */
+export function cvdSeries(trades: readonly FlowTrade[], bucketMs: number): FlowPoint[] {
+  const sorted = [...trades].sort((a, b) => a.time - b.time);
+  const out: FlowPoint[] = [];
+  let cvd = 0;
+  for (const tr of sorted) {
+    const time = Math.floor(tr.time / bucketMs) * bucketMs;
+    let at = out[out.length - 1];
+    if (!at || at.time !== time) {
+      at = { time, price: tr.price, buy: 0, sell: 0, cvd };
+      out.push(at);
+    }
+    if (tr.side === "buy") {
+      at.buy += tr.size;
+      cvd += tr.size;
+    } else {
+      at.sell += tr.size;
+      cvd -= tr.size;
+    }
+    at.price = tr.price;
+    at.cvd = cvd;
+  }
+  return out;
+}
+
+export type LargeShare = "1" | "5" | "10";
+export const LARGE_SHARES: readonly LargeShare[] = ["1", "5", "10"];
+
+/**
+ * The biggest trades by value: the top `share` of `trades` (by price times
+ * size), and the value a trade needed to make it.
+ */
+export function largeTrades(
+  trades: readonly FlowTrade[],
+  share: number,
+): { threshold: number; trades: FlowTrade[] } {
+  if (trades.length === 0) return { threshold: 0, trades: [] };
+  const values = trades.map((tr) => tr.price * tr.size).sort((a, b) => b - a);
+  const keep = Math.max(1, Math.round(trades.length * share));
+  const threshold = values[keep - 1] ?? 0;
+  return {
+    threshold,
+    trades: trades.filter((tr) => tr.price * tr.size >= threshold),
+  };
+}

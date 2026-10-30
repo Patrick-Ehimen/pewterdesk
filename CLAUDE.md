@@ -647,12 +647,20 @@ candles, a market heatmap of coins by sector from CoinGecko, liquidations
 from a venue's public live feed (the one on screen's where it has one -
 Bybit, Binance - Bybit's otherwise) and OKX's public history, and an estimated liquidation heatmap from hourly open interest
 (from volume where a venue publishes no open-interest history) -
-`components/maps/` in `packages/ui`; in five groups - Momentum, Positioning,
-Liquidations, Market, Time - with each group's views as chips beside them.
+`components/maps/` in `packages/ui`; in seven groups - Momentum, Volume, Positioning,
+Liquidations, Market, Order flow, Time - with each group's views as chips beside them.
 The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
 `hooks/useMapData.ts`): performance and volatility from every market's
-hourly history, funding and price spread across all five venues from
-their summaries, open interest against price (Bybit's and Binance's hourly history, or on
+hourly history; strength against BTC from it too (relative strength, a
+rotation chart, beta), where each market sits in its range (breakouts),
+unusual volume (volume spikes), market breadth (shares of markets up,
+above their EMAs, at new highs and lows, hour by hour); funding and price spread across all five venues from
+their summaries, the week's funding in 8-hour buckets (`fundingHistory`
+for the busiest or most extreme markets, a few at a time and kept ten
+minutes), a liquidation leaderboard from the liquidations feed, and order
+flow for one market (cumulative volume delta and large trades) from its
+trades stream, collected while the view is open - there's no history of
+every trade to read; open interest against price (Bybit's and Binance's hourly history, or on
 Hyperliquid, Aster and BloFin samples the app takes every 5 minutes while it runs,
 the change so far shown until they cover the window - `lib/oiStore.ts`), correlation, a live order-book heatmap, and seasonality
 and sessions from a market's last 30 days of hourly candles; plus the

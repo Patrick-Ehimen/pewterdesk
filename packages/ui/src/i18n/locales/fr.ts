@@ -2439,6 +2439,200 @@ export const messages: Messages = {
   "maps.group.liquidations": "Liquidations",
   "maps.group.market": "Marché",
   "maps.group.time": "Temps",
+  "maps.group.volume": "Volume",
+  "maps.group.flow": "Flux d'ordres",
+  "maps.rs": "Force relative",
+  "maps.rotation": "Rotation",
+  "maps.breakout": "Cassures",
+  "maps.spikes": "Pics de volume",
+  "maps.fundingHist": "Historique du funding",
+  "maps.liqBoard": "Classement",
+  "maps.breadth": "Largeur",
+  "maps.beta": "Bêta",
+  "maps.cvd": "CVD",
+  "maps.bigTrades": "Grosses transactions",
+  "mapx.rs.title": "Force face au BTC",
+  "mapx.rs.benchmark": "BTC {change}",
+  "mapx.rs.ahead": "{count} devant",
+  "mapx.rs.behind": "{count} derrière",
+  "mapx.rs.aheadTitle": "Devancent le BTC",
+  "mapx.rs.behindTitle": "À la traîne du BTC",
+  "mapx.rs.noBenchmark": "En attente de l'historique du BTC, la référence",
+  "mapx.rs.note":
+    "Le rendement de chaque marché sur la période moins celui du BTC, d'après les bougies horaires. Les 150 marchés les plus actifs.",
+  "mapx.rotation.title": "Rotation face au BTC",
+  "mapx.rotation.lens": "Périodes",
+  "mapx.rotation.lens.week": "7J / 24H",
+  "mapx.rotation.lens.day": "24H / 4H",
+  "mapx.rotation.trend.week": "7J",
+  "mapx.rotation.trend.day": "24H",
+  "mapx.rotation.momentum.week": "24H",
+  "mapx.rotation.momentum.day": "4H",
+  "mapx.rotation.trendAxis": "Devant le BTC sur {hours} →",
+  "mapx.rotation.momentumAxis": "↑ Gagne sur le BTC sur {hours}",
+  "mapx.rotation.trendShort": "Face au BTC, {hours}",
+  "mapx.rotation.momentumShort": "Face au BTC, {hours}",
+  "mapx.rotation.leading": "En tête",
+  "mapx.rotation.weakening": "S'affaiblit",
+  "mapx.rotation.lagging": "À la traîne",
+  "mapx.rotation.improving": "S'améliore",
+  "mapx.rotation.leadingHint": "Devant le BTC et creuse encore l'écart.",
+  "mapx.rotation.weakeningHint": "Devant le BTC, mais perd du terrain ces derniers temps.",
+  "mapx.rotation.laggingHint": "Derrière le BTC et recule encore.",
+  "mapx.rotation.improvingHint": "Derrière le BTC, mais rattrape ces derniers temps.",
+  "mapx.rotation.note":
+    "Chaque point est le rendement d'un marché moins celui du BTC : en largeur sur la période longue, en hauteur sur la courte. Taille selon le volume du jour.",
+  "mapx.breakout.title": "Au bord du range",
+  "mapx.breakout.nearHigh": "{count} près des plus hauts",
+  "mapx.breakout.nearLow": "{count} près des plus bas",
+  "mapx.breakout.highsTitle": "En haut de leur range {window}",
+  "mapx.breakout.lowsTitle": "En bas de leur range {window}",
+  "mapx.breakout.none": "Aucun pour l'instant",
+  "mapx.breakout.note":
+    "Les marchés dans le dixième supérieur ou inférieur de leur range sur la période, d'après les plus hauts et plus bas horaires ; la barre montre où se situe le prix, les chiffres sa distance au bord.",
+  "mapx.spikes.title": "Volume inhabituel",
+  "mapx.spikes.window.1h": "Dernière heure",
+  "mapx.spikes.window.4h": "4 dernières heures",
+  "mapx.spikes.surging": "{count} à 2× ou plus",
+  "mapx.spikes.median": "Médiane {ratio}×",
+  "mapx.spikes.note":
+    "Le volume des dernières heures complètes face à l'heure habituelle du marché sur la semaine précédente (sa médiane), avec la variation du prix sur ces heures.",
+  "mapx.breadth.title": "Largeur du marché",
+  "mapx.breadth.up24h": "En hausse sur la journée",
+  "mapx.breadth.aboveEma20": "Au-dessus de l'EMA 20 heures",
+  "mapx.breadth.aboveEma50": "Au-dessus de l'EMA 50 heures",
+  "mapx.breadth.highsLows": "Nouveaux plus hauts / bas sur 7 jours (24 h)",
+  "mapx.breadth.counted": "{count} marchés",
+  "mapx.breadth.lineEma": "Au-dessus de l'EMA 20 heures",
+  "mapx.breadth.lineUp": "En hausse sur 24 h",
+  "mapx.breadth.markets": "Marchés",
+  "mapx.breadth.note":
+    "Parts des marchés retenus, d'après les bougies horaires de chacun sur les 7 derniers jours.",
+  "mapx.beta.title": "Bêta face au BTC",
+  "mapx.beta.highest": "Suivent le plus le BTC",
+  "mapx.beta.lowest": "Suivent le moins le BTC",
+  "mapx.beta.oneLine": "Bêta 1",
+  "mapx.beta.betaAxis": "Bêta face au BTC →",
+  "mapx.beta.volAxis": "↑ Volatilité",
+  "mapx.beta.beta": "Bêta",
+  "mapx.beta.correlation": "Corrélation",
+  "mapx.beta.vol": "Volatilité (annualisée)",
+  "mapx.beta.note":
+    "Bêta : de combien les rendements horaires d'un marché bougent pour chaque 1 % du BTC, sur la période. Taille selon le volume du jour.",
+  "mapx.fundingHist.title": "Funding sur la semaine",
+  "mapx.fundingHist.pick": "Marchés",
+  "mapx.fundingHist.pick.volume": "Les plus actifs",
+  "mapx.fundingHist.pick.extreme": "Les plus extrêmes",
+  "mapx.fundingHist.avg": "Moyenne",
+  "mapx.fundingHist.note":
+    "Le funding payé par tranche de 8 heures sur les 7 derniers jours, en taux sur 8 heures : orange quand les longs ont payé les shorts, bleu quand les shorts ont payé les longs.",
+  "mapx.liqBoard.title": "Liquidations par marché",
+  "mapx.liqBoard.longs": "Longs {value}",
+  "mapx.liqBoard.shorts": "Shorts {value}",
+  "mapx.liqBoard.longShare": "Penchant long {value}",
+  "mapx.liqBoard.longsHead": "Longs liquidés",
+  "mapx.liqBoard.shortsHead": "Shorts liquidés",
+  "mapx.liqBoard.note":
+    "Des mêmes flux que Liquidations : ce qui a été liquidé sur chaque marché sur la période, les longs à gauche, les shorts à droite.",
+  "mapx.cvd.title": "Delta de volume cumulé",
+  "mapx.cvd.bucket": "Intervalle",
+  "mapx.cvd.delta": "Delta {value}",
+  "mapx.cvd.trades": "{count} transactions",
+  "mapx.cvd.priceLabel": "Prix",
+  "mapx.cvd.deltaLabel": "Delta cumulé",
+  "mapx.cvd.bought": "Acheté (takers)",
+  "mapx.cvd.sold": "Vendu (takers)",
+  "mapx.cvd.buyShare": "Part acheteuse",
+  "mapx.cvd.note":
+    "Construit à partir des transactions de la plateforme depuis {since}, tant que cette vue est ouverte : il n'existe pas d'historique plus ancien de chaque transaction.",
+  "mapx.flow.collecting": "Collecte des transactions…",
+  "mapx.large.title": "Grosses transactions",
+  "mapx.large.share": "Les plus grosses",
+  "mapx.large.top": "Top {share} %",
+  "mapx.large.threshold": "{value} et plus",
+  "mapx.large.bought": "Achats importants",
+  "mapx.large.sold": "Ventes importantes",
+  "mapx.large.biggest": "Les plus grosses",
+  "mapx.large.value": "Valeur",
+  "mapx.large.note":
+    "Les plus grosses transactions en valeur depuis {since}, tant que cette vue est ouverte : des bulles sur le temps et le prix, selon la valeur, vertes quand un acheteur a pris la liquidité, rouges un vendeur.",
+  "maphelp.rs.what":
+    "Les marchés qui battent le BTC sur une période, et ceux qui restent derrière.",
+  "maphelp.rs.how":
+    "Le rendement de chaque marché sur la période (1 heure à 7 jours) moins celui du BTC sur les mêmes heures, d'après les bougies horaires, pour les 150 marchés les plus actifs retenus.",
+  "maphelp.rs.read":
+    "Une crypto qui devance le BTC alors qu'il stagne ou baisse a ses propres acheteurs. Les meneurs restent souvent devant dans un marché fort ; les retardataires restent souvent derrière.",
+  "maphelp.rs.caveats":
+    "Les périodes courtes sont bruitées, et un marché peu liquide peut monter en tête sur une seule transaction. Cela ne dit rien des raisons du mouvement.",
+  "maphelp.rotation.what":
+    "Où en est chaque marché dans son cycle face au BTC : en tête, s'affaiblit, à la traîne ou s'améliore.",
+  "maphelp.rotation.how":
+    "En largeur : son rendement moins celui du BTC sur la période longue (7 jours ou 24 heures). En hauteur : la même chose sur la courte (24 heures ou 4 heures). Les 60 marchés les plus actifs, selon le volume du jour.",
+  "maphelp.rotation.read":
+    "Les cryptos tournent souvent dans le sens horaire : s'améliore, puis en tête, puis s'affaiblit, puis à la traîne. Celles qui s'améliorent rattrapent et méritent d'être suivies ; celles qui s'affaiblissent sont des meneurs à bout de souffle.",
+  "maphelp.rotation.caveats":
+    "Une version simplifiée des graphiques de rotation relative (sans lissage ni traînée), donc les quadrants sont indicatifs. Le cycle peut casser ou s'inverser à tout moment.",
+  "maphelp.breakout.what": "Les marchés qui pressent le haut ou le bas de leur range récent.",
+  "maphelp.breakout.how":
+    "Le plus haut et le plus bas de chaque marché sur la période (24 heures ou 7 jours) d'après les bougies horaires, et où se situe le prix entre les deux. Ceux du dixième supérieur ou inférieur sont listés, les plus proches du bord d'abord.",
+  "maphelp.breakout.read":
+    "Un marché au bord de son range est là où commence une cassure à la hausse ou à la baisse. Plusieurs dans le même sens en même temps en disent long sur l'ensemble du marché.",
+  "maphelp.breakout.caveats":
+    "La plupart des tests d'un bord de range échouent. Associez-le au volume (Pics de volume) avant de croire à une cassure.",
+  "maphelp.spikes.what": "Les marchés qui échangent bien plus que d'habitude.",
+  "maphelp.spikes.how":
+    "Le volume de la dernière heure complète (ou des 4 dernières) face à l'heure médiane du marché sur la semaine précédente, en multiple, avec la variation du prix sur ces heures. Les 150 marchés les plus actifs retenus.",
+  "maphelp.spikes.read":
+    "Un pic précède ou accompagne souvent un gros mouvement : une nouvelle, un listing, une cascade de liquidations. Un pic sans grand changement de prix peut signaler un bras de fer entre acheteurs et vendeurs.",
+  "maphelp.spikes.caveats":
+    "L'heure en cours n'est pas comptée, donc un pic apparaît à la clôture de l'heure. Le volume habituel d'un marché calme est faible, ses multiples montent donc vite.",
+  "maphelp.breadth.what":
+    "L'ampleur du mouvement du marché : la plupart des cryptos y participent-elles, ou seulement quelques-unes ?",
+  "maphelp.breadth.how":
+    "D'après les bougies horaires de chaque marché sur les 7 derniers jours : la part en hausse sur la journée, au-dessus de leurs EMA 20 et 50 heures, et faisant de nouveaux plus hauts ou plus bas sur 7 jours ; et heure par heure, la part au-dessus de leur EMA 20 heures et la part en hausse sur la journée précédente.",
+  "maphelp.breadth.read":
+    "Une hausse portée par une largeur croissante est plus solide qu'une hausse portée par le seul BTC. Une largeur qui baisse alors que le BTC monte est un avertissement ; une largeur qui remonte depuis un niveau très bas marque souvent un creux.",
+  "maphelp.breadth.caveats":
+    "Chaque marché compte pareil, petit ou grand. Le filtre Crypto / Tout décide si les actions et les métaux en font partie.",
+  "maphelp.beta.what":
+    "À quel point chaque crypto suit le BTC, face à combien elle bouge d'elle-même.",
+  "maphelp.beta.how":
+    "La pente des rendements horaires de chaque marché face à ceux du BTC sur la période (24 heures ou 7 jours), avec leur corrélation et la volatilité annualisée du marché. Les 90 marchés les plus actifs.",
+  "maphelp.beta.read":
+    "Un bêta de 2 signifie qu'une crypto bouge environ deux fois plus que le BTC. Les cryptos à bêta élevé amplifient les mouvements du BTC dans les deux sens ; celles à bêta faible le suivent à peine, ce qui peut servir quand le BTC est hésitant.",
+  "maphelp.beta.caveats":
+    "Le bêta change avec le marché, et avec une faible corrélation il dit peu. Une période courte est bruitée.",
+  "maphelp.fundingHist.what":
+    "Le funding de la dernière semaine pour les marchés les plus actifs, ou ceux au funding le plus extrême maintenant.",
+  "maphelp.fundingHist.how":
+    "Les paiements de funding de la plateforme pour chaque marché, additionnés par tranches de 8 heures pour qu'une plateforme horaire et une à 8 heures se lisent pareil. Lus quelques marchés à la fois et gardés dix minutes.",
+  "maphelp.fundingHist.read":
+    "Un funding resté fortement d'un côté pendant des jours signale un côté encombré, qui peut se dénouer brutalement. Un retournement soudain montre un positionnement qui change.",
+  "maphelp.fundingHist.caveats":
+    "Chaque requête porte sur un marché, donc une longue liste met un peu de temps à se remplir. Le funding seul ne dit pas quand une position encombrée se dénouera.",
+  "maphelp.liqBoard.what": "Les marchés les plus liquidés, et de quel côté.",
+  "maphelp.liqBoard.how":
+    "Les liquidations des mêmes flux que la vue Liquidations (le flux en direct de {venue} et l'historique d'OKX), additionnées par marché sur la période, longs et shorts à part.",
+  "maphelp.liqBoard.read":
+    "Surtout des longs liquidés signale une purge à la baisse ; surtout des shorts, un squeeze à la hausse. Un marché où un côté a été balayé se calme souvent ensuite.",
+  "maphelp.liqBoard.caveats":
+    "Les plateformes déclarent les liquidations différemment, certaines pas du tout : c'est un échantillon de ce qui s'est passé, pas la totalité.",
+  "maphelp.cvd.what":
+    "Si ce sont les acheteurs ou les vendeurs qui ont été agressifs sur un marché, face à son prix.",
+  "maphelp.cvd.how":
+    "Chaque transaction du flux de la plateforme depuis l'ouverture de cette vue (et les transactions récentes de départ), par intervalles : volume acheté par les takers moins volume vendu, cumulé dans le temps.",
+  "maphelp.cvd.read":
+    "Un prix qui monte avec le delta, ce sont les achats qui le portent. Un prix qui monte quand le delta baisse signifie que des vendeurs absorbent la hausse, ce qui peut précéder un retournement, et inversement.",
+  "maphelp.cvd.caveats":
+    "Cela ne remonte qu'à l'ouverture de la vue : les plateformes n'ont pas d'historique de chaque transaction. Quitter la vue repart de zéro.",
+  "maphelp.bigTrades.what":
+    "Où est allée la taille sur un marché : ses plus grosses transactions dans le temps et le prix.",
+  "maphelp.bigTrades.how":
+    "Chaque transaction du flux de la plateforme depuis l'ouverture de cette vue ; les 1, 5 ou 10 % les plus grosses en valeur sont dessinées en bulles, vertes pour un acheteur qui prend la liquidité, rouges pour un vendeur.",
+  "maphelp.bigTrades.read":
+    "Des gros achats regroupés à un prix peuvent montrer une zone que quelqu'un défend ; de grosses ventes dans une hausse peuvent montrer une distribution.",
+  "maphelp.bigTrades.caveats":
+    "Les gros ordres sont souvent découpés en nombreuses petites transactions, que cette vue ne regroupe pas. Elle ne couvre que le temps depuis l'ouverture de la vue.",
   "maps.perf": "Performance",
   "maps.vol": "Volatilité",
   "maps.funding": "Financement",

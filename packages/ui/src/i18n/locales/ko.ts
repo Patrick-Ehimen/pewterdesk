@@ -2368,6 +2368,194 @@ export const messages: Messages = {
   "maps.group.liquidations": "청산",
   "maps.group.market": "마켓",
   "maps.group.time": "시간",
+  "maps.group.volume": "거래량",
+  "maps.group.flow": "주문 흐름",
+  "maps.rs": "상대 강도",
+  "maps.rotation": "로테이션",
+  "maps.breakout": "돌파",
+  "maps.spikes": "거래량 급증",
+  "maps.fundingHist": "펀딩 기록",
+  "maps.liqBoard": "순위",
+  "maps.breadth": "시장 폭",
+  "maps.beta": "베타",
+  "maps.cvd": "CVD",
+  "maps.bigTrades": "대량 체결",
+  "mapx.rs.title": "BTC 대비 강도",
+  "mapx.rs.benchmark": "BTC {change}",
+  "mapx.rs.ahead": "앞섬 {count}",
+  "mapx.rs.behind": "뒤처짐 {count}",
+  "mapx.rs.aheadTitle": "BTC보다 강함",
+  "mapx.rs.behindTitle": "BTC보다 약함",
+  "mapx.rs.noBenchmark": "기준인 BTC의 기록을 기다리는 중",
+  "mapx.rs.note":
+    "기간 동안 각 마켓의 수익률에서 BTC 수익률을 뺀 값(1시간 캔들 기준). 거래가 많은 150개 마켓.",
+  "mapx.rotation.title": "BTC 대비 로테이션",
+  "mapx.rotation.lens": "기간",
+  "mapx.rotation.lens.week": "7일 / 24시간",
+  "mapx.rotation.lens.day": "24시간 / 4시간",
+  "mapx.rotation.trend.week": "7일",
+  "mapx.rotation.trend.day": "24시간",
+  "mapx.rotation.momentum.week": "24시간",
+  "mapx.rotation.momentum.day": "4시간",
+  "mapx.rotation.trendAxis": "{hours} 동안 BTC보다 앞섬 →",
+  "mapx.rotation.momentumAxis": "↑ {hours} 동안 BTC와 격차 확대",
+  "mapx.rotation.trendShort": "BTC 대비, {hours}",
+  "mapx.rotation.momentumShort": "BTC 대비, {hours}",
+  "mapx.rotation.leading": "선도",
+  "mapx.rotation.weakening": "약화",
+  "mapx.rotation.lagging": "후행",
+  "mapx.rotation.improving": "개선",
+  "mapx.rotation.leadingHint": "BTC보다 앞서 있고 격차를 더 벌리고 있습니다.",
+  "mapx.rotation.weakeningHint": "BTC보다 앞서 있지만 최근 격차가 줄고 있습니다.",
+  "mapx.rotation.laggingHint": "BTC보다 뒤처져 있고 더 밀리고 있습니다.",
+  "mapx.rotation.improvingHint": "BTC보다 뒤처져 있지만 최근 따라잡고 있습니다.",
+  "mapx.rotation.note":
+    "각 점은 마켓 수익률에서 BTC 수익률을 뺀 값: 가로는 긴 기간, 세로는 짧은 기간. 크기는 당일 거래량.",
+  "mapx.breakout.title": "범위 끝에 근접",
+  "mapx.breakout.nearHigh": "고점 근처 {count}",
+  "mapx.breakout.nearLow": "저점 근처 {count}",
+  "mapx.breakout.highsTitle": "{window} 범위의 상단",
+  "mapx.breakout.lowsTitle": "{window} 범위의 하단",
+  "mapx.breakout.none": "현재 없음",
+  "mapx.breakout.note":
+    "기간 범위의 상위 또는 하위 10%에 있는 마켓(1시간 고가·저가 기준). 막대는 가격 위치를, 숫자는 끝까지의 거리를 보여줍니다.",
+  "mapx.spikes.title": "이례적인 거래량",
+  "mapx.spikes.window.1h": "최근 1시간",
+  "mapx.spikes.window.4h": "최근 4시간",
+  "mapx.spikes.surging": "2배 이상 {count}",
+  "mapx.spikes.median": "중앙값 {ratio}×",
+  "mapx.spikes.note":
+    "최근 완료된 시간의 거래량을 이전 일주일 마켓의 평소 1시간(중앙값)과 비교한 것, 그 시간 동안의 가격 변화 포함.",
+  "mapx.breadth.title": "시장 폭",
+  "mapx.breadth.up24h": "당일 상승",
+  "mapx.breadth.aboveEma20": "20시간 EMA 위",
+  "mapx.breadth.aboveEma50": "50시간 EMA 위",
+  "mapx.breadth.highsLows": "7일 신고가 / 신저가 (24시간)",
+  "mapx.breadth.counted": "마켓 {count}개",
+  "mapx.breadth.lineEma": "20시간 EMA 위",
+  "mapx.breadth.lineUp": "24시간 상승",
+  "mapx.breadth.markets": "마켓",
+  "mapx.breadth.note": "대상 마켓 중 비율, 각 마켓의 최근 7일 1시간 캔들 기준.",
+  "mapx.beta.title": "BTC 대비 베타",
+  "mapx.beta.highest": "BTC를 가장 많이 따라감",
+  "mapx.beta.lowest": "BTC를 가장 적게 따라감",
+  "mapx.beta.oneLine": "베타 1",
+  "mapx.beta.betaAxis": "BTC 대비 베타 →",
+  "mapx.beta.volAxis": "↑ 변동성",
+  "mapx.beta.beta": "베타",
+  "mapx.beta.correlation": "상관관계",
+  "mapx.beta.vol": "변동성(연환산)",
+  "mapx.beta.note":
+    "베타: 기간 동안 BTC가 1% 움직일 때 마켓의 1시간 수익률이 얼마나 움직이는지. 크기는 당일 거래량.",
+  "mapx.fundingHist.title": "일주일 펀딩",
+  "mapx.fundingHist.pick": "마켓",
+  "mapx.fundingHist.pick.volume": "거래량 상위",
+  "mapx.fundingHist.pick.extreme": "현재 가장 극단적",
+  "mapx.fundingHist.avg": "평균",
+  "mapx.fundingHist.note":
+    "최근 7일 동안 8시간마다 지급된 펀딩(8시간 비율): 주황은 롱이 숏에게, 파랑은 숏이 롱에게 지급한 경우.",
+  "mapx.liqBoard.title": "마켓별 청산",
+  "mapx.liqBoard.longs": "롱 {value}",
+  "mapx.liqBoard.shorts": "숏 {value}",
+  "mapx.liqBoard.longShare": "롱 쏠림 {value}",
+  "mapx.liqBoard.longsHead": "청산된 롱",
+  "mapx.liqBoard.shortsHead": "청산된 숏",
+  "mapx.liqBoard.note":
+    "청산 화면과 같은 출처에서: 기간 동안 각 마켓에서 청산된 금액, 롱은 왼쪽, 숏은 오른쪽.",
+  "mapx.cvd.title": "누적 거래량 델타",
+  "mapx.cvd.bucket": "간격",
+  "mapx.cvd.delta": "델타 {value}",
+  "mapx.cvd.trades": "체결 {count}건",
+  "mapx.cvd.priceLabel": "가격",
+  "mapx.cvd.deltaLabel": "누적 델타",
+  "mapx.cvd.bought": "매수 (테이커)",
+  "mapx.cvd.sold": "매도 (테이커)",
+  "mapx.cvd.buyShare": "매수 비율",
+  "mapx.cvd.note":
+    "이 화면이 열려 있는 동안 {since}부터의 거래소 체결로 만듭니다. 그 이전의 모든 체결 기록은 없습니다.",
+  "mapx.flow.collecting": "체결을 모으는 중…",
+  "mapx.large.title": "대량 체결",
+  "mapx.large.share": "상위",
+  "mapx.large.top": "상위 {share}%",
+  "mapx.large.threshold": "{value} 이상",
+  "mapx.large.bought": "대량 매수",
+  "mapx.large.sold": "대량 매도",
+  "mapx.large.biggest": "최대 체결",
+  "mapx.large.value": "금액",
+  "mapx.large.note":
+    "이 화면이 열려 있는 동안 {since}부터 금액 기준 가장 큰 체결: 시간과 가격 위의 버블(크기는 금액), 초록은 매수자가, 빨강은 매도자가 유동성을 가져간 경우.",
+  "maphelp.rs.what": "한 기간 동안 BTC를 이긴 마켓과 뒤처진 마켓.",
+  "maphelp.rs.how":
+    "기간(1시간~7일) 동안 각 마켓의 수익률에서 같은 시간 BTC 수익률을 뺀 값. 1시간 캔들 기준, 대상 중 거래가 많은 150개 마켓.",
+  "maphelp.rs.read":
+    "BTC가 횡보하거나 떨어질 때 BTC를 앞서는 코인에는 자체 매수세가 있습니다. 강한 시장에서는 선도 코인이 계속 앞서는 경우가 많고, 뒤처진 코인은 계속 뒤처지는 경우가 많습니다.",
+  "maphelp.rs.caveats":
+    "짧은 기간은 노이즈가 크고, 유동성이 낮은 마켓은 체결 한 건으로 목록 상위에 오를 수 있습니다. 움직이는 이유는 알려주지 않습니다.",
+  "maphelp.rotation.what": "각 마켓이 BTC 대비 순환에서 어디에 있는지: 선도, 약화, 후행, 개선.",
+  "maphelp.rotation.how":
+    "가로: 긴 기간(7일 또는 24시간) 동안 수익률에서 BTC 수익률을 뺀 값. 세로: 짧은 기간(24시간 또는 4시간)의 같은 값. 거래가 많은 60개 마켓, 크기는 당일 거래량.",
+  "maphelp.rotation.read":
+    "코인은 대개 시계 방향으로 돕니다: 개선 → 선도 → 약화 → 후행. 개선 중인 코인은 따라잡는 중이라 지켜볼 만하고, 약화 중인 코인은 힘이 빠지는 선도 코인입니다.",
+  "maphelp.rotation.caveats":
+    "상대 로테이션 차트의 단순화 버전(평활화·궤적 없음)이므로 사분면은 참고용입니다. 순환은 언제든 깨지거나 뒤집힐 수 있습니다.",
+  "maphelp.breakout.what": "최근 범위의 상단이나 하단에 다가선 마켓.",
+  "maphelp.breakout.how":
+    "기간(24시간 또는 7일) 동안 각 마켓의 고가와 저가(1시간 캔들 기준)와 그 사이 현재 가격의 위치. 상위 또는 하위 10%에 있는 마켓을 끝에 가까운 순서로 보여줍니다.",
+  "maphelp.breakout.read":
+    "범위 끝에 있는 마켓은 상향 돌파나 하향 이탈이 시작되는 곳입니다. 여러 마켓이 같은 방향으로 동시에 몰리면 시장 전체의 모습이 보입니다.",
+  "maphelp.breakout.caveats":
+    "범위 끝을 시험하는 움직임 대부분은 실패합니다. 돌파를 믿기 전에 거래량(거래량 급증)과 함께 보세요.",
+  "maphelp.spikes.what": "평소보다 훨씬 많이 거래되는 마켓.",
+  "maphelp.spikes.how":
+    "최근 완료된 1시간(또는 4시간)의 거래량을 이전 일주일의 중앙값 1시간과 비교한 배수, 같은 시간의 가격 변화 포함. 대상 중 거래가 많은 150개 마켓.",
+  "maphelp.spikes.read":
+    "급증은 뉴스, 상장, 연쇄 청산 같은 큰 움직임 전이나 도중에 자주 나타납니다. 가격 변화가 거의 없는 급증은 매수자와 매도자의 공방을 뜻할 수 있습니다.",
+  "maphelp.spikes.caveats":
+    "아직 형성 중인 시간은 세지 않으므로 급증은 그 시간이 끝난 뒤 나타납니다. 조용한 마켓은 평소 거래량이 작아 배수가 높게 나오기 쉽습니다.",
+  "maphelp.breadth.what": "시장 움직임의 폭: 대부분의 코인이 함께하는지, 일부만 움직이는지.",
+  "maphelp.breadth.how":
+    "각 마켓의 최근 7일 1시간 캔들에서: 당일 상승, 20·50시간 EMA 위, 7일 신고가·신저가 비율. 그리고 시간마다 20시간 EMA 위 비율과 전날 대비 상승 비율.",
+  "maphelp.breadth.read":
+    "폭이 함께 넓어지는 상승은 BTC 혼자 이끄는 상승보다 견고합니다. BTC가 오르는데 폭이 줄면 이른 경고이고, 아주 낮은 수준에서 폭이 돌아서면 바닥인 경우가 많습니다.",
+  "maphelp.breadth.caveats":
+    "크든 작든 모든 마켓을 똑같이 셉니다. 크립토 / 전체 필터가 주식과 금속을 포함할지 정합니다.",
+  "maphelp.beta.what": "각 코인이 BTC를 얼마나 따라가는지, 그리고 스스로 얼마나 움직이는지.",
+  "maphelp.beta.how":
+    "기간(24시간 또는 7일) 동안 각 마켓의 1시간 수익률을 BTC 수익률에 대해 구한 기울기, 상관관계와 마켓의 연환산 변동성 포함. 거래가 많은 90개 마켓.",
+  "maphelp.beta.read":
+    "베타 2는 코인이 BTC보다 약 두 배 움직이는 경향을 뜻합니다. 고베타 코인은 BTC의 움직임을 양방향으로 키우고, 저베타 코인은 거의 따라가지 않아 BTC가 횡보할 때 유용할 수 있습니다.",
+  "maphelp.beta.caveats":
+    "베타는 시장에 따라 바뀌고, 상관관계가 낮으면 큰 의미가 없습니다. 짧은 기간은 노이즈가 큽니다.",
+  "maphelp.fundingHist.what":
+    "거래량 상위 마켓, 또는 현재 펀딩이 가장 극단적인 마켓의 최근 일주일 펀딩.",
+  "maphelp.fundingHist.how":
+    "각 마켓의 거래소 펀딩 지급액을 8시간 단위로 합산(1시간 거래소와 8시간 거래소를 같은 기준으로 읽기 위해). 몇 개 마켓씩 읽고 10분간 보관합니다.",
+  "maphelp.fundingHist.read":
+    "며칠째 한쪽으로 강하게 기운 펀딩은 붐비는 쪽을 뜻하며 급격히 풀릴 수 있습니다. 갑작스러운 반전은 포지션 변화를 보여줍니다.",
+  "maphelp.fundingHist.caveats":
+    "요청 하나가 마켓 하나이므로 긴 목록은 채워지는 데 시간이 조금 걸립니다. 펀딩만으로는 붐비는 거래가 언제 풀릴지 알 수 없습니다.",
+  "maphelp.liqBoard.what": "청산이 가장 많았던 마켓과 그 방향.",
+  "maphelp.liqBoard.how":
+    "청산 화면과 같은 출처({venue}의 실시간 피드와 OKX 기록)의 청산을 기간 동안 마켓별로 롱과 숏을 나눠 합산한 것.",
+  "maphelp.liqBoard.read":
+    "주로 롱이 청산되면 하락 투매, 주로 숏이 청산되면 상승 스퀴즈입니다. 한쪽이 쓸려나간 마켓은 이후 잠잠해지는 경우가 많습니다.",
+  "maphelp.liqBoard.caveats":
+    "거래소마다 청산을 보고하는 방식이 다르고 보고하지 않는 곳도 있어, 일어난 일의 일부 표본입니다.",
+  "maphelp.cvd.what": "한 마켓에서 매수자와 매도자 중 누가 공격적이었는지, 가격과 함께.",
+  "maphelp.cvd.how":
+    "이 화면을 연 이후(시작 시의 최근 체결 포함) 거래소 스트림의 모든 체결을 간격별로: 테이커 매수 거래량에서 매도 거래량을 뺀 값을 시간에 따라 누적.",
+  "maphelp.cvd.read":
+    "가격이 델타와 함께 오르면 매수가 밀어 올리는 것입니다. 델타가 떨어지는데 가격이 오르면 매도자가 상승을 흡수하는 것으로, 반전에 앞설 수 있으며 반대도 마찬가지입니다.",
+  "maphelp.cvd.caveats":
+    "화면을 연 시점까지만 거슬러 갑니다. 거래소에는 모든 체결의 기록이 없습니다. 화면을 떠나면 처음부터 다시 시작합니다.",
+  "maphelp.bigTrades.what":
+    "한 마켓에서 큰 물량이 어디로 들어갔는지: 시간과 가격 위의 가장 큰 체결.",
+  "maphelp.bigTrades.how":
+    "이 화면을 연 이후 거래소 스트림의 모든 체결 중 금액 상위 1, 5, 10%를 버블로 그립니다. 초록은 매수자가 유동성을 가져간 경우, 빨강은 매도자.",
+  "maphelp.bigTrades.read":
+    "한 가격에 모인 대량 매수는 누군가 지키는 구간일 수 있고, 상승 중의 대량 매도는 분산을 뜻할 수 있습니다.",
+  "maphelp.bigTrades.caveats":
+    "큰 주문은 여러 작은 체결로 나뉘는 경우가 많은데, 이 화면은 그것을 합치지 않습니다. 화면을 연 이후의 시간만 다룹니다.",
   "maps.perf": "성과",
   "maps.vol": "변동성",
   "maps.funding": "펀딩",

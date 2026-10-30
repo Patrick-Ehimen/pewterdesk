@@ -8192,6 +8192,217 @@ button.pd-drawer-exit:hover {
   text-align: right;
 }
 
+/* Rankings side by side: leaders and laggards, highs and lows */
+.pd-info {
+  color: var(--pd-info);
+}
+.pd-mx-rank-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 6px 18px;
+  align-content: start;
+}
+.pd-mx-rank-col h3 {
+  margin: 4px 6px 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-mx-empty-line {
+  margin: 4px 6px;
+  font-size: 12px;
+}
+.pd-mx-bars-compact button {
+  grid-template-columns: 22px 96px minmax(40px, 1fr) 80px 92px;
+  white-space: nowrap;
+}
+.pd-mx-spikes button {
+  grid-template-columns: 22px 110px minmax(60px, 1fr) 56px 64px;
+}
+.pd-mx-range-rows button {
+  grid-template-columns: 96px minmax(60px, 1fr) 64px 84px;
+}
+.pd-mx-range-rows button > :nth-child(3),
+.pd-mx-range-rows button > :nth-child(4),
+.pd-mx-bars-compact button > :nth-child(5),
+.pd-mx-spikes button > :nth-child(5) {
+  text-align: right;
+}
+/* A market's place in its range: a track, and a mark where the price is */
+.pd-mx-range {
+  position: relative;
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--pd-sell) 45%, var(--pd-surface-raised)),
+    var(--pd-surface-raised) 50%,
+    color-mix(in srgb, var(--pd-buy) 45%, var(--pd-surface-raised))
+  );
+}
+.pd-mx-range-mark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 12px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--pd-text);
+}
+
+/* Lines over time: breadth, order flow */
+.pd-mx-grid {
+  stroke: var(--pd-border);
+}
+.pd-mx-line {
+  fill: none;
+  stroke: var(--mx-tone, var(--pd-pewter));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.pd-mx-line-soft {
+  stroke-dasharray: 4 3;
+  opacity: 0.8;
+}
+.pd-mx-cursor {
+  stroke: var(--pd-pewter-dim);
+  stroke-dasharray: 2 3;
+}
+.pd-mx-key {
+  fill: var(--mx-tone, var(--pd-pewter));
+}
+
+/* Rotation: each quadrant its own colour (never green or red: it's not P&L) */
+[data-rotation="leading"] {
+  --mx-tone: var(--pd-info);
+}
+[data-rotation="weakening"] {
+  --mx-tone: var(--pd-warning);
+}
+[data-rotation="lagging"] {
+  --mx-tone: var(--pd-pewter);
+}
+[data-rotation="improving"] {
+  --mx-tone: var(--pd-art-violet);
+}
+.pd-mx-quad[data-rotation] h3 {
+  color: var(--mx-tone);
+}
+
+/* Funding history: markets down, 8-hour buckets across */
+.pd-mx-fhist {
+  display: grid;
+  gap: 2px;
+  align-items: center;
+  min-width: max-content;
+  font-size: 11px;
+}
+.pd-mx-fhist-row {
+  display: contents;
+}
+.pd-mx-fhist-col {
+  align-self: end;
+  padding-bottom: 4px;
+  overflow: hidden;
+  color: var(--pd-pewter-dim);
+  white-space: nowrap;
+}
+.pd-mx-fhist .pd-mx-name {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-mx-fhist .pd-mx-cell {
+  height: 18px;
+  border-radius: 2px;
+}
+.pd-mx-fhist .pd-num {
+  text-align: right;
+}
+
+/* The biggest trades beside the bubbles */
+.pd-mx-trades li {
+  display: grid;
+  grid-template-columns: 34px 1fr 1fr 64px;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.pd-mx-trades li > :not(:first-child) {
+  text-align: right;
+}
+
+/* Liquidation leaderboard: longs to the left of each coin, shorts to the right */
+.pd-mx-liqboard-head {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  padding: 0 6px 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.pd-mx-liqboard-shorts {
+  text-align: right;
+}
+.pd-mx-liqboard {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-mx-liqboard button {
+  display: grid;
+  grid-template-columns: 64px 1fr 120px 1fr 64px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.pd-mx-liqboard button:hover:enabled {
+  background: var(--pd-surface-raised);
+}
+.pd-mx-liqboard button:disabled {
+  cursor: default;
+}
+.pd-mx-liqboard button > :first-child {
+  text-align: right;
+}
+.pd-mx-liqboard .pd-mx-name {
+  justify-content: center;
+}
+.pd-mx-liqboard-bar {
+  display: flex;
+  height: 10px;
+}
+.pd-mx-liqboard-bar[data-side="long"] {
+  justify-content: flex-end;
+}
+.pd-mx-liqboard-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.pd-mx-liqboard-bar[data-side="long"] .pd-mx-liqboard-fill {
+  background: color-mix(in srgb, var(--pd-sell) 70%, var(--pd-surface-raised));
+}
+.pd-mx-liqboard-bar[data-side="short"] .pd-mx-liqboard-fill {
+  background: color-mix(in srgb, var(--pd-buy) 70%, var(--pd-surface-raised));
+}
+
 /* Narrow: the side column goes under the map */
 @media (max-width: 1100px) {
   .pd-mx {

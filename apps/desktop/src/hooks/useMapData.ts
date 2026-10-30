@@ -11,6 +11,7 @@ import {
   bookColumn,
   bookStep,
   type CoinRow,
+  type FlowTrade,
   joinByCoin,
   type LongShortRow,
 } from "@pewterdesk/ui";
@@ -378,4 +379,120 @@ export function useBookHeat(
   }, [venue, market, span, enabled]);
 
   return { ...state, error: feed.status === "error" ? feed.message : undefined };
+}
+
+/** Funding read for the funding history view, per venue and market, and when. */
+const fundingCache = new Map<string, { at: number; rates: { time: number; rate: number }[] }>();
+/** How long a market's funding history is kept before it's read again. */
+const FUNDING_FRESH_MS = 10 * 60_000;
+/** Markets read at once: the venue's rate limits are per account of requests. */
+const FUNDING_PARALLEL = 3;
+
+/**
+ * The last 7 days of funding for `markets` (ids), read a few at a time and
+ * kept for ten minutes, while `enabled`. Each market's rates arrive as
+ * they're read.
+ */
+export function useFundingHistory(
+  venue: VenueId,
+  markets: readonly string[],
+  start: number,
+  enabled: boolean,
+) {
+  const [version, setVersion] = useState(0);
+  const wanted = markets.join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `wanted` is `markets`, by value
+  useEffect(() => {
+    if (!enabled || markets.length === 0) return;
+    let live = true;
+    const due = markets.filter((m) => {
+      const had = fundingCache.get(`${venue}:${m}`);
+      return !had || Date.now() - had.at > FUNDING_FRESH_MS;
+    });
+    const queue = [...due];
+    const worker = async () => {
+      for (let m = queue.shift(); m !== undefined && live; m = queue.shift()) {
+        try {
+          const rates = await venueClient.fundingHistory(venue, m, start);
+          fundingCache.set(`${venue}:${m}`, {
+            at: Date.now(),
+            rates: rates.map((r) => ({ time: r.time, rate: Number(r.rate) })),
+          });
+        } catch {
+          // Unread: the row shows empty buckets.
+          fundingCache.set(`${venue}:${m}`, { at: Date.now(), rates: [] });
+        }
+        if (live) setVersion((v) => v + 1);
+      }
+    };
+    void Promise.all(Array.from({ length: FUNDING_PARALLEL }, worker));
+    return () => {
+      live = false;
+    };
+  }, [venue, wanted, start, enabled]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` brings in what was read
+  return useMemo(() => {
+    const rates = new Map<string, { time: number; rate: number }[]>();
+    for (const m of markets) {
+      const had = fundingCache.get(`${venue}:${m}`);
+      if (had) rates.set(m, had.rates);
+    }
+    return { rates, done: rates.size, total: markets.length };
+  }, [venue, wanted, version]);
+}
+
+/** Trades kept for the order-flow views: the last few hours, and this many at most. */
+const FLOW_KEEP_MS = 4 * 60 * 60_000;
+const FLOW_KEEP = 40_000;
+
+/**
+ * One market's trades for the order-flow views, collected from the venue's
+ * trade stream (a snapshot of the latest trades, re-sent as they print)
+ * while `enabled`: each trade once, oldest dropped past the cap. Starts
+ * with the recent trades the stream opens with; nothing older is read.
+ */
+export function useTradeFlow(venue: VenueId, market: string | undefined, enabled: boolean) {
+  const [trades, setTrades] = useState<FlowTrade[]>([]);
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    setTrades([]);
+    setError(undefined);
+    if (!enabled || !market) return;
+    const seen = new Map<string, FlowTrade>();
+    let changed = false;
+    const flush = setInterval(() => {
+      if (!changed) return;
+      changed = false;
+      const cutoff = Date.now() - FLOW_KEEP_MS;
+      let list = [...seen.values()].filter((tr) => tr.time >= cutoff);
+      if (list.length > FLOW_KEEP) {
+        list = list.sort((a, b) => a.time - b.time).slice(-FLOW_KEEP);
+      }
+      if (list.length !== seen.size) {
+        seen.clear();
+        for (const tr of list) seen.set(tr.id, tr);
+      }
+      setTrades(list);
+    }, 1000);
+    const stop = venueClient.subscribeTrades(venue, market, {
+      onUpdate: (batch) => {
+        for (const tr of batch) {
+          if (seen.has(tr.id)) continue;
+          const price = Number(tr.price);
+          const size = Number(tr.size);
+          if (!(price > 0) || !(size > 0)) continue;
+          seen.set(tr.id, { id: tr.id, time: tr.time, price, size, side: tr.side });
+          changed = true;
+        }
+      },
+      onClosed: () => {},
+      onError: (message) => setError(message),
+    });
+    return () => {
+      clearInterval(flush);
+      stop();
+    };
+  }, [venue, market, enabled]);
+  return { trades, error };
 }

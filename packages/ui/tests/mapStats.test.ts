@@ -2,25 +2,37 @@ import type { Candle, MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
   atrShare,
+  betaTo,
   bookColumn,
   bookStep,
+  breadthNow,
+  breadthSeries,
   changeSince,
   correlationMatrix,
+  cvdSeries,
+  emaOf,
+  type FlowTrade,
+  fundingBuckets,
   fundingGap,
   fundingIn,
   fundingPerHour,
   hourProfile,
   joinByCoin,
+  largeTrades,
   median,
   oiChangeOver,
   oiChangeSoFar,
   oiQuadrant,
   priceSpreads,
+  rangePlace,
   realisedVol,
+  relativeStrength,
+  rotationQuadrant,
   seasonality,
   sessionStats,
   sessionsAt,
   volRegime,
+  volumeSpike,
   withOiSample,
 } from "../src/lib/mapStats";
 
@@ -242,5 +254,144 @@ describe("order book heat", () => {
     expect(bookStep(100_000, 0.01, 80)).toBe(25);
     expect(bookStep(1.234, 0.02, 80)).toBeCloseTo(0.001);
     expect(bookStep(0, 0.01, 80)).toBe(0);
+  });
+});
+
+/** `n` hourly candles closing at `close(i)`, each opening at the last close. */
+function hourly(n: number, close: (i: number) => number, volume = (_i: number) => 10): Candle[] {
+  return Array.from({ length: n }, (_, i) =>
+    candle(i, i === 0 ? close(0) : close(i - 1), close(i), { volume: String(volume(i)) }),
+  );
+}
+
+describe("relative strength and rotation", () => {
+  it("is the market's return less the benchmark's", () => {
+    expect(relativeStrength(0.05, 0.02)).toBeCloseTo(0.03);
+    expect(relativeStrength(undefined, 0.02)).toBeUndefined();
+  });
+
+  it("puts a market in the quadrant its trend and momentum say", () => {
+    expect(rotationQuadrant(0.1, 0.02)).toBe("leading");
+    expect(rotationQuadrant(0.1, -0.02)).toBe("weakening");
+    expect(rotationQuadrant(-0.1, -0.02)).toBe("lagging");
+    expect(rotationQuadrant(-0.1, 0.02)).toBe("improving");
+  });
+});
+
+describe("breakouts", () => {
+  it("places the price in its range", () => {
+    // Closes 100 to 119: highs reach 120, lows 99.
+    const candles = hourly(20, (i) => 100 + i);
+    const place = rangePlace(candles, 20, 119);
+    expect(place?.high).toBe(120);
+    expect(place?.low).toBe(99);
+    expect(place?.position).toBeCloseTo(20 / 21);
+    expect(place?.toHigh).toBeCloseTo(119 / 120 - 1);
+  });
+
+  it("needs enough history", () => {
+    expect(
+      rangePlace(
+        hourly(5, () => 100),
+        24,
+        100,
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("volume spikes", () => {
+  it("weighs the last whole hours against the usual hour, leaving out the forming one", () => {
+    // 40 hours of 10, then 3 hours of 40, then a forming hour of 1.
+    const candles = hourly(
+      44,
+      () => 100,
+      (i) => (i >= 40 && i < 43 ? 40 : i === 43 ? 1 : 10),
+    );
+    const one = volumeSpike(candles, 1);
+    expect(one?.ratio).toBeCloseTo(4);
+    const four = volumeSpike(candles, 4);
+    // (10 + 40 * 3) against 4 usual hours of 10.
+    expect(four?.ratio).toBeCloseTo(130 / 40);
+  });
+});
+
+describe("beta", () => {
+  it("is the slope of the market's returns on the benchmark's", () => {
+    const bench = hourly(50, (i) => 100 * (1 + 0.01 * Math.sin(i)));
+    // Moving twice as far as the benchmark, hour by hour.
+    const closes = [100];
+    for (let i = 1; i < 50; i++) {
+      const b0 = Number(bench[i - 1]?.close);
+      const b1 = Number(bench[i]?.close);
+      closes.push((closes[i - 1] ?? 100) * Math.exp(2 * Math.log(b1 / b0)));
+    }
+    const market = hourly(50, (i) => closes[i] ?? 100);
+    const b = betaTo(market, bench, 48);
+    expect(b?.beta).toBeCloseTo(2, 5);
+    expect(b?.correlation).toBeCloseTo(1, 5);
+  });
+});
+
+describe("breadth", () => {
+  it("averages toward the values", () => {
+    expect(emaOf([10, 10, 10], 3)).toEqual([10, 10, 10]);
+    const rising = emaOf([0, 10], 3);
+    expect(rising[1]).toBeCloseTo(5);
+  });
+
+  it("counts the markets up, above their averages and at new extremes", () => {
+    const rising = hourly(100, (i) => 100 + i);
+    const falling = hourly(100, (i) => 200 - i);
+    const now = breadthNow([rising, falling, hourly(10, () => 1)]);
+    expect(now.total).toBe(2);
+    expect(now.up24h).toBe(0.5);
+    expect(now.aboveEma20).toBe(0.5);
+    expect(now.newHighs).toBe(1);
+    expect(now.newLows).toBe(1);
+  });
+
+  it("follows breadth hour by hour", () => {
+    const points = breadthSeries([hourly(60, (i) => 100 + i), hourly(60, (i) => 200 - i)]);
+    expect(points.length).toBe(36);
+    expect(points.every((p) => p.aboveEma === 0.5 && p.up24h === 0.5)).toBe(true);
+  });
+});
+
+describe("funding history", () => {
+  it("sums payments into 8-hour buckets", () => {
+    const start = MONDAY;
+    const hourly = Array.from({ length: 8 }, (_, i) => ({ time: start + i * H, rate: 0.0001 }));
+    const buckets = fundingBuckets(
+      [...hourly, { time: start + 9 * H, rate: -0.0002 }],
+      start,
+      8 * H,
+      3,
+    );
+    expect(buckets[0]).toBeCloseTo(0.0008);
+    expect(buckets[1]).toBeCloseTo(-0.0002);
+    expect(buckets[2]).toBeUndefined();
+  });
+});
+
+describe("order flow", () => {
+  const trade = (id: number, time: number, side: "buy" | "sell", size: number, price = 100) =>
+    ({ id: String(id), time, side, size, price }) as FlowTrade;
+
+  it("runs the delta across buckets", () => {
+    const points = cvdSeries(
+      [trade(2, 5_000, "sell", 1), trade(1, 1_000, "buy", 3), trade(3, 12_000, "buy", 2, 101)],
+      10_000,
+    );
+    expect(points.map((p) => p.cvd)).toEqual([2, 4]);
+    expect(points[0]).toMatchObject({ buy: 3, sell: 1 });
+    expect(points[1]?.price).toBe(101);
+  });
+
+  it("keeps the biggest trades by value", () => {
+    const trades = Array.from({ length: 100 }, (_, i) => trade(i, i, "buy", i + 1));
+    const big = largeTrades(trades, 0.05);
+    expect(big.trades.length).toBe(5);
+    expect(big.threshold).toBe(96 * 100);
   });
 });
