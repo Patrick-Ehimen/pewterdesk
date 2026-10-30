@@ -213,6 +213,7 @@ export function ViewSettings({ view, prefs, onChange }: ViewSettingsProps) {
       <>
         {toggle("chart", "levels", "view.chart.levels")}
         {toggle("chart", "fills", "view.chart.fills")}
+        {toggle("chart", "news", "chart.news")}
       </>
     ),
     overview: () => (

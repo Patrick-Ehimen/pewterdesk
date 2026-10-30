@@ -80,7 +80,7 @@ describe("multi-chart state", () => {
         venue: "bybit",
         market: "C",
         interval: "1h",
-        settings: { levels: false },
+        settings: { levels: false, news: true },
         chart: "{}",
       },
       {
@@ -171,7 +171,7 @@ describe("multi-chart state", () => {
     const styled = withCell(state, 1, { chart: '{"style":"line"}' });
     expect(styled.cells[1]?.chart).toBe('{"style":"line"}');
     // A chart's settings are its own too.
-    const bare = withCell(state, 1, { settings: { levels: false } });
+    const bare = withCell(state, 1, { settings: { levels: false, news: true } });
     expect(bare.cells[1]?.settings.levels).toBe(false);
     expect(bare.cells[0]?.settings).toEqual(DEFAULT_CELL_SETTINGS);
     expect(styled.cells[0]).toEqual(state.cells[0]);

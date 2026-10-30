@@ -316,6 +316,7 @@ export {
   liqByMarket,
   mergeLiquidations,
 } from "./lib/liquidations";
+export { LOGO_BARS, LOGO_DESK, LOGO_PEWTER, logoImage } from "./lib/logo";
 export * from "./lib/mapStats";
 export { RSI_CANDLES, RSI_FRAMES, type RsiFrame, rsiNowAndBefore } from "./lib/marketMaps";
 export type {
@@ -326,7 +327,7 @@ export type {
   BarSource,
   ChartAnalysis,
 } from "./lib/openAlgoChart";
-export { analysisDrawings } from "./lib/openAlgoChart";
+export { analysisDrawings, type ChartNewsEvent } from "./lib/openAlgoChart";
 export {
   closeOrder,
   intervalFor,

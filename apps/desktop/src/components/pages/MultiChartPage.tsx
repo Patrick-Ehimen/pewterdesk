@@ -35,7 +35,7 @@ import {
   LuTrash2,
 } from "react-icons/lu";
 import { appClient } from "../../api/appClient";
-import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
+import { useChartNews, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { venueBarSource } from "../../lib/barSource";
 import { exportChartImage } from "../../lib/chartPrefs";
 import { isTyping, plainKey } from "../../lib/hotkeys";
@@ -260,6 +260,7 @@ export function Cell({
   const market = markets.find((m) => m.id === cell.market);
   // The chart asks for its own candles, as it is scrolled back.
   const source = useMemo(() => venueBarSource(cell.venue), [cell.venue]);
+  const news = useChartNews();
   const change =
     summary && Number(summary.prevDayPrice) > 0
       ? (Number(summary.markPrice) / Number(summary.prevDayPrice) - 1) * 100
@@ -415,6 +416,7 @@ export function Cell({
             }
             position={settings.levels ? position : undefined}
             orders={settings.levels ? orders : undefined}
+            news={settings.news ? news : undefined}
             onMoveExit={moveExit}
             loading={
               <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
@@ -431,6 +433,11 @@ export function Cell({
                   label={t("view.chart.levels")}
                   checked={settings.levels}
                   onChange={(levels) => onSettings({ ...settings, levels })}
+                />
+                <SettingSwitch
+                  label={t("chart.news")}
+                  checked={settings.news}
+                  onChange={(on) => onSettings({ ...settings, news: on })}
                 />
               </SettingsPopover>
             }

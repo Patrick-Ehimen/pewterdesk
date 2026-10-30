@@ -30,10 +30,13 @@ export const MAX_CELLS = 9;
 export interface CellSettings {
   /** The position's and open orders' lines. */
   levels: boolean;
+  /** Economic releases' badges. */
+  news: boolean;
 }
 
 export const DEFAULT_CELL_SETTINGS: CellSettings = {
   levels: true,
+  news: true,
 };
 
 /** One chart: everything about it is its own. */
@@ -109,7 +112,7 @@ function settingsFrom(raw: unknown): CellSettings {
   const s = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>) : {};
   const flag = (key: keyof CellSettings) =>
     typeof s[key] === "boolean" ? s[key] : DEFAULT_CELL_SETTINGS[key];
-  return { levels: flag("levels") };
+  return { levels: flag("levels"), news: flag("news") };
 }
 
 /**

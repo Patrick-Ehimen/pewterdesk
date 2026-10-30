@@ -356,7 +356,7 @@ export const messages: Messages = {
   "calendar.previousShort": "이",
   "calendar.unavailable": "지금은 경제 캘린더에 연결할 수 없습니다. 자동으로 다시 시도합니다.",
   "calendar.empty": "이 중요도로는 이번 주 남은 일정이 없습니다.",
-  "calendar.source": "Forex Factory · 이번 주 · 내 시간대",
+  "calendar.source": "이번 주 · 내 시간대",
   "cli.welcome": '명령을 입력하거나 "help"로 목록을 확인하세요.',
   "cli.placeholder": "buy 0.01 btc · close eth · help",
   "cli.prompt": "명령",
@@ -598,6 +598,9 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "세션 볼륨 프로파일",
   "chart.type.tpo": "TPO (타임 프라이스 오퍼튜니티)",
   "chart.replay": "바 리플레이",
+  "chart.news": "경제 뉴스",
+  "chart.newsClose": "닫기",
+  "chart.newsCount": "발표 {count}건",
   "replay.title": "바 리플레이",
   "replay.pick": "리플레이를 시작할 바를 클릭하세요",
   "replay.cancel": "취소",
@@ -2382,7 +2385,7 @@ export const messages: Messages = {
   "maphelp.rsiBands.read":
     "두 지표가 일치하면 하나만 있을 때보다 과열된 움직임이 더 두드러지며, RSI가 가장 극단적인 마켓이 먼저 나옵니다. 이는 과열을 나타낼 뿐 반전을 뜻하지 않습니다. 강한 추세에서는 마켓이 밴드에서 오랫동안 과매수 상태로 있을 수 있으니, 움직임이 멈추는 것을 확인한 뒤 반전으로 판단하세요.",
   "maphelp.rsiBands.caveats":
-    "거래가 많은 150개 마켓. 4시간 RSI는 약 7일치 봉으로 계산하므로 RSI 히트맵과 약간 다를 수 있습니다. 기록이 부족한 마켓은 확인하지 않습니다.",
+    "거래가 많은 300개 마켓. 4시간 RSI는 약 7일치 봉으로 계산하므로 RSI 히트맵과 약간 다를 수 있습니다. 기록이 부족한 마켓은 확인하지 않습니다.",
   "maps.bands": "볼린저 밴드",
   "mapx.bands.title": "볼린저 밴드와 가격",
   "mapx.bands.frame": "시간 프레임",
@@ -2404,7 +2407,7 @@ export const messages: Messages = {
   "maphelp.bands.read":
     "상단 위는 과열일 수 있는 강한 움직임이고, 하단 아래는 하락 방향의 같은 움직임입니다. 강한 추세에서는 가격이 밴드를 타고 갈 수 있어 이것만으로는 반전 신호가 아닙니다. 스퀴즈와 비교해 보세요. 좁은 밴드에서 벗어나면 움직임이 시작되는 경우가 많습니다.",
   "maphelp.bands.caveats":
-    "거래가 많은 150개 마켓. 중간에 있는 마켓은 개수만 셉니다. 4시간 밴드는 약 3일의 기록이 필요해 신규 상장 마켓은 나오지 않을 수 있습니다.",
+    "거래가 많은 300개 마켓. 중간에 있는 마켓은 개수만 셉니다. 4시간 밴드는 약 3일의 기록이 필요해 신규 상장 마켓은 나오지 않을 수 있습니다.",
   "maps.group.volume": "거래량",
   "maps.matrix": "모멘텀 매트릭스",
   "maps.squeeze": "스퀴즈",
@@ -2450,7 +2453,7 @@ export const messages: Messages = {
   "mapx.rotationVol.week": "주간 비중",
   "mapx.rotationVol.change": "주간 대비",
   "mapx.rotationVol.note":
-    "크기는 거래량 상위 150개 마켓 중 최근 하루 비중입니다. 주간 비중보다 크면 주황, 작으면 파랑입니다.",
+    "크기는 거래량 상위 300개 마켓 중 최근 하루 비중입니다. 주간 비중보다 크면 주황, 작으면 파랑입니다.",
   "mapx.matrix.title": "기간별 모멘텀",
   "mapx.matrix.side": "방향",
   "mapx.matrix.side.up": "가장 강함",
@@ -2486,7 +2489,7 @@ export const messages: Messages = {
     "모든 체결이 아니라 1시간 캔들로 만들어 실제 틱 프로파일보다 거칠고, 한 거래소의 거래량만 다룹니다.",
   "maphelp.moneyFlow.what": "마켓별로 돈이 들어오고 나간 곳.",
   "maphelp.moneyFlow.how":
-    "기간 동안 상승으로 마감한 시간의 거래대금에서 하락으로 마감한 시간의 거래대금을 뺀 값과, 그 값이 전체 거래대금에서 차지하는 비율. 거래가 많은 150개 마켓.",
+    "기간 동안 상승으로 마감한 시간의 거래대금에서 하락으로 마감한 시간의 거래대금을 뺀 값과, 그 값이 전체 거래대금에서 차지하는 비율. 거래가 많은 300개 마켓.",
   "maphelp.moneyFlow.read":
     "가격이 제자리인데 순매수가 강하면 조용한 매집일 수 있고, 가격이 오르는데 순매도면 분산일 수 있습니다.",
   "maphelp.moneyFlow.caveats":
@@ -2500,14 +2503,14 @@ export const messages: Messages = {
     "다이버전스는 오래 지속되고 반전 없이 해소되는 경우가 많습니다. 신호가 아니라 확인할 거리로 보세요.",
   "maphelp.volRotation.what": "거래소의 거래를 평소보다 많이 끌어들이는 마켓.",
   "maphelp.volRotation.how":
-    "거래량 상위 150개 마켓에서 최근 24시간 거래량 비중을 일주일 전체 비중과 비교합니다. 타일 크기는 당일 비중, 색은 그 차이입니다.",
+    "거래량 상위 300개 마켓에서 최근 24시간 거래량 비중을 일주일 전체 비중과 비교합니다. 타일 크기는 당일 비중, 색은 그 차이입니다.",
   "maphelp.volRotation.read":
     "주황 타일은 관심이 옮겨가는 곳으로, 큰 움직임 전이나 도중에 자주 나타납니다. 파랑은 소외되는 마켓입니다.",
   "maphelp.volRotation.caveats":
     "비중이므로 거대한 마켓 하나가 급증하면 다른 마켓이 조용해 보입니다. 이 거래소만 다룹니다.",
   "maphelp.matrix.what": "각 마켓의 네 기간 모멘텀을 한 그리드에.",
   "maphelp.matrix.how":
-    "거래가 많은 150개 마켓의 1시간, 4시간, 24시간, 7일 수익률. 상승 기간 수에서 하락 기간 수를 뺀 점수, 그다음 움직임의 세기로 정렬합니다.",
+    "거래가 많은 300개 마켓의 1시간, 4시간, 24시간, 7일 수익률. 상승 기간 수에서 하락 기간 수를 뺀 점수, 그다음 움직임의 세기로 정렬합니다.",
   "maphelp.matrix.read":
     "모두 초록인 마켓은 단기와 장기 모멘텀이 일치합니다. 7일은 초록인데 1시간이 빨강이면 상승 추세의 눌림일 수 있습니다.",
   "maphelp.matrix.caveats":
@@ -2545,7 +2548,7 @@ export const messages: Messages = {
   "mapx.rs.behindTitle": "BTC보다 약함",
   "mapx.rs.noBenchmark": "기준인 BTC의 기록을 기다리는 중",
   "mapx.rs.note":
-    "기간 동안 각 마켓의 수익률에서 BTC 수익률을 뺀 값(1시간 캔들 기준). 거래가 많은 150개 마켓.",
+    "기간 동안 각 마켓의 수익률에서 BTC 수익률을 뺀 값(1시간 캔들 기준). 거래가 많은 300개 마켓.",
   "mapx.rotation.title": "BTC 대비 로테이션",
   "mapx.rotation.lens": "기간",
   "mapx.rotation.lens.week": "7일 / 24시간",
@@ -2643,7 +2646,7 @@ export const messages: Messages = {
     "이 화면이 열려 있는 동안 {since}부터 금액 기준 가장 큰 체결: 시간과 가격 위의 버블(크기는 금액), 초록은 매수자가, 빨강은 매도자가 유동성을 가져간 경우.",
   "maphelp.rs.what": "한 기간 동안 BTC를 이긴 마켓과 뒤처진 마켓.",
   "maphelp.rs.how":
-    "기간(1시간~7일) 동안 각 마켓의 수익률에서 같은 시간 BTC 수익률을 뺀 값. 1시간 캔들 기준, 대상 중 거래가 많은 150개 마켓.",
+    "기간(1시간~7일) 동안 각 마켓의 수익률에서 같은 시간 BTC 수익률을 뺀 값. 1시간 캔들 기준, 대상 중 거래가 많은 300개 마켓.",
   "maphelp.rs.read":
     "BTC가 횡보하거나 떨어질 때 BTC를 앞서는 코인에는 자체 매수세가 있습니다. 강한 시장에서는 선도 코인이 계속 앞서는 경우가 많고, 뒤처진 코인은 계속 뒤처지는 경우가 많습니다.",
   "maphelp.rs.caveats":
@@ -2664,7 +2667,7 @@ export const messages: Messages = {
     "범위 끝을 시험하는 움직임 대부분은 실패합니다. 돌파를 믿기 전에 거래량(거래량 급증)과 함께 보세요.",
   "maphelp.spikes.what": "평소보다 훨씬 많이 거래되는 마켓.",
   "maphelp.spikes.how":
-    "최근 완료된 1시간(또는 4시간)의 거래량을 이전 일주일의 중앙값 1시간과 비교한 배수, 같은 시간의 가격 변화 포함. 대상 중 거래가 많은 150개 마켓.",
+    "최근 완료된 1시간(또는 4시간)의 거래량을 이전 일주일의 중앙값 1시간과 비교한 배수, 같은 시간의 가격 변화 포함. 대상 중 거래가 많은 300개 마켓.",
   "maphelp.spikes.read":
     "급증은 뉴스, 상장, 연쇄 청산 같은 큰 움직임 전이나 도중에 자주 나타납니다. 가격 변화가 거의 없는 급증은 매수자와 매도자의 공방을 뜻할 수 있습니다.",
   "maphelp.spikes.caveats":

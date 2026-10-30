@@ -18,19 +18,27 @@ import {
   type PaletteItem,
   type PalettePreview,
   type PaletteSection,
+  TokenIcon,
   t,
   trendClass,
 } from "@pewterdesk/ui";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   LuArrowRight,
   LuBell,
+  LuChartCandlestick,
+  LuChartPie,
   LuClock,
+  LuLayoutDashboard,
   LuLayoutGrid,
+  LuMap,
+  LuNewspaper,
   LuPalette,
-  LuPanelTop,
   LuPictureInPicture2,
+  LuSettings,
   LuShield,
+  LuShieldCheck,
+  LuSparkles,
   LuStore,
   LuX,
 } from "react-icons/lu";
@@ -62,6 +70,22 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   ai: "nav.ai",
   settings: "settings.title",
 };
+
+const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = {
+  trade: { icon: <LuChartCandlestick size={17} />, tone: "brass" },
+  charts: { icon: <LuLayoutDashboard size={17} />, tone: "info" },
+  maps: { icon: <LuMap size={17} />, tone: "warning" },
+  portfolio: { icon: <LuChartPie size={17} />, tone: "brass" },
+  rules: { icon: <LuShieldCheck size={17} />, tone: "info" },
+  venues: { icon: <LuStore size={17} />, tone: "warning" },
+  news: { icon: <LuNewspaper size={17} />, tone: "brass" },
+  ai: { icon: <LuSparkles size={17} />, tone: "info" },
+  settings: { icon: <LuSettings size={17} />, tone: "plain" },
+};
+
+/** `items` with their icons on `tone`, where they haven't one of their own. */
+const toned = (items: PaletteItem[], tone: PaletteItem["tone"]) =>
+  items.map((item) => ({ tone, ...item }));
 
 /** "2 hr. ago", in the app's language. */
 function ago(time: number, now: number): string {
@@ -210,7 +234,7 @@ export function CommandMenu({
       });
       actions.push({
         id,
-        icon: <LuArrowRight size={15} />,
+        icon: <LuArrowRight size={17} />,
         label: (
           <>
             {head} <span className="pd-cmd-mono">{how}</span>
@@ -242,7 +266,7 @@ export function CommandMenu({
       });
       actions.push({
         id: "order:scaled",
-        icon: <LuArrowRight size={15} />,
+        icon: <LuArrowRight size={17} />,
         label: (
           <>
             {head} <span className="pd-cmd-mono">{how}</span>
@@ -293,7 +317,7 @@ export function CommandMenu({
     });
     actions.push({
       id: "reduce",
-      icon: <LuArrowRight size={15} />,
+      icon: <LuArrowRight size={17} />,
       label: (
         <>
           {label} <span className="pd-cmd-mono">{how}</span>
@@ -320,7 +344,7 @@ export function CommandMenu({
     });
     actions.push({
       id: "protect",
-      icon: <LuShield size={15} />,
+      icon: <LuShield size={17} />,
       label,
       disabled: protect ? undefined : t("cmd.noTrading"),
       onRun: twice("protect", () =>
@@ -343,7 +367,7 @@ export function CommandMenu({
     });
     actions.push({
       id: "close",
-      icon: <LuX size={15} />,
+      icon: <LuX size={17} />,
       label,
       disabled: noTrading,
       onRun: twice("close", () =>
@@ -357,7 +381,7 @@ export function CommandMenu({
     describe("cancel", { badge: t("cmd.cancelBadge"), tone: "plain", title: label });
     actions.push({
       id: "cancel",
-      icon: <LuX size={15} />,
+      icon: <LuX size={17} />,
       label,
       disabled: cancel ? undefined : t("cmd.noTrading"),
       onRun: twice("cancel", () =>
@@ -376,7 +400,7 @@ export function CommandMenu({
     });
     actions.push({
       id: "algo",
-      icon: <LuArrowRight size={15} />,
+      icon: <LuArrowRight size={17} />,
       label,
       disabled: spec && startAlgo ? undefined : t("cmd.noAlgos"),
       onRun: twice("algo", () => (spec && startAlgo ? startAlgo(spec) : Promise.resolve())),
@@ -390,7 +414,7 @@ export function CommandMenu({
     });
     actions.push({
       id: "halt",
-      icon: <LuX size={15} />,
+      icon: <LuX size={17} />,
       label: t("cmd.halt"),
       disabled: halt ? undefined : t("cmd.noAlgos"),
       onRun: twice("halt", () => (halt ? halt() : Promise.resolve())),
@@ -407,16 +431,20 @@ export function CommandMenu({
         : undefined;
     return {
       id: `market:${m.id}`,
-      icon: <span className="pd-cmd-letter">{m.base.slice(0, 1)}</span>,
-      label: (
-        <>
-          {m.symbol} {s && <span className="pd-cmd-mono">{formatNumber(s.markPrice)}</span>}{" "}
-          {change !== undefined && (
-            <span className={`pd-cmd-mono ${trendClass(change)}`}>{formatSigned(change)}%</span>
-          )}
-        </>
-      ),
-      meta: t("cmd.go"),
+      icon: <TokenIcon market={m} size={30} />,
+      label: m.symbol,
+      detail: s && formatNumber(s.markPrice),
+      meta:
+        change === undefined ? (
+          t("cmd.go")
+        ) : (
+          <span
+            className={`pd-cmd-change ${trendClass(change)}`}
+            data-trend={change < 0 ? "down" : "up"}
+          >
+            {formatSigned(change)}%
+          </span>
+        ),
       onRun: () => {
         onMarket(m.id);
         return undefined;
@@ -427,7 +455,7 @@ export function CommandMenu({
   const matches = (label: string) => !intent && (!text || label.toLowerCase().includes(text));
   const pageRows: PaletteItem[] = PAGES.filter((p) => matches(t(PAGE_LABEL[p]))).map((p) => ({
     id: `page:${p}`,
-    icon: <LuPanelTop size={15} />,
+    ...PAGE_ICON[p],
     label: t(PAGE_LABEL[p]),
     meta: t("cmd.go"),
     onRun: () => {
@@ -436,16 +464,16 @@ export function CommandMenu({
     },
   }));
   const appRows: PaletteItem[] = [
-    { id: "app:alerts", icon: <LuBell size={15} />, label: t("alerts.title"), run: onAlerts },
+    { id: "app:alerts", icon: <LuBell size={17} />, label: t("alerts.title"), run: onAlerts },
     {
       id: "app:float",
-      icon: <LuPictureInPicture2 size={15} />,
+      icon: <LuPictureInPicture2 size={17} />,
       label: t("float.open"),
       run: onFloat,
     },
     {
       id: "app:layout",
-      icon: <LuLayoutGrid size={15} />,
+      icon: <LuLayoutGrid size={17} />,
       label: t("layout.editor"),
       run: onLayout,
     },
@@ -470,7 +498,7 @@ export function CommandMenu({
     .filter((th) => named("theme", th.label))
     .map((th) => ({
       id: `theme:${th.value}`,
-      icon: <LuPalette size={15} />,
+      icon: <LuPalette size={17} />,
       label: th.label,
       meta: t("menu.theme"),
       onRun: () => {
@@ -482,7 +510,7 @@ export function CommandMenu({
     .filter((v) => named("venue", v.label))
     .map((v) => ({
       id: `venue:${v.id}`,
-      icon: <LuStore size={15} />,
+      icon: <LuStore size={17} />,
       label: v.label,
       meta: t("venues.switch"),
       onRun: () => {
@@ -494,7 +522,7 @@ export function CommandMenu({
     ? []
     : recent.map((r) => ({
         id: `recent:${r.text}`,
-        icon: <LuClock size={15} />,
+        icon: <LuClock size={17} />,
         label: <span className="pd-cmd-mono">{r.text}</span>,
         meta: ago(r.time, now),
         // Back into the line, to look over before it's run again.
@@ -505,13 +533,13 @@ export function CommandMenu({
       }));
 
   const sections: PaletteSection[] = [
-    { id: "actions", title: t("cmd.actions"), items: actions },
+    { id: "actions", title: t("cmd.actions"), items: toned(actions, "brass") },
     { id: "markets", title: t("panel.markets"), items: marketRows },
-    { id: "recent", title: t("cmd.recent"), items: recentRows },
+    { id: "recent", title: t("cmd.recent"), items: toned(recentRows, "plain") },
     { id: "pages", title: t("nav.menu"), items: pageRows },
-    { id: "app", title: t("cmd.app"), items: appRows },
-    { id: "venues", title: t("nav.venues"), items: venueRows },
-    { id: "themes", title: t("menu.theme"), items: themeRows },
+    { id: "app", title: t("cmd.app"), items: toned(appRows, "info") },
+    { id: "venues", title: t("nav.venues"), items: toned(venueRows, "warning") },
+    { id: "themes", title: t("menu.theme"), items: toned(themeRows, "brass") },
   ];
 
   return (

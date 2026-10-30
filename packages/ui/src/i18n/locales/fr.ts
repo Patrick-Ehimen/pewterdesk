@@ -364,7 +364,7 @@ export const messages: Messages = {
   "calendar.unavailable":
     "Le calendrier économique est injoignable pour l'instant. Nouvel essai automatique.",
   "calendar.empty": "Rien de prévu pour le reste de la semaine à ce niveau d'impact.",
-  "calendar.source": "Forex Factory · cette semaine · votre fuseau horaire",
+  "calendar.source": "Cette semaine · votre fuseau horaire",
   "cli.welcome": "Tapez une commande, ou « help » pour voir celles qui existent.",
   "cli.placeholder": "buy 0.01 btc · close eth · help",
   "cli.prompt": "Commande",
@@ -610,6 +610,9 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "Profil de volume par séance",
   "chart.type.tpo": "Time Price Opportunity (TPO)",
   "chart.replay": "Relecture des barres",
+  "chart.news": "Actualités économiques",
+  "chart.newsClose": "Fermer",
+  "chart.newsCount": "{count} publications",
   "replay.title": "Relecture des barres",
   "replay.pick": "Cliquez sur une barre pour rejouer à partir d'elle",
   "replay.cancel": "Annuler",
@@ -2453,7 +2456,7 @@ export const messages: Messages = {
   "maphelp.rsiBands.read":
     "Deux lectures concordantes rendent un mouvement tendu plus notable que l'une seule, et le RSI le plus extrême vient en premier. Cela indique une tension, pas un retournement : dans une forte tendance un marché peut rester suracheté sur sa bande longtemps, attendez donc que le mouvement cale avant d'y voir un retournement.",
   "maphelp.rsiBands.caveats":
-    "Les 150 marchés les plus actifs. Le RSI en 4 heures vient d'environ 7 jours de barres et peut donc différer légèrement de celui de la carte RSI. Les marchés sans historique suffisant ne sont pas vérifiés.",
+    "Les 300 marchés les plus actifs. Le RSI en 4 heures vient d'environ 7 jours de barres et peut donc différer légèrement de celui de la carte RSI. Les marchés sans historique suffisant ne sont pas vérifiés.",
   "maps.bands": "Bandes de Bollinger",
   "mapx.bands.title": "Prix face aux bandes de Bollinger",
   "mapx.bands.frame": "Unité de temps",
@@ -2475,7 +2478,7 @@ export const messages: Messages = {
   "maphelp.bands.read":
     "Au-dessus de la bande haute, c'est un mouvement fort qui peut être tendu ; sous la bande basse, de même à la baisse. Dans une forte tendance le prix peut longer une bande : ce n'est donc pas un signal de retournement à lui seul. À comparer avec Squeeze : une sortie de bandes serrées lance souvent un mouvement.",
   "maphelp.bands.caveats":
-    "Les 150 marchés les plus actifs. Ceux en milieu de bandes sont seulement comptés. Les bandes 4 heures demandent environ 3 jours d'historique : un nouveau listing peut ne pas apparaître.",
+    "Les 300 marchés les plus actifs. Ceux en milieu de bandes sont seulement comptés. Les bandes 4 heures demandent environ 3 jours d'historique : un nouveau listing peut ne pas apparaître.",
   "maps.group.volume": "Volume",
   "maps.matrix": "Matrice de momentum",
   "maps.squeeze": "Squeeze",
@@ -2521,7 +2524,7 @@ export const messages: Messages = {
   "mapx.rotationVol.week": "Part de celui de la semaine",
   "mapx.rotationVol.change": "Face à la semaine",
   "mapx.rotationVol.note":
-    "Taille selon la part de chaque marché dans le volume du dernier jour parmi les 150 plus actifs ; orange si elle dépasse sa part de la semaine, bleu sinon.",
+    "Taille selon la part de chaque marché dans le volume du dernier jour parmi les 300 plus actifs ; orange si elle dépasse sa part de la semaine, bleu sinon.",
   "mapx.matrix.title": "Momentum sur plusieurs périodes",
   "mapx.matrix.side": "Sens",
   "mapx.matrix.side.up": "Les plus forts",
@@ -2559,7 +2562,7 @@ export const messages: Messages = {
     "Construit à partir de bougies horaires, pas de chaque transaction : plus grossier qu'un vrai profil au tick, et limité au volume d'une plateforme.",
   "maphelp.moneyFlow.what": "Où l'argent est entré ou sorti, marché par marché.",
   "maphelp.moneyFlow.how":
-    "Sur la période, la valeur échangée les heures clôturées en hausse moins celle des heures en baisse, et ce solde en part de toute la valeur échangée. Les 150 marchés les plus actifs.",
+    "Sur la période, la valeur échangée les heures clôturées en hausse moins celle des heures en baisse, et ce solde en part de toute la valeur échangée. Les 300 marchés les plus actifs.",
   "maphelp.moneyFlow.read":
     "Un fort achat net avec un prix stable peut être une accumulation discrète ; une vente nette dans un prix qui monte peut être une distribution.",
   "maphelp.moneyFlow.caveats":
@@ -2574,14 +2577,14 @@ export const messages: Messages = {
   "maphelp.volRotation.what":
     "Les marchés qui attirent une part plus grande que d'habitude des échanges de la plateforme.",
   "maphelp.volRotation.how":
-    "La part de chaque marché dans le volume des 24 dernières heures face à sa part sur toute la semaine, parmi les 150 plus actifs. Les tuiles sont dimensionnées selon la part du jour et colorées selon l'écart.",
+    "La part de chaque marché dans le volume des 24 dernières heures face à sa part sur toute la semaine, parmi les 300 plus actifs. Les tuiles sont dimensionnées selon la part du jour et colorées selon l'écart.",
   "maphelp.volRotation.read":
     "Les tuiles orange montrent où l'attention se déplace, souvent avant ou pendant un gros mouvement. Les bleues sont délaissées.",
   "maphelp.volRotation.caveats":
     "C'est une part : un énorme marché qui bondit fait paraître les autres plus calmes. Cela ne couvre que cette plateforme.",
   "maphelp.matrix.what": "Le momentum de chaque marché sur quatre périodes, dans une seule grille.",
   "maphelp.matrix.how":
-    "Les rendements sur 1 heure, 4 heures, 24 heures et 7 jours des 150 marchés les plus actifs. Chacun est noté selon les périodes en hausse moins celles en baisse, puis selon la force des mouvements.",
+    "Les rendements sur 1 heure, 4 heures, 24 heures et 7 jours des 300 marchés les plus actifs. Chacun est noté selon les périodes en hausse moins celles en baisse, puis selon la force des mouvements.",
   "maphelp.matrix.read":
     "Un marché vert partout a un momentum aligné à court et long terme. Une heure rouge sous 7 jours verts peut être un repli dans une tendance haussière.",
   "maphelp.matrix.caveats":
@@ -2620,7 +2623,7 @@ export const messages: Messages = {
   "mapx.rs.behindTitle": "À la traîne du BTC",
   "mapx.rs.noBenchmark": "En attente de l'historique du BTC, la référence",
   "mapx.rs.note":
-    "Le rendement de chaque marché sur la période moins celui du BTC, d'après les bougies horaires. Les 150 marchés les plus actifs.",
+    "Le rendement de chaque marché sur la période moins celui du BTC, d'après les bougies horaires. Les 300 marchés les plus actifs.",
   "mapx.rotation.title": "Rotation face au BTC",
   "mapx.rotation.lens": "Périodes",
   "mapx.rotation.lens.week": "7J / 24H",
@@ -2720,7 +2723,7 @@ export const messages: Messages = {
   "maphelp.rs.what":
     "Les marchés qui battent le BTC sur une période, et ceux qui restent derrière.",
   "maphelp.rs.how":
-    "Le rendement de chaque marché sur la période (1 heure à 7 jours) moins celui du BTC sur les mêmes heures, d'après les bougies horaires, pour les 150 marchés les plus actifs retenus.",
+    "Le rendement de chaque marché sur la période (1 heure à 7 jours) moins celui du BTC sur les mêmes heures, d'après les bougies horaires, pour les 300 marchés les plus actifs retenus.",
   "maphelp.rs.read":
     "Une crypto qui devance le BTC alors qu'il stagne ou baisse a ses propres acheteurs. Les meneurs restent souvent devant dans un marché fort ; les retardataires restent souvent derrière.",
   "maphelp.rs.caveats":
@@ -2742,7 +2745,7 @@ export const messages: Messages = {
     "La plupart des tests d'un bord de range échouent. Associez-le au volume (Pics de volume) avant de croire à une cassure.",
   "maphelp.spikes.what": "Les marchés qui échangent bien plus que d'habitude.",
   "maphelp.spikes.how":
-    "Le volume de la dernière heure complète (ou des 4 dernières) face à l'heure médiane du marché sur la semaine précédente, en multiple, avec la variation du prix sur ces heures. Les 150 marchés les plus actifs retenus.",
+    "Le volume de la dernière heure complète (ou des 4 dernières) face à l'heure médiane du marché sur la semaine précédente, en multiple, avec la variation du prix sur ces heures. Les 300 marchés les plus actifs retenus.",
   "maphelp.spikes.read":
     "Un pic précède ou accompagne souvent un gros mouvement : une nouvelle, un listing, une cascade de liquidations. Un pic sans grand changement de prix peut signaler un bras de fer entre acheteurs et vendeurs.",
   "maphelp.spikes.caveats":

@@ -348,7 +348,7 @@ export const messages: Messages = {
   "calendar.previousShort": "前",
   "calendar.unavailable": "暂时无法获取经济日历，将自动重试。",
   "calendar.empty": "本周剩余时间没有此重要性的事件。",
-  "calendar.source": "Forex Factory · 本周 · 你的时区",
+  "calendar.source": "本周 · 你的时区",
   "cli.welcome": "输入命令，或输入“help”查看可用命令。",
   "cli.placeholder": "buy 0.01 btc · close eth · help",
   "cli.prompt": "命令",
@@ -589,6 +589,9 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "交易时段成交量分布",
   "chart.type.tpo": "TPO（时间价格机会）",
   "chart.replay": "K线回放",
+  "chart.news": "经济新闻",
+  "chart.newsClose": "关闭",
+  "chart.newsCount": "{count} 项数据",
   "replay.title": "K线回放",
   "replay.pick": "点击一根K线，从那里开始回放",
   "replay.cancel": "取消",
@@ -2308,7 +2311,7 @@ export const messages: Messages = {
   "maphelp.rsiBands.read":
     "两个指标一致比单一指标更能说明行情已被拉伸，RSI 最极端的排在最前。这表示拉伸，而不是反转：强趋势中市场可能长时间在轨道处保持超买，所以要等行情停滞后再视为反转。",
   "maphelp.rsiBands.caveats":
-    "最活跃的 150 个市场。4 小时 RSI 基于约 7 天的 K 线，可能与 RSI 热力图略有差异。历史不足的市场不会检查。",
+    "最活跃的 300 个市场。4 小时 RSI 基于约 7 天的 K 线，可能与 RSI 热力图略有差异。历史不足的市场不会检查。",
   "maps.bands": "布林带",
   "mapx.bands.title": "价格与布林带",
   "mapx.bands.frame": "时间周期",
@@ -2329,7 +2332,7 @@ export const messages: Messages = {
   "maphelp.bands.read":
     "高于上轨是强势行情，可能已过度拉伸；低于下轨则是向下的同样情况。强趋势中价格可能沿轨道运行，所以它本身不是反转信号。可与挤压视图对照：从收窄的布林带突破常常开启一轮行情。",
   "maphelp.bands.caveats":
-    "最活跃的 150 个市场。中间区域的市场只计数。4 小时布林带需要约 3 天的历史，因此新上市的市场可能不会出现。",
+    "最活跃的 300 个市场。中间区域的市场只计数。4 小时布林带需要约 3 天的历史，因此新上市的市场可能不会出现。",
   "maps.group.volume": "成交量",
   "maps.matrix": "动量矩阵",
   "maps.squeeze": "挤压",
@@ -2374,7 +2377,7 @@ export const messages: Messages = {
   "mapx.rotationVol.week": "一周占比",
   "mapx.rotationVol.change": "相对一周",
   "mapx.rotationVol.note":
-    "大小按每个市场在最活跃 150 个市场中最近一天的成交量占比；高于一周占比为橙色，低于为蓝色。",
+    "大小按每个市场在最活跃 300 个市场中最近一天的成交量占比；高于一周占比为橙色，低于为蓝色。",
   "mapx.matrix.title": "跨周期动量",
   "mapx.matrix.side": "方向",
   "mapx.matrix.side.up": "最强",
@@ -2409,7 +2412,7 @@ export const messages: Messages = {
     "基于小时 K 线而非逐笔成交，比真正的逐笔分布粗略，且只覆盖一个交易所的成交量。",
   "maphelp.moneyFlow.what": "资金逐个市场的流入和流出情况。",
   "maphelp.moneyFlow.how":
-    "该时段内收涨小时的成交额减去收跌小时的成交额，以及该净额占全部成交额的比例。最活跃的 150 个市场。",
+    "该时段内收涨小时的成交额减去收跌小时的成交额，以及该净额占全部成交额的比例。最活跃的 300 个市场。",
   "maphelp.moneyFlow.read": "价格持平而净买入强劲，可能是悄悄吸筹；价格上涨而净卖出，可能是派发。",
   "maphelp.moneyFlow.caveats":
     "这只是近似：上涨小时的成交量并非全是买入。要看单一市场真实的主动成交，请用 CVD。",
@@ -2422,14 +2425,14 @@ export const messages: Messages = {
     "背离可能持续很久，也常常不经反转就消失。把它当作需要核实的线索，而不是信号。",
   "maphelp.volRotation.what": "比平时吸引更多交易所成交的市场。",
   "maphelp.volRotation.how":
-    "在最活跃的 150 个市场中，比较每个市场最近 24 小时成交量占比与全周占比。方块大小为当日占比，颜色为差异。",
+    "在最活跃的 300 个市场中，比较每个市场最近 24 小时成交量占比与全周占比。方块大小为当日占比，颜色为差异。",
   "maphelp.volRotation.read":
     "橙色方块是注意力转移的方向，常出现在大行情之前或之中。蓝色的正在被冷落。",
   "maphelp.volRotation.caveats":
     "这是占比：一个巨大市场暴涨会让其他市场显得更冷清。只覆盖此交易所。",
   "maphelp.matrix.what": "在一个网格中查看每个市场四个周期的动量。",
   "maphelp.matrix.how":
-    "最活跃 150 个市场 1 小时、4 小时、24 小时和 7 天的涨跌幅。按上涨周期数减下跌周期数打分，再按涨跌强度排序。",
+    "最活跃 300 个市场 1 小时、4 小时、24 小时和 7 天的涨跌幅。按上涨周期数减下跌周期数打分，再按涨跌强度排序。",
   "maphelp.matrix.read":
     "全绿的市场长短期动量一致。7 天为绿而 1 小时为红，可能是上升趋势中的回调。",
   "maphelp.matrix.caveats": "动量一致也可能意味着行情已经走得过远。请结合 RSI 或价值区确认。",
@@ -2465,7 +2468,7 @@ export const messages: Messages = {
   "mapx.rs.behindTitle": "跑输 BTC",
   "mapx.rs.noBenchmark": "正在等待基准 BTC 的历史数据",
   "mapx.rs.note":
-    "每个市场在该时段的涨跌幅减去 BTC 的涨跌幅，基于小时 K 线。成交最活跃的 150 个市场。",
+    "每个市场在该时段的涨跌幅减去 BTC 的涨跌幅，基于小时 K 线。成交最活跃的 300 个市场。",
   "mapx.rotation.title": "相对 BTC 的轮动",
   "mapx.rotation.lens": "时段",
   "mapx.rotation.lens.week": "7天 / 24小时",
@@ -2561,7 +2564,7 @@ export const messages: Messages = {
     "在此视图打开期间，自 {since} 起按金额最大的成交：时间和价格上的气泡，按金额定大小，绿色为买方吃单，红色为卖方吃单。",
   "maphelp.rs.what": "在某个时段内跑赢 BTC 的市场，以及落后于 BTC 的市场。",
   "maphelp.rs.how":
-    "每个市场在该时段（1 小时到 7 天）的涨跌幅减去 BTC 在同一时间的涨跌幅，基于小时 K 线，覆盖所选范围内最活跃的 150 个市场。",
+    "每个市场在该时段（1 小时到 7 天）的涨跌幅减去 BTC 在同一时间的涨跌幅，基于小时 K 线，覆盖所选范围内最活跃的 300 个市场。",
   "maphelp.rs.read":
     "在 BTC 横盘或下跌时仍跑赢它的币有自己的买盘。强势行情中领涨者往往继续领涨，落后者往往继续落后。",
   "maphelp.rs.caveats":
@@ -2582,7 +2585,7 @@ export const messages: Messages = {
     "大多数对区间边缘的试探都会失败。在认定突破有效之前，请结合成交量（成交量异动）来看。",
   "maphelp.spikes.what": "成交远高于平时的市场。",
   "maphelp.spikes.how":
-    "最近一个完整小时（或 4 小时）的成交量与前一周该市场中位数小时相比的倍数，并附这段时间的价格变化。所选范围内最活跃的 150 个市场。",
+    "最近一个完整小时（或 4 小时）的成交量与前一周该市场中位数小时相比的倍数，并附这段时间的价格变化。所选范围内最活跃的 300 个市场。",
   "maphelp.spikes.read":
     "放量常出现在大行情之前或之中：新闻、上币、连环爆仓。价格变化不大的放量，可能意味着买卖双方在激烈争夺。",
   "maphelp.spikes.caveats":

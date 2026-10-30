@@ -440,3 +440,45 @@ export function analysisDrawings(
   }
   return out;
 }
+
+/** An economic release shown on a chart. Text only, as the calendar gives it. */
+export interface ChartNewsEvent {
+  id: string;
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+  title: string;
+  impact: "high" | "medium";
+  forecast?: string;
+  previous?: string;
+}
+
+export interface NewsSpot {
+  x: number;
+  /** The releases this badge stands for, in time order. */
+  ids: string[];
+}
+
+/**
+ * Where the badges go: one at each release's time, and one for any within
+ * `size` of it (the same time, or a chart zoomed out), at the first one's
+ * time. Badges that would touch are eased right, to stay `spacing` apart.
+ * `spots` run in time order.
+ */
+export function groupNews(
+  spots: readonly { id: string; x: number }[],
+  size: number,
+  spacing: number,
+): NewsSpot[] {
+  const out: NewsSpot[] = [];
+  let first = Number.NEGATIVE_INFINITY;
+  for (const { id, x } of spots) {
+    const last = out.at(-1);
+    if (last && x - first < size) {
+      last.ids.push(id);
+      continue;
+    }
+    first = x;
+    out.push({ x: last ? Math.max(x, last.x + spacing) : x, ids: [id] });
+  }
+  return out;
+}

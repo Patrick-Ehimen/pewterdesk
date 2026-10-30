@@ -1834,6 +1834,134 @@ input {
   place-items: center;
   background: var(--pd-chart-bg, var(--pd-surface));
 }
+/* Economic releases at their times; only the badges take the pointer */
+.pd-chart-news-badges {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pd-chart-news-badge {
+  position: absolute;
+  visibility: hidden;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--impact),
+    0 1px 4px rgb(0 0 0 / 0.45);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.1s ease;
+}
+.pd-chart-news-badge:hover,
+.pd-chart-news-badge:focus-visible {
+  z-index: 1;
+  transform: scale(1.25);
+}
+.pd-chart-news-badge[data-impact="high"] {
+  --impact: var(--pd-warning);
+}
+.pd-chart-news-badge[data-impact="medium"] {
+  --impact: var(--pd-brass);
+}
+.pd-chart-news-flag {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+/* How many releases one badge stands for */
+.pd-chart-news-badge[data-count]::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -6px;
+  left: calc(100% - 5px);
+  padding: 0 2px;
+  color: var(--pd-text);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 11px;
+  background: var(--pd-surface-raised);
+  border-radius: 3px;
+}
+
+/* What a news badge on the chart stands for */
+.pd-chart-news {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  width: min(280px, calc(100% - 16px));
+  color: var(--pd-pewter);
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.28);
+  overflow: hidden;
+}
+.pd-chart-news-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 6px 12px;
+  color: var(--pd-text);
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-chart-news-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.pd-chart-news-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--impact);
+}
+.pd-chart-news-item + .pd-chart-news-item {
+  border-top: 1px solid var(--pd-border);
+}
+.pd-chart-news-item[data-impact="high"] {
+  --impact: var(--pd-warning);
+}
+.pd-chart-news-item[data-impact="medium"] {
+  --impact: var(--pd-brass);
+}
+.pd-chart-news-impact {
+  color: var(--impact);
+  font-size: 11px;
+}
+.pd-chart-news-title {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.pd-chart-news-when {
+  font-size: 11px;
+  text-align: left;
+}
+.pd-chart-news-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 0;
+}
+.pd-chart-news-label {
+  font-size: 11px;
+}
+.pd-chart-news-figure {
+  margin: 0;
+  text-align: left;
+  color: var(--pd-text);
+}
 /* Bar replay's transport, over the chart's foot */
 .pd-replay {
   position: absolute;
@@ -7259,34 +7387,74 @@ button.pd-drawer-exit:hover {
   justify-content: center;
   align-items: flex-start;
   padding: 14vh 16px 16px;
-  background: color-mix(in srgb, var(--pd-bg) 55%, transparent);
+  background: color-mix(in srgb, var(--pd-bg) 68%, transparent);
+  backdrop-filter: blur(5px);
 }
+/* A rim of the theme's colours, and their glow behind it */
 .pd-cmd {
   display: flex;
   flex-direction: column;
-  width: min(640px, 100%);
-  max-height: min(560px, 76vh);
-  background: var(--pd-surface);
-  border: 1px solid var(--pd-border-strong);
-  border-radius: 10px;
-  box-shadow: 0 24px 60px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  width: min(680px, 100%);
+  max-height: min(640px, 80vh);
+  background:
+    linear-gradient(var(--pd-surface), var(--pd-surface)) padding-box,
+    linear-gradient(120deg, var(--pd-brass), var(--pd-warning) 45%, var(--pd-info)) border-box;
+  border: 1.5px solid transparent;
+  border-radius: 16px;
+  box-shadow:
+    0 24px 70px color-mix(in srgb, var(--pd-bg) 75%, transparent),
+    0 0 46px -8px color-mix(in srgb, var(--pd-brass) 42%, transparent),
+    0 0 70px -14px color-mix(in srgb, var(--pd-info) 34%, transparent);
   color: var(--pd-text);
   overflow: hidden;
+  animation: pd-cmd-in 0.16s ease-out;
+}
+@keyframes pd-cmd-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.985);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pd-cmd {
+    animation: none;
+  }
 }
 .pd-cmd-input {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
+  background:
+    radial-gradient(
+      90% 180% at 0% 0%,
+      color-mix(in srgb, var(--pd-brass) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      70% 180% at 100% 0%,
+      color-mix(in srgb, var(--pd-info) 13%, transparent),
+      transparent 70%
+    );
   border-bottom: 1px solid var(--pd-border);
-  color: var(--pd-brass-text);
+}
+.pd-cmd-search {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--pd-on-brass);
+  background: linear-gradient(135deg, var(--pd-brass-hover), var(--pd-warning));
+  border-radius: 10px;
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--pd-brass) 45%, transparent);
 }
 .pd-cmd-input input {
   flex: 1;
   min-width: 0;
-  padding: 9px 14px;
-  border: 1px solid var(--pd-border);
-  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 11px;
   background: var(--pd-bg);
   color: var(--pd-text);
   font: 16px var(--pd-font-mono);
@@ -7299,7 +7467,9 @@ button.pd-drawer-exit:hover {
 .pd-cmd-input input:focus-visible {
   outline: none;
   border-color: var(--pd-brass);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pd-brass) 22%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--pd-brass) 24%, transparent),
+    0 0 18px color-mix(in srgb, var(--pd-brass) 22%, transparent);
 }
 .pd-cmd-input input::placeholder {
   color: var(--pd-pewter);
@@ -7319,12 +7489,14 @@ button.pd-drawer-exit:hover {
   margin: 12px 14px 0;
   padding: 12px 14px;
   border: 1px solid var(--pd-border-strong);
-  border-radius: 8px;
+  border-radius: 10px;
 }
 .pd-cmd-preview[data-tone="buy"] {
+  background: var(--pd-buy-tint);
   border-color: var(--pd-buy);
 }
 .pd-cmd-preview[data-tone="sell"] {
+  background: var(--pd-sell-tint);
   border-color: var(--pd-sell);
 }
 .pd-cmd-preview[data-armed] {
@@ -7376,15 +7548,15 @@ button.pd-drawer-exit:hover {
 .pd-cmd-list {
   flex: 1;
   min-height: 0;
-  padding: 6px 8px 8px;
+  padding: 4px 10px 10px;
   overflow-y: auto;
 }
 .pd-cmd-list h3 {
   margin: 0;
   padding: 12px 8px 6px;
-  color: var(--pd-pewter);
+  color: var(--pd-brass-text);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -7393,10 +7565,9 @@ button.pd-drawer-exit:hover {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 8px;
+  padding: 7px 10px 7px 8px;
   border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 6px;
+  border-radius: 10px;
   background: none;
   color: var(--pd-text);
   font: inherit;
@@ -7404,29 +7575,82 @@ button.pd-drawer-exit:hover {
   cursor: pointer;
 }
 .pd-cmd-row[data-active] {
-  border-left-color: var(--pd-brass);
-  background: var(--pd-surface-raised);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--pd-brass) 17%, transparent),
+    var(--pd-surface-raised) 70%
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pd-brass) 38%, transparent);
 }
 .pd-cmd-row:disabled {
   color: var(--pd-pewter);
   cursor: default;
 }
 .pd-cmd-icon {
-  display: inline-flex;
+  display: grid;
   flex: none;
-  justify-content: center;
-  width: 18px;
-  color: var(--pd-pewter);
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  transition: transform 0.1s ease;
 }
-.pd-cmd-letter {
-  font: 12px var(--pd-font-mono);
+.pd-cmd-icon[data-tone] {
+  color: var(--tone);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--tone) 42%, transparent),
+    color-mix(in srgb, var(--tone) 16%, transparent)
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tone) 50%, transparent),
+    0 2px 10px color-mix(in srgb, var(--tone) 22%, transparent);
+}
+.pd-cmd-icon[data-tone="brass"] {
+  --tone: var(--pd-brass-text);
+}
+.pd-cmd-icon[data-tone="info"] {
+  --tone: var(--pd-info);
+}
+.pd-cmd-icon[data-tone="warning"] {
+  --tone: var(--pd-warning);
+}
+.pd-cmd-icon[data-tone="plain"] {
+  --tone: var(--pd-pewter);
+}
+.pd-cmd-row[data-active] .pd-cmd-icon {
+  transform: scale(1.07);
+}
+.pd-cmd-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 .pd-cmd-label {
-  flex: 1;
-  min-width: 0;
   overflow: hidden;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.pd-cmd-detail {
+  color: var(--pd-pewter);
+  font: 12px var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* A market's day, as a chip */
+.pd-cmd-change {
+  display: inline-block;
+  padding: 3px 8px;
+  font-weight: 600;
+  border-radius: 7px;
+}
+.pd-cmd-change[data-trend="up"] {
+  background: var(--pd-buy-tint);
+}
+.pd-cmd-change[data-trend="down"] {
+  background: var(--pd-sell-tint);
 }
 .pd-cmd-mono {
   font-family: var(--pd-font-mono);
@@ -7447,7 +7671,8 @@ button.pd-drawer-exit:hover {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 16px;
+  padding: 9px 16px;
+  background: var(--pd-bg);
   border-top: 1px solid var(--pd-border);
   color: var(--pd-pewter);
   font-size: 12px;
@@ -7463,7 +7688,18 @@ button.pd-drawer-exit:hover {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+}
+.pd-cmd-foot kbd {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 5px;
+  color: var(--pd-brass-text);
+  font: 11px var(--pd-font-mono);
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 5px;
 }
 
 /* Maps page: the smaller views (performance, volatility, funding, open

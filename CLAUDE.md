@@ -220,7 +220,8 @@ discover it on their own. The reasoning behind the rules is in
   on its publisher's own host, its query string dropped, filtered by
   `safe_url`. Adding a publisher is a security-relevant change.
 - `apps/desktop/src-tauri/src/econ_calendar.rs` - the week's economic
-  calendar, for the Calendar panel, from Forex Factory's public export. A
+  calendar, for the Calendar panel and the charts' news badges, from Forex
+  Factory's public export. A
   data source, not a venue: no key, nothing signed, one read-only GET to one
   fixed URL (`FEED`, on `nfs.faireconomy.media`; no redirects followed, a
   size cap), kept an hour. It reaches the UI as text only (every field
@@ -614,7 +615,15 @@ theme's candle colours, rather than in a pane of its own. A visible range
 volume profile (`vpvr`, `VisibleRangeProfile.ts`; the sum in
 `lib/volumeProfile.ts`) is a study of the app's own: no plots, its histogram
 drawn by a primitive the chart gives it and recomputed from the bars on
-screen. The library's top bar, status line,
+screen. USD releases of high and medium impact, up to a week ahead
+(`chartNews` in `lib/calendar.ts`; the calendar has no history, nothing past
+this week and no actual figures), show as buttons at their times along the
+foot of each chart's price pane, moved as it paints, those too close to
+part as one that counts them (`ChartNews.tsx`, `groupNews`); a click opens
+its card, a scrolling list, text only. The chart's settings popover turns
+them off (the Trade chart's view settings, each Multi-chart cell's settings).
+The chart's corner carries our logo in the theme's colours (`logoImage` in
+`lib/logo.ts`, the library's own words and link cleared: it opens nothing). The library's top bar, status line,
 symbol search, side panels and alerts are off, and its colours come from the
 theme's tokens. On the Trade page its layout is kept in this machine's
 browser storage; a multi-chart cell keeps its layout in the cell

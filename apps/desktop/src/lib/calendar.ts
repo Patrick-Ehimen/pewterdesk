@@ -1,3 +1,4 @@
+import type { ChartNewsEvent } from "@pewterdesk/ui";
 import type { CalendarEvent, CalendarImpact } from "../api/venueClient";
 
 // The Calendar panel's plain logic: which of the week's events to show,
@@ -52,6 +53,29 @@ export function nextMajor(
       (soonest, e) => (!soonest || e.time < soonest.time ? e : soonest),
       undefined,
     );
+}
+
+/** How far ahead the charts mark releases. */
+export const CHART_NEWS_AHEAD_MS = 7 * 24 * 3_600_000;
+
+/** What the charts mark: USD releases of high or medium impact, up to a week ahead. */
+export function chartNews(events: readonly CalendarEvent[], now: number): ChartNewsEvent[] {
+  return events.flatMap((e) =>
+    e.currency === "USD" &&
+    (e.impact === "high" || e.impact === "medium") &&
+    e.time <= now + CHART_NEWS_AHEAD_MS
+      ? [
+          {
+            id: `pd:news:${e.time}:${e.title}`,
+            time: e.time,
+            title: e.title,
+            impact: e.impact,
+            forecast: e.forecast ?? undefined,
+            previous: e.previous ?? undefined,
+          },
+        ]
+      : [],
+  );
 }
 
 export interface CalendarDay {

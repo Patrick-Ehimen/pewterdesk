@@ -31,6 +31,7 @@ import {
 } from "openalgo-charts/widget";
 import {
   type ReactNode,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -58,12 +59,14 @@ import { INTERVAL_MS } from "../../lib/chart";
 import { favoriteChartTypes, groupedChartTypes } from "../../lib/chartTypes";
 import { decimalsOf, formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import { ALL_INTERVALS, type ChartType } from "../../lib/indicators";
+import { logoImage } from "../../lib/logo";
 import {
   analysisDrawings,
   asInterval,
   type BarSource,
   barFeed,
   type ChartAnalysis,
+  type ChartNewsEvent,
   chartCode,
   keptLayout,
   levelLine,
@@ -81,6 +84,7 @@ import {
   tradeLevels,
 } from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
+import { ChartNewsBadges, ChartNewsCard, newsCardPlace } from "./ChartNews";
 import { type ChartReplay, newLiveGate, ReplayControls, useChartReplay } from "./ChartReplay";
 import {
   FavoriteStar,
@@ -809,6 +813,8 @@ interface OpenAlgoChartProps {
    * levels, as the chart's own drawings pinned to the candles. Read-only.
    */
   analysis?: ChartAnalysis;
+  /** Economic releases, as badges along the chart's foot; none without it. */
+  news?: readonly ChartNewsEvent[];
   /**
    * Sets the position's TP or SL; with it, the lines of those kept on the
    * position can be dragged. Resolves to the price set (on the tick), or
@@ -855,6 +861,7 @@ export function OpenAlgoChart({
   orders = NO_ORDERS,
   fills,
   analysis,
+  news,
   onMoveExit,
   compact = false,
   layout,
@@ -1299,6 +1306,66 @@ export function OpenAlgoChart({
     );
   }, [widget, fills, interval, loaded, themed]);
 
+  // Our logo in the chart's corner, in the theme's colours. The library's own
+  // words and link are its; the mark here is only a mark.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `themed` recolours it
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!widget || !host || widget.isDestroyed) return;
+    const { chart } = widget;
+    const put = () => {
+      const t = tokens(host);
+      chart.setBranding({
+        src: logoImage({ pewter: t.text, accent: t.brass, text: t.line }, compact),
+        position: "bottom-left",
+        height: compact ? 22 : 26,
+        margin: 10,
+        opacity: 0.8,
+        padding: 0,
+        background: "none",
+        borderColor: "none",
+        label: undefined,
+        href: undefined,
+      });
+    };
+    put();
+    return chart.on("state:restore:end", put);
+  }, [widget, themed, compact]);
+
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [newsCard, setNewsCard] = useState<{
+    ids: readonly string[];
+    place: ReturnType<typeof newsCardPlace>;
+  }>();
+  const closeNews = useCallback(() => setNewsCard(undefined), []);
+  useEffect(() => {
+    if (!widget || widget.isDestroyed) return;
+    const { chart } = widget;
+    const off = [
+      // It points at a badge: once the chart moves, that's somewhere else.
+      chart.on("pan", closeNews),
+      chart.on("zoom", closeNews),
+    ];
+    return () => {
+      for (const stop of off) stop();
+    };
+  }, [widget, closeNews]);
+  const pickNews = useCallback((ids: readonly string[], badge: HTMLElement) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const from = stage.getBoundingClientRect();
+    const at = badge.getBoundingClientRect();
+    const place = newsCardPlace(
+      at.left - from.left + at.width / 2,
+      at.top - from.top,
+      from.width,
+      from.height,
+    );
+    // The same badge again closes its card.
+    setNewsCard((open) => (open?.ids[0] === ids[0] ? undefined : { ids, place }));
+  }, []);
+  const opened = newsCard && news?.filter((e) => newsCard.ids.includes(e.id));
+
   return (
     <div className="pd-oachart">
       <Toolbar
@@ -1314,10 +1381,14 @@ export function OpenAlgoChart({
         compact={compact}
         tools={tools}
       />
-      <div className="pd-oachart-stage">
+      <div ref={stageRef} className="pd-oachart-stage">
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
         <ReplayControls replay={replay} />
+        {widget && news && <ChartNewsBadges widget={widget} news={news} onPick={pickNews} />}
+        {newsCard && opened && opened.length > 0 && (
+          <ChartNewsCard events={opened} place={newsCard.place} onClose={closeNews} />
+        )}
         {widget && (
           <Legend
             widget={widget}

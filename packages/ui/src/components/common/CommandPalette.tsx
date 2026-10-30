@@ -1,12 +1,16 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { LuChevronRight, LuCornerDownLeft } from "react-icons/lu";
+import { LuCornerDownLeft, LuSearch } from "react-icons/lu";
 import { t } from "../../i18n";
 
 export interface PaletteItem {
   id: string;
   icon?: ReactNode;
+  /** The icon's tile: any of the theme's own colours. None for a logo. */
+  tone?: "brass" | "info" | "warning" | "plain";
   label: ReactNode;
+  /** Under the label: a market's price. */
+  detail?: ReactNode;
   /** At the row's right edge: a price, "2h ago", what Enter does. */
   meta?: ReactNode;
   /** Why it can't be run; the row is shown but skipped. */
@@ -94,7 +98,9 @@ export function CommandPalette({
     <div className="pd-cmd-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="pd-cmd" role="dialog" aria-modal="true" aria-label={t("cmd.open")}>
         <div className="pd-cmd-input">
-          <LuChevronRight size={18} aria-hidden />
+          <span className="pd-cmd-search" aria-hidden>
+            <LuSearch size={17} />
+          </span>
           <input
             // biome-ignore lint/a11y/noAutofocus: it opens to be typed into
             autoFocus
@@ -155,10 +161,13 @@ export function CommandPalette({
                       onMouseMove={() => !item.disabled && setActiveId(item.id)}
                       onClick={() => run(item)}
                     >
-                      <span className="pd-cmd-icon" aria-hidden>
+                      <span className="pd-cmd-icon" data-tone={item.tone} aria-hidden>
                         {item.icon}
                       </span>
-                      <span className="pd-cmd-label">{item.label}</span>
+                      <span className="pd-cmd-text">
+                        <span className="pd-cmd-label">{item.label}</span>
+                        {item.detail && <span className="pd-cmd-detail">{item.detail}</span>}
+                      </span>
                       <span className="pd-cmd-meta">{item.disabled ?? item.meta}</span>
                     </button>
                   ))}
@@ -170,7 +179,11 @@ export function CommandPalette({
         <footer className="pd-cmd-foot">
           <span>{tips}</span>
           <span>
-            ↑↓ {t("cmd.move")} · <LuCornerDownLeft size={12} aria-hidden /> {t("cmd.run")}
+            <kbd>↑↓</kbd> {t("cmd.move")}
+            <kbd>
+              <LuCornerDownLeft size={11} aria-hidden />
+            </kbd>{" "}
+            {t("cmd.run")}
           </span>
         </footer>
       </div>

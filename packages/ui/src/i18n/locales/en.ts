@@ -368,7 +368,7 @@ export const en = {
   "calendar.unavailable":
     "The economic calendar can't be reached right now. It's tried again by itself.",
   "calendar.empty": "Nothing scheduled for the rest of this week at this impact.",
-  "calendar.source": "Forex Factory · this week · your time zone",
+  "calendar.source": "This week · your time zone",
   "cli.welcome": 'Type a command, or "help" for what there is.',
   "cli.placeholder": "buy 0.01 btc · close eth · help",
   "cli.prompt": "Command",
@@ -612,6 +612,9 @@ export const en = {
   "chart.type.sessionProfile": "Session volume profile",
   "chart.type.tpo": "Time price opportunity",
   "chart.replay": "Bar replay",
+  "chart.news": "Economic news",
+  "chart.newsClose": "Close",
+  "chart.newsCount": "{count} releases",
   "replay.title": "Bar replay",
   "replay.pick": "Click a bar to replay from it",
   "replay.cancel": "Cancel",
@@ -2361,7 +2364,7 @@ export const en = {
   "maphelp.rsiBands.read":
     "Two readings agreeing make a stretched move more notable than either alone, and the most extreme RSI comes first. It marks stretch, not a turn: in a strong trend a market can stay overbought at its band for a long time, so look for the move to stall before reading it as a reversal.",
   "maphelp.rsiBands.caveats":
-    "The busiest 150 markets. RSI on the 4-hour timeframe comes from about 7 days of bars, so it can differ slightly from the RSI heatmap's. Markets without enough history aren't checked.",
+    "The busiest 300 markets. RSI on the 4-hour timeframe comes from about 7 days of bars, so it can differ slightly from the RSI heatmap's. Markets without enough history aren't checked.",
   "maps.bands": "Bollinger Bands",
   "mapx.bands.title": "Price against Bollinger Bands",
   "mapx.bands.frame": "Timeframe",
@@ -2383,7 +2386,7 @@ export const en = {
   "maphelp.bands.read":
     "Above the upper band is a strong move that may be stretched; below the lower band the same downward. In a strong trend price can ride a band, so it isn't a reversal signal by itself. Compare with Squeeze: a break out of tight bands often starts a move.",
   "maphelp.bands.caveats":
-    "The busiest 150 markets. Mid-band markets are only counted. The 4-hour bands need about 3 days of history, so a new listing may not appear.",
+    "The busiest 300 markets. Mid-band markets are only counted. The 4-hour bands need about 3 days of history, so a new listing may not appear.",
   "maps.group.volume": "Volume",
   "maps.matrix": "Momentum matrix",
   "maps.squeeze": "Squeeze",
@@ -2429,7 +2432,7 @@ export const en = {
   "mapx.rotationVol.week": "Share of the week's",
   "mapx.rotationVol.change": "Against the week",
   "mapx.rotationVol.note":
-    "Sized by each market's share of the last day's volume among the busiest 150; orange where that's more than its share of the week, blue where less.",
+    "Sized by each market's share of the last day's volume among the busiest 300; orange where that's more than its share of the week, blue where less.",
   "mapx.matrix.title": "Momentum across timeframes",
   "mapx.matrix.side": "Direction",
   "mapx.matrix.side.up": "Strongest",
@@ -2466,7 +2469,7 @@ export const en = {
     "Built from hourly candles, not every trade, so it's coarser than a true tick profile, and it covers one venue's volume only.",
   "maphelp.moneyFlow.what": "Where money has been going in or coming out, market by market.",
   "maphelp.moneyFlow.how":
-    "Over the window, the value traded in hours that closed up less the value traded in hours that closed down, and that net as a share of all value traded. The busiest 150 markets.",
+    "Over the window, the value traded in hours that closed up less the value traded in hours that closed down, and that net as a share of all value traded. The busiest 300 markets.",
   "maphelp.moneyFlow.read":
     "Strong net buying with a flat price can be quiet accumulation; net selling into a rising price can be distribution.",
   "maphelp.moneyFlow.caveats":
@@ -2481,14 +2484,14 @@ export const en = {
   "maphelp.volRotation.what":
     "Which markets are drawing more of the venue's trading than they usually do.",
   "maphelp.volRotation.how":
-    "Each market's share of the last 24 hours' volume against its share of the whole week's, among the busiest 150. Tiles are sized by the day's share and coloured by the difference.",
+    "Each market's share of the last 24 hours' volume against its share of the whole week's, among the busiest 300. Tiles are sized by the day's share and coloured by the difference.",
   "maphelp.volRotation.read":
     "Orange tiles are where attention is moving to, often ahead of or during a big move. Blue ones are being left behind.",
   "maphelp.volRotation.caveats":
     "It's a share, so one huge market surging makes the others look quieter. It covers this venue only.",
   "maphelp.matrix.what": "Every market's momentum across four timeframes in one grid.",
   "maphelp.matrix.how":
-    "Returns over 1 hour, 4 hours, 24 hours and 7 days for the busiest 150 markets. Each is scored by windows up less windows down, then by how strong the moves are.",
+    "Returns over 1 hour, 4 hours, 24 hours and 7 days for the busiest 300 markets. Each is scored by windows up less windows down, then by how strong the moves are.",
   "maphelp.matrix.read":
     "A market green across the board has short and long-term momentum lined up. A red 1 hour under a green 7 days can be a pullback in an uptrend.",
   "maphelp.matrix.caveats":
@@ -2527,7 +2530,7 @@ export const en = {
   "mapx.rs.behindTitle": "Trailing BTC",
   "mapx.rs.noBenchmark": "Waiting for BTC's history, the benchmark",
   "mapx.rs.note":
-    "Each market's return over the window less BTC's, from hourly candles. The busiest 150 markets.",
+    "Each market's return over the window less BTC's, from hourly candles. The busiest 300 markets.",
   "mapx.rotation.title": "Rotation against BTC",
   "mapx.rotation.lens": "Windows",
   "mapx.rotation.lens.week": "7D / 24H",
@@ -2627,7 +2630,7 @@ export const en = {
   "maphelp.rs.what":
     "Which markets are beating BTC over a window, and which are falling behind it.",
   "maphelp.rs.how":
-    "Each market's return over the window (1 hour to 7 days) less BTC's over the same hours, from hourly candles, for the busiest 150 markets in scope.",
+    "Each market's return over the window (1 hour to 7 days) less BTC's over the same hours, from hourly candles, for the busiest 300 markets in scope.",
   "maphelp.rs.read":
     "A coin outrunning BTC while BTC is flat or down has its own buyers. Leaders tend to keep leading in a strong market; laggards often stay behind.",
   "maphelp.rs.caveats":
@@ -2649,7 +2652,7 @@ export const en = {
     "Most tests of a range edge fail. Pair it with volume (Volume spikes) before reading a break as real.",
   "maphelp.spikes.what": "Markets trading far more than they usually do.",
   "maphelp.spikes.how":
-    "The last whole hour's (or 4 hours') volume against the market's median hour over the week before, as a multiple, with the price's move over the same hours. The busiest 150 markets in scope.",
+    "The last whole hour's (or 4 hours') volume against the market's median hour over the week before, as a multiple, with the price's move over the same hours. The busiest 300 markets in scope.",
   "maphelp.spikes.read":
     "A spike often comes before or with a big move: news, a listing, a liquidation cascade. A spike with little price change can mean a fight between buyers and sellers.",
   "maphelp.spikes.caveats":

@@ -54,6 +54,7 @@ import {
 } from "../../api/venueClient";
 import { useAiChats } from "../../hooks/useAiChats";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
+import { useChartNews } from "../../hooks/useVenueFeeds";
 import {
   type AiChat,
   type ChatMessage,
@@ -1047,6 +1048,7 @@ function ChartView({
   onTrade,
 }: ChartViewProps) {
   const source = useMemo(() => venueBarSource(venue), [venue]);
+  const chartNews = useChartNews();
   const latest = useMemo(
     () => [...(chat?.messages ?? [])].reverse().find((m) => m.marks)?.marks,
     [chat],
@@ -1084,6 +1086,7 @@ function ChartView({
             interval={interval}
             onInterval={onInterval}
             analysis={analysis}
+            news={chartNews}
             loading={
               <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
                 <LoadingMark size={56} />

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { CalendarEvent } from "../src/api/venueClient";
 import {
   byDay,
+  CHART_NEWS_AHEAD_MS,
+  chartNews,
   clears,
   countdown,
   DEFAULT_VIEW,
@@ -75,5 +77,39 @@ describe("calendar", () => {
     expect(countdown(NOW + 3 * HOUR + 5 * 60_000, NOW)).toBe("3h 05m");
     expect(countdown(NOW + 50 * HOUR, NOW)).toBe("2d 2h");
     expect(countdown(NOW - HOUR, NOW)).toBe("0m");
+  });
+});
+
+describe("chartNews", () => {
+  it("keeps USD releases of high or medium impact, with their figures", () => {
+    const at = (title: string, impact: CalendarEvent["impact"], currency = "USD") => ({
+      ...event(title, NOW, impact),
+      currency,
+      forecast: "3.2%",
+    });
+    const shown = chartNews(
+      [
+        at("CPI", "high"),
+        at("Claims", "medium"),
+        at("Auction", "low"),
+        at("Bank holiday", "holiday"),
+        at("ECB", "high", "EUR"),
+      ],
+      NOW,
+    );
+    expect(shown.map((e) => e.title)).toEqual(["CPI", "Claims"]);
+    expect(shown[0]?.forecast).toBe("3.2%");
+  });
+
+  it("marks releases past and to come, up to a week ahead", () => {
+    const shown = chartNews(
+      [
+        event("Past", NOW - HOUR),
+        event("In a week", NOW + CHART_NEWS_AHEAD_MS),
+        event("Too far", NOW + CHART_NEWS_AHEAD_MS + 1),
+      ],
+      NOW,
+    );
+    expect(shown.map((e) => e.title)).toEqual(["Past", "In a week"]);
   });
 });

@@ -27,7 +27,12 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { LuFullscreen, LuMaximize2, LuMinimize2, LuShrink } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
-import { type Feed, useAccountFills, useFundingHistory } from "../../hooks/useVenueFeeds";
+import {
+  type Feed,
+  useAccountFills,
+  useChartNews,
+  useFundingHistory,
+} from "../../hooks/useVenueFeeds";
 import { venueBarSource } from "../../lib/barSource";
 import {
   type ChartPrefs,
@@ -164,6 +169,7 @@ export function MarketsPanel({
   const standardChart = tab === "chart" && chartKind === "standard";
   // The chart asks for its own candles, as it is scrolled back.
   const barSource = useMemo(() => venueBarSource(venue), [venue]);
+  const chartNews = useChartNews();
   const fundingChart = tab === "chart" && chartKind === "funding";
   // The account's trading in this market, over the candles.
   const fills = useAccountFills(
@@ -328,6 +334,7 @@ export function MarketsPanel({
                     position={views.chart.levels ? position : undefined}
                     orders={views.chart.levels ? orders : undefined}
                     fills={views.chart.fills ? marketFills : undefined}
+                    news={views.chart.news ? chartNews : undefined}
                     onMoveExit={views.chart.levels ? moveExit : undefined}
                     tools={filling ? panelTools : undefined}
                     loading={

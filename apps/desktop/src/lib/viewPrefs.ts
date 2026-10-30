@@ -27,6 +27,8 @@ export interface ViewPrefs {
     levels: boolean;
     /** Entry and exit marks from the fill history. */
     fills: boolean;
+    /** Economic releases' badges. */
+    news: boolean;
   };
   overview: { about: boolean; tags: boolean; links: boolean; socials: boolean };
   depth: DepthDisplay & { span: DepthSpan };
@@ -36,7 +38,7 @@ export interface ViewPrefs {
 export type ViewId = keyof ViewPrefs;
 
 export const DEFAULT_VIEW_PREFS: ViewPrefs = {
-  chart: { grid: true, logScale: false, countdown: true, levels: true, fills: true },
+  chart: { grid: true, logScale: false, countdown: true, levels: true, fills: true, news: true },
   overview: { about: true, tags: true, links: true, socials: true },
   depth: { ...DEFAULT_DEPTH_DISPLAY, span: "book" },
   screener: DEFAULT_SCREENER_DISPLAY,

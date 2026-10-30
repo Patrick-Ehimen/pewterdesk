@@ -16,7 +16,7 @@ import type {
   VenueId,
 } from "@pewterdesk/core";
 import { t } from "@pewterdesk/ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type Article,
   type CalendarEvent,
@@ -27,6 +27,7 @@ import {
   type StreamHandlers,
   venueClient,
 } from "../api/venueClient";
+import { chartNews } from "../lib/calendar";
 import { loadCandles, saveCandles } from "../lib/candleCache";
 import { mergeCandles, prependCandles } from "../lib/candles";
 import { showsDemoData } from "../lib/demoData";
@@ -502,6 +503,13 @@ const CALENDAR_REFRESH_MS = 15 * 60_000;
 /** This week's economic calendar, soonest first. */
 export function useEconomicCalendar(): Feed<CalendarEvent[]> {
   return usePolled<CalendarEvent[]>("calendar", () => calendarClient.events(), CALENDAR_REFRESH_MS);
+}
+
+/** The releases the charts mark, as the calendar has them. */
+export function useChartNews() {
+  const feed = useEconomicCalendar();
+  const events = feed.status === "live" ? feed.data : undefined;
+  return useMemo(() => events && chartNews(events, Date.now()), [events]);
 }
 
 /** A venue's latest announcements, newest first, while `enabled`. */

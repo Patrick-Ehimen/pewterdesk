@@ -427,7 +427,7 @@ export function BreakoutMap({
       <p className="pd-muted pd-mx-empty-line">{t("mapx.breakout.none")}</p>
     ) : (
       <ol className="pd-mx-bars pd-mx-range-rows">
-        {items.slice(0, 30).map((r) => (
+        {items.slice(0, LIST_MAX).map((r) => (
           <li key={r.market.id}>
             <button type="button" onClick={() => onTrade(r.market)}>
               <span className="pd-mx-name">

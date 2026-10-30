@@ -5,6 +5,7 @@ import {
   type BarSource,
   barFeed,
   chartCode,
+  groupNews,
   levelLine,
   MAX_BARS_PAGE,
   marketOfSymbol,
@@ -190,5 +191,33 @@ describe("outOfAutoscale", () => {
   it("leaves a line out of the price scale's fit", () => {
     const line = { autoscaleInfo: (): unknown => ({ min: 30, max: 30 }) };
     expect(outOfAutoscale(line).autoscaleInfo()).toBeNull();
+  });
+});
+
+describe("groupNews", () => {
+  const spot = (id: string, x: number) => ({ id, x });
+
+  it("leaves releases apart at their own times", () => {
+    expect(groupNews([spot("a", 10), spot("b", 40)], 20, 30)).toEqual([
+      { x: 10, ids: ["a"] },
+      { x: 40, ids: ["b"] },
+    ]);
+  });
+
+  it("makes one badge of releases too close to part, at the first one's time", () => {
+    expect(groupNews([spot("a", 10), spot("b", 10), spot("c", 25), spot("d", 60)], 20, 30)).toEqual(
+      [
+        { x: 10, ids: ["a", "b", "c"] },
+        { x: 60, ids: ["d"] },
+      ],
+    );
+  });
+
+  it("eases badges that would touch apart, without merging them", () => {
+    expect(groupNews([spot("a", 10), spot("b", 32), spot("c", 54)], 20, 30)).toEqual([
+      { x: 10, ids: ["a"] },
+      { x: 40, ids: ["b"] },
+      { x: 70, ids: ["c"] },
+    ]);
   });
 });

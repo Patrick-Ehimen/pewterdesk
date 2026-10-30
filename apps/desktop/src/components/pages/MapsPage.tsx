@@ -308,7 +308,7 @@ const HISTORY_VIEWS: readonly View[] = [
 /** Dots on the rotation and beta charts: the busiest markets. */
 const SCATTER_POINTS = 60;
 /** The rankings leave out the thinnest markets, whose moves and volume spikes are noise. */
-const RANKED_MARKETS = 150;
+const RANKED_MARKETS = 300;
 /** Dots on the open-interest map: the biggest by open interest. */
 const OI_POINTS = 60;
 

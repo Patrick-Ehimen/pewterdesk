@@ -360,7 +360,7 @@ export const messages: Messages = {
   "calendar.unavailable":
     "O calendário econômico não está acessível agora. Ele tenta de novo sozinho.",
   "calendar.empty": "Nada programado para o resto da semana com este impacto.",
-  "calendar.source": "Forex Factory · esta semana · seu fuso horário",
+  "calendar.source": "Esta semana · seu fuso horário",
   "cli.welcome": 'Digite um comando, ou "help" para ver os que existem.',
   "cli.placeholder": "buy 0.01 btc · close eth · help",
   "cli.prompt": "Comando",
@@ -603,6 +603,9 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "Perfil de volume por sessão",
   "chart.type.tpo": "Time Price Opportunity (TPO)",
   "chart.replay": "Replay de barras",
+  "chart.news": "Notícias econômicas",
+  "chart.newsClose": "Fechar",
+  "chart.newsCount": "{count} divulgações",
   "replay.title": "Replay de barras",
   "replay.pick": "Clique numa barra para reproduzir a partir dela",
   "replay.cancel": "Cancelar",
@@ -2428,7 +2431,7 @@ export const messages: Messages = {
   "maphelp.rsiBands.read":
     "Duas leituras que concordam tornam um movimento esticado mais notável do que uma só, e o RSI mais extremo vem primeiro. Isso mostra esticamento, não reversão: numa tendência forte um mercado pode ficar sobrecomprado na banda por muito tempo, então espere o movimento perder força antes de ler como reversão.",
   "maphelp.rsiBands.caveats":
-    "Os 150 mercados mais ativos. O RSI de 4 horas vem de cerca de 7 dias de barras, então pode diferir um pouco do mapa de RSI. Mercados sem histórico suficiente não são verificados.",
+    "Os 300 mercados mais ativos. O RSI de 4 horas vem de cerca de 7 dias de barras, então pode diferir um pouco do mapa de RSI. Mercados sem histórico suficiente não são verificados.",
   "maps.bands": "Bandas de Bollinger",
   "mapx.bands.title": "Preço contra as bandas de Bollinger",
   "mapx.bands.frame": "Tempo gráfico",
@@ -2450,7 +2453,7 @@ export const messages: Messages = {
   "maphelp.bands.read":
     "Acima da banda superior há um movimento forte que pode estar esticado; abaixo da inferior, o mesmo para baixo. Numa tendência forte o preço pode andar colado a uma banda, então isso sozinho não é sinal de reversão. Compare com Squeeze: sair de bandas apertadas costuma iniciar um movimento.",
   "maphelp.bands.caveats":
-    "Os 150 mercados mais ativos. Os no meio das bandas são apenas contados. As bandas de 4 horas precisam de cerca de 3 dias de histórico, então uma listagem nova pode não aparecer.",
+    "Os 300 mercados mais ativos. Os no meio das bandas são apenas contados. As bandas de 4 horas precisam de cerca de 3 dias de histórico, então uma listagem nova pode não aparecer.",
   "maps.group.volume": "Volume",
   "maps.matrix": "Matriz de momentum",
   "maps.squeeze": "Squeeze",
@@ -2496,7 +2499,7 @@ export const messages: Messages = {
   "mapx.rotationVol.week": "Fatia do da semana",
   "mapx.rotationVol.change": "Contra a semana",
   "mapx.rotationVol.note":
-    "Tamanho pela fatia de cada mercado no volume do último dia entre os 150 mais ativos; laranja quando é maior que a fatia da semana, azul quando é menor.",
+    "Tamanho pela fatia de cada mercado no volume do último dia entre os 300 mais ativos; laranja quando é maior que a fatia da semana, azul quando é menor.",
   "mapx.matrix.title": "Momentum em vários períodos",
   "mapx.matrix.side": "Direção",
   "mapx.matrix.side.up": "Mais fortes",
@@ -2534,7 +2537,7 @@ export const messages: Messages = {
     "Feito com velas de 1 hora, não com cada negócio, então é mais grosseiro que um perfil real por tick, e cobre o volume de uma corretora só.",
   "maphelp.moneyFlow.what": "Onde o dinheiro entrou ou saiu, mercado a mercado.",
   "maphelp.moneyFlow.how":
-    "No período, o valor negociado em horas que fecharam em alta menos o das que fecharam em baixa, e esse líquido como fração de todo o valor negociado. Os 150 mercados mais ativos.",
+    "No período, o valor negociado em horas que fecharam em alta menos o das que fecharam em baixa, e esse líquido como fração de todo o valor negociado. Os 300 mercados mais ativos.",
   "maphelp.moneyFlow.read":
     "Compra líquida forte com preço parado pode ser acumulação discreta; venda líquida com preço subindo pode ser distribuição.",
   "maphelp.moneyFlow.caveats":
@@ -2549,14 +2552,14 @@ export const messages: Messages = {
   "maphelp.volRotation.what":
     "Quais mercados estão atraindo mais negociação da corretora do que o normal.",
   "maphelp.volRotation.how":
-    "A fatia de cada mercado no volume das últimas 24 horas contra a fatia na semana toda, entre os 150 mais ativos. O tamanho é a fatia do dia e a cor, a diferença.",
+    "A fatia de cada mercado no volume das últimas 24 horas contra a fatia na semana toda, entre os 300 mais ativos. O tamanho é a fatia do dia e a cor, a diferença.",
   "maphelp.volRotation.read":
     "Blocos laranja mostram para onde a atenção está indo, muitas vezes antes ou durante um grande movimento. Os azuis estão ficando de lado.",
   "maphelp.volRotation.caveats":
     "É uma fatia: um mercado enorme disparando faz os outros parecerem mais calmos. Cobre só esta corretora.",
   "maphelp.matrix.what": "O momentum de cada mercado em quatro períodos, numa só grade.",
   "maphelp.matrix.how":
-    "Retornos em 1 hora, 4 horas, 24 horas e 7 dias dos 150 mercados mais ativos. Cada um pontua por períodos em alta menos períodos em baixa, depois pela força dos movimentos.",
+    "Retornos em 1 hora, 4 horas, 24 horas e 7 dias dos 300 mercados mais ativos. Cada um pontua por períodos em alta menos períodos em baixa, depois pela força dos movimentos.",
   "maphelp.matrix.read":
     "Um mercado verde em tudo tem o momentum de curto e longo prazo alinhado. Uma hora vermelha sob 7 dias verdes pode ser uma correção numa tendência de alta.",
   "maphelp.matrix.caveats":
@@ -2595,7 +2598,7 @@ export const messages: Messages = {
   "mapx.rs.behindTitle": "Atrás do BTC",
   "mapx.rs.noBenchmark": "Aguardando o histórico do BTC, a referência",
   "mapx.rs.note":
-    "O retorno de cada mercado no período menos o do BTC, a partir de velas de 1 hora. Os 150 mercados mais ativos.",
+    "O retorno de cada mercado no período menos o do BTC, a partir de velas de 1 hora. Os 300 mercados mais ativos.",
   "mapx.rotation.title": "Rotação contra o BTC",
   "mapx.rotation.lens": "Períodos",
   "mapx.rotation.lens.week": "7D / 24H",
@@ -2695,7 +2698,7 @@ export const messages: Messages = {
   "maphelp.rs.what":
     "Quais mercados estão batendo o BTC num período, e quais estão ficando para trás.",
   "maphelp.rs.how":
-    "O retorno de cada mercado no período (1 hora a 7 dias) menos o do BTC nas mesmas horas, a partir de velas de 1 hora, para os 150 mercados mais ativos do filtro.",
+    "O retorno de cada mercado no período (1 hora a 7 dias) menos o do BTC nas mesmas horas, a partir de velas de 1 hora, para os 300 mercados mais ativos do filtro.",
   "maphelp.rs.read":
     "Uma moeda que supera o BTC enquanto ele está parado ou caindo tem compradores próprios. Os líderes costumam continuar liderando num mercado forte; os atrasados costumam continuar atrás.",
   "maphelp.rs.caveats":
@@ -2717,7 +2720,7 @@ export const messages: Messages = {
     "A maioria dos testes da borda de um range falha. Combine com o volume (Picos de volume) antes de considerar um rompimento real.",
   "maphelp.spikes.what": "Mercados negociando muito mais do que o normal.",
   "maphelp.spikes.how":
-    "O volume da última hora completa (ou das últimas 4) contra a hora mediana do mercado na semana anterior, como múltiplo, com a variação do preço nessas horas. Os 150 mercados mais ativos do filtro.",
+    "O volume da última hora completa (ou das últimas 4) contra a hora mediana do mercado na semana anterior, como múltiplo, com a variação do preço nessas horas. Os 300 mercados mais ativos do filtro.",
   "maphelp.spikes.read":
     "Um pico costuma vir antes ou junto de um movimento grande: uma notícia, uma listagem, uma cascata de liquidações. Um pico com pouca variação de preço pode indicar uma disputa entre compradores e vendedores.",
   "maphelp.spikes.caveats":
