@@ -8403,6 +8403,99 @@ button.pd-drawer-exit:hover {
   background: color-mix(in srgb, var(--pd-buy) 70%, var(--pd-surface-raised));
 }
 
+/* One market's volume profile */
+.pd-mx-prow-up {
+  fill: color-mix(in srgb, var(--pd-buy) 30%, transparent);
+}
+.pd-mx-prow-down {
+  fill: color-mix(in srgb, var(--pd-sell) 30%, transparent);
+}
+.pd-mx-prow[data-value] .pd-mx-prow-up {
+  fill: color-mix(in srgb, var(--pd-buy) 62%, transparent);
+}
+.pd-mx-prow[data-value] .pd-mx-prow-down {
+  fill: color-mix(in srgb, var(--pd-sell) 62%, transparent);
+}
+.pd-mx-poc {
+  stroke: var(--pd-brass);
+  stroke-width: 1.5;
+}
+.pd-mx-price {
+  stroke: var(--pd-text);
+}
+.pd-mx-naked-line {
+  stroke: var(--pd-info);
+  stroke-dasharray: 2 3;
+}
+.pd-mx-naked li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+/* Momentum matrix: markets down, timeframes across */
+.pd-mx-matrix {
+  display: grid;
+  grid-template-columns: 110px repeat(4, minmax(64px, 1fr));
+  gap: 2px;
+  align-items: center;
+  font-size: 11px;
+}
+.pd-mx-matrix .pd-mx-name {
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
+}
+.pd-mx-matrix-col {
+  text-align: center;
+}
+.pd-mx-matrix-cell {
+  padding: 3px 0;
+  border-radius: 2px;
+  color: var(--pd-text);
+  text-align: center;
+}
+
+/* Bollinger bands: where the price is against them */
+.pd-mx-band-rows button {
+  grid-template-columns: 96px minmax(50px, 1fr) 52px 108px;
+  white-space: nowrap;
+}
+.pd-mx-band-rows button > :nth-child(3) {
+  text-align: right;
+}
+.pd-mx-chip[data-zone="aboveUpper"],
+.pd-mx-chip[data-zone="atUpper"],
+.pd-mx-stat[data-zone="aboveUpper"] strong,
+.pd-mx-stat[data-zone="atUpper"] strong {
+  color: var(--pd-buy);
+}
+.pd-mx-chip[data-zone="belowLower"],
+.pd-mx-chip[data-zone="atLower"],
+.pd-mx-stat[data-zone="belowLower"] strong,
+.pd-mx-stat[data-zone="atLower"] strong {
+  color: var(--pd-sell);
+}
+
+/* RSI at the bands: the two readings side by side */
+.pd-mx-conf-rows button {
+  grid-template-columns: 96px 44px minmax(50px, 1fr) 48px 108px;
+  white-space: nowrap;
+}
+.pd-mx-conf-rsi,
+.pd-mx-conf-b {
+  text-align: right;
+}
+.pd-mx-conf-rsi,
+.pd-mx-stat[data-zone="overbought"] strong,
+.pd-mx-stat[data-zone="oversold"] strong {
+  color: var(--rsi-tone);
+}
+
 /* Narrow: the side column goes under the map */
 @media (max-width: 1100px) {
   .pd-mx {

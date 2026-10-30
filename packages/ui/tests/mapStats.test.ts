@@ -1,15 +1,21 @@
 import type { Candle, MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
+  alignment,
   atrShare,
+  bandRead,
+  bandZone,
   betaTo,
   bookColumn,
   bookStep,
   breadthNow,
   breadthSeries,
+  candleProfile,
   changeSince,
+  confluenceRead,
   correlationMatrix,
   cvdSeries,
+  emaCross,
   emaOf,
   type FlowTrade,
   fundingBuckets,
@@ -20,10 +26,14 @@ import {
   joinByCoin,
   largeTrades,
   median,
+  moneyFlow,
+  nakedPocs,
+  obvRead,
   oiChangeOver,
   oiChangeSoFar,
   oiQuadrant,
   priceSpreads,
+  quoteVolume,
   rangePlace,
   realisedVol,
   relativeStrength,
@@ -31,7 +41,10 @@ import {
   seasonality,
   sessionStats,
   sessionsAt,
+  squeezeRead,
+  valueRead,
   volRegime,
+  volumeShares,
   volumeSpike,
   withOiSample,
 } from "../src/lib/mapStats";
@@ -393,5 +406,173 @@ describe("order flow", () => {
     const big = largeTrades(trades, 0.05);
     expect(big.trades.length).toBe(5);
     expect(big.threshold).toBe(96 * 100);
+  });
+});
+
+describe("volume profiles across markets", () => {
+  // Most of the volume around 100, a little trading up at 120.
+  const candles = Array.from({ length: 30 }, (_, i) =>
+    i < 28
+      ? candle(i, 100, 100, { high: "101", low: "99", volume: "100" })
+      : candle(i, 120, 120, { high: "121", low: "119", volume: "1" }),
+  );
+
+  it("finds the point of control and the value area", () => {
+    const read = valueRead(candles, 120);
+    expect(read?.poc).toBeGreaterThan(98);
+    expect(read?.poc).toBeLessThan(102);
+    expect(read?.place).toBe("above");
+    expect(read?.toPoc).toBeGreaterThan(0.15);
+    expect(valueRead(candles, 100)?.place).toBe("inside");
+    expect(valueRead(candles, 90)?.place).toBe("below");
+    expect(candleProfile(candles)?.rows.length).toBe(60);
+  });
+
+  it("keeps a day's point of control only until it's traded through", () => {
+    const day = (d: number, price: number) =>
+      Array.from({ length: 24 }, (_, h) =>
+        candle(d * 24 + h, price, price, { high: String(price + 1), low: String(price - 1) }),
+      );
+    // Day 0 at 100, day 1 at 200, day 2 back at 200 (forming): 100 stays
+    // naked, day 1's level was traded through by day 2.
+    const naked = nakedPocs([...day(0, 100), ...day(1, 200), ...day(2, 200)]);
+    expect(naked.length).toBe(1);
+    // A flat day has no one busiest price: it's somewhere in the day's range.
+    expect(naked[0]?.price).toBeGreaterThanOrEqual(99);
+    expect(naked[0]?.price).toBeLessThanOrEqual(101);
+  });
+});
+
+describe("money flow and OBV", () => {
+  it("weighs up hours against down hours", () => {
+    const flow = moneyFlow(
+      [candle(0, 100, 110, { volume: "3" }), candle(1, 110, 100, { volume: "1" })],
+      2,
+    );
+    expect(flow?.net).toBeCloseTo(330 - 100);
+    expect(flow?.ratio).toBeCloseTo(230 / 430);
+  });
+
+  it("calls a divergence when price and OBV sit at opposite ends", () => {
+    // Price falls on small volume, then ticks up on big volume: OBV ends
+    // high while the price stays near its low.
+    const closes = [120, 118, 116, 114, 112, 110, 108, 106, 104, 102, 100, 100.5, 101, 101.5];
+    const candles = closes.map((c, i) =>
+      candle(i, closes[i - 1] ?? c, c, { volume: i > 10 ? "100" : "1" }),
+    );
+    const read = obvRead(candles, closes.length - 1);
+    expect(read?.kind).toBe("bullish");
+    expect(read?.gap).toBeGreaterThan(0.4);
+  });
+});
+
+describe("volume rotation", () => {
+  it("compares the day's share of volume with the week's", () => {
+    const week = (lastDay: number) =>
+      Array.from({ length: 168 }, (_, i) =>
+        candle(i, 10, 10, { volume: String(i >= 144 ? lastDay : 10) }),
+      );
+    const shares = volumeShares(
+      new Map([
+        ["A", week(10)],
+        ["B", week(30)],
+      ]),
+    );
+    expect(quoteVolume(week(10), 24)).toBe(2400);
+    expect(shares.get("B")?.change).toBeGreaterThan(0);
+    expect(shares.get("A")?.change).toBeLessThan(0);
+  });
+});
+
+describe("momentum", () => {
+  it("scores how well the timeframes agree", () => {
+    expect(alignment([0.01, 0.02, 0.03, 0.04])).toBe(4);
+    expect(alignment([0.01, -0.02, undefined, -0.04])).toBe(-1);
+    expect(alignment([undefined])).toBeUndefined();
+  });
+
+  it("finds a fresh EMA cross, and only within the window", () => {
+    // A long fall, then a steep rise: the fast average crosses up lately.
+    const candles = Array.from({ length: 120 }, (_, i) =>
+      i < 100 ? candle(i, 200 - i, 200 - i) : candle(i, 100 + (i - 100) * 4, 100 + (i - 100) * 4),
+    );
+    const cross = emaCross(candles, 20);
+    expect(cross?.direction).toBe("up");
+    expect(cross?.gap).toBeGreaterThan(0);
+    expect(emaCross(candles, 1)).toBeUndefined();
+  });
+
+  it("ranks a tightening market low against its own history", () => {
+    const wide = Array.from({ length: 80 }, (_, i) => {
+      const c = 100 + (i % 2 ? 5 : -5);
+      return candle(i, c, c);
+    });
+    const tight = Array.from({ length: 24 }, (_, i) => candle(80 + i, 100, 100 + (i % 2) * 0.01));
+    const read = squeezeRead([...wide, ...tight]);
+    expect(read?.rank).toBeLessThan(0.1);
+  });
+});
+
+describe("Bollinger bands", () => {
+  it("names the zone a %B falls in", () => {
+    expect(bandZone(1.2)).toBe("aboveUpper");
+    expect(bandZone(0.97)).toBe("atUpper");
+    expect(bandZone(0.85)).toBe("nearUpper");
+    expect(bandZone(0.5)).toBe("middle");
+    expect(bandZone(0.15)).toBe("nearLower");
+    expect(bandZone(0.02)).toBe("atLower");
+    expect(bandZone(-0.1)).toBe("belowLower");
+  });
+
+  const swings = (n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const c = 100 + (i % 2 ? 2 : -2);
+      return candle(i, c, c);
+    });
+
+  it("reads the bands from the closes, the forming bar at the price", () => {
+    const mid = bandRead(swings(40), 100, 1);
+    expect(mid?.zone).toBe("middle");
+    expect(mid?.middle).toBeCloseTo(100, 0);
+    expect(bandRead(swings(40), 140, 1)?.zone).toBe("aboveUpper");
+    expect(bandRead(swings(40), 60, 1)?.zone).toBe("belowLower");
+  });
+
+  it("gathers hours into longer bars, and needs a full period of them", () => {
+    // 40 hours make 10 or 11 four-hour bars: not the 20 the bands need.
+    expect(bandRead(swings(40), 100, 4)).toBeUndefined();
+    expect(bandRead(swings(100), 100, 4)).toBeDefined();
+  });
+});
+
+describe("RSI at the bands", () => {
+  const closes = (rise: number) =>
+    Array.from({ length: 60 }, (_, i) => {
+      const c = 100 + i * rise + (i % 2 ? 0.5 : -0.5);
+      return candle(i, c, c);
+    });
+
+  it("marks a market overbought at its upper band", () => {
+    const up = closes(1);
+    const read = confluenceRead(up, 162, 1);
+    expect(read?.rsi).toBeGreaterThanOrEqual(70);
+    expect(read?.side).toBe("upper");
+  });
+
+  it("marks a market oversold at its lower band", () => {
+    const read = confluenceRead(closes(-1), 38, 1);
+    expect(read?.rsi).toBeLessThanOrEqual(30);
+    expect(read?.side).toBe("lower");
+  });
+
+  it("wants both: a band alone, or an RSI alone, is neither", () => {
+    // Overbought, but pulled back to the middle of the bands.
+    const pulledBack = confluenceRead(closes(1), 150.5, 1);
+    expect(pulledBack?.band.zone).toBe("middle");
+    expect(pulledBack?.side).toBeUndefined();
+  });
+
+  it("needs a full read", () => {
+    expect(confluenceRead(closes(1).slice(0, 10), 110, 1)).toBeUndefined();
   });
 });

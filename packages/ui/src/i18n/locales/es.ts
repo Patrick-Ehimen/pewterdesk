@@ -2425,7 +2425,167 @@ export const messages: Messages = {
   "maps.group.liquidations": "Liquidaciones",
   "maps.group.market": "Mercado",
   "maps.group.time": "Tiempo",
+  "maps.rsiBands": "RSI + bandas",
+  "mapx.conf.title": "RSI en las bandas de Bollinger",
+  "mapx.conf.upperTitle": "Sobrecompra en la banda superior",
+  "mapx.conf.lowerTitle": "Sobreventa en la banda inferior",
+  "mapx.conf.checked": "{count} mercados revisados",
+  "mapx.conf.note":
+    "RSI(14) y bandas de Bollinger de 20 periodos sobre las mismas barras. Un mercado solo aparece si ambos coinciden: RSI de 70 o más en la banda superior o cerca, o de 30 o menos en la inferior o cerca.",
+  "maphelp.rsiBands.what":
+    "Mercados donde el RSI y las bandas de Bollinger dicen lo mismo: sobrecompra en lo alto de las bandas o sobreventa abajo.",
+  "maphelp.rsiBands.how":
+    "RSI(14) y bandas de 20 periodos, de dos desviaciones típicas, en 1 hora o 4 horas, con la última barra al precio actual. Lado superior: RSI de 70 o más y precio por encima, en la banda superior o cerca. Lado inferior: RSI de 30 o menos y precio por debajo, en la banda inferior o cerca.",
+  "maphelp.rsiBands.read":
+    "Dos lecturas que coinciden hacen más notable un movimiento estirado que una sola, y el RSI más extremo va primero. Marca estiramiento, no giro: en una tendencia fuerte un mercado puede seguir en sobrecompra en su banda mucho tiempo, así que espera a que el movimiento se frene antes de verlo como un giro.",
+  "maphelp.rsiBands.caveats":
+    "Los 150 mercados más activos. El RSI de 4 horas sale de unos 7 días de barras, así que puede diferir un poco del mapa de RSI. Los mercados sin historial suficiente no se revisan.",
+  "maps.bands": "Bandas de Bollinger",
+  "mapx.bands.title": "Precio frente a las bandas de Bollinger",
+  "mapx.bands.frame": "Marco temporal",
+  "mapx.bands.upperTitle": "Banda superior",
+  "mapx.bands.lowerTitle": "Banda inferior",
+  "mapx.bands.aboveUpper": "Sobre la superior",
+  "mapx.bands.atUpper": "En la superior",
+  "mapx.bands.nearUpper": "Cerca de la superior",
+  "mapx.bands.nearLower": "Cerca de la inferior",
+  "mapx.bands.atLower": "En la inferior",
+  "mapx.bands.belowLower": "Bajo la inferior",
+  "mapx.bands.middle": "{count} en la zona media",
+  "mapx.bands.note":
+    "Bandas de 20 periodos, dos desviaciones típicas a cada lado de la media, a partir de velas horarias. La cifra es el %B: 0 % es la banda inferior, 100 % la superior, y más allá está fuera.",
+  "maphelp.bands.what":
+    "Dónde está el precio de cada mercado frente a sus bandas de Bollinger: fuera de ellas, en ellas o cerca.",
+  "maphelp.bands.how":
+    "Bandas de 20 barras en 1 hora o 4 horas, dos desviaciones típicas a cada lado de la media, con la última barra al precio actual. El %B sitúa el precio entre ellas. En una banda significa a menos del 5 % del ancho de las bandas; cerca, a menos del 20 %.",
+  "maphelp.bands.read":
+    "Sobre la banda superior hay un movimiento fuerte que puede estar estirado; bajo la inferior, lo mismo a la baja. En una tendencia fuerte el precio puede ir pegado a una banda, así que no es por sí solo una señal de giro. Compáralo con Squeeze: salir de unas bandas estrechas suele iniciar un movimiento.",
+  "maphelp.bands.caveats":
+    "Los 150 mercados más activos. Los de la zona media solo se cuentan. Las bandas de 4 horas necesitan unos 3 días de historial, así que un listado nuevo puede no aparecer.",
   "maps.group.volume": "Volumen",
+  "maps.matrix": "Matriz de momentum",
+  "maps.squeeze": "Squeeze",
+  "maps.emaCross": "Cruces de EMA",
+  "maps.valueArea": "Área de valor",
+  "maps.profile": "Perfil de volumen",
+  "maps.moneyFlow": "Flujo de dinero",
+  "maps.obv": "Divergencia OBV",
+  "maps.volRotation": "Rotación del volumen",
+  "mapx.value.title": "Precio frente al valor",
+  "mapx.value.above": "{count} por encima",
+  "mapx.value.inside": "{count} dentro",
+  "mapx.value.below": "{count} por debajo",
+  "mapx.value.aboveTitle": "Por encima de su área de valor de {window}",
+  "mapx.value.belowTitle": "Por debajo de su área de valor de {window}",
+  "mapx.value.note":
+    "El perfil de volumen de cada mercado en el periodo, a partir de velas horarias: el 70 % del volumen en torno a su precio más activo. La cifra es la distancia a ese precio (POC), que aparece al lado.",
+  "mapx.profile.title": "Volumen por precio",
+  "mapx.profile.poc": "Punto de control",
+  "mapx.profile.vah": "Máximo del área de valor",
+  "mapx.profile.val": "Mínimo del área de valor",
+  "mapx.profile.naked": "POC diarios sin probar",
+  "mapx.profile.note":
+    "El volumen horario repartido por el rango de cada vela. Las filas sólidas son el área de valor, el 70 % del volumen. Las líneas azules punteadas son los precios más activos de días pasados que no se han vuelto a cruzar.",
+  "mapx.money.title": "Flujo de dinero",
+  "mapx.money.in": "{count} con compra neta",
+  "mapx.money.out": "{count} con venta neta",
+  "mapx.money.inTitle": "Mayores entradas",
+  "mapx.money.outTitle": "Mayores salidas",
+  "mapx.money.note":
+    "El valor negociado en horas al alza menos el de las horas a la baja. La última columna da ese neto como proporción de todo lo negociado.",
+  "mapx.obv.title": "OBV frente al precio",
+  "mapx.obv.bullish": "{count} alcistas",
+  "mapx.obv.bearish": "{count} bajistas",
+  "mapx.obv.bullishTitle": "Volumen por delante del precio",
+  "mapx.obv.bearishTitle": "Volumen por detrás del precio",
+  "mapx.obv.places": "Dónde están precio / OBV en sus rangos",
+  "mapx.obv.note":
+    "El on-balance volume frente al precio, cada uno situado en su propio rango en el periodo. Se listan cuando están muy separados; la última columna da precio / OBV.",
+  "mapx.rotationVol.title": "Adónde va el volumen",
+  "mapx.rotationVol.rising": "{count} atraen un 25 % más de lo habitual",
+  "mapx.rotationVol.day": "Parte del volumen del día",
+  "mapx.rotationVol.week": "Parte del de la semana",
+  "mapx.rotationVol.change": "Frente a la semana",
+  "mapx.rotationVol.note":
+    "Tamaño según la parte de cada mercado en el volumen del último día entre los 150 más activos; naranja si supera su parte de la semana, azul si es menor.",
+  "mapx.matrix.title": "Momentum en varios periodos",
+  "mapx.matrix.side": "Dirección",
+  "mapx.matrix.side.up": "Más fuertes",
+  "mapx.matrix.side.down": "Más débiles",
+  "mapx.matrix.allUp": "{count} al alza en los cuatro",
+  "mapx.matrix.allDown": "{count} a la baja en los cuatro",
+  "mapx.matrix.note":
+    "La rentabilidad de cada mercado en 1 hora, 4 horas, 24 horas y 7 días, primero aquellos cuyos periodos más coinciden.",
+  "mapx.cross.title": "Cruces de EMA",
+  "mapx.cross.ago": "hace {hours} h",
+  "mapx.cross.upTitle": "Cruzaron al alza ({count})",
+  "mapx.cross.downTitle": "Cruzaron a la baja ({count})",
+  "mapx.cross.none": "No hay cruces en este periodo",
+  "mapx.cross.note":
+    "Donde la EMA de 20 horas cruzó la de 50 horas en el periodo, los más recientes primero. La cifra es la distancia entre ellas ahora.",
+  "mapx.squeeze.title": "Squeeze de Bollinger",
+  "mapx.squeeze.count": "{count} comprimidos",
+  "mapx.squeeze.note":
+    "Mercados cuyas bandas de Bollinger de 20 horas están en el cuarto más estrecho de sus últimos 7 días, los más estrechos primero. Las cifras son el ancho de la banda y el cambio del día.",
+  "maphelp.valueArea.what":
+    "Qué mercados se han alejado por encima o por debajo de donde se negoció la mayor parte de su volumen.",
+  "maphelp.valueArea.how":
+    "El perfil de volumen de cada mercado en el periodo (24 horas o 7 días), a partir de velas horarias: su punto de control (el precio más activo) y su área de valor (el 70 % del volumen a su alrededor). Se listan según la distancia del precio al punto de control.",
+  "maphelp.valueArea.read":
+    "El precio tiende a volver al valor, salvo que se acepte en un nivel nuevo. Un mercado muy por encima está estirado, o rompiendo si el volumen lo acompaña; por debajo, igual en sentido contrario.",
+  "maphelp.valueArea.caveats":
+    "Las velas horarias solo aproximan dónde se negoció el volumen dentro de cada hora. Un periodo corto puede engañar en un mercado poco líquido.",
+  "maphelp.profile.what":
+    "Cómo se reparte el volumen de un mercado por precios en una semana o un mes.",
+  "maphelp.profile.how":
+    "El volumen de cada vela horaria se reparte por su rango, en 60 filas, separado en horas al alza y a la baja. El punto de control es la fila más activa y el área de valor contiene el 70 % del volumen a su alrededor. Los POC sin probar son los precios más activos de días terminados que ninguna vela posterior ha cruzado.",
+  "maphelp.profile.read":
+    "Las zonas gruesas son donde el mercado se puso de acuerdo en el precio, y suelen actuar como soporte o resistencia. Las finas se cruzan rápido. Los POC sin probar suelen atraer al precio.",
+  "maphelp.profile.caveats":
+    "Está hecho con velas horarias, no con cada operación, así que es más tosco que un perfil real por ticks, y cubre el volumen de un solo exchange.",
+  "maphelp.moneyFlow.what": "Dónde ha entrado o salido el dinero, mercado por mercado.",
+  "maphelp.moneyFlow.how":
+    "En el periodo, el valor negociado en horas que cerraron al alza menos el de las que cerraron a la baja, y ese neto como proporción de todo el valor negociado. Los 150 mercados más activos.",
+  "maphelp.moneyFlow.read":
+    "Una fuerte compra neta con el precio plano puede ser acumulación discreta; venta neta con el precio subiendo puede ser distribución.",
+  "maphelp.moneyFlow.caveats":
+    "Es una aproximación: el volumen de una hora al alza no es todo compra. Para el flujo real de takers en un mercado, usa CVD.",
+  "maphelp.obv.what": "Mercados donde el volumen y el precio cuentan historias distintas.",
+  "maphelp.obv.how":
+    "El on-balance volume suma el volumen de una hora que cierra al alza y lo resta si cierra a la baja. OBV y precio se sitúan en su propio rango en el periodo (0 a 100 %), y se listan cuando están al menos a 40 puntos.",
+  "maphelp.obv.read":
+    "Alcista: el precio está cerca de su mínimo pero el OBV está alto, así que ha entrado volumen. Bajista: el precio está cerca de su máximo pero el OBV está bajo, así que la subida carece de volumen.",
+  "maphelp.obv.caveats":
+    "Las divergencias pueden durar mucho y resolverse sin giro. Tómalo como algo que comprobar, no como una señal.",
+  "maphelp.volRotation.what": "Qué mercados atraen más negociación del exchange de lo habitual.",
+  "maphelp.volRotation.how":
+    "La parte de cada mercado en el volumen de las últimas 24 horas frente a su parte en toda la semana, entre los 150 más activos. El tamaño es la parte del día y el color, la diferencia.",
+  "maphelp.volRotation.read":
+    "Las fichas naranjas muestran adónde se mueve la atención, a menudo antes o durante un gran movimiento. Las azules se quedan atrás.",
+  "maphelp.volRotation.caveats":
+    "Es una proporción: si un mercado enorme se dispara, los demás parecen más tranquilos. Solo cubre este exchange.",
+  "maphelp.matrix.what": "El momentum de cada mercado en cuatro periodos, en una sola cuadrícula.",
+  "maphelp.matrix.how":
+    "Rentabilidades en 1 hora, 4 horas, 24 horas y 7 días de los 150 mercados más activos. Cada uno puntúa por periodos al alza menos periodos a la baja, y luego por la fuerza de los movimientos.",
+  "maphelp.matrix.read":
+    "Un mercado en verde en todo tiene alineado el momentum de corto y largo plazo. Una hora roja bajo 7 días verdes puede ser un retroceso en una tendencia alcista.",
+  "maphelp.matrix.caveats":
+    "El momentum alineado también puede significar un movimiento ya extendido. Compruébalo con RSI o Área de valor.",
+  "maphelp.emaCross.what": "Mercados cuya tendencia de corto plazo acaba de girar.",
+  "maphelp.emaCross.how":
+    "Las medias móviles exponenciales de 20 y 50 horas de los cierres horarios. Un mercado se lista si se cruzaron en el periodo, los más recientes primero, con la distancia entre ellas ahora.",
+  "maphelp.emaCross.read":
+    "Un cruce al alza significa que la media corta pasó por encima de la larga, señal habitual de giro al alza; a la baja, lo contrario. Una distancia creciente muestra continuidad.",
+  "maphelp.emaCross.caveats":
+    "Las medias van con retraso, y en un mercado lateral se cruzan una y otra vez. Úsalo con Rupturas o volumen.",
+  "maphelp.squeeze.what":
+    "Mercados inusualmente tranquilos, lo que suele preceder a un gran movimiento.",
+  "maphelp.squeeze.how":
+    "El ancho de las bandas de Bollinger de 20 horas de cada mercado (cuatro desviaciones típicas sobre la media) comparado con sus propios anchos de los últimos 7 días. Se lista el cuarto más estrecho.",
+  "maphelp.squeeze.read":
+    "La volatilidad va por ciclos, así que unas bandas estrechas suelen llevar a una fuerte expansión. Combina bien con Rupturas: un mercado comprimido en el borde de su rango merece atención.",
+  "maphelp.squeeze.caveats":
+    "Dice que puede venir un movimiento, no en qué dirección. Un squeeze puede durar más de lo esperado, y un mercado muerto sigue estrecho.",
   "maps.group.flow": "Flujo de órdenes",
   "maps.rs": "Fuerza relativa",
   "maps.rotation": "Rotación",

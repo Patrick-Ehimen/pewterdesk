@@ -2386,7 +2386,164 @@ export const messages: Messages = {
   "maps.group.liquidations": "清算",
   "maps.group.market": "マーケット",
   "maps.group.time": "時間",
+  "maps.rsiBands": "RSI+バンド",
+  "mapx.conf.title": "ボリンジャーバンド上のRSI",
+  "mapx.conf.upperTitle": "上限バンドで買われ過ぎ",
+  "mapx.conf.lowerTitle": "下限バンドで売られ過ぎ",
+  "mapx.conf.checked": "{count} 市場を確認",
+  "mapx.conf.note":
+    "同じ足でのRSI(14)と20期間ボリンジャーバンド。両方が一致した市場だけを表示します：上限バンド付近でRSI 70以上、または下限バンド付近でRSI 30以下。",
+  "maphelp.rsiBands.what":
+    "RSIとボリンジャーバンドが同じことを示す市場：バンド上部で買われ過ぎ、または下部で売られ過ぎ。",
+  "maphelp.rsiBands.how":
+    "1時間足または4時間足のRSI(14)と20期間バンド（標準偏差2つ分）で、最新の足は現在価格で計算します。上側：RSI 70以上で、価格が上限バンドの上、付近、または接近。下側：RSI 30以下で、価格が下限バンドの下、付近、または接近。",
+  "maphelp.rsiBands.read":
+    "2つの指標の一致は、片方だけより行き過ぎた動きを際立たせます。RSIが最も極端なものが先頭です。これは行き過ぎを示すもので、反転を示すものではありません。強いトレンドでは市場はバンド付近で長く買われ過ぎのままでいることがあるため、動きが止まるのを待ってから反転と判断してください。",
+  "maphelp.rsiBands.caveats":
+    "出来高上位150市場。4時間足のRSIは約7日分の足から計算するため、RSIヒートマップと少し異なる場合があります。履歴が足りない市場は確認しません。",
+  "maps.bands": "ボリンジャーバンド",
+  "mapx.bands.title": "ボリンジャーバンドと価格",
+  "mapx.bands.frame": "時間足",
+  "mapx.bands.upperTitle": "上限バンド",
+  "mapx.bands.lowerTitle": "下限バンド",
+  "mapx.bands.aboveUpper": "上限超え",
+  "mapx.bands.atUpper": "上限付近",
+  "mapx.bands.nearUpper": "上限に接近",
+  "mapx.bands.nearLower": "下限に接近",
+  "mapx.bands.atLower": "下限付近",
+  "mapx.bands.belowLower": "下限割れ",
+  "mapx.bands.middle": "中央付近 {count}",
+  "mapx.bands.note":
+    "20期間のバンド（平均の上下に標準偏差2つ分）、1時間足から。数値は%Bで、0%が下限バンド、100%が上限バンド、それを超えるとバンドの外です。",
+  "maphelp.bands.what":
+    "各市場の価格がボリンジャーバンドに対してどこにあるか：外側、バンド上、またはその近く。",
+  "maphelp.bands.how":
+    "1時間足または4時間足の20本から求めたバンド（平均の上下に標準偏差2つ分）。最新の足は現在価格で計算します。%Bは価格のバンド内の位置です。付近はバンド幅の5%以内、接近は20%以内を指します。",
+  "maphelp.bands.read":
+    "上限超えは行き過ぎの可能性がある強い動きで、下限割れは下方向の同様の動きです。強いトレンドでは価格がバンドに沿って進むことがあるため、それだけでは反転シグナルになりません。スクイーズと比べてください。狭いバンドからの放れは動きの始まりになることが多いです。",
+  "maphelp.bands.caveats":
+    "出来高上位150市場。中央付近の市場は数えるだけです。4時間足のバンドには約3日分の履歴が必要なため、新規上場は表示されないことがあります。",
   "maps.group.volume": "出来高",
+  "maps.matrix": "モメンタムマトリクス",
+  "maps.squeeze": "スクイーズ",
+  "maps.emaCross": "EMAクロス",
+  "maps.valueArea": "バリューエリア",
+  "maps.profile": "出来高プロファイル",
+  "maps.moneyFlow": "マネーフロー",
+  "maps.obv": "OBVダイバージェンス",
+  "maps.volRotation": "出来高ローテーション",
+  "mapx.value.title": "価格とバリューの位置",
+  "mapx.value.above": "上 {count}",
+  "mapx.value.inside": "内 {count}",
+  "mapx.value.below": "下 {count}",
+  "mapx.value.aboveTitle": "{window}バリューエリアより上",
+  "mapx.value.belowTitle": "{window}バリューエリアより下",
+  "mapx.value.note":
+    "期間中の各市場の出来高プロファイル（1時間足から）：最も活発な価格の周囲の出来高70%。数値はその価格（POC）からの距離で、横に表示しています。",
+  "mapx.profile.title": "価格帯別出来高",
+  "mapx.profile.poc": "POC",
+  "mapx.profile.vah": "バリューエリア上限",
+  "mapx.profile.val": "バリューエリア下限",
+  "mapx.profile.naked": "未テストの日次POC",
+  "mapx.profile.note":
+    "1時間ごとの出来高を各ローソク足の値幅に配分。濃い行がバリューエリア（出来高の70%）。青の点線は、過去の日の最も活発な価格で、その後通過していないものです。",
+  "mapx.money.title": "マネーフロー",
+  "mapx.money.in": "純買い {count}",
+  "mapx.money.out": "純売り {count}",
+  "mapx.money.inTitle": "流入が最大",
+  "mapx.money.outTitle": "流出が最大",
+  "mapx.money.note":
+    "上昇した時間の売買代金から下落した時間の売買代金を引いたもの。最後の列はその差額の総売買代金に対する割合です。",
+  "mapx.obv.title": "OBVと価格",
+  "mapx.obv.bullish": "強気 {count}",
+  "mapx.obv.bearish": "弱気 {count}",
+  "mapx.obv.bullishTitle": "出来高が価格に先行",
+  "mapx.obv.bearishTitle": "出来高が価格に遅行",
+  "mapx.obv.places": "価格 / OBVのレンジ内の位置",
+  "mapx.obv.note":
+    "オンバランスボリュームと価格を、それぞれ期間中のレンジ内の位置で比較。大きく離れているものを表示します。最後の列は価格 / OBV。",
+  "mapx.rotationVol.title": "出来高の行き先",
+  "mapx.rotationVol.rising": "通常より25%多い {count}",
+  "mapx.rotationVol.day": "当日の出来高シェア",
+  "mapx.rotationVol.week": "週間のシェア",
+  "mapx.rotationVol.change": "週間比",
+  "mapx.rotationVol.note":
+    "大きさは出来高上位150市場における直近1日のシェア。週間シェアより大きければオレンジ、小さければ青。",
+  "mapx.matrix.title": "時間軸別モメンタム",
+  "mapx.matrix.side": "方向",
+  "mapx.matrix.side.up": "最も強い",
+  "mapx.matrix.side.down": "最も弱い",
+  "mapx.matrix.allUp": "4つすべて上昇 {count}",
+  "mapx.matrix.allDown": "4つすべて下落 {count}",
+  "mapx.matrix.note":
+    "各市場の1時間、4時間、24時間、7日のリターン。時間軸が最もそろっているものから表示します。",
+  "mapx.cross.title": "EMAクロス",
+  "mapx.cross.ago": "{hours}時間前",
+  "mapx.cross.upTitle": "上向きクロス（{count}）",
+  "mapx.cross.downTitle": "下向きクロス（{count}）",
+  "mapx.cross.none": "この期間にクロスはありません",
+  "mapx.cross.note":
+    "期間内に20時間EMAが50時間EMAをクロスした市場を新しい順に表示。数値は現在の両者の差です。",
+  "mapx.squeeze.title": "ボリンジャースクイーズ",
+  "mapx.squeeze.count": "スクイーズ中 {count}",
+  "mapx.squeeze.note":
+    "20時間ボリンジャーバンドが直近7日の中で最も狭い4分の1にある市場を、狭い順に表示。数値はバンド幅と当日の変化です。",
+  "maphelp.valueArea.what": "出来高の大半が取引された価格帯より上または下に離れた市場。",
+  "maphelp.valueArea.how":
+    "期間（24時間または7日）の各市場の出来高プロファイルを1時間足から作成：POC（最も活発な価格）とバリューエリア（その周囲の出来高70%）。価格とPOCの距離で並べます。",
+  "maphelp.valueArea.read":
+    "価格は新しい水準で受け入れられない限りバリューに戻りやすい傾向があります。大きく上にあれば行き過ぎ、または出来高を伴えばブレイク。下にある場合も逆方向で同様です。",
+  "maphelp.valueArea.caveats":
+    "1時間足では1時間内のどこで取引されたかを近似するだけです。流動性の低い市場では短い期間が誤解を招くことがあります。",
+  "maphelp.profile.what": "1週間または1か月で、ある市場の出来高が価格帯にどう分布しているか。",
+  "maphelp.profile.how":
+    "各1時間足の出来高をその値幅に配分して60行にし、上昇・下落の時間で分けます。POCは最も活発な行、バリューエリアはその周囲の出来高70%。未テストPOCは、確定した日の最も活発な価格で、その後どのローソク足も通過していないものです。",
+  "maphelp.profile.read":
+    "厚い部分は市場が価格に合意した場所で、サポートやレジスタンスになりやすいです。薄い部分は素早く通過されがちです。未テストPOCは価格を引き寄せやすいです。",
+  "maphelp.profile.caveats":
+    "全取引ではなく1時間足から作るため本物のティックプロファイルより粗く、1取引所の出来高のみが対象です。",
+  "maphelp.moneyFlow.what": "市場ごとの資金の流入と流出。",
+  "maphelp.moneyFlow.how":
+    "期間中、上昇で終えた時間の売買代金から下落で終えた時間の売買代金を引いたものと、その総売買代金に対する割合。出来高上位150市場。",
+  "maphelp.moneyFlow.read":
+    "価格が横ばいで強い純買いなら静かな買い集めの可能性があり、上昇中の純売りは売り抜けの可能性があります。",
+  "maphelp.moneyFlow.caveats":
+    "これは近似で、上昇した時間の出来高がすべて買いではありません。1市場の実際のテイカーフローはCVDを使ってください。",
+  "maphelp.obv.what": "出来高と価格が異なることを示している市場。",
+  "maphelp.obv.how":
+    "オンバランスボリュームは、上昇で終えた時間の出来高を足し、下落なら引きます。OBVと価格を期間中のそれぞれのレンジ内（0〜100%）に置き、40ポイント以上離れた市場を表示します。",
+  "maphelp.obv.read":
+    "強気：価格は安値付近なのにOBVは高く、出来高が入ってきています。弱気：価格は高値付近なのにOBVは低く、上昇に出来高が伴っていません。",
+  "maphelp.obv.caveats":
+    "ダイバージェンスは長く続き、反転なしに解消することも多いです。シグナルではなく確認事項として扱ってください。",
+  "maphelp.volRotation.what": "取引所の取引を普段より多く集めている市場。",
+  "maphelp.volRotation.how":
+    "出来高上位150市場について、直近24時間の出来高シェアと週全体のシェアを比較。タイルの大きさは当日のシェア、色はその差です。",
+  "maphelp.volRotation.read":
+    "オレンジのタイルは注目が移っている先で、大きな動きの前や最中によく現れます。青は取り残されている市場です。",
+  "maphelp.volRotation.caveats":
+    "シェアなので、巨大な市場が急増すると他は静かに見えます。この取引所のみが対象です。",
+  "maphelp.matrix.what": "各市場の4つの時間軸のモメンタムを1つのグリッドで。",
+  "maphelp.matrix.how":
+    "出来高上位150市場の1時間、4時間、24時間、7日のリターン。上昇の時間軸数から下落の数を引いたスコア、次に動きの強さで並べます。",
+  "maphelp.matrix.read":
+    "全部緑の市場は短期と長期のモメンタムがそろっています。7日が緑で1時間が赤なら、上昇トレンド中の押し目の可能性があります。",
+  "maphelp.matrix.caveats":
+    "そろったモメンタムは、すでに動きが伸び切っていることも意味します。RSIやバリューエリアと合わせて確認してください。",
+  "maphelp.emaCross.what": "短期トレンドが転換したばかりの市場。",
+  "maphelp.emaCross.how":
+    "1時間足終値の20時間・50時間指数移動平均。期間内にクロスした市場を新しい順に、現在の両者の差とともに表示します。",
+  "maphelp.emaCross.read":
+    "上向きクロスは短期平均が長期平均を上回ったことを意味し、トレンド転換の一般的な兆候です。下向きはその逆。差が広がれば継続を示します。",
+  "maphelp.emaCross.caveats":
+    "移動平均は遅れ、レンジ相場では何度もクロスします。ブレイクアウトや出来高と併用してください。",
+  "maphelp.squeeze.what": "異常に静かになった市場。大きな動きの前兆になることが多いです。",
+  "maphelp.squeeze.how":
+    "各市場の20時間ボリンジャーバンドの幅（平均に対する標準偏差の4倍）を、自身の直近7日の幅と比較。最も狭い4分の1を表示します。",
+  "maphelp.squeeze.read":
+    "ボラティリティには周期があるため、狭いバンドは急拡大につながりやすいです。ブレイクアウトと相性がよく、レンジの端にあるスクイーズ中の市場は注目です。",
+  "maphelp.squeeze.caveats":
+    "動きが近いことを示すだけで、方向はわかりません。スクイーズは予想より長引くことがあり、動きのない市場は狭いままです。",
   "maps.group.flow": "オーダーフロー",
   "maps.rs": "相対力",
   "maps.rotation": "ローテーション",

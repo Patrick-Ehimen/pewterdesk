@@ -1,15 +1,21 @@
 import type { Market, VenueId } from "@pewterdesk/core";
 import {
+  alignment,
   atrShare,
+  BAND_FRAME_HOURS,
+  BAND_FRAMES,
+  type BandRow,
   BETA_HOURS,
   BETA_WINDOWS,
   BetaMap,
   type BetaPoint,
   BOOK_SPANS,
+  BollingerMap,
   BookHeatmap,
   BreadthMap,
   BreakoutMap,
   type BreakoutRow,
+  bandRead,
   betaTo,
   breadthNow,
   breadthSeries,
@@ -17,12 +23,24 @@ import {
   CORR_SIZES,
   CORR_WINDOWS,
   type CoinRow,
+  ConfluenceMap,
+  type ConfluenceRow,
   CorrelationMap,
+  CROSS_HOURS,
+  CROSS_WINDOWS,
+  type CrossRow,
   CvdMap,
+  candleProfile,
   changeSince,
+  confluenceRead,
   correlationMatrix,
   decimalsOf,
+  EmaCrossMap,
+  emaCross,
   FLOW_BUCKETS,
+  FLOW_HOURS,
+  FLOW_WINDOWS,
+  type FlowRow,
   FUNDING_BUCKET_MS,
   FUNDING_BUCKETS,
   FUNDING_HISTORY_PICKS,
@@ -52,14 +70,23 @@ import {
   liqByMarket,
   liquidationMap,
   MAP_TOPS,
+  MATRIX_SIDES,
   MapSeg,
   MarketHeatmap,
   MarketSearch,
+  type MatrixRow,
   type MessageKey,
+  MomentumMatrix,
+  MoneyFlowMap,
+  moneyFlow,
+  nakedPocs,
+  ObvMap,
+  type ObvRow,
   OI_HOURS,
   OI_WINDOWS,
   type OiPoint,
   OpenInterestMap,
+  obvRead,
   oiChangeOver,
   oiChangeSoFar,
   openInterestFromVolume,
@@ -67,6 +94,9 @@ import {
   PERF_WINDOWS,
   PerformanceMap,
   type PerfTile,
+  PROFILE_HOURS,
+  PROFILE_SPANS,
+  ProfileMap,
   RANGE_HOURS,
   RANGE_WINDOWS,
   RelativeStrengthMap,
@@ -83,22 +113,31 @@ import {
   realisedVol,
   SeasonalityMap,
   SessionsMap,
+  type ShareTile,
   SPIKE_HOURS,
   SPIKE_WINDOWS,
   SPREAD_SORTS,
   type SpikeRow,
   SpreadMap,
+  SqueezeMap,
+  type SqueezeRow,
   type StrengthRow,
   seasonality,
   sessionStats,
+  squeezeRead,
   Tabs,
   t,
+  ValueAreaMap,
+  type ValueRow,
   VOL_FILTERS,
   VOL_MEASURES,
   VOL_ROW_COUNTS,
   VolatilityMap,
   type VolRow,
+  VolumeRotationMap,
   VolumeSpikeMap,
+  valueRead,
+  volumeShares,
   volumeSpike,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -141,11 +180,21 @@ import { LoadingMark } from "../Splash";
 const VIEWS = [
   "rsi",
   "perf",
+  "matrix",
   "rs",
   "rotation",
   "breakout",
+  "squeeze",
+  "bands",
+  "rsiBands",
+  "emaCross",
   "vol",
+  "valueArea",
+  "profile",
+  "moneyFlow",
+  "obv",
   "spikes",
+  "volRotation",
   "funding",
   "fundingHist",
   "oi",
@@ -177,8 +226,20 @@ const GROUPS = [
 type Group = (typeof GROUPS)[number];
 /** Each group's views, in the order its chips show them. */
 const GROUP_VIEWS: Record<Group, readonly View[]> = {
-  momentum: ["rsi", "perf", "rs", "rotation", "breakout", "vol"],
-  volume: ["spikes"],
+  momentum: [
+    "rsi",
+    "perf",
+    "matrix",
+    "rs",
+    "rotation",
+    "breakout",
+    "squeeze",
+    "bands",
+    "rsiBands",
+    "emaCross",
+    "vol",
+  ],
+  volume: ["valueArea", "profile", "moneyFlow", "obv", "spikes", "volRotation"],
   positioning: ["funding", "fundingHist", "oi", "ls"],
   liquidations: ["liquidations", "liqBoard", "liqmap", "book"],
   market: ["heatmap", "breadth", "corr", "beta", "spread"],
@@ -189,6 +250,16 @@ const groupOf = (view: View) => GROUPS.find((g) => GROUP_VIEWS[g].includes(view)
 const VIEW_LABEL: Record<View, MessageKey> = {
   rsi: "maps.rsi",
   perf: "maps.perf",
+  matrix: "maps.matrix",
+  squeeze: "maps.squeeze",
+  bands: "maps.bands",
+  rsiBands: "maps.rsiBands",
+  emaCross: "maps.emaCross",
+  valueArea: "maps.valueArea",
+  profile: "maps.profile",
+  moneyFlow: "maps.moneyFlow",
+  obv: "maps.obv",
+  volRotation: "maps.volRotation",
   rs: "maps.rs",
   rotation: "maps.rotation",
   breakout: "maps.breakout",
@@ -215,6 +286,15 @@ const VIEW_LABEL: Record<View, MessageKey> = {
 /** The views that read every market's hourly history. */
 const HISTORY_VIEWS: readonly View[] = [
   "perf",
+  "matrix",
+  "squeeze",
+  "bands",
+  "rsiBands",
+  "emaCross",
+  "valueArea",
+  "moneyFlow",
+  "obv",
+  "volRotation",
   "rs",
   "rotation",
   "breakout",
@@ -243,6 +323,16 @@ const isCrypto = (m: Market) => !m.category || m.category === "innovation";
 const VIEW_SETTINGS: Record<View, readonly string[]> = {
   rsi: ["frame", "scope", "rsiView"],
   perf: ["perfWindow", "perfTop", "mapScope"],
+  matrix: ["matrixSide", "mapScope"],
+  squeeze: ["mapScope"],
+  bands: ["bandFrame", "mapScope"],
+  rsiBands: ["bandFrame", "mapScope"],
+  emaCross: ["crossWindow", "mapScope"],
+  valueArea: ["valueWindow", "mapScope"],
+  profile: ["profileSpan"],
+  moneyFlow: ["moneyWindow", "mapScope"],
+  obv: ["obvWindow", "mapScope"],
+  volRotation: ["shareTop", "mapScope"],
   rs: ["rsWindow", "mapScope"],
   rotation: ["rotationLens", "mapScope"],
   breakout: ["rangeWindow", "mapScope"],
@@ -267,7 +357,15 @@ const VIEW_SETTINGS: Record<View, readonly string[]> = {
   bigTrades: ["largeShare"],
 };
 /** The views about one market, whose saved views keep it. */
-const MARKET_VIEWS: readonly View[] = ["liqmap", "book", "season", "sessions", "cvd", "bigTrades"];
+const MARKET_VIEWS: readonly View[] = [
+  "liqmap",
+  "book",
+  "season",
+  "sessions",
+  "cvd",
+  "bigTrades",
+  "profile",
+];
 
 /** A stored choice as a saved view sees it: its value, and a setter that checks. */
 function choice<T extends string>(value: T, set: (v: T) => void, allowed: readonly T[]) {
@@ -402,6 +500,18 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     FUNDING_HISTORY_SIZES,
     "20",
   );
+  const [matrixSide, setMatrixSide] = useStoredChoice("pd.maps.matrixSide", MATRIX_SIDES, "up");
+  const [bandFrame, setBandFrame] = useStoredChoice("pd.maps.bandFrame", BAND_FRAMES, "1h");
+  const [crossWindow, setCrossWindow] = useStoredChoice(
+    "pd.maps.crossWindow",
+    CROSS_WINDOWS,
+    "24h",
+  );
+  const [valueWindow, setValueWindow] = useStoredChoice("pd.maps.valueWindow", RANGE_WINDOWS, "7d");
+  const [profileSpan, setProfileSpan] = useStoredChoice("pd.maps.profileSpan", PROFILE_SPANS, "7d");
+  const [moneyWindow, setMoneyWindow] = useStoredChoice("pd.maps.moneyWindow", FLOW_WINDOWS, "24h");
+  const [obvWindow, setObvWindow] = useStoredChoice("pd.maps.obvWindow", RANGE_WINDOWS, "7d");
+  const [shareTop, setShareTop] = useStoredChoice("pd.maps.shareTop", MAP_TOPS, "60");
   const [flowBucket, setFlowBucket] = useStoredChoice("pd.maps.flowBucket", FLOW_BUCKETS, "1m");
   const [largeShare, setLargeShare] = useStoredChoice("pd.maps.largeShare", LARGE_SHARES, "5");
   const [groupViews, setGroupViews] = useState(loadGroupViews);
@@ -627,6 +737,96 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     });
   }, [view, btc, btcCandles, busiest, histories, summaryById, betaWindow]);
 
+  const matrixRows = useMemo<MatrixRow[]>(() => {
+    if (view !== "matrix") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      if (!candles) return [];
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0) || undefined;
+      const changes: MatrixRow["changes"] = {};
+      for (const w of PERF_WINDOWS) changes[w] = changeSince(candles, PERF_HOURS[w], price);
+      const score = alignment(PERF_WINDOWS.map((w) => changes[w]));
+      return score === undefined ? [] : [{ market: m, changes, score }];
+    });
+  }, [view, busiest, histories, summaryById]);
+  const squeezeRows = useMemo<SqueezeRow[]>(() => {
+    if (view !== "squeeze") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const squeeze = candles && squeezeRead(candles);
+      if (!squeeze) return [];
+      const s = summaryById.get(m.id);
+      const prev = Number(s?.prevDayPrice);
+      const change24h = s && prev > 0 ? Number(s.markPrice) / prev - 1 : undefined;
+      return [{ market: m, squeeze, change24h }];
+    });
+  }, [view, busiest, histories, summaryById]);
+  const bandRows = useMemo<BandRow[]>(() => {
+    if (view !== "bands") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const read = candles && bandRead(candles, price, BAND_FRAME_HOURS[bandFrame]);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, busiest, histories, summaryById, bandFrame]);
+  const confluenceRows = useMemo<ConfluenceRow[]>(() => {
+    if (view !== "rsiBands") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const read = candles && confluenceRead(candles, price, BAND_FRAME_HOURS[bandFrame]);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, busiest, histories, summaryById, bandFrame]);
+  const crossRows = useMemo<CrossRow[]>(() => {
+    if (view !== "emaCross") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const cross = candles && emaCross(candles, CROSS_HOURS[crossWindow]);
+      return cross ? [{ market: m, cross }] : [];
+    });
+  }, [view, busiest, histories, crossWindow]);
+  const valueRows = useMemo<ValueRow[]>(() => {
+    if (view !== "valueArea") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const read = candles && valueRead(candles.slice(-RANGE_HOURS[valueWindow]), price);
+      return read ? [{ market: m, price, read }] : [];
+    });
+  }, [view, busiest, histories, summaryById, valueWindow]);
+  const flowRows = useMemo<FlowRow[]>(() => {
+    if (view !== "moneyFlow") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const flow = candles && moneyFlow(candles, FLOW_HOURS[moneyWindow]);
+      return flow ? [{ market: m, flow }] : [];
+    });
+  }, [view, busiest, histories, moneyWindow]);
+  const obvRows = useMemo<ObvRow[]>(() => {
+    if (view !== "obv") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const read = candles && obvRead(candles, RANGE_HOURS[obvWindow]);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, busiest, histories, obvWindow]);
+  const shareTiles = useMemo<ShareTile[]>(() => {
+    if (view !== "volRotation") return [];
+    const series = new Map(
+      busiest.flatMap((m) => {
+        const candles = histories.get(m.id)?.candles;
+        return candles ? [[m.id, candles] as const] : [];
+      }),
+    );
+    const shares = volumeShares(series);
+    return busiest.flatMap((m) => {
+      const share = shares.get(m.id);
+      return share ? [{ market: m, share }] : [];
+    });
+  }, [view, busiest, histories]);
+
   // Funding over the week, in 8-hour buckets ending with the one now.
   const fundingStart =
     Math.floor(now / FUNDING_BUCKET_MS) * FUNDING_BUCKET_MS -
@@ -752,7 +952,16 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     if (m) onTrade(m);
   };
 
-  const season = useSeasonCandles(venue, heatMarket, view === "season" || view === "sessions");
+  const season = useSeasonCandles(
+    venue,
+    heatMarket,
+    view === "season" || view === "sessions" || view === "profile",
+  );
+  const profileData = useMemo(() => {
+    if (view !== "profile" || !season.candles) return undefined;
+    const candles = season.candles.slice(-PROFILE_HOURS[profileSpan]);
+    return { profile: candleProfile(candles), naked: nakedPocs(candles) };
+  }, [view, season.candles, profileSpan]);
   const seasonData = useMemo(() => {
     const candles = season.candles ?? [];
     const profile = hourProfile(candles);
@@ -794,6 +1003,14 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     fundingSize: choice(fundingSize, setFundingSize, FUNDING_HISTORY_SIZES),
     flowBucket: choice(flowBucket, setFlowBucket, FLOW_BUCKETS),
     largeShare: choice(largeShare, setLargeShare, LARGE_SHARES),
+    matrixSide: choice(matrixSide, setMatrixSide, MATRIX_SIDES),
+    bandFrame: choice(bandFrame, setBandFrame, BAND_FRAMES),
+    crossWindow: choice(crossWindow, setCrossWindow, CROSS_WINDOWS),
+    valueWindow: choice(valueWindow, setValueWindow, RANGE_WINDOWS),
+    profileSpan: choice(profileSpan, setProfileSpan, PROFILE_SPANS),
+    moneyWindow: choice(moneyWindow, setMoneyWindow, FLOW_WINDOWS),
+    obvWindow: choice(obvWindow, setObvWindow, RANGE_WINDOWS),
+    shareTop: choice(shareTop, setShareTop, MAP_TOPS),
   };
   const [saved, setSaved] = useState(loadSaved);
   const updateSaved = (next: SavedMapView[]) => {
@@ -983,6 +1200,108 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
             onWindow={setPerfWindow}
             top={perfTop}
             onTop={setPerfTop}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "matrix" ? (
+          <MomentumMatrix
+            rows={matrixRows}
+            side={matrixSide}
+            onSide={setMatrixSide}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "squeeze" ? (
+          <SqueezeMap
+            rows={squeezeRows}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "bands" ? (
+          <BollingerMap
+            rows={bandRows}
+            frame={bandFrame}
+            onFrame={setBandFrame}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "rsiBands" ? (
+          <ConfluenceMap
+            rows={confluenceRows}
+            frame={bandFrame}
+            onFrame={setBandFrame}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "emaCross" ? (
+          <EmaCrossMap
+            rows={crossRows}
+            window={crossWindow}
+            onWindow={setCrossWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "valueArea" ? (
+          <ValueAreaMap
+            rows={valueRows}
+            window={valueWindow}
+            onWindow={setValueWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "profile" ? (
+          <ProfileMap
+            market={heatMarketInfo}
+            profile={profileData?.profile}
+            price={
+              heatMarket ? Number(summaryById.get(heatMarket)?.markPrice) || undefined : undefined
+            }
+            naked={profileData?.naked ?? []}
+            span={profileSpan}
+            onSpan={setProfileSpan}
+            controls={marketPicker}
+            loader={<LoadingMark size={44} />}
+            error={season.error}
+          />
+        ) : view === "moneyFlow" ? (
+          <MoneyFlowMap
+            rows={flowRows}
+            window={moneyWindow}
+            onWindow={setMoneyWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "obv" ? (
+          <ObvMap
+            rows={obvRows}
+            window={obvWindow}
+            onWindow={setObvWindow}
+            progress={historyProgress}
+            loader={<LoadingMark size={44} />}
+            extra={scopeSeg}
+            onTrade={onTrade}
+          />
+        ) : view === "volRotation" ? (
+          <VolumeRotationMap
+            tiles={shareTiles}
+            top={shareTop}
+            onTop={setShareTop}
             progress={historyProgress}
             loader={<LoadingMark size={44} />}
             extra={scopeSeg}

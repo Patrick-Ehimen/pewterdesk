@@ -2295,7 +2295,157 @@ export const messages: Messages = {
   "maps.group.liquidations": "爆仓",
   "maps.group.market": "市场",
   "maps.group.time": "时间",
+  "maps.rsiBands": "RSI + 布林带",
+  "mapx.conf.title": "布林带处的 RSI",
+  "mapx.conf.upperTitle": "上轨超买",
+  "mapx.conf.lowerTitle": "下轨超卖",
+  "mapx.conf.checked": "已检查 {count} 个市场",
+  "mapx.conf.note":
+    "同一组 K 线上的 RSI(14) 和 20 周期布林带。只有两者一致时才列出：RSI 70 以上且在上轨或其附近，或 RSI 30 以下且在下轨或其附近。",
+  "maphelp.rsiBands.what": "RSI 和布林带信号一致的市场：在布林带顶部超买，或在底部超卖。",
+  "maphelp.rsiBands.how":
+    "基于 1 小时或 4 小时周期的 RSI(14) 和 20 周期布林带（两倍标准差），最新一根按当前价格计算。上方：RSI 70 以上，价格高于、触及或接近上轨。下方：RSI 30 以下，价格低于、触及或接近下轨。",
+  "maphelp.rsiBands.read":
+    "两个指标一致比单一指标更能说明行情已被拉伸，RSI 最极端的排在最前。这表示拉伸，而不是反转：强趋势中市场可能长时间在轨道处保持超买，所以要等行情停滞后再视为反转。",
+  "maphelp.rsiBands.caveats":
+    "最活跃的 150 个市场。4 小时 RSI 基于约 7 天的 K 线，可能与 RSI 热力图略有差异。历史不足的市场不会检查。",
+  "maps.bands": "布林带",
+  "mapx.bands.title": "价格与布林带",
+  "mapx.bands.frame": "时间周期",
+  "mapx.bands.upperTitle": "上轨",
+  "mapx.bands.lowerTitle": "下轨",
+  "mapx.bands.aboveUpper": "高于上轨",
+  "mapx.bands.atUpper": "触及上轨",
+  "mapx.bands.nearUpper": "接近上轨",
+  "mapx.bands.nearLower": "接近下轨",
+  "mapx.bands.atLower": "触及下轨",
+  "mapx.bands.belowLower": "低于下轨",
+  "mapx.bands.middle": "中间区域 {count}",
+  "mapx.bands.note":
+    "20 周期布林带，均线上下各两倍标准差，基于小时 K 线。数字是 %B：0% 为下轨，100% 为上轨，超出即在带外。",
+  "maphelp.bands.what": "每个市场的价格相对布林带的位置：带外、触及轨道或接近轨道。",
+  "maphelp.bands.how":
+    "基于 1 小时或 4 小时周期 20 根 K 线的布林带，均线上下各两倍标准差，最新一根按当前价格计算。%B 表示价格在两轨之间的位置。触及指距轨道不超过带宽的 5%；接近指不超过 20%。",
+  "maphelp.bands.read":
+    "高于上轨是强势行情，可能已过度拉伸；低于下轨则是向下的同样情况。强趋势中价格可能沿轨道运行，所以它本身不是反转信号。可与挤压视图对照：从收窄的布林带突破常常开启一轮行情。",
+  "maphelp.bands.caveats":
+    "最活跃的 150 个市场。中间区域的市场只计数。4 小时布林带需要约 3 天的历史，因此新上市的市场可能不会出现。",
   "maps.group.volume": "成交量",
+  "maps.matrix": "动量矩阵",
+  "maps.squeeze": "挤压",
+  "maps.emaCross": "EMA 交叉",
+  "maps.valueArea": "价值区",
+  "maps.profile": "成交量分布",
+  "maps.moneyFlow": "资金流",
+  "maps.obv": "OBV 背离",
+  "maps.volRotation": "成交量轮动",
+  "mapx.value.title": "价格与价值区",
+  "mapx.value.above": "上方 {count}",
+  "mapx.value.inside": "内部 {count}",
+  "mapx.value.below": "下方 {count}",
+  "mapx.value.aboveTitle": "高于 {window} 价值区",
+  "mapx.value.belowTitle": "低于 {window} 价值区",
+  "mapx.value.note":
+    "每个市场在该时段的成交量分布，基于小时 K 线：最活跃价格周围 70% 的成交量。数字是到该价格（POC）的距离，POC 显示在旁边。",
+  "mapx.profile.title": "价格成交量",
+  "mapx.profile.poc": "控制点",
+  "mapx.profile.vah": "价值区上沿",
+  "mapx.profile.val": "价值区下沿",
+  "mapx.profile.naked": "未测试的每日 POC",
+  "mapx.profile.note":
+    "每小时成交量分摊到该 K 线的波动范围。实色行是价值区，占 70% 成交量。蓝色虚线是过去各日最活跃、此后未被穿过的价格。",
+  "mapx.money.title": "资金流",
+  "mapx.money.in": "净买入 {count}",
+  "mapx.money.out": "净卖出 {count}",
+  "mapx.money.inTitle": "流入最多",
+  "mapx.money.outTitle": "流出最多",
+  "mapx.money.note": "上涨小时的成交额减去下跌小时的成交额。最后一列是该净额占全部成交额的比例。",
+  "mapx.obv.title": "OBV 与价格",
+  "mapx.obv.bullish": "看涨 {count}",
+  "mapx.obv.bearish": "看跌 {count}",
+  "mapx.obv.bullishTitle": "成交量领先价格",
+  "mapx.obv.bearishTitle": "成交量落后价格",
+  "mapx.obv.places": "价格 / OBV 在各自区间内的位置",
+  "mapx.obv.note":
+    "能量潮与价格，各自放在该时段的区间内比较。列出两者相距较远的市场；最后一列为价格 / OBV。",
+  "mapx.rotationVol.title": "成交量流向",
+  "mapx.rotationVol.rising": "比平时多 25% {count}",
+  "mapx.rotationVol.day": "当日成交量占比",
+  "mapx.rotationVol.week": "一周占比",
+  "mapx.rotationVol.change": "相对一周",
+  "mapx.rotationVol.note":
+    "大小按每个市场在最活跃 150 个市场中最近一天的成交量占比；高于一周占比为橙色，低于为蓝色。",
+  "mapx.matrix.title": "跨周期动量",
+  "mapx.matrix.side": "方向",
+  "mapx.matrix.side.up": "最强",
+  "mapx.matrix.side.down": "最弱",
+  "mapx.matrix.allUp": "四个周期全涨 {count}",
+  "mapx.matrix.allDown": "四个周期全跌 {count}",
+  "mapx.matrix.note": "每个市场 1 小时、4 小时、24 小时和 7 天的涨跌幅，各周期最一致的排在前面。",
+  "mapx.cross.title": "EMA 交叉",
+  "mapx.cross.ago": "{hours} 小时前",
+  "mapx.cross.upTitle": "上穿（{count}）",
+  "mapx.cross.downTitle": "下穿（{count}）",
+  "mapx.cross.none": "此时段内没有交叉",
+  "mapx.cross.note":
+    "在该时段内 20 小时 EMA 穿过 50 小时 EMA 的市场，最新的排在前面。数字是两者目前的差距。",
+  "mapx.squeeze.title": "布林带挤压",
+  "mapx.squeeze.count": "挤压中 {count}",
+  "mapx.squeeze.note":
+    "20 小时布林带处于自身最近 7 天最窄四分之一的市场，最窄的排在前面。数字是带宽和当日涨跌幅。",
+  "maphelp.valueArea.what": "价格偏离到其大部分成交量所在区域上方或下方的市场。",
+  "maphelp.valueArea.how":
+    "基于小时 K 线计算每个市场在该时段（24 小时或 7 天）的成交量分布：控制点（最活跃价格）和价值区（其周围 70% 的成交量）。按价格与控制点的距离排列。",
+  "maphelp.valueArea.read":
+    "除非在新水平被接受，价格往往会回到价值区。远高于价值区说明过度拉伸，若有成交量支持则是突破；下方同理相反。",
+  "maphelp.valueArea.caveats":
+    "小时 K 线只能近似每小时内成交量的位置。在流动性差的市场上，短时段可能产生误导。",
+  "maphelp.profile.what": "一周或一个月内，某个市场的成交量在各价格上的分布。",
+  "maphelp.profile.how":
+    "每根小时 K 线的成交量分摊到其波动范围，分成 60 行，并按上涨和下跌小时区分。控制点是最活跃的一行，价值区包含其周围 70% 的成交量。未测试 POC 是已结束日期中最活跃、此后没有 K 线穿过的价格。",
+  "maphelp.profile.read":
+    "厚的区域是市场认可价格的地方，常成为支撑或阻力。薄的区域往往被快速穿过。未测试 POC 常会吸引价格回来。",
+  "maphelp.profile.caveats":
+    "基于小时 K 线而非逐笔成交，比真正的逐笔分布粗略，且只覆盖一个交易所的成交量。",
+  "maphelp.moneyFlow.what": "资金逐个市场的流入和流出情况。",
+  "maphelp.moneyFlow.how":
+    "该时段内收涨小时的成交额减去收跌小时的成交额，以及该净额占全部成交额的比例。最活跃的 150 个市场。",
+  "maphelp.moneyFlow.read": "价格持平而净买入强劲，可能是悄悄吸筹；价格上涨而净卖出，可能是派发。",
+  "maphelp.moneyFlow.caveats":
+    "这只是近似：上涨小时的成交量并非全是买入。要看单一市场真实的主动成交，请用 CVD。",
+  "maphelp.obv.what": "成交量和价格说法不一致的市场。",
+  "maphelp.obv.how":
+    "能量潮在小时收涨时加上该小时成交量，收跌时减去。把 OBV 和价格放到各自在该时段的区间内（0 到 100%），列出相差至少 40 个点的市场。",
+  "maphelp.obv.read":
+    "看涨：价格接近低点而 OBV 高，说明成交量在流入。看跌：价格接近高点而 OBV 低，说明上涨缺乏成交量支持。",
+  "maphelp.obv.caveats":
+    "背离可能持续很久，也常常不经反转就消失。把它当作需要核实的线索，而不是信号。",
+  "maphelp.volRotation.what": "比平时吸引更多交易所成交的市场。",
+  "maphelp.volRotation.how":
+    "在最活跃的 150 个市场中，比较每个市场最近 24 小时成交量占比与全周占比。方块大小为当日占比，颜色为差异。",
+  "maphelp.volRotation.read":
+    "橙色方块是注意力转移的方向，常出现在大行情之前或之中。蓝色的正在被冷落。",
+  "maphelp.volRotation.caveats":
+    "这是占比：一个巨大市场暴涨会让其他市场显得更冷清。只覆盖此交易所。",
+  "maphelp.matrix.what": "在一个网格中查看每个市场四个周期的动量。",
+  "maphelp.matrix.how":
+    "最活跃 150 个市场 1 小时、4 小时、24 小时和 7 天的涨跌幅。按上涨周期数减下跌周期数打分，再按涨跌强度排序。",
+  "maphelp.matrix.read":
+    "全绿的市场长短期动量一致。7 天为绿而 1 小时为红，可能是上升趋势中的回调。",
+  "maphelp.matrix.caveats": "动量一致也可能意味着行情已经走得过远。请结合 RSI 或价值区确认。",
+  "maphelp.emaCross.what": "短期趋势刚刚转向的市场。",
+  "maphelp.emaCross.how":
+    "小时收盘价的 20 小时和 50 小时指数移动平均线。列出在该时段内发生交叉的市场，最新的在前，并显示两者目前的差距。",
+  "maphelp.emaCross.read":
+    "上穿表示短期均线升到长期均线之上，是常见的转涨迹象；下穿相反。差距扩大说明行情在延续。",
+  "maphelp.emaCross.caveats": "均线有滞后，震荡市中会反复交叉。请与突破或成交量一起使用。",
+  "maphelp.squeeze.what": "异常安静的市场，这往往出现在大行情之前。",
+  "maphelp.squeeze.how":
+    "每个市场 20 小时布林带的宽度（四倍标准差除以均值），与其自身最近 7 天的宽度比较。列出最窄的四分之一。",
+  "maphelp.squeeze.read":
+    "波动率有周期，所以窄带常引发剧烈扩张。它与突破视图搭配很好：处于区间边缘的挤压市场值得关注。",
+  "maphelp.squeeze.caveats":
+    "它只说明行情可能临近，不说明方向。挤压可能比预期持续更久，死寂的市场也会一直很窄。",
   "maps.group.flow": "订单流",
   "maps.rs": "相对强度",
   "maps.rotation": "轮动",

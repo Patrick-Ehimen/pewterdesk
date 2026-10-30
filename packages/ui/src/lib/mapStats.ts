@@ -1,4 +1,8 @@
 import type { Candle, MarketSummary, OrderBook, VenueId } from "@pewterdesk/core";
+import type { Bar } from "openalgo-charts";
+import { rsiZone } from "./marketMaps";
+import { rsi } from "./screener";
+import { type VolumeProfile, volumeProfile } from "./volumeProfile";
 
 // The Maps page's market-wide views: plain arithmetic over what the venues
 // already send (hourly candles, summaries, the order book), so each view is
@@ -888,4 +892,402 @@ export function largeTrades(
     threshold,
     trades: trades.filter((tr) => tr.price * tr.size >= threshold),
   };
+}
+
+// --- Volume profiles across markets ---------------------------------------
+
+/** Rows a market's profile is worked out in. */
+const PROFILE_ROWS = 60;
+/** The share of the volume in the value area, as on the charts' profiles. */
+const VALUE_AREA = 0.7;
+
+const toBars = (candles: readonly Candle[]): Bar[] =>
+  candles.map((c) => ({
+    time: c.openTime / 1000,
+    open: num(c.open),
+    high: num(c.high),
+    low: num(c.low),
+    close: num(c.close),
+    volume: num(c.volume),
+  }));
+
+/** The volume profile of hourly candles. */
+export function candleProfile(
+  candles: readonly Candle[],
+  rows = PROFILE_ROWS,
+): VolumeProfile | undefined {
+  return volumeProfile(toBars(candles), rows, VALUE_AREA);
+}
+
+export type ValuePlace = "above" | "inside" | "below";
+
+export interface ValueRead {
+  /** Point of control: the middle of the busiest row. */
+  poc: number;
+  /** The value area's top and bottom. */
+  vah: number;
+  val: number;
+  /** Where the price is against the value area. */
+  place: ValuePlace;
+  /** How far the price is from the point of control, as a share of it. */
+  toPoc: number;
+}
+
+/** Where `price` sits against the profile of `candles`. */
+export function valueRead(candles: readonly Candle[], price: number): ValueRead | undefined {
+  if (candles.length < 12 || !(price > 0)) return undefined;
+  const profile = candleProfile(candles);
+  const pocRow = profile?.rows[profile.poc];
+  const top = profile?.rows[profile.valueHigh];
+  const bottom = profile?.rows[profile.valueLow];
+  if (!pocRow || !top || !bottom) return undefined;
+  const poc = (pocRow.low + pocRow.high) / 2;
+  const vah = top.high;
+  const val = bottom.low;
+  return {
+    poc,
+    vah,
+    val,
+    place: price > vah ? "above" : price < val ? "below" : "inside",
+    toPoc: price / poc - 1,
+  };
+}
+
+export interface NakedPoc {
+  /** The day the point of control is from, by its first candle's open time. */
+  time: number;
+  price: number;
+}
+
+/**
+ * Each finished UTC day's point of control that no later candle has traded
+ * through: the untested levels price often comes back to. Oldest first.
+ */
+export function nakedPocs(candles: readonly Candle[]): NakedPoc[] {
+  const days = new Map<number, Candle[]>();
+  for (const c of candles) {
+    const day = Math.floor(c.openTime / (24 * HOUR));
+    const list = days.get(day);
+    if (list) list.push(c);
+    else days.set(day, [c]);
+  }
+  const sorted = [...days.keys()].sort((a, b) => a - b);
+  const out: NakedPoc[] = [];
+  // The last day is still forming.
+  for (const day of sorted.slice(0, -1)) {
+    const list = days.get(day) ?? [];
+    const profile = candleProfile(list, 30);
+    const row = profile?.rows[profile.poc];
+    if (!row) continue;
+    const price = (row.low + row.high) / 2;
+    const end = (day + 1) * 24 * HOUR;
+    const touched = candles.some(
+      (c) => c.openTime >= end && num(c.low) <= price && num(c.high) >= price,
+    );
+    if (!touched) out.push({ time: list[0]?.openTime ?? 0, price });
+  }
+  return out;
+}
+
+// --- Money flow and on-balance volume --------------------------------------
+
+export type FlowWindow = "4h" | "24h" | "7d";
+export const FLOW_WINDOWS: readonly FlowWindow[] = ["4h", "24h", "7d"];
+export const FLOW_HOURS: Record<FlowWindow, number> = { "4h": 4, "24h": 24, "7d": 168 };
+
+export interface MoneyFlow {
+  /** Value traded on up hours less value traded on down hours, in quote currency. */
+  net: number;
+  /** All the value traded. */
+  gross: number;
+  /** `net` over `gross`: -1 all selling hours, 1 all buying ones. */
+  ratio: number;
+}
+
+/** Up-hour against down-hour value over the last `hours` hourly candles. */
+export function moneyFlow(candles: readonly Candle[], hours: number): MoneyFlow | undefined {
+  const recent = candles.slice(-hours);
+  if (recent.length < Math.min(hours, 4)) return undefined;
+  let net = 0;
+  let gross = 0;
+  for (const c of recent) {
+    const value = num(c.volume) * num(c.close);
+    gross += value;
+    net += num(c.close) >= num(c.open) ? value : -value;
+  }
+  return gross > 0 ? { net, gross, ratio: net / gross } : undefined;
+}
+
+export type ObvKind = "bullish" | "bearish";
+
+export interface ObvRead {
+  /** Where the price and the OBV sit in their own ranges over the window, 0 to 1. */
+  price: number;
+  obv: number;
+  /** `obv` less `price`: above 0 volume is ahead of price, below it behind. */
+  gap: number;
+  /** Set when they disagree: price low and OBV high, or the reverse. */
+  kind?: ObvKind;
+}
+
+/** How far apart they must sit in their ranges to count as a divergence. */
+const OBV_GAP = 0.4;
+
+const placeIn = (values: readonly number[]) => {
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const last = values[values.length - 1] ?? lo;
+  return hi > lo ? (last - lo) / (hi - lo) : 0.5;
+};
+
+/**
+ * On-balance volume (each hour's volume added on an up close, taken off on
+ * a down one) against price over the last `hours` hours.
+ */
+export function obvRead(candles: readonly Candle[], hours: number): ObvRead | undefined {
+  const recent = candles.slice(-(hours + 1));
+  if (recent.length < Math.min(hours, 12)) return undefined;
+  const closes = recent.map((c) => num(c.close));
+  const obv = [0];
+  for (let i = 1; i < recent.length; i++) {
+    const was = obv[i - 1] ?? 0;
+    const move = (closes[i] ?? 0) - (closes[i - 1] ?? 0);
+    const volume = num(recent[i]?.volume);
+    obv.push(move > 0 ? was + volume : move < 0 ? was - volume : was);
+  }
+  const price = placeIn(closes);
+  const volume = placeIn(obv);
+  const gap = volume - price;
+  const kind =
+    Math.abs(gap) < OBV_GAP ? undefined : gap > 0 ? ("bullish" as const) : ("bearish" as const);
+  return { price, obv: volume, gap, kind };
+}
+
+// --- Volume rotation -------------------------------------------------------
+
+/** Value traded over the last `hours` hourly candles, in quote currency. */
+export function quoteVolume(candles: readonly Candle[], hours: number): number {
+  return candles.slice(-hours).reduce((a, c) => a + num(c.volume) * num(c.close), 0);
+}
+
+export interface VolumeShare {
+  /** The market's share of the venue's volume over the last day, and the whole week. */
+  day: number;
+  week: number;
+  /** `day` over `week`, less 1: above 0 it's drawing more of the volume than usual. */
+  change: number;
+}
+
+/** Each market's share of the volume over the last day against over the week. */
+export function volumeShares(
+  series: ReadonlyMap<string, readonly Candle[]>,
+): Map<string, VolumeShare> {
+  let dayTotal = 0;
+  let weekTotal = 0;
+  const raw = new Map<string, { day: number; week: number }>();
+  for (const [id, candles] of series) {
+    const day = quoteVolume(candles, 24);
+    const week = quoteVolume(candles, 168);
+    if (!(day > 0) || !(week > 0)) continue;
+    raw.set(id, { day, week });
+    dayTotal += day;
+    weekTotal += week;
+  }
+  const out = new Map<string, VolumeShare>();
+  for (const [id, v] of raw) {
+    const day = v.day / dayTotal;
+    const week = v.week / weekTotal;
+    out.set(id, { day, week, change: day / week - 1 });
+  }
+  return out;
+}
+
+// --- Momentum --------------------------------------------------------------
+
+/**
+ * How well a market's timeframes agree: windows up less windows down, from
+ * every window against to every window with. Undefined with none known.
+ */
+export function alignment(changes: readonly (number | undefined)[]): number | undefined {
+  const known = changes.filter((c): c is number => c !== undefined);
+  if (known.length === 0) return undefined;
+  return known.filter((c) => c > 0).length - known.filter((c) => c < 0).length;
+}
+
+export type CrossWindow = "12h" | "24h" | "48h";
+export const CROSS_WINDOWS: readonly CrossWindow[] = ["12h", "24h", "48h"];
+export const CROSS_HOURS: Record<CrossWindow, number> = { "12h": 12, "24h": 24, "48h": 48 };
+
+export interface EmaCross {
+  direction: "up" | "down";
+  /** Hours since the cross. */
+  hoursAgo: number;
+  /** The fast EMA's distance from the slow one now, as a share of it. */
+  gap: number;
+}
+
+/**
+ * The latest cross of the 20- and 50-hour EMAs within the last `within`
+ * hours, if there's been one. Crosses in the EMAs' first hours, while
+ * they're settling, don't count.
+ */
+export function emaCross(
+  candles: readonly Candle[],
+  within: number,
+  fast = 20,
+  slow = 50,
+): EmaCross | undefined {
+  if (candles.length < slow + 2) return undefined;
+  const closes = candles.map((c) => num(c.close));
+  const a = emaOf(closes, fast);
+  const b = emaOf(closes, slow);
+  const last = closes.length - 1;
+  const gapAt = (i: number) => (a[i] ?? 0) - (b[i] ?? 0);
+  for (let i = last; i > Math.max(last - within, slow); i--) {
+    const now = gapAt(i);
+    const before = gapAt(i - 1);
+    if ((now > 0 && before <= 0) || (now < 0 && before >= 0)) {
+      const slowNow = b[last] ?? 0;
+      return {
+        direction: now > 0 ? "up" : "down",
+        hoursAgo: last - i,
+        gap: slowNow > 0 ? gapAt(last) / slowNow : 0,
+      };
+    }
+  }
+  return undefined;
+}
+
+export interface Squeeze {
+  /** Bollinger band width now: four standard deviations over the average. */
+  bandwidth: number;
+  /** The share of the history's widths at or below it, 0 to 1: low is tight. */
+  rank: number;
+}
+
+/** How tight a market's 20-hour Bollinger bands are against the rest of its history. */
+export function squeezeRead(candles: readonly Candle[], period = 20): Squeeze | undefined {
+  const closes = candles.map((c) => num(c.close));
+  if (closes.length < period + 24) return undefined;
+  const widths: number[] = [];
+  for (let i = period; i <= closes.length; i++) {
+    const slice = closes.slice(i - period, i);
+    const m = mean(slice);
+    const sd = stdev(slice);
+    if (m !== undefined && m > 0 && sd !== undefined) widths.push((4 * sd) / m);
+  }
+  const bandwidth = widths[widths.length - 1];
+  if (bandwidth === undefined) return undefined;
+  return { bandwidth, rank: widths.filter((w) => w <= bandwidth).length / widths.length };
+}
+
+// --- Bollinger bands -------------------------------------------------------
+
+export type BandFrame = "1h" | "4h";
+export const BAND_FRAMES: readonly BandFrame[] = ["1h", "4h"];
+export const BAND_FRAME_HOURS: Record<BandFrame, number> = { "1h": 1, "4h": 4 };
+
+export type BandZone =
+  | "aboveUpper"
+  | "atUpper"
+  | "nearUpper"
+  | "middle"
+  | "nearLower"
+  | "atLower"
+  | "belowLower";
+export const UPPER_ZONES = ["aboveUpper", "atUpper", "nearUpper"] as const;
+export const LOWER_ZONES = ["belowLower", "atLower", "nearLower"] as const;
+
+/** Within this share of the bands' width from a band, price is at it; within the next, near it. */
+const BAND_AT = 0.05;
+const BAND_NEAR = 0.2;
+
+export interface BandRead {
+  upper: number;
+  middle: number;
+  lower: number;
+  /** %B: where the price sits, 0 at the lower band, 1 at the upper, beyond them outside. */
+  percentB: number;
+  zone: BandZone;
+}
+
+/** Which zone a %B falls in. */
+export function bandZone(percentB: number): BandZone {
+  if (percentB > 1) return "aboveUpper";
+  if (percentB < 0) return "belowLower";
+  if (percentB >= 1 - BAND_AT) return "atUpper";
+  if (percentB <= BAND_AT) return "atLower";
+  if (percentB >= 1 - BAND_NEAR) return "nearUpper";
+  if (percentB <= BAND_NEAR) return "nearLower";
+  return "middle";
+}
+
+/** Closes of hourly candles gathered into `hours`-long bars, on UTC multiples of them. */
+function closesEvery(candles: readonly Candle[], hours: number): number[] {
+  if (hours <= 1) return candles.map((c) => num(c.close));
+  const out: number[] = [];
+  let bar: number | undefined;
+  for (const c of candles) {
+    const at = Math.floor(c.openTime / (hours * HOUR));
+    if (at === bar) out[out.length - 1] = num(c.close);
+    else {
+      out.push(num(c.close));
+      bar = at;
+    }
+  }
+  return out;
+}
+
+/**
+ * Where `price` sits against the market's Bollinger bands (`period` bars of
+ * `frameHours` hours, two standard deviations either side of their average),
+ * the forming bar taken at `price`.
+ */
+export function bandRead(
+  candles: readonly Candle[],
+  price: number,
+  frameHours: number,
+  period = 20,
+): BandRead | undefined {
+  const closes = closesEvery(candles, frameHours).slice(-period);
+  if (closes.length < period || !(price > 0)) return undefined;
+  closes[closes.length - 1] = price;
+  const middle = mean(closes);
+  const sd = stdev(closes);
+  if (middle === undefined || sd === undefined || !(sd > 0)) return undefined;
+  const upper = middle + 2 * sd;
+  const lower = middle - 2 * sd;
+  const percentB = (price - lower) / (upper - lower);
+  return { upper, middle, lower, percentB, zone: bandZone(percentB) };
+}
+
+export interface ConfluenceRead {
+  /** RSI(14) on the bands' own bars. */
+  rsi: number;
+  band: BandRead;
+  /** Overbought at or near the upper band, or oversold at or near the lower; else neither. */
+  side?: "upper" | "lower";
+}
+
+/** A market's RSI and its place against its Bollinger bands, on the same bars. */
+export function confluenceRead(
+  candles: readonly Candle[],
+  price: number,
+  frameHours: number,
+): ConfluenceRead | undefined {
+  const band = bandRead(candles, price, frameHours);
+  if (!band) return undefined;
+  const closes = closesEvery(candles, frameHours);
+  closes[closes.length - 1] = price;
+  const value = rsi(closes);
+  if (value === undefined) return undefined;
+  const zone = rsiZone(value);
+  const inside = (zones: readonly BandZone[]) => zones.includes(band.zone);
+  const side =
+    zone === "overbought" && inside(UPPER_ZONES)
+      ? "upper"
+      : zone === "oversold" && inside(LOWER_ZONES)
+        ? "lower"
+        : undefined;
+  return { rsi: value, band, side };
 }

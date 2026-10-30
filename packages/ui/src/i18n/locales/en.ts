@@ -2347,7 +2347,167 @@ export const en = {
   "maps.group.liquidations": "Liquidations",
   "maps.group.market": "Market",
   "maps.group.time": "Time",
+  "maps.rsiBands": "RSI + Bands",
+  "mapx.conf.title": "RSI at the Bollinger Bands",
+  "mapx.conf.upperTitle": "Overbought at upper band",
+  "mapx.conf.lowerTitle": "Oversold at lower band",
+  "mapx.conf.checked": "{count} markets checked",
+  "mapx.conf.note":
+    "RSI(14) and 20-period Bollinger Bands on the same bars. A market is listed only when both agree: RSI 70 or above at or near the upper band, or 30 or below at or near the lower.",
+  "maphelp.rsiBands.what":
+    "Markets where RSI and the Bollinger Bands say the same thing: overbought at the top of the bands, or oversold at the bottom.",
+  "maphelp.rsiBands.how":
+    "RSI(14) and 20-period bands, two standard deviations wide, on the 1-hour or 4-hour timeframe, with the latest bar at the current price. Upper side: RSI 70 or more and the price above, at or near the upper band. Lower side: RSI 30 or less and the price below, at or near the lower band.",
+  "maphelp.rsiBands.read":
+    "Two readings agreeing make a stretched move more notable than either alone, and the most extreme RSI comes first. It marks stretch, not a turn: in a strong trend a market can stay overbought at its band for a long time, so look for the move to stall before reading it as a reversal.",
+  "maphelp.rsiBands.caveats":
+    "The busiest 150 markets. RSI on the 4-hour timeframe comes from about 7 days of bars, so it can differ slightly from the RSI heatmap's. Markets without enough history aren't checked.",
+  "maps.bands": "Bollinger Bands",
+  "mapx.bands.title": "Price against Bollinger Bands",
+  "mapx.bands.frame": "Timeframe",
+  "mapx.bands.upperTitle": "Upper band",
+  "mapx.bands.lowerTitle": "Lower band",
+  "mapx.bands.aboveUpper": "Above upper",
+  "mapx.bands.atUpper": "At upper",
+  "mapx.bands.nearUpper": "Near upper",
+  "mapx.bands.nearLower": "Near lower",
+  "mapx.bands.atLower": "At lower",
+  "mapx.bands.belowLower": "Below lower",
+  "mapx.bands.middle": "{count} mid-band",
+  "mapx.bands.note":
+    "20-period bands, two standard deviations either side of the average, from hourly candles. The figure is %B: 0% is the lower band, 100% the upper, and beyond them is outside.",
+  "maphelp.bands.what":
+    "Where each market's price is against its Bollinger Bands: outside them, at them, or close to them.",
+  "maphelp.bands.how":
+    "Bands of 20 bars on the 1-hour or 4-hour timeframe, two standard deviations either side of the average, with the latest bar taken at the current price. %B places the price between them. At a band means within 5% of the bands' width from it; near means within 20%.",
+  "maphelp.bands.read":
+    "Above the upper band is a strong move that may be stretched; below the lower band the same downward. In a strong trend price can ride a band, so it isn't a reversal signal by itself. Compare with Squeeze: a break out of tight bands often starts a move.",
+  "maphelp.bands.caveats":
+    "The busiest 150 markets. Mid-band markets are only counted. The 4-hour bands need about 3 days of history, so a new listing may not appear.",
   "maps.group.volume": "Volume",
+  "maps.matrix": "Momentum matrix",
+  "maps.squeeze": "Squeeze",
+  "maps.emaCross": "EMA crosses",
+  "maps.valueArea": "Value area",
+  "maps.profile": "Volume profile",
+  "maps.moneyFlow": "Money flow",
+  "maps.obv": "OBV divergence",
+  "maps.volRotation": "Volume rotation",
+  "mapx.value.title": "Price against value",
+  "mapx.value.above": "{count} above",
+  "mapx.value.inside": "{count} inside",
+  "mapx.value.below": "{count} below",
+  "mapx.value.aboveTitle": "Above their {window} value area",
+  "mapx.value.belowTitle": "Below their {window} value area",
+  "mapx.value.note":
+    "Each market's volume profile over the window, from hourly candles: the 70% of volume around its busiest price. The figure is the distance from that price (POC), shown beside it.",
+  "mapx.profile.title": "Volume at price",
+  "mapx.profile.poc": "Point of control",
+  "mapx.profile.vah": "Value area high",
+  "mapx.profile.val": "Value area low",
+  "mapx.profile.naked": "Untested daily POCs",
+  "mapx.profile.note":
+    "Hourly volume shared across each candle's range. Solid rows are the value area, 70% of the volume. Blue dotted lines are days' busiest prices that haven't been traded through since.",
+  "mapx.money.title": "Money flow",
+  "mapx.money.in": "{count} net buying",
+  "mapx.money.out": "{count} net selling",
+  "mapx.money.inTitle": "Most flowing in",
+  "mapx.money.outTitle": "Most flowing out",
+  "mapx.money.note":
+    "Value traded on up hours less value traded on down hours. The last column is that net as a share of everything traded.",
+  "mapx.obv.title": "OBV against price",
+  "mapx.obv.bullish": "{count} bullish",
+  "mapx.obv.bearish": "{count} bearish",
+  "mapx.obv.bullishTitle": "Volume ahead of price",
+  "mapx.obv.bearishTitle": "Volume behind price",
+  "mapx.obv.places": "Where price / OBV sit in their ranges",
+  "mapx.obv.note":
+    "On-balance volume against price, each placed in its own range over the window. Listed where they sit far apart; the last column gives price / OBV.",
+  "mapx.rotationVol.title": "Where the volume is going",
+  "mapx.rotationVol.rising": "{count} drawing 25% more than usual",
+  "mapx.rotationVol.day": "Share of the day's volume",
+  "mapx.rotationVol.week": "Share of the week's",
+  "mapx.rotationVol.change": "Against the week",
+  "mapx.rotationVol.note":
+    "Sized by each market's share of the last day's volume among the busiest 150; orange where that's more than its share of the week, blue where less.",
+  "mapx.matrix.title": "Momentum across timeframes",
+  "mapx.matrix.side": "Direction",
+  "mapx.matrix.side.up": "Strongest",
+  "mapx.matrix.side.down": "Weakest",
+  "mapx.matrix.allUp": "{count} up on all four",
+  "mapx.matrix.allDown": "{count} down on all four",
+  "mapx.matrix.note":
+    "Each market's return over 1 hour, 4 hours, 24 hours and 7 days, those whose timeframes agree most first.",
+  "mapx.cross.title": "EMA crosses",
+  "mapx.cross.ago": "{hours}h ago",
+  "mapx.cross.upTitle": "Crossed up ({count})",
+  "mapx.cross.downTitle": "Crossed down ({count})",
+  "mapx.cross.none": "No crosses in this window",
+  "mapx.cross.note":
+    "Where the 20-hour EMA crossed the 50-hour EMA within the window, freshest first. The figure is the gap between them now.",
+  "mapx.squeeze.title": "Bollinger squeeze",
+  "mapx.squeeze.count": "{count} squeezed",
+  "mapx.squeeze.note":
+    "Markets whose 20-hour Bollinger bands are in the tightest quarter of their own last 7 days, tightest first. The figures are the band's width and the day's change.",
+  "maphelp.valueArea.what":
+    "Which markets have stretched above or below where most of their volume traded.",
+  "maphelp.valueArea.how":
+    "Each market's volume profile over the window (24 hours or 7 days), from hourly candles: its point of control (the busiest price) and value area (the 70% of volume around it). Markets are listed by how far the price is from the point of control.",
+  "maphelp.valueArea.read":
+    "Price tends to be drawn back to value, unless it's been accepted at a new level. A market far above value is stretched, or breaking out if volume backs it; below value it's the same the other way.",
+  "maphelp.valueArea.caveats":
+    "Hourly candles only approximate where volume traded inside each hour. A short window can mislead on a thin market.",
+  "maphelp.profile.what": "How one market's volume is spread across prices over a week or a month.",
+  "maphelp.profile.how":
+    "Each hourly candle's volume is shared across its range, into 60 rows, split by up and down hours. The point of control is the busiest row and the value area holds 70% of the volume around it. Untested POCs are finished days' busiest prices that no later candle has traded through.",
+  "maphelp.profile.read":
+    "Thick areas are where the market agreed on price, and tend to act as support or resistance. Thin areas tend to be crossed quickly. Untested POCs often draw price back.",
+  "maphelp.profile.caveats":
+    "Built from hourly candles, not every trade, so it's coarser than a true tick profile, and it covers one venue's volume only.",
+  "maphelp.moneyFlow.what": "Where money has been going in or coming out, market by market.",
+  "maphelp.moneyFlow.how":
+    "Over the window, the value traded in hours that closed up less the value traded in hours that closed down, and that net as a share of all value traded. The busiest 150 markets.",
+  "maphelp.moneyFlow.read":
+    "Strong net buying with a flat price can be quiet accumulation; net selling into a rising price can be distribution.",
+  "maphelp.moneyFlow.caveats":
+    "It's a proxy: an up hour's volume isn't all buying. For true taker flow on one market, use CVD.",
+  "maphelp.obv.what": "Markets where volume and price are telling different stories.",
+  "maphelp.obv.how":
+    "On-balance volume adds an hour's volume when it closes up and takes it off when it closes down. Both OBV and price are placed in their own range over the window (0 to 100%), and markets are listed where they sit at least 40 points apart.",
+  "maphelp.obv.read":
+    "Bullish: price is near its low but OBV is high, so volume has been coming in. Bearish: price is near its high but OBV is low, so the rise lacks volume behind it.",
+  "maphelp.obv.caveats":
+    "Divergences can last a long time and often resolve without a reversal. Treat it as something to check, not a signal.",
+  "maphelp.volRotation.what":
+    "Which markets are drawing more of the venue's trading than they usually do.",
+  "maphelp.volRotation.how":
+    "Each market's share of the last 24 hours' volume against its share of the whole week's, among the busiest 150. Tiles are sized by the day's share and coloured by the difference.",
+  "maphelp.volRotation.read":
+    "Orange tiles are where attention is moving to, often ahead of or during a big move. Blue ones are being left behind.",
+  "maphelp.volRotation.caveats":
+    "It's a share, so one huge market surging makes the others look quieter. It covers this venue only.",
+  "maphelp.matrix.what": "Every market's momentum across four timeframes in one grid.",
+  "maphelp.matrix.how":
+    "Returns over 1 hour, 4 hours, 24 hours and 7 days for the busiest 150 markets. Each is scored by windows up less windows down, then by how strong the moves are.",
+  "maphelp.matrix.read":
+    "A market green across the board has short and long-term momentum lined up. A red 1 hour under a green 7 days can be a pullback in an uptrend.",
+  "maphelp.matrix.caveats":
+    "Aligned momentum can also mean a move is already extended. Check it against RSI or Value area.",
+  "maphelp.emaCross.what": "Markets whose short-term trend just turned.",
+  "maphelp.emaCross.how":
+    "The 20-hour and 50-hour exponential moving averages of hourly closes. A market is listed if they crossed within the window, freshest first, with the gap between them now.",
+  "maphelp.emaCross.read":
+    "A cross up means the short-term average has moved above the longer one, a common sign of a trend turning up; a cross down the reverse. A widening gap shows it's following through.",
+  "maphelp.emaCross.caveats":
+    "Averages lag, and in a sideways market they cross back and forth. Use it with Breakouts or volume.",
+  "maphelp.squeeze.what":
+    "Markets that have gone unusually quiet, which often comes before a big move.",
+  "maphelp.squeeze.how":
+    "The width of each market's 20-hour Bollinger bands (four standard deviations over the average) ranked against its own widths over the last 7 days. The tightest quarter is listed.",
+  "maphelp.squeeze.read":
+    "Volatility comes in cycles, so tight bands often lead to a sharp expansion. It pairs well with Breakouts: a squeezed market pressing the edge of its range is one to watch.",
+  "maphelp.squeeze.caveats":
+    "It says a move may be near, not which way. A squeeze can last longer than expected, and a dead market stays tight.",
   "maps.group.flow": "Order flow",
   "maps.rs": "Relative strength",
   "maps.rotation": "Rotation",

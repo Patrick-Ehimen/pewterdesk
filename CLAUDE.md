@@ -654,7 +654,13 @@ The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
 hourly history; strength against BTC from it too (relative strength, a
 rotation chart, beta), where each market sits in its range (breakouts),
 unusual volume (volume spikes), market breadth (shares of markets up,
-above their EMAs, at new highs and lows, hour by hour); funding and price spread across all five venues from
+above their EMAs, at new highs and lows, hour by hour), scanners for
+momentum across timeframes, EMA crosses, Bollinger squeezes and where
+price sits against its Bollinger Bands (and where that agrees with an
+overbought or oversold RSI), and for
+volume: price against each market's value area, money flow, OBV against
+price and each market's share of the venue's volume; one market's volume
+profile over 7 or 30 days, with its untested daily POCs; funding and price spread across all five venues from
 their summaries, the week's funding in 8-hour buckets (`fundingHistory`
 for the busiest or most extreme markets, a few at a time and kept ten
 minutes), a liquidation leaderboard from the liquidations feed, and order

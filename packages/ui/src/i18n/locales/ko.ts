@@ -2368,7 +2368,164 @@ export const messages: Messages = {
   "maps.group.liquidations": "청산",
   "maps.group.market": "마켓",
   "maps.group.time": "시간",
+  "maps.rsiBands": "RSI + 밴드",
+  "mapx.conf.title": "볼린저 밴드에서의 RSI",
+  "mapx.conf.upperTitle": "상단 밴드에서 과매수",
+  "mapx.conf.lowerTitle": "하단 밴드에서 과매도",
+  "mapx.conf.checked": "마켓 {count}개 확인",
+  "mapx.conf.note":
+    "같은 봉의 RSI(14)와 20기간 볼린저 밴드. 둘이 일치할 때만 표시합니다: 상단 밴드 부근에서 RSI 70 이상, 또는 하단 밴드 부근에서 RSI 30 이하.",
+  "maphelp.rsiBands.what":
+    "RSI와 볼린저 밴드가 같은 말을 하는 마켓: 밴드 위쪽에서 과매수, 또는 아래쪽에서 과매도.",
+  "maphelp.rsiBands.how":
+    "1시간 또는 4시간 프레임의 RSI(14)와 20기간 밴드(표준편차 2배), 최신 봉은 현재 가격으로 계산합니다. 위쪽: RSI 70 이상이고 가격이 상단 밴드 위, 부근 또는 근접. 아래쪽: RSI 30 이하이고 가격이 하단 밴드 아래, 부근 또는 근접.",
+  "maphelp.rsiBands.read":
+    "두 지표가 일치하면 하나만 있을 때보다 과열된 움직임이 더 두드러지며, RSI가 가장 극단적인 마켓이 먼저 나옵니다. 이는 과열을 나타낼 뿐 반전을 뜻하지 않습니다. 강한 추세에서는 마켓이 밴드에서 오랫동안 과매수 상태로 있을 수 있으니, 움직임이 멈추는 것을 확인한 뒤 반전으로 판단하세요.",
+  "maphelp.rsiBands.caveats":
+    "거래가 많은 150개 마켓. 4시간 RSI는 약 7일치 봉으로 계산하므로 RSI 히트맵과 약간 다를 수 있습니다. 기록이 부족한 마켓은 확인하지 않습니다.",
+  "maps.bands": "볼린저 밴드",
+  "mapx.bands.title": "볼린저 밴드와 가격",
+  "mapx.bands.frame": "시간 프레임",
+  "mapx.bands.upperTitle": "상단 밴드",
+  "mapx.bands.lowerTitle": "하단 밴드",
+  "mapx.bands.aboveUpper": "상단 위",
+  "mapx.bands.atUpper": "상단 부근",
+  "mapx.bands.nearUpper": "상단 근접",
+  "mapx.bands.nearLower": "하단 근접",
+  "mapx.bands.atLower": "하단 부근",
+  "mapx.bands.belowLower": "하단 아래",
+  "mapx.bands.middle": "중간 {count}",
+  "mapx.bands.note":
+    "20기간 밴드, 평균 위아래로 표준편차 2배, 1시간 캔들 기준. 수치는 %B로 0%가 하단 밴드, 100%가 상단 밴드이며 그 너머는 밴드 밖입니다.",
+  "maphelp.bands.what":
+    "각 마켓의 가격이 볼린저 밴드에 대해 어디에 있는지: 밖, 밴드 위, 또는 근처.",
+  "maphelp.bands.how":
+    "1시간 또는 4시간 프레임의 20개 봉으로 구한 밴드(평균 위아래 표준편차 2배), 최신 봉은 현재 가격으로 계산합니다. %B는 밴드 사이 가격의 위치입니다. 부근은 밴드 폭의 5% 이내, 근접은 20% 이내입니다.",
+  "maphelp.bands.read":
+    "상단 위는 과열일 수 있는 강한 움직임이고, 하단 아래는 하락 방향의 같은 움직임입니다. 강한 추세에서는 가격이 밴드를 타고 갈 수 있어 이것만으로는 반전 신호가 아닙니다. 스퀴즈와 비교해 보세요. 좁은 밴드에서 벗어나면 움직임이 시작되는 경우가 많습니다.",
+  "maphelp.bands.caveats":
+    "거래가 많은 150개 마켓. 중간에 있는 마켓은 개수만 셉니다. 4시간 밴드는 약 3일의 기록이 필요해 신규 상장 마켓은 나오지 않을 수 있습니다.",
   "maps.group.volume": "거래량",
+  "maps.matrix": "모멘텀 매트릭스",
+  "maps.squeeze": "스퀴즈",
+  "maps.emaCross": "EMA 교차",
+  "maps.valueArea": "밸류 에어리어",
+  "maps.profile": "거래량 프로파일",
+  "maps.moneyFlow": "자금 흐름",
+  "maps.obv": "OBV 다이버전스",
+  "maps.volRotation": "거래량 로테이션",
+  "mapx.value.title": "가격과 밸류의 위치",
+  "mapx.value.above": "위 {count}",
+  "mapx.value.inside": "안 {count}",
+  "mapx.value.below": "아래 {count}",
+  "mapx.value.aboveTitle": "{window} 밸류 에어리어 위",
+  "mapx.value.belowTitle": "{window} 밸류 에어리어 아래",
+  "mapx.value.note":
+    "기간 동안 각 마켓의 거래량 프로파일(1시간 캔들 기준): 가장 활발한 가격 주변의 거래량 70%. 수치는 그 가격(POC)까지의 거리이며 옆에 표시됩니다.",
+  "mapx.profile.title": "가격대별 거래량",
+  "mapx.profile.poc": "POC",
+  "mapx.profile.vah": "밸류 에어리어 상단",
+  "mapx.profile.val": "밸류 에어리어 하단",
+  "mapx.profile.naked": "미테스트 일일 POC",
+  "mapx.profile.note":
+    "시간별 거래량을 각 캔들의 범위에 나눠 담았습니다. 진한 행이 밸류 에어리어(거래량의 70%)입니다. 파란 점선은 지난 날의 가장 활발한 가격 중 이후 지나가지 않은 곳입니다.",
+  "mapx.money.title": "자금 흐름",
+  "mapx.money.in": "순매수 {count}",
+  "mapx.money.out": "순매도 {count}",
+  "mapx.money.inTitle": "유입 최대",
+  "mapx.money.outTitle": "유출 최대",
+  "mapx.money.note":
+    "상승한 시간의 거래대금에서 하락한 시간의 거래대금을 뺀 값. 마지막 열은 그 차액이 전체 거래대금에서 차지하는 비율입니다.",
+  "mapx.obv.title": "OBV와 가격",
+  "mapx.obv.bullish": "강세 {count}",
+  "mapx.obv.bearish": "약세 {count}",
+  "mapx.obv.bullishTitle": "거래량이 가격보다 앞섬",
+  "mapx.obv.bearishTitle": "거래량이 가격보다 뒤처짐",
+  "mapx.obv.places": "가격 / OBV의 범위 내 위치",
+  "mapx.obv.note":
+    "온밸런스 볼륨과 가격을 각각 기간 범위 안의 위치로 비교합니다. 크게 벌어진 마켓을 보여주며, 마지막 열은 가격 / OBV입니다.",
+  "mapx.rotationVol.title": "거래량이 가는 곳",
+  "mapx.rotationVol.rising": "평소보다 25% 많음 {count}",
+  "mapx.rotationVol.day": "당일 거래량 비중",
+  "mapx.rotationVol.week": "주간 비중",
+  "mapx.rotationVol.change": "주간 대비",
+  "mapx.rotationVol.note":
+    "크기는 거래량 상위 150개 마켓 중 최근 하루 비중입니다. 주간 비중보다 크면 주황, 작으면 파랑입니다.",
+  "mapx.matrix.title": "기간별 모멘텀",
+  "mapx.matrix.side": "방향",
+  "mapx.matrix.side.up": "가장 강함",
+  "mapx.matrix.side.down": "가장 약함",
+  "mapx.matrix.allUp": "네 기간 모두 상승 {count}",
+  "mapx.matrix.allDown": "네 기간 모두 하락 {count}",
+  "mapx.matrix.note":
+    "각 마켓의 1시간, 4시간, 24시간, 7일 수익률. 기간들이 가장 일치하는 마켓부터 보여줍니다.",
+  "mapx.cross.title": "EMA 교차",
+  "mapx.cross.ago": "{hours}시간 전",
+  "mapx.cross.upTitle": "상향 교차 ({count})",
+  "mapx.cross.downTitle": "하향 교차 ({count})",
+  "mapx.cross.none": "이 기간에 교차가 없습니다",
+  "mapx.cross.note":
+    "기간 안에 20시간 EMA가 50시간 EMA와 교차한 마켓을 최근 순으로 보여줍니다. 수치는 현재 둘 사이의 간격입니다.",
+  "mapx.squeeze.title": "볼린저 스퀴즈",
+  "mapx.squeeze.count": "스퀴즈 {count}",
+  "mapx.squeeze.note":
+    "20시간 볼린저 밴드가 최근 7일 중 가장 좁은 4분의 1에 있는 마켓을 좁은 순으로 보여줍니다. 수치는 밴드 폭과 당일 변화입니다.",
+  "maphelp.valueArea.what": "거래량 대부분이 체결된 가격대에서 위나 아래로 벗어난 마켓.",
+  "maphelp.valueArea.how":
+    "기간(24시간 또는 7일) 동안 각 마켓의 거래량 프로파일을 1시간 캔들로 계산: POC(가장 활발한 가격)와 밸류 에어리어(그 주변 거래량 70%). 가격과 POC의 거리 순으로 보여줍니다.",
+  "maphelp.valueArea.read":
+    "가격은 새 수준에서 받아들여지지 않는 한 밸류로 돌아오는 경향이 있습니다. 크게 위에 있으면 과열이거나, 거래량이 뒷받침되면 돌파입니다. 아래는 반대입니다.",
+  "maphelp.valueArea.caveats":
+    "1시간 캔들은 시간 안에서 거래량이 어디서 체결됐는지 근사할 뿐입니다. 유동성이 낮은 마켓에서는 짧은 기간이 오해를 부를 수 있습니다.",
+  "maphelp.profile.what": "일주일이나 한 달 동안 한 마켓의 거래량이 가격대에 어떻게 분포하는지.",
+  "maphelp.profile.how":
+    "각 1시간 캔들의 거래량을 범위에 나눠 60개 행으로 만들고 상승·하락 시간으로 구분합니다. POC는 가장 활발한 행이고 밸류 에어리어는 그 주변 거래량 70%입니다. 미테스트 POC는 끝난 날의 가장 활발한 가격 중 이후 어떤 캔들도 지나가지 않은 곳입니다.",
+  "maphelp.profile.read":
+    "두꺼운 구간은 시장이 가격에 합의한 곳으로 지지나 저항이 되기 쉽습니다. 얇은 구간은 빠르게 지나가는 경향이 있습니다. 미테스트 POC는 가격을 끌어당기곤 합니다.",
+  "maphelp.profile.caveats":
+    "모든 체결이 아니라 1시간 캔들로 만들어 실제 틱 프로파일보다 거칠고, 한 거래소의 거래량만 다룹니다.",
+  "maphelp.moneyFlow.what": "마켓별로 돈이 들어오고 나간 곳.",
+  "maphelp.moneyFlow.how":
+    "기간 동안 상승으로 마감한 시간의 거래대금에서 하락으로 마감한 시간의 거래대금을 뺀 값과, 그 값이 전체 거래대금에서 차지하는 비율. 거래가 많은 150개 마켓.",
+  "maphelp.moneyFlow.read":
+    "가격이 제자리인데 순매수가 강하면 조용한 매집일 수 있고, 가격이 오르는데 순매도면 분산일 수 있습니다.",
+  "maphelp.moneyFlow.caveats":
+    "근사치입니다. 상승한 시간의 거래량이 모두 매수는 아닙니다. 한 마켓의 실제 테이커 흐름은 CVD를 쓰세요.",
+  "maphelp.obv.what": "거래량과 가격이 서로 다른 이야기를 하는 마켓.",
+  "maphelp.obv.how":
+    "온밸런스 볼륨은 상승 마감한 시간의 거래량을 더하고 하락 마감이면 뺍니다. OBV와 가격을 기간 범위 안의 위치(0~100%)로 놓고 40포인트 이상 벌어진 마켓을 보여줍니다.",
+  "maphelp.obv.read":
+    "강세: 가격은 저점 근처인데 OBV는 높아 거래량이 들어오고 있습니다. 약세: 가격은 고점 근처인데 OBV는 낮아 상승에 거래량이 뒷받침되지 않습니다.",
+  "maphelp.obv.caveats":
+    "다이버전스는 오래 지속되고 반전 없이 해소되는 경우가 많습니다. 신호가 아니라 확인할 거리로 보세요.",
+  "maphelp.volRotation.what": "거래소의 거래를 평소보다 많이 끌어들이는 마켓.",
+  "maphelp.volRotation.how":
+    "거래량 상위 150개 마켓에서 최근 24시간 거래량 비중을 일주일 전체 비중과 비교합니다. 타일 크기는 당일 비중, 색은 그 차이입니다.",
+  "maphelp.volRotation.read":
+    "주황 타일은 관심이 옮겨가는 곳으로, 큰 움직임 전이나 도중에 자주 나타납니다. 파랑은 소외되는 마켓입니다.",
+  "maphelp.volRotation.caveats":
+    "비중이므로 거대한 마켓 하나가 급증하면 다른 마켓이 조용해 보입니다. 이 거래소만 다룹니다.",
+  "maphelp.matrix.what": "각 마켓의 네 기간 모멘텀을 한 그리드에.",
+  "maphelp.matrix.how":
+    "거래가 많은 150개 마켓의 1시간, 4시간, 24시간, 7일 수익률. 상승 기간 수에서 하락 기간 수를 뺀 점수, 그다음 움직임의 세기로 정렬합니다.",
+  "maphelp.matrix.read":
+    "모두 초록인 마켓은 단기와 장기 모멘텀이 일치합니다. 7일은 초록인데 1시간이 빨강이면 상승 추세의 눌림일 수 있습니다.",
+  "maphelp.matrix.caveats":
+    "일치한 모멘텀은 이미 많이 움직였다는 뜻일 수도 있습니다. RSI나 밸류 에어리어로 확인하세요.",
+  "maphelp.emaCross.what": "단기 추세가 막 바뀐 마켓.",
+  "maphelp.emaCross.how":
+    "1시간 종가의 20시간·50시간 지수 이동평균. 기간 안에 교차한 마켓을 최근 순으로, 현재 둘 사이의 간격과 함께 보여줍니다.",
+  "maphelp.emaCross.read":
+    "상향 교차는 단기 평균이 장기 평균 위로 올라갔다는 뜻으로 흔한 상승 전환 신호입니다. 하향은 반대입니다. 간격이 벌어지면 이어지고 있다는 뜻입니다.",
+  "maphelp.emaCross.caveats":
+    "이동평균은 늦고, 횡보장에서는 계속 교차합니다. 돌파나 거래량과 함께 쓰세요.",
+  "maphelp.squeeze.what": "유난히 조용해진 마켓. 큰 움직임 전에 자주 나타납니다.",
+  "maphelp.squeeze.how":
+    "각 마켓의 20시간 볼린저 밴드 폭(평균 대비 표준편차 4배)을 자신의 최근 7일 폭과 비교합니다. 가장 좁은 4분의 1을 보여줍니다.",
+  "maphelp.squeeze.read":
+    "변동성은 주기가 있어 좁은 밴드는 급격한 확대로 이어지곤 합니다. 돌파와 잘 어울립니다. 범위 끝에서 스퀴즈된 마켓은 지켜볼 만합니다.",
+  "maphelp.squeeze.caveats":
+    "움직임이 가까울 수 있다는 뜻일 뿐 방향은 알려주지 않습니다. 스퀴즈는 예상보다 오래갈 수 있고, 죽은 마켓은 계속 좁습니다.",
   "maps.group.flow": "주문 흐름",
   "maps.rs": "상대 강도",
   "maps.rotation": "로테이션",
