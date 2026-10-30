@@ -3375,6 +3375,7 @@ dependencies = [
  "async-trait",
  "keyring",
  "keyring-core",
+ "libc",
  "pewterdesk-core",
  "serde",
  "serde_json",

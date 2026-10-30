@@ -14,10 +14,13 @@ keyring = "4"
 keyring-core = "1"
 pewterdesk-core = { path = "../core" }
 serde = { version = "1.0.229", features = ["derive"] }
+# The vault's stored form (account to secret), on macOS.
+serde_json = "1.0.151"
 # Keychain calls block (and can wait on a prompt), so they run on tokio's
 # blocking pool - the runtime the app's commands already run on.
 tokio = { version = "1.53.1", default-features = false, features = ["rt"] }
 zeroize = "1.9.0"
 
-[dev-dependencies]
-serde_json = "1.0.151"
+[target.'cfg(unix)'.dependencies]
+# flock, so the app, pdd and pd change the vault one at a time. Already in the tree.
+libc = "0.2.189"

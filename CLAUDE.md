@@ -117,7 +117,15 @@ discover it on their own. The reasoning behind the rules is in
   Note that keyring's `BadEncoding` and `Ambiguous` error variants carry
   credential material, which is why keyring errors are mapped by hand rather
   than formatted into a string. Nothing reads a key back to JS: Rust reads it
-  through `KeychainKeySource`, the app's `KeySource`. Whether a key is stored
+  through `KeychainKeySource`, the app's `KeySource`. On macOS every key is
+  also kept in one item, the vault (`pewterdesk.vault`, a map of account to
+  secret), so a build asks for the password once, not once per key: a read
+  takes the value from the vault, and a key not in it yet from its own item,
+  once, copying it in. Each key's own item stays the record of whether it
+  exists, so a deleted key is gone whatever the vault holds. Writes change
+  both, the vault under a lock the app, `pdd` and `pd` share (an empty
+  `flock` file in the user's temp folder). Nothing is cached in memory.
+  Other platforms keep one item per key. Whether a key is stored
   (`has_secret`, and the AI page's and news wire's key status) is a search by
   service and account that loads attributes only, never the secret, so on
   macOS it asks for no password (a store that can't search that way falls
