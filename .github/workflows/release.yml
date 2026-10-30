@@ -81,21 +81,22 @@ jobs:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: PewterDesk ${{ github.ref_name }}
           releaseBody: |
-            Early release, still in development. Market data, accounts and trading on Hyperliquid,
-            Aster and Bybit. Connect a Hyperliquid or Aster API wallet (trade-only,
-            it can't withdraw) or a Bybit API key. Orders work on Bybit Demo
-            Trading accounts as soon as they're connected; on a live account,
-            only once you turn live trading on for it. Hyperliquid and Aster
-            also have paper trading.
+            Early release, still in development. Market data, accounts and trading on
+            Hyperliquid, Aster, Bybit and Binance, and on BloFin's Demo Trading accounts.
+            Connect a Hyperliquid or Aster API wallet (trade-only, it can't withdraw) or
+            a Bybit, Binance or BloFin API key. Orders work on Demo Trading accounts as
+            soon as they're connected; on a live account, only once you turn live
+            trading on for it. Hyperliquid and Aster also have paper trading.
 
-            New since v0.3.0: PewterDesk AI, a market analyst on your own Claude,
-            Gemini or ChatGPT key that reads the markets and marks its levels on
-            the chart (it places nothing; your account only with account access
-            turned on); algo orders - a chaser, a TWAP (Hyperliquid's own, or run
-            on this machine) and a scaled ladder - from the Algos panel, the
-            command palette and the CLI panel; every order logged with where it
-            came from; a Paper panel for the paper account; the P&L share card;
-            and a note before macOS asks for your password to the keychain.
+            New since v0.4.0: Binance's USDT perpetuals, live and on Demo Trading;
+            BloFin's perpetuals, on Demo Trading; every venue's balances together in the
+            Account panel; on the charts, month timeframes, session volume profile and
+            TPO chart types, bar replay, and USD economic news at its time on the chart;
+            many more views on the Maps page, now in seven groups and across the 300
+            busiest markets; a Calendar view of the News page; leverage, margin and hold
+            time on closed trades; a clearer P&L share card; a brighter command palette
+            with token logos; and on macOS, one password prompt per build instead of one
+            for each key.
 
             Live trading is new: start with a small order.
 

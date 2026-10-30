@@ -1,6 +1,6 @@
 [package]
 name = "pewterdesk-daemon"
-version = "0.4.0"
+version = "0.5.0"
 description = "pdd: runs the trading engine headless, so algos keep running with the app closed, and serves it to pd and the app"
 edition.workspace = true
 rust-version.workspace = true
