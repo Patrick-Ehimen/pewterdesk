@@ -493,6 +493,18 @@ discover it on their own. The reasoning behind the rules is in
   confirmation on the page. It guards a
   trader against themselves in this app, not against the page, and not
   against an order placed on the venue's own site (which still counts).
+- `apps/desktop/src-tauri/src/updater.rs` - updates (`tauri-plugin-updater`,
+  used from Rust only: the page holds none of its permissions). A release
+  build checks this repository's latest GitHub release (`latest.json`, the
+  one fixed endpoint in `tauri.conf.json`) soon after start and every 6
+  hours, downloads a newer one, and installs it only from the About
+  dialog's Restart button (`install_update`). An installer installs only if
+  its signature verifies against `plugins.updater.pubkey`; the private key
+  is in CI's secrets (`TAURI_SIGNING_PRIVATE_KEY`), never in the repo, and
+  only the release workflow builds the signed files
+  (`tauri.updater.conf.json`). Release notes reach the page as bounded
+  plain text. Changing the endpoint or the key, or installing without the
+  trader's click, is a security-relevant change.
 - `apps/desktop/src-tauri/src/share.rs` - the P&L share card. Saving
   writes the page's PNG (checked) to Downloads under a name Rust picks.
   `open_share` opens a social site's post page: the page names one of a

@@ -48,7 +48,24 @@ function onEvent<T>(name: string, handler: (payload: T) => void): () => void {
 }
 
 /** The About box's links; the URLs themselves live in the Rust shell. */
-export type AboutLink = "repository" | "issues" | "license";
+export type AboutLink = "repository" | "issues" | "license" | "releases";
+
+/** Where updates stand (src-tauri/src/updater.rs). Release builds only. */
+export type UpdateState =
+  | { state: "idle" | "checking" | "upToDate" }
+  | { state: "downloading"; version: string; notes: string; total?: number; received: number }
+  | { state: "ready"; version: string; notes: string; size: number }
+  | { state: "failed"; message: string };
+
+export type UpdateStatus = UpdateState & {
+  /** The last finished check, in ms since the epoch. */
+  lastChecked?: number;
+  /** False for a development build, which never checks. */
+  enabled: boolean;
+};
+
+/** Keep in sync with UPDATE_EVENT in src-tauri/src/updater.rs. */
+const UPDATE_EVENT = "update-status";
 
 export const appClient = {
   /** Undefined outside the desktop app (e.g. `make dev-ui`). */
@@ -196,6 +213,23 @@ export const appClient = {
     } catch (err) {
       throw new Error(typeof err === "string" ? err : "couldn't open the browser");
     }
+  },
+
+  /** Where updates stand; undefined outside the desktop app. */
+  updateStatus: async (): Promise<UpdateStatus | undefined> =>
+    isTauri() ? invoke<UpdateStatus>("update_status") : undefined,
+
+  /** Calls `handler` each time where updates stand changes. */
+  onUpdateStatus: (handler: (status: UpdateStatus) => void) => onEvent(UPDATE_EVENT, handler),
+
+  /** Looks for a newer release now (and downloads it, if there is one). */
+  checkForUpdate: async () => {
+    if (isTauri()) await invoke("check_for_update");
+  },
+
+  /** Installs the downloaded update and restarts into it. */
+  installUpdate: async () => {
+    if (isTauri()) await invoke("install_update");
   },
 
   /** Opens one of the fixed links in the system browser. */

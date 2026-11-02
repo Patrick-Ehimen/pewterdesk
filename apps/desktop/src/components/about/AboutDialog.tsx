@@ -1,6 +1,7 @@
-import { t } from "@pewterdesk/ui";
+import { dateFormat, formatNumber, t } from "@pewterdesk/ui";
 import { useEffect, useRef, useState } from "react";
-import { type AboutLink, type AppInfo, appClient } from "../../api/appClient";
+import { type AboutLink, type AppInfo, appClient, type UpdateStatus } from "../../api/appClient";
+import { useUpdates } from "../../hooks/useUpdates";
 import { AppLogo } from "../header/AppLogo";
 
 /** Operating system names as their makers write them. */
@@ -15,13 +16,15 @@ interface AboutDialogProps {
 
 /**
  * About pewterdesk, after the design: the wordmark, this build, the licence,
- * where keys and data live, and links to the project. The design's update
- * card waits for an updater; this says so instead of pretending.
+ * where keys and data live, and links to the project. A downloaded update
+ * shows as a card, installed only from its Restart button (`updater.rs`).
  */
 export function AboutDialog({ open, onClose }: AboutDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const [info, setInfo] = useState<AppInfo>();
   const [linkError, setLinkError] = useState(false);
+  const updates = useUpdates();
+  const [installError, setInstallError] = useState(false);
 
   // Drive the native dialog from `open`: showModal gives focus trapping,
   // Escape and the backdrop for free.
@@ -30,6 +33,7 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
     if (!dialog) return;
     if (open && !dialog.open) {
       setLinkError(false);
+      setInstallError(false);
       dialog.showModal();
     } else if (!open && dialog.open) {
       dialog.close();
@@ -80,11 +84,59 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
         <p className="pd-muted">{t("about.openSource")}</p>
       </header>
 
+      {updates?.state === "ready" && (
+        <section className="about-update">
+          <div className="about-update-head">
+            <strong>{t("about.updateReady", { version: updates.version })}</strong>
+            <span className="about-update-tag">{t("about.updateVerified")}</span>
+            <span className="app-spacer" />
+            <span className="pd-num pd-muted">{megabytes(updates.size)}</span>
+          </div>
+          {updates.notes && <p className="about-update-notes">{updates.notes}</p>}
+          <div className="about-update-actions">
+            <button
+              type="button"
+              className="about-update-restart"
+              onClick={() => appClient.installUpdate().catch(() => setInstallError(true))}
+            >
+              {t("about.updateRestart")}
+            </button>
+            <span className="app-spacer" />
+            {link("releases", t("about.updateNotes"))}
+          </div>
+          <p className="pd-muted about-update-safe">{t("about.updateSafe")}</p>
+          {installError && (
+            <p className="about-update-error" role="alert">
+              {t("about.updateInstallFailed")}
+            </p>
+          )}
+        </section>
+      )}
+
       <dl className="about-facts">
         <div>
           <dt>{t("about.updates")}</dt>
-          <dd>{t("about.updatesValue")}</dd>
+          <dd className="about-update-status">
+            {updateText(updates)}
+            {updates?.enabled &&
+              updates.state !== "checking" &&
+              updates.state !== "downloading" && (
+                <button
+                  type="button"
+                  className="about-link"
+                  onClick={() => void appClient.checkForUpdate().catch(() => {})}
+                >
+                  {t("about.updateCheck")}
+                </button>
+              )}
+          </dd>
         </div>
+        {updates?.lastChecked !== undefined && (
+          <div>
+            <dt>{t("about.updateLastChecked")}</dt>
+            <dd className="pd-num">{checkedAt(updates.lastChecked)}</dd>
+          </div>
+        )}
         <div>
           <dt>{t("about.keys")}</dt>
           <dd>{t("about.keysValue")}</dd>
@@ -111,4 +163,32 @@ export function AboutDialog({ open, onClose }: AboutDialogProps) {
       )}
     </dialog>
   );
+}
+
+const megabytes = (bytes: number) => `${formatNumber(bytes / 1_048_576, 1)} MB`;
+
+const checkedAt = (time: number) =>
+  dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(new Date(time));
+
+/** Where updates stand, in a few words. */
+function updateText(status: UpdateStatus | undefined): string {
+  if (!status?.enabled) return t("about.updatesDev");
+  switch (status.state) {
+    case "idle":
+      return t("about.updatesIdle");
+    case "checking":
+      return t("about.updatesChecking");
+    case "upToDate":
+      return t("about.updatesCurrent");
+    case "downloading": {
+      const pct = status.total ? Math.floor((status.received / status.total) * 100) : undefined;
+      return pct === undefined
+        ? t("about.updatesDownloading", { version: status.version })
+        : t("about.updatesDownloadingPct", { version: status.version, pct: String(pct) });
+    }
+    case "ready":
+      return t("about.updateReady", { version: status.version });
+    case "failed":
+      return t("about.updatesFailed");
+  }
 }

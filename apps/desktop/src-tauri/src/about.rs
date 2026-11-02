@@ -41,6 +41,8 @@ pub enum AboutLink {
     Repository,
     Issues,
     License,
+    /// The latest release's page, for its full notes.
+    Releases,
 }
 
 impl AboutLink {
@@ -49,6 +51,7 @@ impl AboutLink {
             Self::Repository => REPOSITORY.to_owned(),
             Self::Issues => format!("{REPOSITORY}/issues/new"),
             Self::License => format!("{REPOSITORY}/blob/main/LICENSE"),
+            Self::Releases => format!("{REPOSITORY}/releases/latest"),
         }
     }
 }

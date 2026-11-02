@@ -56,5 +56,16 @@
       "signingIdentity": "-",
       "minimumSystemVersion": "13.0"
     }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFGRUY2NDNGOUQ4MzMyRDMKUldUVE1vT2RQMlR2cjEwWnp6bWJ0aVRSOVlpNXlHSWVMZnJqMSttaEVEZXBaS2IyS2ZXYTZ4THMK",
+      "endpoints": [
+        "https://github.com/Patrick-Ehimen/pewterdesk/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

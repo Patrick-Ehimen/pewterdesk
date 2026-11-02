@@ -146,6 +146,7 @@ import { useThemeTransition } from "./hooks/useThemeTransition";
 import { useTradeSettings } from "./hooks/useTradeSettings";
 import { useTradingRules } from "./hooks/useTradingRules";
 import { useTraySync } from "./hooks/useTraySync";
+import { useUpdates } from "./hooks/useUpdates";
 import {
   type Feed,
   useAccount,
@@ -887,6 +888,17 @@ export function App() {
     }
   };
   const [aboutOpen, setAboutOpen] = useState(false);
+  // A downloaded update says so once; it installs from About's Restart button.
+  const updates = useUpdates();
+  const updateReady = updates?.state === "ready" ? updates.version : undefined;
+  useEffect(() => {
+    if (updateReady) {
+      toast({
+        title: t("about.updateReady", { version: updateReady }),
+        body: t("about.updateToastBody"),
+      });
+    }
+  }, [updateReady]);
   // A market picked from the tray panel goes on screen, switching venue if need be.
   const showFromTray = useRef(showMarket);
   showFromTray.current = showMarket;

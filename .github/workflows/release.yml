@@ -70,14 +70,20 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Only a tag push creates the release; a manual run just builds.
+      # The updater's files (each installer's .sig, and latest.json on the
+      # release, which installed apps read) are signed with the updater key:
+      # only builds signed with it install as an update (updater.rs). Local
+      # builds (`make bundle`) skip them, having no key.
       - uses: tauri-apps/tauri-action@v0
         id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} --config src-tauri/tauri.updater.conf.json
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: PewterDesk ${{ github.ref_name }}
           releaseBody: |

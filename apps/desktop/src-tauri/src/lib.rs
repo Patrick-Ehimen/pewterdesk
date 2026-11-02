@@ -26,6 +26,7 @@ mod share;
 mod splash;
 mod trading_rules;
 mod tray;
+mod updater;
 mod venues;
 mod wallet;
 
@@ -68,6 +69,9 @@ pub fn run() {
         // Used from Rust only (`notify::notify`): the page is granted none of
         // the plugin's own commands.
         .plugin(tauri_plugin_notification::init())
+        // Used from Rust only (`updater.rs`): the page is granted none of
+        // the plugin's own commands, and installs nothing itself.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(venues)
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
@@ -107,6 +111,8 @@ pub fn run() {
             algos::install(app.handle());
             // With always on, the link to pdd: kept up while the app runs.
             daemon::install(app.handle());
+            // Release builds look for a newer release now and then.
+            updater::install(app.handle());
             #[cfg(target_os = "macos")]
             {
                 menubar::install(app)?;
@@ -156,6 +162,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             about::app_info,
             about::open_about_link,
+            updater::update_status,
+            updater::check_for_update,
+            updater::install_update,
             splash::app_ready,
             keychain_notice::keychain_notice,
             keychain_notice::dismiss_keychain_notice,
