@@ -61,6 +61,8 @@ type ChartKind = "standard" | "funding";
 const CHART_KINDS: readonly ChartKind[] = ["standard", "funding"];
 
 interface MarketsPanelProps {
+  /** Sets a price alert from a drawing on the chart. */
+  onDrawingAlert?: (market: Market, price: number, last: number, note: string) => void;
   venue: VenueId;
   /** The venue's display name, labelling the depth curves and the chart. */
   venueName: string;
@@ -102,6 +104,7 @@ interface MarketsPanelProps {
  * chart is open, the screener's poll while a list is open.
  */
 export function MarketsPanel({
+  onDrawingAlert,
   venue,
   venueName,
   markets,
@@ -337,6 +340,10 @@ export function MarketsPanel({
                     fills={views.chart.fills ? marketFills : undefined}
                     news={views.chart.news ? chartNews : undefined}
                     fx={chartFx}
+                    onDrawingAlert={
+                      onDrawingAlert &&
+                      ((price, last, note) => onDrawingAlert(shown, price, last, note))
+                    }
                     onMoveExit={views.chart.levels ? moveExit : undefined}
                     tools={filling ? panelTools : undefined}
                     loading={

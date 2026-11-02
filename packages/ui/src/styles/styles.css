@@ -13,6 +13,10 @@
 [data-theme="parchment"],
 [data-theme="white"] {
   color-scheme: light;
+  /* The chart's floating bar stays near-black: the text colour is, here. */
+  --pd-float-bar: var(--pd-text);
+  --pd-float-ink: var(--pd-bg);
+  --pd-float-on: var(--pd-brass);
 }
 
 *,
@@ -1823,7 +1827,7 @@ input {
   display: none;
 }
 .pd-oachart-legend {
-  left: 52px;
+  left: 62px;
   max-width: calc(100% - 150px);
 }
 /* Over the chart until its first candles arrive, so it never shows empty */
@@ -1835,6 +1839,106 @@ input {
   place-items: center;
   background: var(--pd-chart-bg, var(--pd-surface));
 }
+/* Starred drawing tools: on the bar below, not on the rail as well */
+.pd-oachart-chart .oac-widget .oac-rail__favs {
+  display: none;
+}
+.pd-chart-tools {
+  position: absolute;
+  /* Over the readout, which is on 3 too and comes later. */
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  /* Quiet until pointed at; hovered and active tools step forward. */
+  color: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 72%, transparent);
+  /* Near-black on every theme: anything close to a chart's own colour, however
+     solid, reads as see-through over it. */
+  background: var(--pd-float-bar, color-mix(in srgb, var(--pd-bg) 30%, black));
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 9%, transparent),
+    0 4px 14px rgb(0 0 0 / 0.5);
+  user-select: none;
+}
+.pd-chart-tools-grip {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 36px;
+  opacity: 0.5;
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 0.1s ease;
+}
+.pd-chart-tools-grip:hover {
+  opacity: 0.9;
+}
+.pd-chart-tools-grip:active {
+  cursor: grabbing;
+}
+.pd-chart-tools-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    color 0.1s ease,
+    background-color 0.1s ease;
+}
+.pd-chart-tools-toggle {
+  width: 22px;
+}
+.pd-chart-tools-tool:hover {
+  color: var(--pd-float-ink, var(--pd-text));
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 13%, transparent);
+}
+.pd-chart-tools-tool[aria-pressed="true"] {
+  color: var(--pd-float-on, var(--pd-brass-text));
+  background: color-mix(in srgb, var(--pd-brass) 22%, transparent);
+}
+/* The tool's name, at once: a browser's own tip takes a second to come */
+.pd-chart-tools-tool::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 1;
+  padding: 4px 8px;
+  color: var(--pd-float-ink, var(--pd-text));
+  font-size: 12px;
+  white-space: nowrap;
+  background: var(--pd-float-bar, color-mix(in srgb, var(--pd-bg) 30%, black));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 0.08s ease;
+}
+.pd-chart-tools[data-low] .pd-chart-tools-tool::after {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+.pd-chart-tools-tool:hover::after,
+.pd-chart-tools-tool:focus-visible::after {
+  opacity: 1;
+}
+.pd-chart-tools-icon,
+.pd-chart-tools .pd-chart-tools-icon svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.5;
+}
+
 /* The chart's currency, on the price axis */
 .pd-chart-currency {
   position: absolute;
@@ -8892,4 +8996,552 @@ button.pd-drawer-exit:hover {
   .pd-mx-side {
     width: auto;
   }
+}
+
+/* The chart library's rail, menus and dialogs: plain until pointed at, no
+   boxes around what's picked, tools and rows edge to edge. Colours stay its
+   own tokens, which are the theme's; its proportions are set in JS. */
+.pd-oachart-chart .oac-widget .oac-rail {
+  gap: 0;
+  padding: 4px 0 0;
+}
+.pd-oachart-chart .oac-widget .oac-rail__btn {
+  width: 40px;
+  /* Any taller and a short chart hides more tools below the fold. */
+  height: 34px;
+  border: 0;
+  border-radius: 4px;
+}
+.pd-oachart-chart .oac-widget .oac-rail__btn.is-on {
+  background: var(--oac-on-bg);
+}
+.pd-oachart-chart .oac-widget .oac-rail__sep {
+  width: 30px;
+  margin: 2px 0;
+}
+.pd-oachart-chart .oac-widget .oac-rail__ctl {
+  gap: 0;
+}
+.pd-oachart-chart .oac-widget .oac-glyph--tool > svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.5;
+}
+/* A tool menu, and the right-click menu */
+.pd-oachart-chart .oac-widget .oac-fly {
+  padding: 6px 0;
+  border-radius: 6px;
+}
+.pd-oachart-chart .oac-widget .oac-fly__row {
+  gap: 10px;
+  padding: 6px 10px 6px 12px;
+  border-radius: 0;
+}
+.pd-oachart-chart .oac-widget .oac-ctx {
+  padding: 6px 0;
+  border-radius: 6px;
+}
+.pd-oachart-chart .oac-widget .oac-ctx__row {
+  padding: 8px 14px;
+  border-radius: 0;
+}
+/* Dialogs: chart settings, a study's settings, a drawing's properties. After
+   TradingView's: underlined tabs, taller controls, room between the rows. */
+.pd-oachart-chart .oac-widget .oac-btn {
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 4px;
+}
+.pd-oachart-chart .oac-widget .oac-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+.pd-oachart-chart .oac-widget .oac-color__trigger {
+  border-radius: 4px;
+}
+.pd-oachart-chart .oac-widget .oac-panel {
+  --oac-ctl-h: 34px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog {
+  border-radius: 6px;
+}
+.pd-oachart-chart .oac-widget .oac-props {
+  width: 440px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__head {
+  padding: 18px 24px 12px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__title {
+  font-size: 18px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__body {
+  padding: 0 24px 20px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__foot {
+  gap: 8px;
+  padding: 14px 24px 16px;
+}
+.pd-oachart-chart .oac-widget .oac-props__tools {
+  padding: 0 20px 10px;
+}
+.pd-oachart-chart .oac-widget .oac-tabs--rail {
+  min-width: 164px;
+  padding: 0 12px 0 0;
+  border-right: 0;
+}
+.pd-oachart-chart .oac-widget .oac-tabs--row {
+  gap: 20px;
+  margin: 0 -24px 18px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--oac-bd-soft);
+}
+.pd-oachart-chart .oac-widget .oac-tab {
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 14px;
+}
+.pd-oachart-chart .oac-widget .oac-tab[aria-selected="true"] {
+  color: var(--oac-tx-strong);
+  background: var(--oac-elev-2);
+}
+.pd-oachart-chart .oac-widget .oac-tabs--row .oac-tab {
+  height: 38px;
+  margin-bottom: -1px;
+  padding: 0;
+  background: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+.pd-oachart-chart .oac-widget .oac-tabs--row .oac-tab:hover {
+  color: var(--oac-tx-strong);
+}
+.pd-oachart-chart .oac-widget .oac-tabs--row .oac-tab[aria-selected="true"] {
+  background: none;
+  border-bottom-color: var(--pd-brass);
+}
+.pd-oachart-chart .oac-widget .oac-tabs--row .oac-glyph {
+  display: none;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-form {
+  gap: 12px;
+  padding: 0;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-form > .oac-head {
+  padding: 10px 0 0;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-form > .oac-head:first-child {
+  padding-top: 0;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-form .oac-row {
+  gap: 12px;
+  min-height: 34px;
+  padding: 0;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-form .oac-row--block {
+  gap: 6px;
+}
+/* No checkbox in the row: nothing to hold a column open for. */
+.pd-oachart-chart .oac-widget .oac-panel span.oac-row__sw {
+  display: none;
+}
+.pd-oachart-chart .oac-widget .oac-panel input.oac-row__sw {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--pd-brass);
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-row__label {
+  font-size: 14px;
+}
+.pd-oachart-chart
+  .oac-widget
+  .oac-panel
+  .oac-row__ctl
+  input:not([type="checkbox"], [type="color"], [type="range"]),
+.pd-oachart-chart .oac-widget .oac-panel .oac-row__ctl select,
+.pd-oachart-chart .oac-widget .oac-panel .oac-row__ctl textarea {
+  padding-left: 10px;
+  font-size: 14px;
+  text-align: left;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-color {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+}
+.pd-oachart-chart .oac-widget .oac-panel .oac-color__trigger {
+  width: 34px;
+  height: 34px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__foot .oac-btn {
+  padding: 0 12px;
+}
+.pd-oachart-chart .oac-widget .oac-dialog__lead .oac-btn {
+  border-color: var(--oac-bd);
+}
+/* The toolbar over a selected drawing: the same near-black bar as the starred
+   tools, soft icons that step forward when pointed at. */
+.pd-oachart-chart .oac-widget .oac-drawbar {
+  gap: 0;
+  padding: 2px;
+  color: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 72%, transparent);
+  background: var(--pd-float-bar, color-mix(in srgb, var(--pd-bg) 30%, black));
+  border: 0;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 9%, transparent),
+    0 4px 14px rgb(0 0 0 / 0.5);
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-sep {
+  display: none;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  transition:
+    color 0.1s ease,
+    background-color 0.1s ease;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-btn:hover {
+  color: var(--pd-float-ink, var(--pd-text));
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 13%, transparent);
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-btn--danger:hover {
+  color: var(--pd-sell);
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-btn[aria-pressed="true"] {
+  color: var(--pd-float-on, var(--pd-brass-text));
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-glyph--chrome > svg {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.5;
+}
+/* The width, with a line beside it */
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-drawbar__width {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 64px;
+  padding: 0 8px;
+  color: inherit;
+  font-size: 13px;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar__width::before {
+  content: "";
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+/* The colour as a pencil over a stripe: the swatch's own colour, held to the
+   stripe by its padding, so the whole button still takes the click. */
+.pd-oachart-chart .oac-widget .oac-drawbar__color {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-color__trigger {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  padding: 29px 8px 3px;
+  color: inherit;
+  background-clip: content-box;
+  border: 0;
+  border-radius: 4px;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-color__trigger::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/%3E%3Cpath d='m15 5 4 4'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .oac-color__trigger:hover::before {
+  color: var(--pd-float-ink, var(--pd-text));
+}
+
+/* The chart's colour picker */
+.pd-color-picker {
+  position: absolute;
+  /* Over the chart's dialogs and their scrim, whose colours open it too. */
+  z-index: 2000;
+  box-sizing: border-box;
+  width: 268px;
+  padding: 12px;
+  color: var(--pd-float-ink, var(--pd-text));
+  background: var(--pd-float-bar, color-mix(in srgb, var(--pd-bg) 30%, black));
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 9%, transparent),
+    0 8px 24px rgb(0 0 0 / 0.55);
+}
+.pd-color-block {
+  display: grid;
+  gap: 2px;
+}
+.pd-color-block + .pd-color-block {
+  margin-top: 8px;
+}
+.pd-color-row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 2px;
+}
+.pd-color-swatch {
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.pd-color-swatch:hover {
+  outline: 2px solid color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 40%, transparent);
+  outline-offset: 0;
+}
+.pd-color-swatch[aria-pressed="true"] {
+  outline: 2px solid var(--pd-float-ink, var(--pd-text));
+  outline-offset: 1px;
+}
+.pd-color-rule {
+  margin: 10px 0 6px;
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 18%, transparent);
+}
+.pd-color-add {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pd-color-add:hover {
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 13%, transparent);
+}
+.pd-color-opacity {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+.pd-color-opacity > span:first-child {
+  opacity: 0.65;
+}
+.pd-color-opacity-row {
+  display: grid;
+  grid-template-columns: 1fr 46px;
+  gap: 10px;
+  align-items: center;
+}
+/* Clear to solid, over a check so clear can be seen */
+.pd-color-track {
+  display: flex;
+  height: 10px;
+  background:
+    linear-gradient(to right, transparent, var(--color)),
+    repeating-conic-gradient(rgb(128 128 128 / 0.55) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  border-radius: 5px;
+}
+.pd-color-track input {
+  width: 100%;
+  height: 10px;
+  margin: 0;
+  background: none;
+  appearance: none;
+  cursor: pointer;
+}
+.pd-color-track input::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--pd-float-bar, black);
+  border: 2px solid var(--pd-float-ink, var(--pd-text));
+  border-radius: 50%;
+  appearance: none;
+}
+.pd-color-percent {
+  padding: 3px 0;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 22%, transparent);
+  border-radius: 4px;
+}
+/* Fill and text on a selected drawing's toolbar, like the pencil beside them */
+.pd-drawbar-extra {
+  display: contents;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .pd-drawbar-color {
+  position: relative;
+  display: grid;
+  place-items: start center;
+  padding-top: 6px;
+}
+.pd-drawbar-stripe {
+  position: absolute;
+  right: 8px;
+  bottom: 3px;
+  left: 8px;
+  height: 4px;
+  border-radius: 1px;
+}
+/* None set: a check, as a clear colour shows */
+.pd-drawbar-stripe[data-none] {
+  background:
+    repeating-conic-gradient(rgb(128 128 128 / 0.55) 0 25%, transparent 0 50%) 0 0 / 4px 4px;
+}
+
+/* A tool kept armed, and what a right-click on one offers */
+.pd-chart-tools-tool[data-kept]::before {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  background: var(--pd-float-on, var(--pd-brass-text));
+  border-radius: 50%;
+}
+.pd-chart-tools-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 2;
+  padding: 4px 0;
+  white-space: nowrap;
+  background: var(--pd-float-bar, color-mix(in srgb, var(--pd-bg) 30%, black));
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.5);
+}
+.pd-chart-tools-item {
+  display: block;
+  padding: 6px 12px;
+  color: var(--pd-float-ink, var(--pd-text));
+  font-size: 13px;
+}
+.pd-chart-tools-item:hover {
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 13%, transparent);
+}
+.pd-chart-tools[data-low] .pd-chart-tools-menu {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+/* Settings, an alert and where a drawing shows, on its toolbar */
+.pd-oachart-chart .oac-widget .oac-drawbar .pd-drawbar-action {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.pd-oachart-chart .oac-widget .oac-drawbar .pd-drawbar-action[data-limited] {
+  color: var(--pd-float-on, var(--pd-brass-text));
+}
+.pd-draw-visibility {
+  width: 220px;
+}
+.pd-draw-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.pd-draw-tick {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 2px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pd-draw-tick[data-locked] {
+  cursor: default;
+  opacity: 0.55;
+}
+.pd-draw-tick input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--pd-brass);
+}
+.pd-draw-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  opacity: 0.6;
+}
+/* The words on a drawing, over the colours */
+.pd-color-text {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  color: inherit;
+  font: 13px / 1.35 var(--pd-font-sans);
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 22%, transparent);
+  border-radius: 4px;
+  resize: none;
+}
+/* How the words look and where they sit on the drawing */
+.pd-color-format {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.pd-color-size {
+  box-sizing: border-box;
+  width: 52px;
+  padding: 0 6px;
+  color: inherit;
+  font: 13px var(--pd-font-sans);
+  background: none;
+  border: 1px solid color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 22%, transparent);
+  border-radius: 5px;
+}
+.pd-color-aligns {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 9%, transparent);
+  border-radius: 5px;
+}
+.pd-color-aligns button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pd-color-aligns button:hover {
+  background: color-mix(in srgb, var(--pd-float-ink, var(--pd-text)) 13%, transparent);
+}
+.pd-color-aligns button[aria-checked="true"],
+.pd-color-aligns button[aria-pressed="true"] {
+  color: var(--pd-float-on, var(--pd-brass-text));
+  background: color-mix(in srgb, var(--pd-brass) 24%, transparent);
 }

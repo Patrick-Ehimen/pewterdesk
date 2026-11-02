@@ -77,6 +77,17 @@ interface AlertsPopoverProps {
   /** "Chart" on a fired alert: put its market on screen. */
   onShowMarket: (venue: VenueId, market: string) => void;
   onOpenChange?: (open: boolean) => void;
+  /** Opens with these filled in, from a drawing on the chart; a new `id` each time. */
+  preset?: AlertPreset;
+}
+
+/** A price alert begun from the chart, to check and set here. */
+export interface AlertPreset {
+  id: number;
+  /** As it should read in the field. */
+  value: string;
+  condition: AlertCondition;
+  note: string;
 }
 
 const ICON_SIZE = 17;
@@ -164,7 +175,7 @@ function distanceText(kind: AlertKind, distance: number | undefined) {
  * the alerts.
  */
 export function AlertsPopover(props: AlertsPopoverProps) {
-  const { unseen, onOpenChange } = props;
+  const { unseen, onOpenChange, preset } = props;
   const panelId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -179,6 +190,10 @@ export function AlertsPopover(props: AlertsPopoverProps) {
     },
     [onOpenChange],
   );
+  // A preset is the chart asking for this to open on it.
+  useEffect(() => {
+    if (preset) setOpenState(true);
+  }, [preset, setOpenState]);
   const close = useCallback(
     (refocus = true) => {
       setOpenState(false);
@@ -287,6 +302,7 @@ function AlertsPanel({
   onClearFired,
   onShowMarket,
   onClose,
+  preset,
 }: AlertsPopoverProps & { onClose: () => void }) {
   const activeCount = alerts.filter((a) => a.active).length;
   const venueOf = (id: VenueId) => venues.find((v) => v.id === id);
@@ -308,7 +324,13 @@ function AlertsPanel({
         </IconButton>
       </header>
 
-      <NewAlertForm market={market} venues={venues} currentOf={currentOf} onCreate={onCreate} />
+      <NewAlertForm
+        market={market}
+        venues={venues}
+        currentOf={currentOf}
+        onCreate={onCreate}
+        preset={preset}
+      />
 
       <section className="pd-alerts-section" aria-labelledby="pd-alerts-active">
         <div className="pd-alerts-section-head">
@@ -439,7 +461,8 @@ function NewAlertForm({
   venues,
   currentOf,
   onCreate,
-}: Pick<AlertsPopoverProps, "market" | "venues" | "currentOf" | "onCreate">) {
+  preset,
+}: Pick<AlertsPopoverProps, "market" | "venues" | "currentOf" | "onCreate" | "preset">) {
   const [kind, setKind] = useState<AlertKind>("price");
   const [condition, setCondition] = useState<AlertCondition>("above");
   const [input, setInput] = useState("");
@@ -449,6 +472,14 @@ function NewAlertForm({
     new Set(["app", "desktop", "sound"]),
   );
   const [note, setNote] = useState("");
+  // A drawing's alert: its readings, ready to change or set.
+  useEffect(() => {
+    if (!preset) return;
+    setKind("price");
+    setCondition(preset.condition);
+    setInput(preset.value);
+    setNote(preset.note);
+  }, [preset]);
 
   const venue = venues.find((v) => v.id === target?.venue);
   const current = target ? currentOf(target.venue, target.id, kind) : undefined;

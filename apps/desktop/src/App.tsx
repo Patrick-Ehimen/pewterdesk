@@ -18,6 +18,7 @@ import type {
 } from "@pewterdesk/core";
 import {
   AccountSummary,
+  type AlertPreset,
   AlertsPopover,
   BOOK_SIDES,
   BOOK_UNITS,
@@ -44,6 +45,7 @@ import {
   OrderBookSkeleton,
   OrderBookView,
   OrderTicket,
+  onTick,
   orderText,
   PnlCard,
   PnlShareDialog,
@@ -1461,11 +1463,23 @@ export function App() {
     if (paperOn) offerPaperPanel();
   }, [paperOn]);
 
+  /** Opens the alerts dialog on a drawing's readings, to check and set there. */
+  const [alertPreset, setAlertPreset] = useState<AlertPreset>();
+  const alertFromDrawing = (market: Market, price: number, last: number, note: string) => {
+    setAlertPreset({
+      id: Date.now(),
+      value: onTick(price, market.tickSize),
+      condition: price >= last ? "above" : "below",
+      note,
+    });
+  };
+
   const renderPanel = (kind: PanelKind, id: string): ReactNode => {
     switch (kind) {
       case "markets":
         return (
           <MarketsPanel
+            onDrawingAlert={alertFromDrawing}
             venue={venue}
             venueName={venueInfo.label}
             markets={markets}
@@ -1834,6 +1848,7 @@ export function App() {
                   setPage("trade");
                   showMarket(v, m);
                 }}
+                preset={alertPreset}
                 onOpenChange={(open) => {
                   setAlertsOpen(open);
                   // Opening or closing it counts as having seen what fired.

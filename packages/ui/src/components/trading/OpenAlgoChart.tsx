@@ -48,6 +48,7 @@ import {
   LuEye,
   LuEyeOff,
   LuHistory,
+  LuLayers,
   LuMaximize2,
   LuMinimize2,
   LuSettings,
@@ -56,7 +57,9 @@ import {
 } from "react-icons/lu";
 import { type MessageKey, t as tr } from "../../i18n";
 import { INTERVAL_MS } from "../../lib/chart";
+import { loadChartTools } from "../../lib/chartTools";
 import { favoriteChartTypes, groupedChartTypes } from "../../lib/chartTypes";
+import { drawingTemplateStore } from "../../lib/drawingTemplates";
 import { decimalsOf, formatCompact, formatNumber, formatSigned } from "../../lib/format";
 import { ALL_INTERVALS, type ChartType } from "../../lib/indicators";
 import { logoImage } from "../../lib/logo";
@@ -85,6 +88,7 @@ import {
   tradeLevels,
 } from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
+import { ChartColors } from "./ChartColors";
 import { ChartCurrency } from "./ChartCurrency";
 import { ChartNewsBadges, ChartNewsCard, newsCardPlace } from "./ChartNews";
 import { type ChartReplay, newLiveGate, ReplayControls, useChartReplay } from "./ChartReplay";
@@ -95,7 +99,12 @@ import {
   TypeIcon,
   usePopover,
 } from "./ChartToolbar";
+import { ChartTools } from "./ChartTools";
+import { attachDragDraw } from "./chartDragDraw";
 import { type Tokens, tokens, withAlpha } from "./chartTheme";
+import { registerFrameFilter } from "./frameFilter";
+import { registerLineText } from "./lineText";
+import { registerRangeProfile } from "./rangeProfile";
 import {
   isProfileType,
   registerProfileChartTypes,
@@ -256,6 +265,10 @@ function chartTheme(t: Tokens): ChartTheme {
 const BRAND_FONTS = {
   "--oac-font": "var(--pd-font-sans)",
   "--oac-mono": "var(--pd-font-mono)",
+  // Its proportions: a roomier rail, tighter corners, larger text.
+  "--oac-rail-w": "52px",
+  "--oac-radius": "4px",
+  "--oac-fs": "13px",
 };
 
 /**
@@ -533,6 +546,15 @@ function Toolbar({
 
       <div className="pd-chart-spacer" />
 
+      <button
+        type="button"
+        className="pd-chart-tool pd-chart-icon"
+        aria-label={tr("chart.objects")}
+        title={tr("chart.objects")}
+        onClick={() => widget?.openObjects()}
+      >
+        <LuLayers size={17} aria-hidden />
+      </button>
       <button
         type="button"
         className="pd-chart-tool pd-chart-icon"
@@ -828,6 +850,8 @@ interface OpenAlgoChartProps {
    * levels, as the chart's own drawings pinned to the candles. Read-only.
    */
   analysis?: ChartAnalysis;
+  /** Sets a price alert from a selected drawing; no button without it. */
+  onDrawingAlert?: (price: number, last: number, note: string) => void;
   /** Exchange rates, to show the chart in another currency; no choice without them. */
   fx?: FxSource;
   /** Economic releases, as badges along the chart's foot; none without it. */
@@ -879,6 +903,7 @@ export function OpenAlgoChart({
   fills: ownFills,
   analysis: ownAnalysis,
   fx,
+  onDrawingAlert,
   news,
   onMoveExit,
   compact = false,
@@ -952,6 +977,9 @@ export function OpenAlgoChart({
     registerVisibleRangeProfile();
     registerMonthIntervals();
     registerProfileChartTypes();
+    registerLineText();
+    registerRangeProfile();
+    registerFrameFilter();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
       feed: barFeed(source, () => latestProps.current.markets, liveGate.current, feedFx.current),
@@ -967,6 +995,9 @@ export function OpenAlgoChart({
       // The readout lists the studies; above the plot, the library's own
       // list (and its "Indicators" fold) isn't drawn.
       legendOffset: { top: -1 },
+      drawingTemplates: drawingTemplateStore(),
+      // A chart with no pins of its own starts with the ones starred on any other.
+      rail: { favorites: loadChartTools().favorites },
       // Drawings are kept with the chart's own storage: a chart whose look
       // the caller keeps has nowhere to keep them, so it has no drawing rail.
       persist: kept ? false : STORAGE_NAME,
@@ -1364,6 +1395,8 @@ export function OpenAlgoChart({
     return chart.on("state:restore:end", put);
   }, [widget, themed, compact]);
 
+  useEffect(() => (widget ? attachDragDraw(widget) : undefined), [widget]);
+
   const stageRef = useRef<HTMLDivElement>(null);
   const [newsCard, setNewsCard] = useState<{
     ids: readonly string[];
@@ -1445,6 +1478,15 @@ export function OpenAlgoChart({
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
         <ReplayControls replay={replay} />
+        {widget && <ChartTools widget={widget} />}
+        {widget && (
+          <ChartColors
+            widget={widget}
+            intervals={ALL_INTERVALS.map(chartCode)}
+            // A converted chart's drawings are in its own prices, not the market's.
+            onAlert={converted ? undefined : onDrawingAlert}
+          />
+        )}
         {fx && !replaying && (
           <ChartCurrency
             quote={market.quote}

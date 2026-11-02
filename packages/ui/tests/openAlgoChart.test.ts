@@ -1,6 +1,23 @@
 import type { Candle, CandleInterval, Market } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
+  COLOR_BASE,
+  COLOR_RAMPS,
+  drawingPrice,
+  readColor,
+  writeColor,
+} from "../src/lib/chartColors";
+import { chartToolsFrom, DEFAULT_CHART_TOOLS } from "../src/lib/chartTools";
+import {
+  canToggle,
+  framesOf,
+  groupOf,
+  groupOfBarSeconds,
+  rangeOf,
+  shownGroups,
+  tickedGroups,
+} from "../src/lib/drawingFrames";
+import {
   asInterval,
   type BarSource,
   barFeed,
@@ -219,5 +236,128 @@ describe("groupNews", () => {
       { x: 40, ids: ["b"] },
       { x: 70, ids: ["c"] },
     ]);
+  });
+});
+
+describe("chartToolsFrom", () => {
+  it("keeps what reads, and the default for the rest", () => {
+    expect(chartToolsFrom({ favorites: ["trend-line", 3], x: 0.2, y: "top" })).toEqual({
+      favorites: ["trend-line"],
+      x: 0.2,
+      y: DEFAULT_CHART_TOOLS.y,
+      collapsed: false,
+    });
+    expect(chartToolsFrom(null)).toEqual(DEFAULT_CHART_TOOLS);
+  });
+
+  it("keeps the bar on the chart", () => {
+    expect(chartToolsFrom({ x: 4, y: -1 })).toMatchObject({ x: 1, y: 0 });
+  });
+
+  it("keeps a folded bar folded, and folds only for a real true", () => {
+    expect(chartToolsFrom({ collapsed: true }).collapsed).toBe(true);
+    expect(chartToolsFrom({ collapsed: "yes" }).collapsed).toBe(false);
+  });
+});
+
+describe("chart colours", () => {
+  it("offers each colour once, and no list of recent ones", () => {
+    const all = [...COLOR_BASE, ...COLOR_RAMPS].flat();
+    expect(new Set(all).size).toBe(all.length);
+    expect(all.length).toBe(80);
+  });
+
+  it("reads a style's colour and opacity back", () => {
+    expect(readColor("#FF8800")).toEqual({ hex: "#ff8800", alpha: 1 });
+    expect(readColor("rgba(255, 136, 0, 0.4)")).toEqual({ hex: "#ff8800", alpha: 0.4 });
+    expect(readColor("#ff880080").alpha).toBeCloseTo(0.5, 1);
+    expect(readColor(undefined)).toEqual({ hex: "#000000", alpha: 1 });
+  });
+
+  it("writes a solid colour plainly, and a see-through one with its opacity", () => {
+    expect(writeColor({ hex: "#ff8800", alpha: 1 })).toBe("#ff8800");
+    expect(writeColor({ hex: "#ff8800", alpha: 0.4 })).toBe("rgba(255,136,0,0.4)");
+    expect(readColor(writeColor({ hex: "#ff8800", alpha: 0.4 }))).toEqual({
+      hex: "#ff8800",
+      alpha: 0.4,
+    });
+  });
+});
+
+describe("drawingPrice", () => {
+  const points = [
+    { time: 100, price: 10 },
+    { time: 200, price: 20 },
+  ];
+
+  it("reads a line where it is now", () => {
+    expect(drawingPrice("trend-line", points, 300)).toBe(30);
+  });
+
+  it("reads anything else at its last point", () => {
+    expect(drawingPrice("rectangle", points, 300)).toBe(20);
+    expect(drawingPrice("horizontal-line", [{ time: 1, price: 7 }], 300)).toBe(7);
+    expect(drawingPrice("rectangle", [], 300)).toBeUndefined();
+  });
+});
+
+describe("a drawing's timeframes", () => {
+  const INTERVALS = ["1m", "15m", "1h", "4h", "1d", "3d", "1w", "1MN", "3MN"];
+  const ALL = ["minutes", "hours", "days", "weeks", "months"] as const;
+
+  it("sorts interval codes into groups", () => {
+    expect(INTERVALS.map(groupOf)).toEqual([
+      "minutes",
+      "minutes",
+      "hours",
+      "hours",
+      "days",
+      "days",
+      "weeks",
+      "months",
+      "months",
+    ]);
+  });
+
+  it("shows on everything with no range", () => {
+    expect(tickedGroups(undefined, INTERVALS)).toEqual(ALL);
+    expect(tickedGroups(null, INTERVALS)).toEqual(ALL);
+    expect(rangeOf(ALL, INTERVALS)).toBeNull();
+  });
+
+  it("turns ticks into a range, and back", () => {
+    const range = rangeOf(["hours", "days"], INTERVALS);
+    expect(range).toEqual({ from: "1h", to: "3d" });
+    expect(tickedGroups(range, INTERVALS)).toEqual(["hours", "days"]);
+  });
+
+  it("lets any tick change but the last one left", () => {
+    expect(canToggle("days", ALL)).toBe(true);
+    expect(canToggle("months", ["hours", "days"])).toBe(true);
+    expect(canToggle("days", ["days"])).toBe(false);
+  });
+
+  it("keeps a gap beside the range, which runs from the first tick to the last", () => {
+    const { range, hidden } = framesOf(["minutes", "days"], INTERVALS);
+    expect(hidden).toEqual(["hours"]);
+    expect(tickedGroups(range, INTERVALS)).toEqual(["minutes", "hours", "days"]);
+    expect(shownGroups(range, hidden, INTERVALS)).toEqual(["minutes", "days"]);
+  });
+
+  it("has no gaps to keep for an unbroken run, nor when everything's ticked", () => {
+    expect(framesOf(["hours", "days"], INTERVALS).hidden).toBeUndefined();
+    expect(framesOf(ALL, INTERVALS)).toEqual({ range: null, hidden: undefined });
+  });
+
+  it("reads a chart's group from the seconds between its bars", () => {
+    expect(groupOfBarSeconds(60)).toBe("minutes");
+    expect(groupOfBarSeconds(1_800)).toBe("minutes");
+    expect(groupOfBarSeconds(3_600)).toBe("hours");
+    expect(groupOfBarSeconds(4 * 3_600)).toBe("hours");
+    expect(groupOfBarSeconds(86_400)).toBe("days");
+    expect(groupOfBarSeconds(3 * 86_400)).toBe("days");
+    expect(groupOfBarSeconds(7 * 86_400)).toBe("weeks");
+    expect(groupOfBarSeconds(30 * 86_400)).toBe("months");
+    expect(groupOfBarSeconds(28 * 86_400)).toBe("months");
   });
 });

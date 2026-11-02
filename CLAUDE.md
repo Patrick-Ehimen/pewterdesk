@@ -634,7 +634,21 @@ foot of each chart's price pane, moved as it paints, those too close to
 part as one that counts them (`ChartNews.tsx`, `groupNews`); a click opens
 its card, a scrolling list, text only. The chart's settings popover turns
 them off (the Trade chart's view settings, each Multi-chart cell's settings).
-The price axis has a currency menu (`ChartCurrency.tsx`, `FxSource`, `lib/fxRates.ts`):
+Drawing tools starred in the rail's menus sit in a bar of their own that can
+be dragged anywhere on the chart and folded away, an armed tool staying in
+sight (`ChartTools.tsx`, `lib/chartTools.ts`, kept under `pd.chartTools`), not
+on the rail. The toolbar's Object tree button lists a chart's drawings and studies; drawings
+take saved templates and a default look per tool (`lib/drawingTemplates.ts`,
+`pd.drawingTemplates:`, styles only). A selected drawing's bar has settings,
+timeframe ticks (`lib/drawingFrames.ts`: the library's one unbroken range, and the gaps
+in it kept on the drawing's `props`, left out by `frameFilter.ts`, which wraps every tool)
+and an alert, which opens the alerts dialog on the drawing's
+readings (`drawingPrice`, `AlertPreset`; a plain price alert fixed when it's set,
+not on a converted chart, nor on Multi-chart). Line tools paint their words along the line (`lineText.ts`, wrapping the library's tools), with the rectangle's text settings (all but inside / outside): left, center or right along the line, and above it, below it, or on it, where the line breaks for them. The fixed range volume profile (`rangeProfile.ts`, wrapping the library's tool) draws up and down volume side by side in two colours of the trader's, one line at the point of control, paler rows outside the value area and a background over the range, from `lib/volumeProfile.ts`. A drawing's dialog changes it as you go, so it gets a Cancel of ours, which puts back what the drawing held on opening (`ChartColors.tsx`, `lib/drawingRevert.ts`). Double-click
+a starred tool to keep it armed; right-click to take it off the bar. A tool dragged out shows as it goes (`chartDragDraw.ts`: a first point held while
+the drag runs, for the library's preview, which places the points itself on release). Colours in the chart open our own picker (`ChartColors.tsx`, `lib/chartColors.ts`:
+a grid, a custom colour, opacity, no recent list) in place of the library's,
+and a selected drawing's toolbar gains fill and text colours. The price axis has a currency menu (`ChartCurrency.tsx`, `FxSource`, `lib/fxRates.ts`):
 history at each month's rate, live candles at today's, USDT and USDC as dollars. The chart's corner carries our logo in the theme's colours (`logoImage` in
 `lib/logo.ts`, the library's own words and link cleared: it opens nothing). The library's top bar, status line,
 symbol search, side panels and alerts are off, and its colours come from the

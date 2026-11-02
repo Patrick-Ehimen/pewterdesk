@@ -157,7 +157,12 @@ export {
   accountTotals,
   ratioLevel,
 } from "./components/trading/AccountSummary";
-export { type AlertDraft, AlertsPopover, firedAlertText } from "./components/trading/AlertsPopover";
+export {
+  type AlertDraft,
+  type AlertPreset,
+  AlertsPopover,
+  firedAlertText,
+} from "./components/trading/AlertsPopover";
 export { ChartCurrency } from "./components/trading/ChartCurrency";
 export { ChartToolbar } from "./components/trading/ChartToolbar";
 export {
