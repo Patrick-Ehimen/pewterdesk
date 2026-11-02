@@ -68,6 +68,7 @@ import {
   asInterval,
   type BarSource,
   barFeed,
+  barsBefore,
   type ChartAnalysis,
   type ChartNewsEvent,
   chartCode,
@@ -91,7 +92,13 @@ import type { ProfileRow } from "../../lib/volumeProfile";
 import { ChartColors } from "./ChartColors";
 import { ChartCurrency } from "./ChartCurrency";
 import { ChartNewsBadges, ChartNewsCard, newsCardPlace } from "./ChartNews";
-import { type ChartReplay, newLiveGate, ReplayControls, useChartReplay } from "./ChartReplay";
+import {
+  type ChartReplay,
+  newLiveGate,
+  ReplayControls,
+  type ReplayProgress,
+  useChartReplay,
+} from "./ChartReplay";
 import {
   FavoriteStar,
   IntervalPicker,
@@ -854,6 +861,8 @@ interface OpenAlgoChartProps {
   onDrawingAlert?: (price: number, last: number, note: string) => void;
   /** Exchange rates, to show the chart in another currency; no choice without them. */
   fx?: FxSource;
+  /** Told what a bar replay has on screen; `undefined` once it ends. */
+  onReplay?: (progress: ReplayProgress | undefined) => void;
   /** Economic releases, as badges along the chart's foot; none without it. */
   news?: readonly ChartNewsEvent[];
   /**
@@ -904,6 +913,7 @@ export function OpenAlgoChart({
   analysis: ownAnalysis,
   fx,
   onDrawingAlert,
+  onReplay,
   news,
   onMoveExit,
   compact = false,
@@ -943,7 +953,19 @@ export function OpenAlgoChart({
   // Bar replay: live candles wait in the gate while it has the chart, and
   // nothing can be dragged into an order on a chart showing the past.
   const liveGate = useRef(newLiveGate());
-  const replay = useChartReplay(widget, liveGate.current, `${market.id}|${interval}`);
+  const replay = useChartReplay(
+    widget,
+    liveGate.current,
+    market.id,
+    interval,
+    useCallback(
+      (at: CandleInterval, before: number, count: number) =>
+        barsBefore(source, market.id, at, before, count),
+      [source, market.id],
+    ),
+    onInterval,
+    onReplay,
+  );
   const replaying = replay.mode !== "off";
   const movable = replaying || converted ? undefined : onMoveExit;
   const latestProps = useRef({ markets, interval, onInterval, onMoveExit: movable, onLayout });
@@ -1477,6 +1499,7 @@ export function OpenAlgoChart({
       <div ref={stageRef} className="pd-oachart-stage">
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
+        {replay.switching && <div className="pd-replay-cover">{loading}</div>}
         <ReplayControls replay={replay} />
         {widget && <ChartTools widget={widget} />}
         {widget && (

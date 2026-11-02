@@ -52,6 +52,7 @@ import {
   PositionDrawer,
   PositionsTable,
   QuickTrade,
+  type ReplayProgress,
   type RowMode,
   type ShareCard,
   SummarySkeleton,
@@ -109,6 +110,8 @@ import { PaperPanel } from "./components/panels/PaperPanel";
 import { PaperBanner } from "./components/paper/PaperBanner";
 import { type PaperDialogMode, PaperFundsDialog } from "./components/paper/PaperFundsDialog";
 import { PaperSwitch } from "./components/paper/PaperSwitch";
+import { ReplayBanner } from "./components/paper/ReplayBanner";
+import { ReplaySummary } from "./components/paper/ReplaySummary";
 import {
   pageLabel,
   pageOptions,
@@ -135,6 +138,7 @@ import { useFeedAge } from "./hooks/useFeedAge";
 import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
+import { useReplayAccount } from "./hooks/useReplayAccount";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
 import { useTradeSettings } from "./hooks/useTradeSettings";
@@ -217,6 +221,7 @@ import {
   type QuickTradeState,
   saveQuickTrade,
 } from "./lib/quickTrade";
+import type { ReplaySession } from "./lib/replayAccount";
 import { loadMarket, saveMarket } from "./lib/selectedMarket";
 import { playSound, type SoundKind } from "./lib/sound";
 import {
@@ -579,13 +584,24 @@ export function App() {
   // venue. Every order path below picks the paper account or the live one
   // here, once; a live call checks again that the venue hasn't been switched
   // to paper since.
-  const paperOn = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
+  const paperMode = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
+  // A bar replay on the Trade chart: orders go to the replay account, on its
+  // past candles, by the same paths as paper. `replayLive` is read by a live
+  // call, which must never go out while one runs.
+  const [replaySession, setReplaySession] = useState<ReplaySession>();
+  const replayLive = useRef(false);
+  const onReplay = useCallback((market: string, progress: ReplayProgress | undefined) => {
+    replayLive.current = progress !== undefined;
+    setReplaySession(progress && { ...progress, market });
+  }, []);
+  const replayOn = replaySession !== undefined;
+  const paperOn = paperMode || replayOn;
   // The paper account's funds dialog, or its reset confirmation.
   const [paperDialog, setPaperDialog] = useState<PaperDialogMode>();
   const live = paperOn ? undefined : canTrade(activeOnVenue, liveUids) ? activeOnVenue : undefined;
   /** Throws if the venue went to paper after this render: a live call never goes out then. */
   const stillLive = (v: VenueId) => {
-    if (isPaperMode(v)) throw new Error(t("paper.switched"));
+    if (isPaperMode(v) || replayLive.current) throw new Error(t("paper.switched"));
   };
   const trading = live;
   /** A live account that's trading: real funds, which the ticket says. */
@@ -593,7 +609,8 @@ export function App() {
   /** Where orders go: the paper account, a live (or demo) one, or nowhere. */
   const route = paperOn ? "paper" : trading ? "live" : undefined;
   /** "Paper · " in front of what a paper order's notifications say. */
-  const paperTag = (text: string) => (route === "paper" ? `${t("paper.badge")} · ${text}` : text);
+  const paperBadge = replayOn ? t("replay.badge") : t("paper.badge");
+  const paperTag = (text: string) => (route === "paper" ? `${paperBadge} · ${text}` : text);
   /**
    * The rules' answer for the ticket's order before it's sent, for a live
    * (or demo) account with rules on; paper orders aren't checked. Only what
@@ -1001,7 +1018,7 @@ export function App() {
   const bestAsk = bookData?.asks[0]?.price;
   const stats = useMarketStats(venue, selected?.id);
   const barSummaries = useMarketSummaries(venue, true);
-  const paper = usePaper({
+  const venuePaper = usePaper({
     venue,
     markets: marketList,
     summaries:
@@ -1012,6 +1029,13 @@ export function App() {
     bid: bestBid,
     ask: bestAsk,
   });
+  const replay = useReplayAccount({
+    venue,
+    markets: marketList,
+    selected,
+    session: replaySession,
+  });
+  const paper = replayOn ? replay.paper : venuePaper;
   const statsData = stats.status === "live" || stats.status === "closed" ? stats.data : undefined;
   // The bottom bar's status, from what's actually arriving: offline when the
   // network or a feed goes, connecting while the venue has gone quiet.
@@ -1460,8 +1484,8 @@ export function App() {
   // venue's switch): it's offered the same way, once.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when paper mode comes on
   useEffect(() => {
-    if (paperOn) offerPaperPanel();
-  }, [paperOn]);
+    if (paperMode) offerPaperPanel();
+  }, [paperMode]);
 
   /** Opens the alerts dialog on a drawing's readings, to check and set there. */
   const [alertPreset, setAlertPreset] = useState<AlertPreset>();
@@ -1480,6 +1504,7 @@ export function App() {
         return (
           <MarketsPanel
             onDrawingAlert={alertFromDrawing}
+            onReplay={onReplay}
             venue={venue}
             venueName={venueInfo.label}
             markets={markets}
@@ -1581,7 +1606,7 @@ export function App() {
         return (
           <PaperPanel
             venue={venueInfo.label}
-            available={paper.available}
+            available={venuePaper.available}
             on={paperOn}
             state={paper.state}
             snapshot={paperOn ? accountData : undefined}
@@ -1644,7 +1669,8 @@ export function App() {
           <div className="app-scroll">
             <OrderTicket
               market={selected}
-              book={bookData}
+              // A replay sizes against its candle, never today's book.
+              book={replayOn ? undefined : bookData}
               account={accountData}
               accountNotice={
                 paperOn
@@ -1664,7 +1690,7 @@ export function App() {
               unavailableReason={tradeUnavailable}
               accountBadge={
                 paperOn
-                  ? t("paper.badge")
+                  ? paperBadge
                   : tradingLive
                     ? t("apiKey.live")
                     : activeOnVenue && isDemoAccount(activeOnVenue)
@@ -1678,7 +1704,13 @@ export function App() {
               confirmOrders={orderConfirm.enabled}
               confirmSkipUnder={orderConfirm.skipUnder}
               onConfirmSkipUnder={(skipUnder) => updateOrderConfirm({ enabled: true, skipUnder })}
-              fallbackPrice={statsData ? Number(statsData.markPrice) || undefined : undefined}
+              fallbackPrice={
+                replayOn
+                  ? replay.price
+                  : statsData
+                    ? Number(statsData.markPrice) || undefined
+                    : undefined
+              }
               checkRules={checkRules}
             />
           </div>
@@ -1786,7 +1818,7 @@ export function App() {
             onChange={(id) => showMarket(id)}
             onSeeAll={() => goTo("venues")}
           />
-          {paper.available && (
+          {venuePaper.available && !replayOn && (
             <PaperSwitch on={paperOn} venue={venueInfo.label} onChange={setPaperOn} />
           )}
           <div className="app-spacer" />
@@ -1901,7 +1933,7 @@ export function App() {
             accountKey={accountKey || undefined}
             onShare={(c) => openShare({ closed: c })}
             markets={marketList}
-            venue={paperOn ? `${venueInfo.label} · ${t("paper.badge")}` : venueInfo.label}
+            venue={paperOn ? `${venueInfo.label} · ${paperBadge}` : venueInfo.label}
             connectAuth={venueInfo.auth}
             onConnect={() => openConnect()}
           />
@@ -2073,7 +2105,16 @@ export function App() {
             )}
 
             <ConnectionBanner venue={venueInfo.label} connection={connection} />
-            {paperOn && (
+            {replayOn && (
+              <ReplayBanner
+                quote={selected?.quote ?? "USD"}
+                snapshot={accountData}
+                sessionStart={replay.sessionStart}
+                behind={replay.behind}
+                onFunds={() => setPaperDialog("funds")}
+              />
+            )}
+            {paperOn && !replayOn && (
               <PaperBanner
                 venue={venueInfo.label}
                 quote={selected?.quote ?? "USD"}
@@ -2294,7 +2335,7 @@ export function App() {
           <PnlShareDialog
             card={shareCard}
             demo={paperOn || (activeOnVenue !== undefined && isDemoAccount(activeOnVenue))}
-            demoText={paperOn ? t("paper.badge") : undefined}
+            demoText={paperOn ? paperBadge : undefined}
             onSave={appClient.saveShareImage}
             onShare={appClient.openShare}
             onClose={() => setShareCard(undefined)}
@@ -2302,9 +2343,14 @@ export function App() {
         )}
 
         <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+        <ReplaySummary
+          result={replay.result}
+          quote={selected?.quote ?? "USD"}
+          onClose={replay.dismissResult}
+        />
         <PaperFundsDialog
           mode={paperOn ? paperDialog : undefined}
-          venue={venueInfo.label}
+          venue={replayOn ? t("replay.account") : venueInfo.label}
           quote={selected?.quote ?? "USD"}
           withdrawable={paper.withdrawable}
           onAdjust={(amount) => {

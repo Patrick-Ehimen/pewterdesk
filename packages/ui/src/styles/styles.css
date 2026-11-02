@@ -2230,6 +2230,18 @@ input {
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.28);
   white-space: nowrap;
 }
+/* Over the chart while a replay moves to another interval: its newest candles
+   mustn't show, even for a moment. */
+.pd-replay-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  background: var(--pd-chart-bg, var(--pd-surface));
+}
 .pd-replay .pd-chart-tool:disabled {
   opacity: 0.4;
   cursor: default;

@@ -615,6 +615,27 @@ export function tick(
     : current;
 }
 
+/** Ends everything: resting orders cancelled, every position closed at its market's price. */
+export function closeAll(
+  current: PaperState,
+  quotes: Quotes,
+  markets: ReadonlyMap<string, Market>,
+  fees: Fees,
+  now: number,
+): PaperState {
+  if (current.positions.length === 0 && current.orders.length === 0) return current;
+  const state = clone(current);
+  for (const o of state.orders) pushHistory(state, o, "cancelled", 0);
+  state.orders = [];
+  for (const p of [...state.positions]) {
+    const quote = quotes[p.market];
+    const market = markets.get(p.market);
+    if (!quote || !market) continue;
+    closeAt(state, p, market, takerPrice(quote, p.side === "long" ? "sell" : "buy"), fees, now);
+  }
+  return state;
+}
+
 /** A reduce-only order shrinks to what's left of the position; others fill whole. */
 function sizeFor(state: PaperState, o: PaperOrder) {
   if (!o.reduceOnly) return o.size;

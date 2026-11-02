@@ -60,6 +60,9 @@ const ERROR: Record<PaperError, MessageKey> = {
   unsupported: "paper.error.unsupported",
 };
 
+/** A paper engine's refusal, in words. */
+export const paperErrorText = (error: PaperError) => t(ERROR[error]);
+
 export interface Paper {
   /** The venue has paper trading (no demo of its own). */
   available: boolean;

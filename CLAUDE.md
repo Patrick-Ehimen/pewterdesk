@@ -529,6 +529,12 @@ discover it on their own. The reasoning behind the rules is in
   order while its venue is in paper mode. Paper results never reach the
   menu bar, and a paper share card says "Paper". Routing a paper order to a
   venue, or a live one to the paper account, is a security-relevant change.
+- The replay account (`lib/replayAccount.ts`, `lib/replayStore.ts`,
+  `hooks/useReplayAccount.ts`, `components/paper/Replay*.tsx`): while a bar
+  replay runs on the Trade chart, `App.tsx`'s order paths use it instead, by
+  the same paths as paper. It imports no venue client, and a live call is
+  refused while one runs (`replayLive`). Routing a replay order to a venue is
+  a security-relevant change.
 - Onboarding stores a venue's trade-only delegated key (Hyperliquid agent
   wallet, Aster API wallet with withdraw off, a Bybit or Binance API key
   that can't move funds), not the user's main wallet key.
@@ -767,6 +773,33 @@ leverage and margin mode, funding at each interval, and liquidation at an
 estimated price. It moves forward once a second while the app runs, for the
 venue on screen only. Trading rules aren't checked on paper orders.
 
+## Replay account
+
+Manual practice on past candles, on any venue: while a bar replay runs on the
+Trade chart, the ticket, the account panels and the palette trade the replay
+account (`pd.replay`: one balance, on this machine, apart from every real and
+paper one; 10,000 to start, with the Paper account's Funds and Reset). It is
+the paper engine (`lib/paper.ts`) on the candles, not live prices: the chart
+says what it has on screen (`onReplay`, from `useChartReplay`) and each new
+candle moves the account on (`stepBar`), walked against the position first and
+stopping at every order's level (`pricePath`), so a stop fills at its price and
+a stop and target in one candle take the stop. Fills carry the candle's own
+time, at the venue's fees, with no funding. The ticket sizes against the candle
+(`fallbackPrice`), not the live book. Stepped back from the newest candle it
+refuses orders. A replay is a moment, not a place in one interval's candles: a
+new interval carries on from the same moment (`resume` in `ChartReplay.tsx`) on
+that interval's candles around it, fetched for it (`barsBefore`, the chart's own
+left as they are), showing only those closed by then, under a cover while they
+load, and more are fetched as the replay reaches the last. The account and what's
+open carry on with it. An interval with no candles that far back says so, and the
+chart goes back to the one it was on. When the session ends (Live, another market,
+a new start) orders are cancelled, anything open closes at the last candle, the
+balance carries over and `ReplaySummary` shows what it came to. Replays on the
+Multi-chart page stay display only, and the floating window keeps trading its
+own account. This is the trader's own practice, not a bot or a backtester: it
+runs no strategy, so it isn't what the rule under "Algos and `pd`" keeps off
+main.
+
 ## App currency
 
 Settings > General picks a currency for the main window's money
@@ -953,7 +986,8 @@ account's trading rules. The bot engine that was built here (strategies, a
 backtester, paper and live bots, `pd bot`) is kept on the `bots-engine`
 branch, unmerged; the bots' UI, NautilusTrader backtests and signals
 (`nautilus/`, `pd candles`, `pd signals`) on `archive/bots-signals`. Main
-has nothing of bots or backtesting: don't bring them back piecemeal.
+has nothing of bots or automated backtesting: don't bring them back
+piecemeal. (The replay account is manual practice, and the one exception.)
 
 When working on the engine, the daemon or `pd`:
 

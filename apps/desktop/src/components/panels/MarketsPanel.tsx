@@ -21,6 +21,7 @@ import {
   fundingSeries,
   IconButton,
   OpenAlgoChart,
+  type ReplayProgress,
   Tabs,
   t,
 } from "@pewterdesk/ui";
@@ -63,6 +64,8 @@ const CHART_KINDS: readonly ChartKind[] = ["standard", "funding"];
 interface MarketsPanelProps {
   /** Sets a price alert from a drawing on the chart. */
   onDrawingAlert?: (market: Market, price: number, last: number, note: string) => void;
+  /** Told what a bar replay on the Trade chart has on screen, for the replay account. */
+  onReplay?: (market: string, progress: ReplayProgress | undefined) => void;
   venue: VenueId;
   /** The venue's display name, labelling the depth curves and the chart. */
   venueName: string;
@@ -105,6 +108,7 @@ interface MarketsPanelProps {
  */
 export function MarketsPanel({
   onDrawingAlert,
+  onReplay,
   venue,
   venueName,
   markets,
@@ -339,6 +343,7 @@ export function MarketsPanel({
                     orders={views.chart.levels ? orders : undefined}
                     fills={views.chart.fills ? marketFills : undefined}
                     news={views.chart.news ? chartNews : undefined}
+                    onReplay={onReplay && ((progress) => onReplay(shown.id, progress))}
                     fx={chartFx}
                     onDrawingAlert={
                       onDrawingAlert &&

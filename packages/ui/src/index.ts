@@ -164,6 +164,8 @@ export {
   firedAlertText,
 } from "./components/trading/AlertsPopover";
 export { ChartCurrency } from "./components/trading/ChartCurrency";
+export type { ReplayProgress } from "./components/trading/ChartReplay";
+export { barEnd, lastClosedAt } from "./components/trading/ChartReplay";
 export { ChartToolbar } from "./components/trading/ChartToolbar";
 export {
   BAND,

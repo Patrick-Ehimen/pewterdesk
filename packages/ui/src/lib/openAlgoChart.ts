@@ -119,6 +119,17 @@ export function marketOfSymbol(
   );
 }
 
+/** Up to `count` candles of a market that opened before `before` (UTC seconds), as the chart's. */
+export async function barsBefore(
+  source: BarSource,
+  market: string,
+  interval: CandleInterval,
+  before: number,
+  count: number,
+): Promise<Bar[]> {
+  return (await source.history(market, interval, before * 1000, clampCount(count))).map(toBar);
+}
+
 function clampCount(count: number) {
   return Math.min(MAX_BARS_PAGE, Math.max(1, Math.ceil(count)));
 }
