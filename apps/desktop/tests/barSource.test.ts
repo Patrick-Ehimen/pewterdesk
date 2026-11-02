@@ -25,11 +25,35 @@ describe("SessionCandles", () => {
 
   it("puts an older page before what it holds, and none for a series it doesn't", () => {
     const kept = new SessionCandles();
-    kept.prepend("a", [candle(1)]);
+    kept.prepend("a", [candle(1)], 2);
     expect(kept.get("a")).toBeUndefined();
     kept.merge("a", [candle(3), candle(4)]);
-    kept.prepend("a", [candle(1), candle(2), candle(3)]);
+    kept.prepend("a", [candle(1), candle(2), candle(3)], 2);
     expect(times(kept.get("a"))).toEqual([1, 2, 3, 4]);
+  });
+
+  it("leaves out an older page that doesn't reach what it holds", () => {
+    const kept = new SessionCandles();
+    kept.merge("a", [candle(50), candle(51)]);
+    kept.prepend("a", [candle(1), candle(2)], 2);
+    expect(times(kept.get("a"))).toEqual([50, 51]);
+  });
+
+  it("tops up a seeded series, older pages then meeting it with no hole", () => {
+    const kept = new SessionCandles();
+    kept.seed("a", [candle(3), candle(4), candle(5)]);
+    kept.mergeNewest("a", [candle(5, "9"), candle(6)], 1);
+    expect(times(kept.get("a"))).toEqual([3, 4, 5, 6]);
+    expect(kept.get("a")?.[2]?.close).toBe("9");
+    kept.prepend("a", [candle(1), candle(2)], 1);
+    expect(times(kept.get("a"))).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  it("doesn't seed over a series it already holds", () => {
+    const kept = new SessionCandles();
+    kept.merge("a", [candle(1), candle(2)]);
+    kept.seed("a", [candle(9)]);
+    expect(times(kept.get("a"))).toEqual([1, 2]);
   });
 
   it("lets the least recently used series go past its limit", () => {

@@ -2,7 +2,7 @@ import type { Candle, CandleInterval, VenueId } from "@pewterdesk/core";
 import { type BarSource, INTERVAL_MS } from "@pewterdesk/ui";
 import { venueClient } from "../api/venueClient";
 import { loadCandles, saveCandles } from "./candleCache";
-import { mergeCandles, prependCandles } from "./candles";
+import { joinNewestPage, mergeCandles, prependCandles } from "./candles";
 
 /** Series kept in memory for the session, most recently used last. */
 export const SESSION_SERIES = 40;
@@ -30,10 +30,23 @@ export class SessionCandles {
     this.touch(key, mergeCandles(this.series.get(key) ?? [], candles));
   }
 
-  /** An older page joined on before the oldest held. */
-  prepend(key: string, older: readonly Candle[]) {
+  /** What a chart was just drawn from, for a series not yet held. */
+  seed(key: string, candles: readonly Candle[]) {
+    if (!this.series.has(key)) this.touch(key, [...candles]);
+  }
+
+  /** The venue's newest page, over what's held. `span`: a candle's longest length. */
+  mergeNewest(key: string, page: readonly Candle[], span: number) {
+    if (page.length === 0) return;
+    this.touch(key, joinNewestPage(this.series.get(key) ?? [], page, span));
+  }
+
+  /** An older page joined on before the oldest held, if it reaches that far. */
+  prepend(key: string, older: readonly Candle[], span: number) {
     const held = this.series.get(key);
-    if (!held) return;
+    const newest = older.at(-1);
+    const oldest = held?.[0];
+    if (!held || !newest || !oldest || oldest.openTime - newest.openTime > span) return;
     this.touch(key, prependCandles(held, older).series);
   }
 
@@ -63,17 +76,26 @@ export function venueBarSource(venue: VenueId): BarSource {
     history: async (market, interval, before, count) => {
       const candles = await venueClient.candles(venue, market, interval, before, count);
       const key = keyOf(venue, market, interval);
-      // The newest page joins (and is kept on disk); an older one goes before.
-      if (before > Date.now() - INTERVAL_MS[interval]) {
-        session.merge(key, candles);
-        saveCandles(venue, market, interval, candles);
+      const span = INTERVAL_MS[interval];
+      // The newest page joins (and the whole is kept on disk: a chart drawn
+      // from the cache asks only for the last few); an older one goes before.
+      if (before > Date.now() - span) {
+        session.mergeNewest(key, candles, span);
+        saveCandles(venue, market, interval, session.get(key) ?? candles);
       } else {
-        session.prepend(key, candles);
+        session.prepend(key, candles, span);
       }
       return candles;
     },
-    cached: (market, interval) =>
-      session.get(keyOf(venue, market, interval)) ?? loadCandles(venue, market, interval),
+    cached: (market, interval) => {
+      const key = keyOf(venue, market, interval);
+      const held = session.get(key);
+      if (held) return held;
+      // Held from here on, or the page that tops it up would stand for it all.
+      const saved = loadCandles(venue, market, interval);
+      if (saved) session.seed(key, saved);
+      return saved;
+    },
     subscribe: (market, interval, onCandles) => {
       const key = keyOf(venue, market, interval);
       return venueClient.subscribeCandles(venue, market, interval, {

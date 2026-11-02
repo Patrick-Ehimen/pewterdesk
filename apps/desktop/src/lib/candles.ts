@@ -29,6 +29,31 @@ export function mergeCandles(series: readonly Candle[], updates: readonly Candle
 }
 
 /**
+ * The venue's newest page over a series (both oldest first). The page wins
+ * where they overlap, however far back it reaches, and what the series has
+ * either side of it stays. A page that doesn't meet the series takes its
+ * place: `span` is the most a candle can be from the next, and joining across
+ * more would close up the missing time on the chart.
+ */
+export function joinNewestPage(
+  series: readonly Candle[],
+  page: readonly Candle[],
+  span: number,
+): Candle[] {
+  const first = page[0];
+  const last = page.at(-1);
+  const held = series.at(-1);
+  if (!first || !last) return [...series];
+  if (!held || first.openTime - held.openTime > span) return [...page];
+  const joined = [
+    ...series.filter((c) => c.openTime < first.openTime),
+    ...page,
+    ...series.filter((c) => c.openTime > last.openTime),
+  ];
+  return joined.length > MAX_CANDLES ? joined.slice(joined.length - MAX_CANDLES) : joined;
+}
+
+/**
  * Older candles joined on the left of a series (both oldest first): only
  * those strictly older than the series' first, so an overlapping page can't
  * duplicate or reorder anything. The count added is how far the view moves.
