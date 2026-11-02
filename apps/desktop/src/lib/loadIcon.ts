@@ -7,7 +7,7 @@ import { marketLogo } from "./marketIcons";
 
 /**
  * Market logos for every window (the main one, the tray panel, the floating
- * window): from the venues, then the logos that ship with the app, then
+ * window, a popped-out chart): from the venues, then the logos that ship with the app, then
  * CoinGecko for a crypto coin none of those has. Saved between sessions (`iconCache`), so they draw at once next time.
  * One stable function, so `TokenIcon`'s own cache holds.
  */

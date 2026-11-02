@@ -1,8 +1,10 @@
-import { EmptyState, t } from "@pewterdesk/ui";
+import { EmptyState, TokenIconProvider, t } from "@pewterdesk/ui";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 import { Cell, useVenueData } from "../components/pages/MultiChartPage";
+import { peekSavedIcon } from "../lib/iconCache";
+import { loadIcon } from "../lib/loadIcon";
 import { loadMultiChart, popoutCell } from "../lib/multiChart";
 import { VENUES } from "../lib/venues";
 
@@ -39,20 +41,22 @@ export function ChartWindow() {
   }
   const change = (next: Partial<typeof cell>) => setCell({ ...cell, ...next });
   return (
-    <div className="chart-window">
-      <Cell
-        cell={cell}
-        markets={markets}
-        summary={data.summaries?.find((s) => s.market === cell.market)}
-        onMarket={(market) => change({ market })}
-        onInterval={(interval) => change({ interval })}
-        favoriteIntervals={favorites.favoriteIntervals}
-        favoriteTypes={favorites.favoriteChartTypes}
-        onLayout={(chart) => change({ chart })}
-        onSettings={(settings) => change({ settings })}
-        markSize={56}
-        maximised
-      />
-    </div>
+    <TokenIconProvider load={loadIcon} peek={peekSavedIcon}>
+      <div className="chart-window">
+        <Cell
+          cell={cell}
+          markets={markets}
+          summary={data.summaries?.find((s) => s.market === cell.market)}
+          onMarket={(market) => change({ market })}
+          onInterval={(interval) => change({ interval })}
+          favoriteIntervals={favorites.favoriteIntervals}
+          favoriteTypes={favorites.favoriteChartTypes}
+          onLayout={(chart) => change({ chart })}
+          onSettings={(settings) => change({ settings })}
+          markSize={56}
+          maximised
+        />
+      </div>
+    </TokenIconProvider>
   );
 }
