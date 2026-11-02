@@ -1563,7 +1563,7 @@ export const messages: Messages = {
     "Réinitialisez ce que cet appareil mémorise. Rien ici ne touche aux clés ni aux plateformes.",
   "settings.alwaysOn.title": "Toujours actif",
   "settings.alwaysOn.help":
-    "Fait tourner le moteur de trading en arrière-plan (pdd), pour que les algos continuent quand vous quittez l'app. Le désactiver arrête ses algos et annule leurs ordres.",
+    "Fait tourner le moteur de trading en arrière-plan (pdd), pour que les algos continuent et que les alertes de marché se déclenchent quand vous quittez l'app. Le désactiver arrête ses algos et annule leurs ordres.",
   "settings.alwaysOn.unavailable": "Nécessite macOS et le pdd fourni avec l'app.",
   "settings.alwaysOn.running": "pdd tourne et cette app y est appairée.",
   "settings.alwaysOn.unreachable":

@@ -130,3 +130,50 @@ fn a_refusal_comes_back_as_the_same_venue_error() {
         VenueError::Network("not paired".into())
     );
 }
+
+#[test]
+fn alerts_sync_reads_needs_pairing_and_never_trades() {
+    let text = r#"{"jsonrpc":"2.0","id":1,"method":"alerts.sync","params":{"paused":false,"alerts":[{"id":"a1","kind":"price","venue":"binance","market":"BTCUSDT","condition":"above","value":100000,"repeat":false,"active":true,"text":"BTC rose above 100,000","sound":true}]}}"#;
+    let call = read_request(text).unwrap().call;
+    assert!(!call.open_to_unpaired());
+    assert!(!call.trades());
+    let Call::AlertsSync(sync) = call else {
+        panic!("not alerts.sync");
+    };
+    assert_eq!(sync.alerts.len(), 1);
+    assert!(sync.alerts[0].valid());
+}
+
+#[test]
+fn an_alert_outside_the_bounds_isnt_valid() {
+    use pewterdesk_protocol::rpc::{AlertCondition, AlertKind, WatchedAlert, MAX_ALERT_TEXT};
+    let alert = WatchedAlert {
+        id: "a".into(),
+        kind: AlertKind::Price,
+        venue: pewterdesk_core::VenueId::Bybit,
+        market: "BTCUSDT".into(),
+        condition: AlertCondition::Below,
+        value: 1.0,
+        repeat: true,
+        active: true,
+        fired_at: None,
+        text: "ok".into(),
+        sound: false,
+    };
+    assert!(alert.valid());
+    assert!(!WatchedAlert {
+        text: "x".repeat(MAX_ALERT_TEXT + 1),
+        ..alert.clone()
+    }
+    .valid());
+    assert!(!WatchedAlert {
+        value: f64::NAN,
+        ..alert.clone()
+    }
+    .valid());
+    assert!(!WatchedAlert {
+        market: String::new(),
+        ..alert
+    }
+    .valid());
+}

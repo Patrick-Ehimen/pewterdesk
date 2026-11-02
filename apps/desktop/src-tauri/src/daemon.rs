@@ -4,7 +4,9 @@
 //! `pdd` shows, the same code on both sides), and from then on the app's
 //! trading and algo commands go to `pdd`'s engine instead of its own: the
 //! same router, gate, log and client ids, in the other process. Its algo
-//! updates come back as the same `algo` events.
+//! updates come back as the same `algo` events. The page's market alerts
+//! are handed to `pdd` too (`sync_daemon_alerts`), which watches them once
+//! the app has quit; what fired meanwhile comes back as `daemon-alerts-fired`.
 //!
 //! Security-relevant (docs/bots/safety.md): it decides where trading
 //! commands go. While it's on and `pdd` can't be reached, opening orders and
@@ -23,7 +25,7 @@ use pewterdesk_link::launchd::{self, State};
 use pewterdesk_link::Link;
 use pewterdesk_protocol::local::Paths;
 use pewterdesk_protocol::rpc::{
-    Call, ClientInfo, ClientKind, Event, PairState, PairTicket, RpcError,
+    AlertFiring, AlertsSync, Call, ClientInfo, ClientKind, Event, PairState, PairTicket, RpcError,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State as TauriState};
@@ -37,6 +39,8 @@ const TOKEN_ACCOUNT: &str = "app:pdd-token";
 const SETTING: &str = "always-on.json";
 /// How often a lost connection is tried again.
 const RETRY: Duration = Duration::from_secs(3);
+/// What the page hears, with the `AlertFiring`s `pdd` fired while the app was closed.
+const ALERTS_FIRED_EVENT: &str = "daemon-alerts-fired";
 
 #[derive(Default, Serialize, Deserialize)]
 struct Setting {
@@ -48,6 +52,8 @@ pub struct DaemonLink {
     paths: Option<Paths>,
     on: AtomicBool,
     link: RwLock<Option<Arc<Link>>>,
+    /// The page's market alerts as last handed over, sent again on each new link.
+    alerts: tokio::sync::Mutex<Option<AlertsSync>>,
 }
 
 /// Where things stand, for Settings.
@@ -104,6 +110,7 @@ impl DaemonLink {
             paths,
             on: AtomicBool::new(on),
             link: RwLock::new(None),
+            alerts: tokio::sync::Mutex::new(None),
         }
     }
 
@@ -161,7 +168,27 @@ impl DaemonLink {
             }
         }
         *self.link.write().await = Some(Arc::clone(&link));
+        if link.paired {
+            self.send_alerts(app, &link).await;
+        }
         Some(link)
+    }
+
+    /// Hands `pdd` the page's alerts, and passes on what it fired meanwhile.
+    async fn send_alerts(&self, app: &AppHandle, link: &Link) {
+        let Some(sync) = self.alerts.lock().await.clone() else {
+            return;
+        };
+        match link.call::<Vec<AlertFiring>>(Call::AlertsSync(sync)).await {
+            Ok(fired) if !fired.is_empty() => {
+                let _ = app.emit(ALERTS_FIRED_EVENT, fired);
+            }
+            Ok(_) => {}
+            Err(e) => eprintln!(
+                "pewterdesk: the alerts couldn't be handed to pdd: {}",
+                e.message
+            ),
+        }
     }
 
     async fn state(&self) -> DaemonState {
@@ -211,6 +238,26 @@ pub async fn forward<T: serde::de::DeserializeOwned>(
     call: Call,
 ) -> Result<T, VenueError> {
     link.call(call).await.map_err(venue_error)
+}
+
+/// The page's market alerts, for `pdd` to watch once the app has quit.
+/// Kept here and sent while always-on is on and `pdd` is linked; sent again
+/// on each new link. Notifies only: nothing here can trade.
+#[tauri::command]
+pub async fn sync_daemon_alerts(
+    app: AppHandle,
+    daemon: TauriState<'_, DaemonLink>,
+    sync: AlertsSync,
+) -> Result<(), String> {
+    *daemon.alerts.lock().await = Some(sync);
+    if !daemon.always_on() {
+        return Ok(());
+    }
+    let link = daemon.link.read().await.clone();
+    if let Some(link) = link.filter(|l| l.alive() && l.paired) {
+        daemon.send_alerts(&app, &link).await;
+    }
+    Ok(())
 }
 
 /// Where always-on stands.

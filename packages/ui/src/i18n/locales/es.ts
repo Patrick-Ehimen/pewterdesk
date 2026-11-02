@@ -1558,7 +1558,7 @@ export const messages: Messages = {
     "Restablece lo que recuerda este dispositivo. Nada de aquí afecta a las claves ni a los exchanges.",
   "settings.alwaysOn.title": "Siempre activo",
   "settings.alwaysOn.help":
-    "Ejecuta el motor de trading en segundo plano (pdd), para que los algos sigan funcionando al cerrar la app. Al desactivarlo se detienen sus algos y se cancelan sus órdenes.",
+    "Ejecuta el motor de trading en segundo plano (pdd), para que los algos sigan funcionando y las alertas de mercado sigan avisando al cerrar la app. Al desactivarlo se detienen sus algos y se cancelan sus órdenes.",
   "settings.alwaysOn.unavailable": "Requiere macOS y el pdd incluido con la app.",
   "settings.alwaysOn.running": "pdd está en marcha y esta app está vinculada.",
   "settings.alwaysOn.unreachable":

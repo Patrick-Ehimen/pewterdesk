@@ -441,8 +441,16 @@ discover it on their own. The reasoning behind the rules is in
   of it (`pdd-clients.json`, 0600), compared in constant time; revoking
   takes effect on the next call. The protocol (`rpc.rs`) is the six
   trading operations, read-only queries, algo control, `halt`, `flatten`
-  (reduce-only market orders through the router) and pairing - nothing
-  that signs, withdraws, transfers or carries key material. `pd`'s
+  (reduce-only market orders through the router), pairing, and
+  `alerts.sync` (the app's market alerts, from the App client only) -
+  nothing that signs, withdraws, transfers or carries key material. With
+  always on, `pdd` watches the app's market alerts (price, move, funding,
+  RSI, volume, open interest; not PnL or liquidation, which read the
+  account) once the app has quit, never while a synced app is connected
+  (`apps/daemon/src/alerts.rs`, `pdd-alerts.json`, 0600): public market
+  data in, a system notification out (`osascript`, the text as an
+  argument), what fired handed back on the app's next sync. It reaches no
+  router, account or key. `pd`'s
   commands are logged with the origin `pd` whatever it says. A panic aborts
   `pdd` (launchd restarts it; it reconciles first). With "always on" set
   (Settings, `src-tauri/src/daemon.rs`, `always-on.json`) the app's six
@@ -1030,8 +1038,11 @@ event in the notification centre and delivers it where Settings >
 Notifications says (toast, desktop, sound; do not disturb holds back all but
 liquidation risk). An alert set to show in the menu bar takes the tray
 item's title for 20 seconds (`lib/trayFlash.ts`). Market alerts live in `packages/ui/src/lib/alerts.ts` and
-`hooks/useAlerts.ts`; they are checked in the app while it runs - there is no
-backend, so nothing fires once the app is quit.
+`hooks/useAlerts.ts`; they are checked in the app while it runs. With
+Settings > Advanced > Always on, `pdd` takes over the market-data ones once
+the app has quit (`lib/daemonAlerts.ts`, `sync_daemon_alerts`), and what it
+fired shows in "Fired today" when the app is back. Without it, nothing
+fires once the app is quit: there is no backend.
 
 ## Interface strings
 

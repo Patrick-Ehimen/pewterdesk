@@ -1,6 +1,7 @@
 //! What a client may ask the engine, over JSON-RPC 2.0: the six trading
 //! operations, read-only queries, algo control, `halt` and
-//! `flatten`, and pairing. Nothing else - no withdrawal, transfer, key approval or
+//! `flatten`, pairing, and the app's market alerts (`alerts.sync`: watched
+//! while the app is closed, notifying only). Nothing else - no withdrawal, transfer, key approval or
 //! signing of caller-supplied data, and no key material in either
 //! direction (`docs/bots/safety.md`). A key's existence goes no further
 //! than whether an account can trade.
@@ -240,6 +241,99 @@ pub enum Call {
     /// From here on, the daemon's events come as `event` notifications.
     #[serde(rename = "events.subscribe")]
     Subscribe,
+
+    /// The app's market alerts, for the daemon to watch while the app is
+    /// closed: they replace any it holds. Answered with what fired while the
+    /// app was away (`AlertFiring`s), each given once. Notifies only:
+    /// nothing here reaches the router, an account or a key.
+    #[serde(rename = "alerts.sync")]
+    AlertsSync(AlertsSync),
+}
+
+/// The most alerts a sync may carry, as the app keeps at most.
+pub const MAX_ALERTS: usize = 200;
+/// The longest notification text an alert may carry.
+pub const MAX_ALERT_TEXT: usize = 200;
+/// The longest id or market id an alert may carry.
+pub const MAX_ALERT_ID: usize = 64;
+
+/// What a market alert watches. Public market data only: the app's PnL and
+/// liquidation alerts, which read the account, aren't watched here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AlertKind {
+    Price,
+    /// The day's change, in percent.
+    Move,
+    /// The funding rate, in percent.
+    Funding,
+    /// RSI(14) on hourly candles.
+    Rsi,
+    /// The day's traded value, in the quote asset.
+    Volume,
+    /// Open interest, in the quote asset.
+    Oi,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AlertCondition {
+    Above,
+    Below,
+}
+
+/// One market alert, as the app keeps it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchedAlert {
+    pub id: String,
+    pub kind: AlertKind,
+    pub venue: VenueId,
+    /// `Market::id`.
+    pub market: String,
+    pub condition: AlertCondition,
+    /// The line, in the kind's units.
+    pub value: f64,
+    /// Fires every time (after a cooldown) rather than once.
+    pub repeat: bool,
+    pub active: bool,
+    /// When it last fired, in ms since the epoch.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fired_at: Option<u64>,
+    /// What the notification says, in the app's language: plain text.
+    pub text: String,
+    /// Whether the notification plays a sound.
+    pub sound: bool,
+}
+
+impl WatchedAlert {
+    /// Whether it's within the protocol's bounds.
+    pub fn valid(&self) -> bool {
+        let id_ok = |s: &str| !s.is_empty() && s.len() <= MAX_ALERT_ID;
+        id_ok(&self.id)
+            && id_ok(&self.market)
+            && self.value.is_finite()
+            && self.text.chars().count() <= MAX_ALERT_TEXT
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlertsSync {
+    pub alerts: Vec<WatchedAlert>,
+    /// Every alert held, as the app's switch says.
+    pub paused: bool,
+}
+
+/// An alert the daemon fired while the app was away.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AlertFiring {
+    pub alert_id: String,
+    /// What the watched value was.
+    pub actual: f64,
+    /// In ms since the epoch.
+    pub time: u64,
 }
 
 impl Call {

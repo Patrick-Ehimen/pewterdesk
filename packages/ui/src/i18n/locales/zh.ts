@@ -1484,7 +1484,7 @@ export const messages: Messages = {
   "settings.advanced.desc": "重置此设备保存的内容。这里不会影响密钥或交易所。",
   "settings.alwaysOn.title": "始终运行",
   "settings.alwaysOn.help":
-    "在后台（pdd）运行交易引擎，退出应用后算法单仍继续运行。关闭后会停止其算法单并撤销其订单。",
+    "在后台（pdd）运行交易引擎，退出应用后算法单仍继续运行，市场提醒也照常触发。关闭后会停止其算法单并撤销其订单。",
   "settings.alwaysOn.unavailable": "需要 macOS 和应用自带的 pdd。",
   "settings.alwaysOn.running": "pdd 正在运行，本应用已与其配对。",
   "settings.alwaysOn.unreachable": "无法连接 pdd：在恢复前，下单和新算法单会被拒绝（撤单仍可用）。",

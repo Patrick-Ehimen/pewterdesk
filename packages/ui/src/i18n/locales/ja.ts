@@ -1529,7 +1529,7 @@ export const messages: Messages = {
     "この端末に保存された設定をリセットします。鍵や取引所には影響しません。",
   "settings.alwaysOn.title": "常時稼働",
   "settings.alwaysOn.help":
-    "取引エンジンをバックグラウンド（pdd）で実行し、アプリを終了してもアルゴを動かし続けます。オフにするとアルゴを停止し、注文を取り消します。",
+    "取引エンジンをバックグラウンド（pdd）で実行し、アプリを終了してもアルゴを動かし続け、マーケットアラートも通知します。オフにするとアルゴを停止し、注文を取り消します。",
   "settings.alwaysOn.unavailable": "macOS とアプリ付属の pdd が必要です。",
   "settings.alwaysOn.running": "pdd が稼働中で、このアプリとペアリング済みです。",
   "settings.alwaysOn.unreachable":

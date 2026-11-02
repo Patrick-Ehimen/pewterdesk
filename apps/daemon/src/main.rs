@@ -10,6 +10,7 @@
 //! adapters through `KeychainKeySource` for a signing call; nothing here
 //! logs, prints or sends one.
 
+mod alerts;
 mod ask;
 mod host;
 mod pairing;
@@ -22,6 +23,7 @@ use pewterdesk_engine::algo::Host;
 use pewterdesk_protocol::local::Paths;
 use tokio::sync::broadcast;
 
+use crate::alerts::Alerts;
 use crate::host::{Daemon, Venues};
 use crate::pairing::{write_private, Clients, Pairing};
 
@@ -138,6 +140,7 @@ async fn run() -> i32 {
         events,
         pairing: Pairing::new(Arc::clone(&clients), ask::asker()),
         clients,
+        alerts: Arc::new(Alerts::load(paths.alerts())),
         started_at: now_ms(),
     });
     // Algos run on this engine; any left over from an engine that's gone
@@ -172,6 +175,7 @@ async fn run() -> i32 {
     tokio::spawn(server::serve_unix(Arc::clone(&daemon), unix));
     tokio::spawn(server::serve_ws(Arc::clone(&daemon), tcp, port));
     tokio::spawn(watch_for_wake(Arc::clone(&daemon)));
+    tokio::spawn(alerts::watch(Arc::clone(&daemon)));
     eprintln!(
         "pdd {} listening on {} and 127.0.0.1:{port}",
         env!("CARGO_PKG_VERSION"),

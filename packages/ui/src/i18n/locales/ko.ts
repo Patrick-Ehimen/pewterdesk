@@ -1521,7 +1521,7 @@ export const messages: Messages = {
     "이 기기에 저장된 설정을 초기화합니다. 키나 거래소에는 영향이 없습니다.",
   "settings.alwaysOn.title": "항상 켜짐",
   "settings.alwaysOn.help":
-    "거래 엔진을 백그라운드(pdd)에서 실행해 앱을 종료해도 알고가 계속 돌아갑니다. 끄면 알고를 멈추고 주문을 취소합니다.",
+    "거래 엔진을 백그라운드(pdd)에서 실행해 앱을 종료해도 알고가 계속 돌아가고 시장 알림도 계속 울립니다. 끄면 알고를 멈추고 주문을 취소합니다.",
   "settings.alwaysOn.unavailable": "macOS와 앱에 포함된 pdd가 필요합니다.",
   "settings.alwaysOn.running": "pdd가 실행 중이며 이 앱과 페어링되어 있습니다.",
   "settings.alwaysOn.unreachable":

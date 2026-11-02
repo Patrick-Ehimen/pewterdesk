@@ -13,8 +13,10 @@ import {
   watchedValue,
 } from "@pewterdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { daemonClient } from "../api/daemonClient";
 import { venueClient } from "../api/venueClient";
 import { type AlertsState, loadAlerts, saveAlerts } from "../lib/alerts";
+import { applyAway, toWatched } from "../lib/daemonAlerts";
 import { useMarketSummaries } from "./useVenueFeeds";
 
 /** How often an RSI alert's market has its hourly candles read again. */
@@ -23,6 +25,8 @@ const rsiKey = (venue: VenueId, market: string) => `${venue}:${market}`;
 
 /** Fired alerts kept for the "Fired today" list. */
 const FIRED_KEPT = 50;
+/** How long the alerts sit still before they're handed to pdd. */
+const SYNC_DELAY_MS = 500;
 
 const summaryOf = (feed: ReturnType<typeof useMarketSummaries>) =>
   feed.status === "live" || feed.status === "closed" ? feed.data : undefined;
@@ -39,6 +43,24 @@ const summaryOf = (feed: ReturnType<typeof useMarketSummaries>) =>
 export function useAlerts(popoverOpen: boolean, account?: AccountSnapshot) {
   const [state, setState] = useState<AlertsState>(loadAlerts);
   useEffect(() => saveAlerts(state), [state]);
+
+  // With always on, pdd watches the market alerts once the app has quit;
+  // what it fired meanwhile comes back here when the app links up again.
+  const watched = useMemo(() => toWatched(state.alerts), [state.alerts]);
+  useEffect(() => {
+    const id = setTimeout(
+      () => void daemonClient.syncAlerts(watched, state.paused).catch(() => {}),
+      SYNC_DELAY_MS,
+    );
+    return () => clearTimeout(id);
+  }, [watched, state.paused]);
+  useEffect(
+    () =>
+      daemonClient.onAlertsFired((firings) =>
+        setState((s) => applyAway(s, firings, undefined, FIRED_KEPT)),
+      ),
+    [],
+  );
 
   // Open, the popover shows every alert's distance (and the form any venue's
   // "now"), so it wants every venue's prices.

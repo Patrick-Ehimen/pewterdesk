@@ -254,6 +254,7 @@ pub fn run() {
             algos::stop_algo,
             algos::halt_algos,
             daemon::daemon_state,
+            daemon::sync_daemon_alerts,
             daemon::set_always_on,
             daemon::daemon_pair,
             daemon::daemon_pair_status,

@@ -19,6 +19,7 @@ use pewterdesk_protocol::local::Paths;
 use pewterdesk_protocol::rpc::Event;
 use tokio::sync::broadcast;
 
+use crate::alerts::Alerts;
 use crate::pairing::{Clients, Pairing};
 
 /// Each venue's adapter, as the app sets them up.
@@ -62,6 +63,8 @@ pub struct Daemon {
     pub events: broadcast::Sender<Event>,
     pub clients: Arc<Clients>,
     pub pairing: Pairing,
+    /// The app's market alerts, watched while it's closed.
+    pub alerts: Arc<Alerts>,
     pub started_at: u64,
 }
 

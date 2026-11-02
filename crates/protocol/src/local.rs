@@ -105,6 +105,11 @@ impl Paths {
         self.data.join("events.sqlite3")
     }
 
+    /// The app's market alerts, as the daemon watches them while the app is closed.
+    pub fn alerts(&self) -> PathBuf {
+        self.data.join("pdd-alerts.json")
+    }
+
     /// The accounts' locks: one engine per account.
     pub fn locks(&self) -> PathBuf {
         self.data.join("locks")

@@ -50,6 +50,8 @@ struct Session {
     /// The paired client it proved to be.
     client: Option<String>,
     subscribed: bool,
+    /// An app that synced its alerts: while it's connected, it checks them.
+    alerts: Option<crate::alerts::Presence>,
 }
 
 fn venue_error(e: VenueError) -> RpcError {
@@ -354,6 +356,20 @@ async fn dispatch(d: &Daemon, session: &mut Session, call: Call) -> Result<Value
             session.subscribed = true;
             ok(())
         }
+        Call::AlertsSync(sync) => {
+            if session.kind != Some(ClientKind::App) {
+                return Err(RpcError::new(
+                    code::INVALID_PARAMS,
+                    "only the app has alerts",
+                ));
+            }
+            let away = d
+                .alerts
+                .sync(sync)
+                .map_err(|e| RpcError::new(code::INVALID_PARAMS, e))?;
+            session.alerts.get_or_insert_with(|| d.alerts.presence());
+            ok(away)
+        }
     }
 }
 
@@ -610,6 +626,7 @@ mod tests {
             events,
             pairing: Pairing::new(Arc::clone(&clients), ask),
             clients,
+            alerts: Arc::new(crate::alerts::Alerts::load(dir.join("alerts.json"))),
             started_at: 0,
         });
         let socket = dir.join("s");

@@ -1487,7 +1487,7 @@ export const en = {
     "Reset what this device remembers. Nothing here touches keys or the venues.",
   "settings.alwaysOn.title": "Always on",
   "settings.alwaysOn.help":
-    "Run the trading engine in the background (pdd), so algos keep running when you quit the app. Turning it off stops its algos and cancels their orders.",
+    "Run the trading engine in the background (pdd), so algos keep running and market alerts keep firing when you quit the app. Turning it off stops its algos and cancels their orders.",
   "settings.alwaysOn.unavailable": "Needs macOS and the pdd that comes with the app.",
   "settings.alwaysOn.running": "pdd is running and this app is paired with it.",
   "settings.alwaysOn.unreachable":
