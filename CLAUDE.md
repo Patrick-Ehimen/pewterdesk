@@ -689,8 +689,8 @@ candles, a market heatmap of coins by sector from CoinGecko, liquidations
 from a venue's public live feed (the one on screen's where it has one -
 Bybit, Binance - Bybit's otherwise) and OKX's public history, and an estimated liquidation heatmap from hourly open interest
 (from volume where a venue publishes no open-interest history) -
-`components/maps/` in `packages/ui`; in seven groups - Momentum, Volume, Positioning,
-Liquidations, Market, Order flow, Time - with each group's views as chips beside them.
+`components/maps/` in `packages/ui`; in nine groups - Momentum, Setups, Volume, Positioning,
+Liquidations, Market, Order flow, Time, Your trading - with each group's views as chips beside them.
 The rest are arithmetic over data the app already reads (`lib/mapStats.ts`,
 `hooks/useMapData.ts`): performance and volatility from every market's
 hourly history; strength against BTC from it too (relative strength, a
@@ -711,7 +711,19 @@ trades stream, collected while the view is open - there's no history of
 every trade to read; open interest against price (Bybit's and Binance's hourly history, or on
 Hyperliquid, Aster and BloFin samples the app takes every 5 minutes while it runs,
 the change so far shown until they cover the window - `lib/oiStore.ts`), correlation, a live order-book heatmap, and seasonality
-and sessions from a market's last 30 days of hourly candles; plus the
+and sessions from a market's last 30 days of hourly candles; the scans
+(`lib/mapScans.ts`, `components/maps/ScanMaps.tsx`, ranked tables): each market's
+a combined scanner of every reading with its filters, and with scan alerts beside it
+(`hooks/useScanAlerts.ts`, `lib/scanAlerts.ts`: a market or the starred ones read every 5 minutes while
+the app runs, notifying through `notifyEvent` on the way into a state; they place nothing), each market's
+regime (ADX and efficiency), key levels, RSI divergence, stretch from the 7-day
+VWAP and the 100-hour EMA and volatility rank, a squeeze risk score, funding carry
+between venues, pair spreads, lead and lag against BTC and sector rotation; and,
+from the account on screen, the trader's edge by hour and market (closed trades,
+read only while that view is open) and correlated exposure. Any market clicked in a Maps view opens the
+market's card (`components/maps/MarketCard.tsx`: its readings, star, alerts, and its levels
+shown on the Trade chart through `analysis`, read-only and never saved), and what a view
+shows can be saved as a named list (`markets` on `MapFrame`, `SaveList`); plus the
 public long / short account ratio (`long_short_ratio`, a read-only market
 data request) of the venue on screen where it publishes one (Bybit,
 Binance), Bybit's otherwise. A Crypto / All filter keeps

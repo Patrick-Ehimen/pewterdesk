@@ -145,6 +145,7 @@ export function RelativeStrengthMap({
 
   return (
     <MapFrame
+      markets={ranked.map((r) => r.market)}
       title={t("mapx.rs.title")}
       controls={
         <>
@@ -258,6 +259,7 @@ export function RotationMap({
 
   return (
     <MapFrame
+      markets={points.map((p) => p.market)}
       title={t("mapx.rotation.title")}
       controls={
         <>
@@ -449,6 +451,7 @@ export function BreakoutMap({
 
   return (
     <MapFrame
+      markets={[...highs, ...lows].map((r) => r.market)}
       title={t("mapx.breakout.title")}
       controls={
         <>
@@ -522,6 +525,7 @@ export function VolumeSpikeMap({
 
   return (
     <MapFrame
+      markets={ranked.map((r) => r.market)}
       title={t("mapx.spikes.title")}
       controls={
         <>
@@ -840,6 +844,7 @@ export function BetaMap({
 
   return (
     <MapFrame
+      markets={points.map((p) => p.market)}
       title={t("mapx.beta.title")}
       controls={
         <>

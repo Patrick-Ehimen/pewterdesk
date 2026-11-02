@@ -7,6 +7,7 @@ import { RSI_FRAMES, RSI_ZONES, type RsiFrame, type RsiZone, rsiZone } from "../
 import { Select } from "../common/Select";
 import { EmptyState } from "../common/Status";
 import { TokenIcon } from "../trading/TokenIcon";
+import { SaveList } from "./kit";
 
 const ZONE_LABEL: Record<RsiZone, MessageKey> = {
   overbought: "rsi.overbought",
@@ -399,6 +400,7 @@ export function RsiHeatmap({
           options={RSI_FRAMES.map((f) => ({ value: f, label: t(`rsi.frame.${f}`) }))}
           onChange={onFrame}
         />
+        <SaveList markets={shown.map((p) => p.market)} />
         <button
           type="button"
           className="pd-rsi-refresh"

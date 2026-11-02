@@ -84,6 +84,7 @@ export function FundingMap({
 
   return (
     <MapFrame
+      markets={shown.flatMap((r) => iconFor(r.base) ?? [])}
       title={t("mapx.funding.title")}
       controls={
         <>
@@ -272,6 +273,7 @@ export function OpenInterestMap({
 
   return (
     <MapFrame
+      markets={known.map((p) => p.market)}
       title={t("mapx.oi.title")}
       controls={
         <Seg options={OI_WINDOWS} value={window} onChange={onWindow} label={t("mapx.window")} />
@@ -454,6 +456,7 @@ export function LongShortMap({
 
   return (
     <MapFrame
+      markets={sorted.flatMap((r) => r.market ?? [])}
       title={t("mapx.ls.title")}
       controls={
         <Seg

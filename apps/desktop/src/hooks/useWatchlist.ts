@@ -68,6 +68,14 @@ export function starredRows<M extends { id: string }>(
   return [...starred].map((id) => ({ id, market: markets.find((m) => m.id === id) }));
 }
 
+/** The market ids starred on `venue`, for code outside React. */
+export function starredOn(venue: VenueId): string[] {
+  const prefix = watchKey(venue, "");
+  return snapshot()
+    .filter((k) => k.startsWith(prefix))
+    .map((k) => k.slice(prefix.length));
+}
+
 /**
  * Starred markets, remembered between sessions. `starred` holds the
  * `Market::id`s starred on `venue`; `toggle` takes one of those ids.

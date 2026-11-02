@@ -1,5 +1,12 @@
 import type { Market } from "@pewterdesk/core";
-import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
+import {
+  type CSSProperties,
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { t } from "../../i18n";
 import { formatNumber } from "../../lib/format";
 import { EmptyState } from "../common/Status";
@@ -79,6 +86,64 @@ export function Seg<T extends string>({
   );
 }
 
+/** What any view can do with its markets: the page's watchlists. */
+export interface ScanActions {
+  starred: (market: Market) => boolean;
+  onStar: (market: Market) => void;
+  onSaveList: (name: string, markets: readonly Market[]) => void;
+}
+
+export const ScanActionsContext = createContext<ScanActions | undefined>(undefined);
+
+/** Markets a saved list takes: as many as a view shows at most. */
+const SAVE_MAX = 80;
+
+/** Names the markets a view shows, and saves them as a list on the Watchlist tab. */
+export function SaveList({ markets }: { markets: readonly Market[] }) {
+  const actions = useContext(ScanActionsContext);
+  const [naming, setNaming] = useState(false);
+  const [name, setName] = useState("");
+  const [saved, setSaved] = useState(false);
+  if (!actions || markets.length === 0) return null;
+  if (saved) return <span className="pd-mx-savelist pd-muted">{t("mapx.scan.saved")}</span>;
+  if (!naming) {
+    return (
+      <span className="pd-mx-savelist">
+        <button type="button" onClick={() => setNaming(true)}>
+          {t("mapx.scan.saveList")}
+        </button>
+      </span>
+    );
+  }
+  const save = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return setNaming(false);
+    actions.onSaveList(trimmed, [...new Set(markets)].slice(0, SAVE_MAX));
+    setNaming(false);
+    setName("");
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+  return (
+    <span className="pd-mx-savelist">
+      <input
+        // biome-ignore lint/a11y/noAutofocus: it opens to be typed into
+        autoFocus
+        value={name}
+        maxLength={32}
+        placeholder={t("mapx.scan.listName")}
+        aria-label={t("mapx.scan.listName")}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setNaming(false);
+        }}
+        onBlur={save}
+      />
+    </span>
+  );
+}
+
 /**
  * A view's frame: the title and controls on one line, the map filling the
  * rest, and a note under it. `state` stands in for the map while there's
@@ -91,11 +156,14 @@ export function MapFrame({
   note,
   state,
   side,
+  markets,
   children,
 }: {
   title: ReactNode;
   controls?: ReactNode;
   legend?: ReactNode;
+  /** The markets on screen, which can be saved as a list. */
+  markets?: readonly Market[];
   note?: ReactNode;
   state?: ReactNode;
   side?: ReactNode;
@@ -107,7 +175,12 @@ export function MapFrame({
         <div className="pd-mx-bar">
           <h2>{title}</h2>
           {controls}
-          {legend && <span className="pd-mx-legend">{legend}</span>}
+          {(legend || markets) && (
+            <span className="pd-mx-legend">
+              {markets && <SaveList markets={markets} />}
+              {legend}
+            </span>
+          )}
         </div>
         <div className="pd-mx-body">{state ?? children}</div>
         {note && <p className="pd-mx-note">{note}</p>}

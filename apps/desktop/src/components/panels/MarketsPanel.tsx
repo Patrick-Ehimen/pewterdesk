@@ -10,6 +10,7 @@ import type {
 } from "@pewterdesk/core";
 import {
   ALL_INTERVALS,
+  type ChartAnalysis,
   ChartSkeleton,
   DepthChart,
   DepthView,
@@ -64,6 +65,9 @@ const CHART_KINDS: readonly ChartKind[] = ["standard", "funding"];
 interface MarketsPanelProps {
   /** Sets a price alert from a drawing on the chart. */
   onDrawingAlert?: (market: Market, price: number, last: number, note: string) => void;
+  /** Levels the Maps page asked to see, on their market. */
+  levels?: { market: string; analysis: ChartAnalysis };
+  onClearLevels?: () => void;
   /** Told what a bar replay on the Trade chart has on screen, for the replay account. */
   onReplay?: (market: string, progress: ReplayProgress | undefined) => void;
   venue: VenueId;
@@ -109,6 +113,8 @@ interface MarketsPanelProps {
 export function MarketsPanel({
   onDrawingAlert,
   onReplay,
+  levels,
+  onClearLevels,
   venue,
   venueName,
   markets,
@@ -344,6 +350,8 @@ export function MarketsPanel({
                     fills={views.chart.fills ? marketFills : undefined}
                     news={views.chart.news ? chartNews : undefined}
                     onReplay={onReplay && ((progress) => onReplay(shown.id, progress))}
+                    analysis={levels?.market === shown.id ? levels.analysis : undefined}
+                    onClearAnalysis={onClearLevels}
                     fx={chartFx}
                     onDrawingAlert={
                       onDrawingAlert &&

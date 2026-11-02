@@ -186,6 +186,17 @@ export function useLists() {
       (name: string) => update((s) => withList(s, crypto.randomUUID(), name)),
       [update],
     ),
+    /** A new list holding `keys`, up to a list's limit. */
+    createWith: useCallback(
+      (name: string, keys: readonly string[]) =>
+        update((s) => {
+          const id = crypto.randomUUID();
+          return keys
+            .slice(0, MAX_ENTRIES)
+            .reduce((list, key) => toggled(list, id, key), withList(s, id, name));
+        }),
+      [update],
+    ),
     rename: useCallback(
       (id: string, name: string) => update((s) => renamed(s, id, name)),
       [update],

@@ -70,6 +70,7 @@ export function CorrelationMap({
 
   return (
     <MapFrame
+      markets={markets}
       title={t("mapx.corr.title")}
       controls={
         <>
@@ -223,6 +224,7 @@ export function SpreadMap({
 
   return (
     <MapFrame
+      markets={shown.flatMap((r) => iconFor(r.row.base) ?? [])}
       title={t("mapx.spread.title")}
       controls={
         <Seg

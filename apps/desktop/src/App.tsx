@@ -25,6 +25,7 @@ import {
   type BookSides,
   BookSidesPicker,
   type BookUnit,
+  type ChartAnalysis,
   ClosedTradesTable,
   closedRoi,
   dateFormat,
@@ -139,6 +140,7 @@ import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
 import { useReplayAccount } from "./hooks/useReplayAccount";
+import { useScanAlerts } from "./hooks/useScanAlerts";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
 import { useTradeSettings } from "./hooks/useTradeSettings";
@@ -543,6 +545,9 @@ function OrderBookPanel({
     </>
   );
 }
+
+const NO_POSITIONS: Position[] = [];
+const NO_CLOSED: ClosedTrade[] = [];
 
 export function App() {
   // The venue and market on screen, so a restart opens where you left off.
@@ -1047,12 +1052,20 @@ export function App() {
   // In paper mode the venue's own account isn't read at all: the panels show the paper one.
   const venueAccount = useAccount(venue, paperOn ? undefined : address);
   const account = paperOn ? paper.account : venueAccount;
-  // The Portfolio page's history: read only while that page is open.
+  // The Portfolio page's history: read only while that page is open, or the
+  // Maps view that needs it.
+  const [closedForMaps, setClosedForMaps] = useState(false);
+  // Levels the Maps page put on the Trade chart. Read-only: lines to look at.
+  const [chartLevels, setChartLevels] = useState<{
+    venue: VenueId;
+    market: string;
+    analysis: ChartAnalysis;
+  }>();
   const venueClosed = useClosedHistory(
     venue,
     paperOn ? undefined : address,
     HISTORY_MS,
-    page === "portfolio",
+    page === "portfolio" || closedForMaps,
   );
   const closedRaw: Feed<ClosedTrade[]> = paperOn
     ? { status: "live", data: paper.state.closed }
@@ -1128,6 +1141,7 @@ export function App() {
   // The alerts, with the connected account's positions for the PnL and
   // liquidation-distance ones.
   const alerts = useAlerts(alertsOpen, liveAccount);
+  const scanAlerts = useScanAlerts(marketList);
   // Hyperliquid and Aster publish no open-interest history: sample it for the Maps page.
   useOiRecorder();
   // The notification centre: everything `notifyEvent` has recorded.
@@ -1505,6 +1519,8 @@ export function App() {
           <MarketsPanel
             onDrawingAlert={alertFromDrawing}
             onReplay={onReplay}
+            levels={chartLevels?.venue === venue ? chartLevels : undefined}
+            onClearLevels={() => setChartLevels(undefined)}
             venue={venue}
             venueName={venueInfo.label}
             markets={markets}
@@ -2020,6 +2036,27 @@ export function App() {
             venueLabel={venueInfo.label}
             markets={marketList}
             selected={selected?.id}
+            positions={
+              account.status === "live" || account.status === "closed"
+                ? account.data.positions
+                : NO_POSITIONS
+            }
+            connected={accountKey !== undefined && accountKey !== ""}
+            closed={{
+              trades:
+                closedHistory.status === "live" || closedHistory.status === "closed"
+                  ? closedHistory.data
+                  : NO_CLOSED,
+              loading: closedHistory.status === "loading",
+              error: closedHistory.status === "error" ? closedHistory.message : undefined,
+            }}
+            onWantClosed={setClosedForMaps}
+            scanAlerts={scanAlerts}
+            onShowLevels={(m, analysis) => {
+              setChartLevels({ venue, market: m.id, analysis });
+              showMarket(venue, m.id);
+              setPage("trade");
+            }}
             onTrade={(m) => {
               showMarket(venue, m.id);
               setPage("trade");

@@ -2505,6 +2505,260 @@ export const messages: Messages = {
   "wl.repeat": "Répéter",
   "wl.create": "Créer l'alerte",
   "maps.group.momentum": "Momentum",
+  "maps.scanner": "Scanner",
+  "mapx.scanner.title": "Scanner combiné",
+  "mapx.scanner.note":
+    "Chaque filtre doit passer. Lu sur les bougies horaires, actualisé chaque minute.",
+  "mapx.scanner.regime": "Régime",
+  "mapx.scanner.near": "Près d'un niveau",
+  "mapx.scanner.stretch": "Étirement",
+  "mapx.scanner.vol": "Volatilité",
+  "mapx.scanner.div": "Divergence",
+  "mapx.scanner.funding": "Funding",
+  "mapx.scanner.any": "Tous",
+  "mapx.scanner.calm": "Calme",
+  "mapx.scanner.crowded": "Encombré",
+  "mapx.scanner.level": "Niveau proche",
+  "mapx.scan.saveList": "Enregistrer en liste",
+  "mapx.scan.listName": "Nom de la liste",
+  "mapx.scan.saved": "Enregistrée dans la watchlist",
+  "mapx.card.trade": "Ouvrir sur Trade",
+  "mapx.card.mark": "Afficher les niveaux",
+  "mapx.card.alerts": "M'alerter à l'entrée",
+  "mapx.card.levels": "Niveaux",
+  "mapx.card.poc": "Point de contrôle",
+  "mapx.card.loading": "Lecture du marché…",
+  "mapx.alert.rule.divergence": "Nouvelle divergence RSI",
+  "mapx.alert.rule.squeeze": "Risque de squeeze 80+",
+  "mapx.alert.rule.level": "À moins de 0,5 % d'un niveau",
+  "mapx.alert.rule.trend": "Passe en tendance",
+  "mapx.alert.fired": "{symbol} : {rule}",
+  "mapx.alerts.title": "Alertes de scan",
+  "mapx.alerts.note": "Vérifiées toutes les 5 minutes tant que l'app tourne.",
+  "mapx.alerts.starred": "Tous les marchés favoris",
+  "mapx.alerts.none":
+    "Aucune. Ajoutez-en une pour vos favoris ici, ou pour un marché depuis sa fiche.",
+  "mapx.alerts.remove": "Supprimer l'alerte",
+  "chart.clearMarks": "Effacer les niveaux",
+  "maphelp.scanner.what":
+    "Les lectures de chaque marché dans un tableau, filtrées selon vos conditions.",
+  "maphelp.scanner.how":
+    "Mêmes calculs que les vues Configurations, pour les 300 marchés les plus actifs. Divergence en barres 1 h.",
+  "maphelp.scanner.read":
+    "Commencez large puis resserrez : une courte liste passant plusieurs conditions vaut mieux qu'une longue.",
+  "maphelp.scanner.caveats":
+    "Un marché sans lecture échoue au filtre concerné. Le risque de squeeze n'est pas un filtre ici : il exige l'intérêt ouvert de chaque marché.",
+  "maps.group.setups": "Configurations",
+  "maps.group.mine": "Votre trading",
+  "maps.regime": "Régime",
+  "maps.levels": "Niveaux clés",
+  "maps.divergence": "Divergence RSI",
+  "maps.stretch": "Étirement",
+  "maps.volRank": "Rang de volatilité",
+  "maps.crowded": "Risque de squeeze",
+  "maps.carry": "Carry",
+  "maps.pairs": "Écart de paire",
+  "maps.leadLag": "Avance et retard",
+  "maps.sectors": "Rotation sectorielle",
+  "maps.edge": "Votre avantage",
+  "maps.exposure": "Exposition corrélée",
+  "mapx.scan.count": "{count} marchés",
+  "mapx.scan.none": "Rien pour le moment.",
+  "mapx.scan.change24h": "24h",
+  "mapx.scan.frame": "Unité de temps",
+  "mapx.regime.title": "Régime de marché",
+  "mapx.regime.note":
+    "Bougies horaires : l'ADX pour la force, le mouvement net sur 48 h rapporté au chemin parcouru pour l'efficacité.",
+  "mapx.regime.filter": "Afficher",
+  "mapx.regime.filter.all": "Tous",
+  "mapx.regime.filter.trending": "En tendance",
+  "mapx.regime.filter.ranging": "En range",
+  "mapx.regime.filter.choppy": "Agité",
+  "mapx.regime.state": "État",
+  "mapx.regime.adx": "ADX",
+  "mapx.regime.efficiency": "Efficacité",
+  "mapx.regime.trendUp": "Tendance haussière",
+  "mapx.regime.trendDown": "Tendance baissière",
+  "mapx.regime.ranging": "En range",
+  "mapx.regime.choppy": "Agité",
+  "mapx.levels.title": "Niveaux clés",
+  "mapx.levels.note":
+    "Distance entre le prix et chaque niveau. Jours et semaines en UTC, semaines depuis lundi.",
+  "mapx.levels.nearest": "Le plus proche",
+  "mapx.levels.away": "Distance",
+  "mapx.levels.dayOpen": "Ouverture du jour",
+  "mapx.levels.weekOpen": "Ouverture hebdo",
+  "mapx.levels.prevHigh": "Plus haut d'hier",
+  "mapx.levels.prevLow": "Plus bas d'hier",
+  "mapx.levels.weekHigh": "Plus haut 7 j",
+  "mapx.levels.weekLow": "Plus bas 7 j",
+  "mapx.divergence.title": "Divergence RSI",
+  "mapx.divergence.note":
+    "Les deux derniers sommets ou creux sur clôtures, le dernier étant récent. Les plus récents d'abord.",
+  "mapx.divergence.kind": "Type",
+  "mapx.divergence.bullish": "Haussière",
+  "mapx.divergence.bearish": "Baissière",
+  "mapx.divergence.rsi": "RSI",
+  "mapx.divergence.price": "Prix",
+  "mapx.divergence.ago": "Barres passées",
+  "mapx.stretch.title": "Écart à la moyenne",
+  "mapx.stretch.note":
+    "Par rapport au VWAP sur 7 jours, en écarts-types des prix traités, et à l'EMA 100 heures.",
+  "mapx.stretch.z": "Écarts-types",
+  "mapx.stretch.vwap": "Depuis VWAP",
+  "mapx.stretch.ema": "Depuis EMA 100",
+  "mapx.volRank.title": "Rang de volatilité",
+  "mapx.volRank.note": "L'ATR horaire actuel, comparé aux valeurs du marché sur 7 jours.",
+  "mapx.volRank.side": "Afficher",
+  "mapx.volRank.quiet": "Plus calmes",
+  "mapx.volRank.wild": "Plus agités",
+  "mapx.volRank.rank": "Rang",
+  "mapx.volRank.atr": "ATR",
+  "mapx.crowded.title": "Risque de squeeze",
+  "mapx.crowded.note":
+    "Funding (45 %), intérêt ouvert en hausse (35 %) et prix plat (20 %), pour les marchés au plus fort intérêt ouvert. Un score, pas une prévision.",
+  "mapx.crowded.score": "Score",
+  "mapx.crowded.side": "Encombré",
+  "mapx.crowded.longs": "Longs",
+  "mapx.crowded.shorts": "Shorts",
+  "mapx.crowded.funding": "Funding annuel",
+  "mapx.crowded.oi": "OI 24h",
+  "mapx.carry.title": "Carry de funding",
+  "mapx.carry.note":
+    "Long où le funding est le plus bas, short où il est le plus haut, aux taux du jour. Les taux changent ; frais taker sur les deux jambes, entrée et sortie.",
+  "mapx.carry.long": "Long sur",
+  "mapx.carry.short": "Short sur",
+  "mapx.carry.apr": "Annuel",
+  "mapx.carry.breakEven": "Frais remboursés",
+  "mapx.carry.days": "{days} j",
+  "mapx.carry.gap": "Écart de prix",
+  "mapx.carry.volume": "Jambe la plus fine",
+  "mapx.pairs.title": "Écart de paire",
+  "mapx.pairs.note":
+    "Les marchés les plus actifs, par paires corrélées ({min} ou plus), selon l'écart de leur ratio à sa moyenne sur 7 jours.",
+  "mapx.pairs.pair": "Paire",
+  "mapx.pairs.corr": "Corrélation",
+  "mapx.pairs.read": "Côté cher",
+  "mapx.pairs.rich": "{name}",
+  "mapx.lag.title": "Avance et retard sur BTC",
+  "mapx.lag.note":
+    "Rendements horaires comparés à ceux de BTC, jusqu'à {hours} heures de part et d'autre, sur 7 jours. Rien de plus rapide n'est visible.",
+  "mapx.lag.when": "Se déplace",
+  "mapx.lag.together": "Avec BTC",
+  "mapx.lag.leads": "{hours} h avant BTC",
+  "mapx.lag.follows": "{hours} h après BTC",
+  "mapx.lag.fit": "Meilleur ajustement",
+  "mapx.lag.same": "Même heure",
+  "mapx.sectors.title": "Rotation sectorielle",
+  "mapx.sectors.note":
+    "Les plus grandes cryptos de chaque secteur, pondérées par capitalisation, d'après CoinGecko.",
+  "mapx.sectors.sector": "Secteur",
+  "mapx.sectors.up": "Cryptos en hausse",
+  "mapx.sectors.best": "Meilleure",
+  "mapx.sectors.worst": "Pire",
+  "mapx.mine.connect": "Connectez un compte sur cette plateforme pour voir ceci.",
+  "mapx.edge.title": "Votre avantage",
+  "mapx.edge.note":
+    "P&L clôturé par jour et heure (horloge de cette machine) et par marché. Il reste sur cette machine.",
+  "mapx.edge.none": "Aucune position clôturée.",
+  "mapx.edge.cell": "{day} {hour}:00 : {pnl} sur {count} trades",
+  "mapx.edge.total": "Total {pnl}",
+  "mapx.edge.trades": "Trades",
+  "mapx.edge.wins": "Gagnés",
+  "mapx.edge.pnl": "P&L",
+  "mapx.exposure.title": "Exposition corrélée",
+  "mapx.exposure.note":
+    "Vos positions ouvertes sur cette plateforme, regroupées quand 7 jours de rendements horaires en font un seul pari, sens compris.",
+  "mapx.exposure.none": "Aucune position ouverte.",
+  "mapx.exposure.bet": "Pari",
+  "mapx.exposure.value": "Valeur",
+  "mapx.exposure.share": "Du total",
+  "mapx.exposure.tie": "Lien",
+  "maphelp.regime.what": "Si chaque marché est en tendance, en range ou agité sans progresser.",
+  "maphelp.regime.how":
+    "ADX(14) en bougies horaires, avec l'efficacité : mouvement net sur 48 h divisé par la distance parcourue.",
+  "maphelp.regime.read":
+    "Suivez les tendances ; jouez les bornes des ranges ; prudence quand c'est agité.",
+  "maphelp.regime.caveats":
+    "Cela décrit les derniers jours, pas la suite. L'ADX retarde aux retournements.",
+  "maphelp.levels.what": "La proximité de chaque marché avec les prix surveillés.",
+  "maphelp.levels.how":
+    "Ouvertures du jour et de la semaine, haut et bas d'hier et sur 7 jours, en bougies horaires.",
+  "maphelp.levels.read":
+    "Les marchés en tête vont tester un niveau, où les réactions commencent souvent.",
+  "maphelp.levels.caveats":
+    "Les bougies horaires limitent la précision à l'heure. L'ouverture mensuelle demande plus d'historique.",
+  "maphelp.divergence.what": "Le prix fait un nouvel extrême que le RSI ne confirme pas.",
+  "maphelp.divergence.how":
+    "RSI(14) aux deux derniers pivots sur clôtures, dégagés de trois barres de chaque côté.",
+  "maphelp.divergence.read":
+    "Haussière : la vente s'essouffle ; baissière : l'achat s'essouffle. À combiner avec un niveau ou un signal.",
+  "maphelp.divergence.caveats":
+    "Un pivot n'est connu que trois barres plus tard, et les divergences s'enchaînent en forte tendance.",
+  "maphelp.stretch.what": "Jusqu'où chaque marché s'est éloigné de ses prix traités.",
+  "maphelp.stretch.how":
+    "VWAP 7 jours, dispersion pondérée par le volume autour, et distance à l'EMA 100 heures.",
+  "maphelp.stretch.read":
+    "Au-delà de 2, c'est inhabituel : un marché étiré marque souvent une pause ou revient.",
+  "maphelp.stretch.caveats":
+    "Lors d'une cassure, l'écart peut s'accroître. C'est une distance, pas un retournement.",
+  "maphelp.volRank.what": "La volatilité de chaque marché comparée à son propre historique récent.",
+  "maphelp.volRank.how": "L'ATR(14) horaire en part du prix, classé parmi ses valeurs sur 7 jours.",
+  "maphelp.volRank.read":
+    "Rang bas : marché comprimé pouvant s'étendre ; rang haut : stops plus larges, taille réduite.",
+  "maphelp.volRank.caveats":
+    "Sept jours, c'est court : après un mois calme, un jour normal peut sembler agité.",
+  "maphelp.crowded.what":
+    "Les marchés où un camp paie cher, renforce encore et n'est pas récompensé.",
+  "maphelp.crowded.how":
+    "Funding plein à 50 % par an, intérêt ouvert plein à +10 % sur 24 h, prix à moins de 5 % sur 24 h.",
+  "maphelp.crowded.read":
+    "Un score élevé signifie qu'un mouvement brutal contre le camp encombré forcerait des sorties.",
+  "maphelp.crowded.caveats":
+    "Un trade encombré peut le rester. Sans donnée d'intérêt ouvert, cette part vaut zéro : le score ne peut qu'être minoré.",
+  "maphelp.carry.what":
+    "Le funding à gagner en étant long sur une plateforme et short sur une autre.",
+  "maphelp.carry.how":
+    "Taux du jour, annualisés. Frais taker sur les deux jambes ; plateformes sous 1 M$ par jour exclues.",
+  "maphelp.carry.read":
+    "Cherchez un taux élevé et un remboursement court. L'écart de prix est gagné ou perdu à l'entrée.",
+  "maphelp.carry.caveats":
+    "Les taux s'inversent, les règlements diffèrent, et chaque jambe a sa marge et peut être liquidée. Rien n'est placé.",
+  "maphelp.pairs.what": "Les marchés qui évoluent ensemble et l'écart actuel de chaque paire.",
+  "maphelp.pairs.how":
+    "Le log-ratio de deux marchés face à sa moyenne sur 7 jours, en écarts-types, pour les 30 marchés les plus actifs.",
+  "maphelp.pairs.read":
+    "Au-delà de 2, un côté est cher face à l'autre ; un trade de paire parie sur la fermeture de l'écart.",
+  "maphelp.pairs.caveats":
+    "La corrélation sur 7 jours peut se rompre, surtout sur une nouvelle concernant un côté.",
+  "maphelp.leadLag.what": "Quels marchés bougent plutôt avant BTC, et lesquels après.",
+  "maphelp.leadLag.how":
+    "Corrélation des rendements horaires avec ceux de BTC décalés jusqu'à 3 h ; un décalage ne compte que s'il est nettement meilleur.",
+  "maphelp.leadLag.read":
+    "Un suiveur peut encore bouger après un saut de BTC ; un meneur peut l'annoncer.",
+  "maphelp.leadLag.caveats":
+    "La plupart des mouvements crypto durent quelques minutes, bien plus vite que l'heure : la plupart des marchés se lisent avec BTC.",
+  "maphelp.sectors.what": "Où va l'argent : le mouvement de chaque secteur, le plus fort d'abord.",
+  "maphelp.sectors.how":
+    "Les plus grandes cryptos de chaque secteur (CoinGecko), en moyenne par capitalisation sur 1 h, 24 h et 7 j.",
+  "maphelp.sectors.read":
+    "Un secteur fort sur 1 h mais faible sur 7 j se retourne ; l'inverse s'essouffle.",
+  "maphelp.sectors.caveats":
+    "Une grosse crypto peut porter un secteur. CoinGecko ne fournit pas de chiffre à 30 jours ici.",
+  "maphelp.edge.what": "Où vous gagnez et perdez vraiment, par marché, jour et heure.",
+  "maphelp.edge.how":
+    "Vos positions clôturées sur ce compte, additionnées selon leur clôture. Les comptes papier montrent les leurs.",
+  "maphelp.edge.read":
+    "Heures et marchés en rouge : à éviter peut-être ; à combiner avec vos règles.",
+  "maphelp.edge.caveats":
+    "Quelques trades dans une case ne prouvent rien, et un gros trade peut la colorer. Groupé par clôture, pas par entrée.",
+  "maphelp.exposure.what": "Vos positions ouvertes regroupées en paris réels.",
+  "maphelp.exposure.how":
+    "Rendements horaires sur 7 jours : les positions liées à 0,7 ou plus, sens compris, sont regroupées.",
+  "maphelp.exposure.read":
+    "Une grosse part dans un groupe : un seul mouvement peut tout toucher. Trois longs alts peuvent être un seul pari.",
+  "maphelp.exposure.caveats":
+    "Cette plateforme uniquement. Les corrélations montent lors d'un krach : le risque réel peut être plus grand.",
   "maps.group.positioning": "Positionnement",
   "maps.group.liquidations": "Liquidations",
   "maps.group.market": "Marché",

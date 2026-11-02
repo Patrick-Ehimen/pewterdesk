@@ -7,6 +7,7 @@ import { formatCompact, formatSigned } from "../../lib/format";
 import { Select } from "../common/Select";
 import { EmptyState } from "../common/Status";
 import { TokenIcon } from "../trading/TokenIcon";
+import { SaveList } from "./kit";
 
 export const HEAT_SECTORS = [
   "layer1",
@@ -273,6 +274,9 @@ export function MarketHeatmap({
             onChange={onIndex}
           />
         </div>
+        <SaveList
+          markets={shown.flatMap((g) => g.coins.flatMap((c) => marketFor(c.symbol) ?? []))}
+        />
         <div className="pd-mheat-field">
           <span>{t("heat.colourBy")}</span>
           <Select<HeatPeriod>

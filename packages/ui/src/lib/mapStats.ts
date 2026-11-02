@@ -1223,7 +1223,7 @@ export function bandZone(percentB: number): BandZone {
 }
 
 /** Closes of hourly candles gathered into `hours`-long bars, on UTC multiples of them. */
-function closesEvery(candles: readonly Candle[], hours: number): number[] {
+export function closesEvery(candles: readonly Candle[], hours: number): number[] {
   if (hours <= 1) return candles.map((c) => num(c.close));
   const out: number[] = [];
   let bar: number | undefined;

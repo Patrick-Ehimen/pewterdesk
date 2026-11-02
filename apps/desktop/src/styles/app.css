@@ -3370,3 +3370,98 @@ button.coin-chip:hover {
   margin-top: 12px;
   width: 100%;
 }
+
+/* A market's readings together, opened from a scan */
+.map-card {
+  width: min(460px, calc(100vw - 32px));
+  padding: 18px 20px;
+}
+.map-card-title {
+  margin: 14px 0 6px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.map-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.map-card-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+.map-card-price {
+  flex: 1;
+  color: var(--pd-pewter);
+}
+.map-card-note {
+  margin: 14px 0;
+  color: var(--pd-pewter);
+}
+.map-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 18px;
+  margin: 12px 0 0;
+  font-size: 12.5px;
+}
+.map-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.map-card-grid dt {
+  color: var(--pd-pewter);
+}
+.map-card-grid dd {
+  margin: 0;
+}
+.map-card-away {
+  margin-left: 6px;
+  color: var(--pd-pewter);
+}
+.map-card-rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.map-card-rules button {
+  padding: 5px 9px;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12px;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.map-card-rules button[aria-pressed="true"] {
+  color: var(--pd-brass-text);
+  border-color: var(--pd-brass);
+}
+.map-card-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.map-card-button {
+  padding: 7px 13px;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 13px;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.map-card-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.map-card-button[data-main] {
+  color: var(--pd-bg);
+  background: var(--pd-brass);
+  border-color: var(--pd-brass);
+}

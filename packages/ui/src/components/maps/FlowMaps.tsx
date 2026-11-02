@@ -425,6 +425,7 @@ export function FundingHistoryMap({
 
   return (
     <MapFrame
+      markets={rows.map((r) => r.market)}
       title={t("mapx.fundingHist.title")}
       controls={
         <>
@@ -545,6 +546,7 @@ export function LiqLeaderboard({
 
   return (
     <MapFrame
+      markets={shown.flatMap((r) => r.market ?? [])}
       title={t("mapx.liqBoard.title")}
       controls={controls}
       legend={

@@ -2230,6 +2230,21 @@ input {
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.28);
   white-space: nowrap;
 }
+/* Takes levels shown from the Maps page off the chart */
+.pd-chart-marks {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 4;
+  padding: 4px 10px;
+  color: var(--pd-text);
+  font-size: 12px;
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  transform: translateX(-50%);
+  cursor: pointer;
+}
 /* Over the chart while a replay moves to another interval: its newest candles
    mustn't show, even for a moment. */
 .pd-replay-cover {
@@ -8287,8 +8302,130 @@ button.pd-drawer-exit:hover {
 .pd-mx-table tbody tr {
   cursor: pointer;
 }
+.pd-mx-table tbody tr[data-still] {
+  cursor: default;
+}
 .pd-mx-table tbody tr:hover .pd-mx-td:first-child {
   background: var(--pd-surface-raised);
+}
+/* The combined scanner's filters, over its table */
+.pd-mx-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 0 10px;
+}
+.pd-mx-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+/* Saving what a scan found as a named list */
+.pd-mx-savelist {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.pd-mx-savelist button {
+  padding: 4px 9px;
+  color: var(--pd-pewter);
+  font: inherit;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pd-mx-savelist input {
+  width: 130px;
+  padding: 4px 7px;
+  color: var(--pd-text);
+  font: inherit;
+  background: none;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+}
+/* Scan alerts, beside the combined scanner */
+.pd-mx-alerts {
+  display: grid;
+  gap: 8px;
+  font-size: 12px;
+}
+.pd-mx-alerts h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.pd-mx-alerts p {
+  margin: 0;
+  color: var(--pd-pewter);
+  line-height: 1.45;
+}
+.pd-mx-alerts ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pd-mx-alerts li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pd-mx-alerts button {
+  padding: 3px 7px;
+  color: var(--pd-pewter);
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pd-mx-alerts button[aria-pressed] {
+  border-color: var(--pd-border-strong);
+}
+.pd-mx-alerts button[aria-pressed="true"] {
+  color: var(--pd-brass-text);
+  border-color: var(--pd-brass);
+}
+/* A scan's verdict on a row */
+.pd-mx-tag {
+  padding: 2px 7px;
+  font-size: 11.5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--pd-pewter) 16%, transparent);
+}
+.pd-mx-tag[data-tone="up"] {
+  color: var(--pd-buy);
+  background: color-mix(in srgb, var(--pd-buy) 14%, transparent);
+}
+.pd-mx-tag[data-tone="down"] {
+  color: var(--pd-sell);
+  background: color-mix(in srgb, var(--pd-sell) 14%, transparent);
+}
+.pd-mx-tag[data-tone="info"] {
+  color: var(--pd-info);
+  background: color-mix(in srgb, var(--pd-info) 14%, transparent);
+}
+.pd-mx-tag[data-tone="warn"] {
+  color: var(--pd-warning);
+  background: color-mix(in srgb, var(--pd-warning) 14%, transparent);
+}
+/* One position in a bet: its side in the name's colour */
+.pd-mx-exposure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+}
+.pd-mx-exposure[data-side="long"] {
+  color: var(--pd-buy);
+}
+.pd-mx-exposure[data-side="short"] {
+  color: var(--pd-sell);
 }
 .pd-mx-gaps button {
   grid-template-columns: 1fr;

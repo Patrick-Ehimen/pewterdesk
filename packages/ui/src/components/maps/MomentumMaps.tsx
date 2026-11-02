@@ -94,6 +94,7 @@ export function PerformanceMap({
 
   return (
     <MapFrame
+      markets={shown.map((s) => s.market)}
       title={t("mapx.perf.title")}
       controls={
         <>
@@ -256,6 +257,7 @@ export function VolatilityMap({
 
   return (
     <MapFrame
+      markets={shown.map((r) => r.market)}
       title={t("mapx.vol.title")}
       controls={
         <>

@@ -6,6 +6,7 @@ import { formatCompact, formatNumber } from "../../lib/format";
 import { HOUR_MS, type LiqEvent, liqByMarket, liqTotals, sourceOf } from "../../lib/liquidations";
 import { EmptyState } from "../common/Status";
 import { TokenIcon } from "../trading/TokenIcon";
+import { SaveList } from "./kit";
 
 export type LiqWindow = "1h" | "4h" | "12h" | "24h";
 export const LIQ_WINDOWS: readonly LiqWindow[] = ["1h", "4h", "12h", "24h"];
@@ -149,6 +150,7 @@ export function Liquidations({
       <section className="pd-liq-main">
         <div className="pd-liq-bar">
           <h2>{t("liq.heatmap")}</h2>
+          <SaveList markets={top.flatMap((l) => markets.get(l.market) ?? [])} />
           <div className="pd-map-seg" role="radiogroup" aria-label={t("liq.window")}>
             {LIQ_WINDOWS.map((w) => (
               // biome-ignore lint/a11y/useSemanticElements: compact segmented control

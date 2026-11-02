@@ -110,6 +110,7 @@ export function ValueAreaMap({
 
   return (
     <MapFrame
+      markets={[...above, ...below].map((r) => r.market)}
       title={t("mapx.value.title")}
       controls={
         <>
@@ -340,6 +341,7 @@ export function MoneyFlowMap({
 
   return (
     <MapFrame
+      markets={[...inflow.slice(0, LIST_MAX), ...outflow.slice(0, LIST_MAX)].map((r) => r.market)}
       title={t("mapx.money.title")}
       controls={
         <>
@@ -422,6 +424,7 @@ export function ObvMap({
 
   return (
     <MapFrame
+      markets={[...bullish, ...bearish].map((r) => r.market)}
       title={t("mapx.obv.title")}
       controls={
         <>
@@ -509,6 +512,7 @@ export function VolumeRotationMap({
 
   return (
     <MapFrame
+      markets={shown.map((d) => d.market)}
       title={t("mapx.rotationVol.title")}
       controls={
         <>
@@ -629,6 +633,7 @@ export function MomentumMatrix({
 
   return (
     <MapFrame
+      markets={ranked.map((r) => r.market)}
       title={t("mapx.matrix.title")}
       controls={
         <>
@@ -728,6 +733,7 @@ export function EmaCrossMap({
 
   return (
     <MapFrame
+      markets={[...up, ...down].map((r) => r.market)}
       title={t("mapx.cross.title")}
       controls={
         <>
@@ -798,6 +804,7 @@ export function SqueezeMap({
 
   return (
     <MapFrame
+      markets={ranked.slice(0, LIST_MAX).map((r) => r.market)}
       title={t("mapx.squeeze.title")}
       controls={extra}
       legend={
@@ -900,6 +907,7 @@ export function BollingerMap({
 
   return (
     <MapFrame
+      markets={rows.filter((r) => r.read.zone !== "middle").map((r) => r.market)}
       title={t("mapx.bands.title")}
       controls={
         <>
@@ -1002,6 +1010,7 @@ export function ConfluenceMap({
 
   return (
     <MapFrame
+      markets={[...upper, ...lower].map((r) => r.market)}
       title={t("mapx.conf.title")}
       controls={
         <>

@@ -1,4 +1,4 @@
-import type { Market, VenueId } from "@pewterdesk/core";
+import type { ClosedTrade, Market, Position, VenueId } from "@pewterdesk/core";
 import {
   alignment,
   atrShare,
@@ -19,6 +19,9 @@ import {
   betaTo,
   breadthNow,
   breadthSeries,
+  type Carry,
+  CarryMap,
+  type ChartAnalysis,
   CORR_HOURS,
   CORR_SIZES,
   CORR_WINDOWS,
@@ -29,14 +32,25 @@ import {
   CROSS_HOURS,
   CROSS_WINDOWS,
   type CrossRow,
+  CrowdedMap,
+  type CrowdRow,
   CvdMap,
   candleProfile,
+  carryOf,
   changeSince,
   confluenceRead,
   correlationMatrix,
+  crowding,
+  DivergenceMap,
+  type DivergenceRow,
   decimalsOf,
+  divergence,
+  EdgeMap,
   EmaCrossMap,
+  ExposureMap,
+  edgeMap,
   emaCross,
+  exposureGroups,
   FLOW_BUCKETS,
   FLOW_HOURS,
   FLOW_WINDOWS,
@@ -56,8 +70,12 @@ import {
   HEAT_PERIODS,
   HEAT_TOPS,
   hourProfile,
+  KeyLevelsMap,
   LARGE_SHARES,
+  type LagRow,
   LargeTradesMap,
+  LeadLagMap,
+  type LevelRow,
   LIQ_WINDOW_MS,
   LIQ_WINDOWS,
   type LiqBoardRow,
@@ -67,12 +85,15 @@ import {
   Liquidations,
   LONG_SHORT_SORTS,
   LongShortMap,
+  leadLag,
+  levelsRead,
   liqByMarket,
   liquidationMap,
   MAP_TOPS,
   MATRIX_SIDES,
   MapSeg,
   MarketHeatmap,
+  type MarketReadings,
   MarketSearch,
   type MatrixRow,
   type MessageKey,
@@ -90,6 +111,7 @@ import {
   oiChangeOver,
   oiChangeSoFar,
   openInterestFromVolume,
+  PairsMap,
   PERF_HOURS,
   PERF_WINDOWS,
   PerformanceMap,
@@ -97,8 +119,12 @@ import {
   PROFILE_HOURS,
   PROFILE_SPANS,
   ProfileMap,
+  pairSpreads,
   RANGE_HOURS,
   RANGE_WINDOWS,
+  REGIME_FILTERS,
+  RegimeMap,
+  type RegimeRow,
   RelativeStrengthMap,
   ROTATION_HOURS,
   ROTATION_LENSES,
@@ -110,8 +136,22 @@ import {
   RsiHeatmap,
   type RsiQuote,
   rangePlace,
+  readingsOf,
   realisedVol,
+  regimeRead,
+  SCAN_DIVERGENCE,
+  SCAN_FUNDING,
+  SCAN_NEAR,
+  SCAN_STRETCH,
+  SCAN_VOL,
+  type ScanActions,
+  ScanActionsContext,
+  ScannerMap,
+  type ScannerRow,
+  type ScanRule,
+  SECTOR_PERIODS,
   SeasonalityMap,
+  SectorRotationMap,
   SessionsMap,
   type ShareTile,
   SPIKE_HOURS,
@@ -122,25 +162,33 @@ import {
   SqueezeMap,
   type SqueezeRow,
   type StrengthRow,
+  StretchMap,
+  type StretchRow,
   seasonality,
+  sectorRows,
   sessionStats,
   squeezeRead,
+  stretchRead,
   Tabs,
   t,
   ValueAreaMap,
   type ValueRow,
   VOL_FILTERS,
   VOL_MEASURES,
+  VOL_RANK_SIDES,
   VOL_ROW_COUNTS,
   VolatilityMap,
+  VolRankMap,
+  type VolRankRow,
   type VolRow,
   VolumeRotationMap,
   VolumeSpikeMap,
   valueRead,
+  volRank,
   volumeShares,
   volumeSpike,
 } from "@pewterdesk/ui";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { venueClient } from "../../api/venueClient";
 import { useCoinSectors } from "../../hooks/useCoinSectors";
 import { liveLiquidationSource, useLiquidations } from "../../hooks/useLiquidations";
@@ -160,8 +208,10 @@ import {
   useTradeFlow,
 } from "../../hooks/useMapData";
 import { useRsiMap } from "../../hooks/useRsiMap";
+import type { useScanAlerts } from "../../hooks/useScanAlerts";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { useMarketSummaries } from "../../hooks/useVenueFeeds";
+import { useWatchlist, watchKey } from "../../hooks/useWatchlist";
 import { isTyping, plainKey } from "../../lib/hotkeys";
 import {
   loadSaved,
@@ -172,8 +222,11 @@ import {
 } from "../../lib/mapViews";
 import { loadOi } from "../../lib/oiStore";
 import { loadRsiOrder, saveRsiOrder } from "../../lib/rsiStore";
+import { findScanAlert } from "../../lib/scanAlerts";
 import { VENUE_IDS, VENUES } from "../../lib/venues";
+import { useLists } from "../../lib/watchlists";
 import { MapHelp } from "../maps/MapHelp";
+import { MarketCard } from "../maps/MarketCard";
 import { SavedViews } from "../maps/SavedViews";
 import { LoadingMark } from "../Splash";
 
@@ -212,16 +265,31 @@ const VIEWS = [
   "sessions",
   "cvd",
   "bigTrades",
+  "scanner",
+  "regime",
+  "levels",
+  "divergence",
+  "stretch",
+  "volRank",
+  "crowded",
+  "carry",
+  "pairs",
+  "leadLag",
+  "sectors",
+  "edge",
+  "exposure",
 ] as const;
 type View = (typeof VIEWS)[number];
 const GROUPS = [
   "momentum",
+  "setups",
   "volume",
   "positioning",
   "liquidations",
   "market",
   "flow",
   "time",
+  "mine",
 ] as const;
 type Group = (typeof GROUPS)[number];
 /** Each group's views, in the order its chips show them. */
@@ -239,12 +307,14 @@ const GROUP_VIEWS: Record<Group, readonly View[]> = {
     "emaCross",
     "vol",
   ],
+  setups: ["scanner", "regime", "levels", "divergence", "stretch", "volRank"],
   volume: ["valueArea", "profile", "moneyFlow", "obv", "spikes", "volRotation"],
-  positioning: ["funding", "fundingHist", "oi", "ls"],
+  positioning: ["funding", "fundingHist", "oi", "ls", "crowded", "carry"],
   liquidations: ["liquidations", "liqBoard", "liqmap", "book"],
-  market: ["heatmap", "breadth", "corr", "beta", "spread"],
+  market: ["heatmap", "sectors", "breadth", "corr", "beta", "spread", "pairs", "leadLag"],
   flow: ["cvd", "bigTrades"],
   time: ["season", "sessions"],
+  mine: ["edge", "exposure"],
 };
 const groupOf = (view: View) => GROUPS.find((g) => GROUP_VIEWS[g].includes(view)) ?? "momentum";
 const VIEW_LABEL: Record<View, MessageKey> = {
@@ -282,6 +352,19 @@ const VIEW_LABEL: Record<View, MessageKey> = {
   sessions: "maps.sessions",
   cvd: "maps.cvd",
   bigTrades: "maps.bigTrades",
+  scanner: "maps.scanner",
+  regime: "maps.regime",
+  levels: "maps.levels",
+  divergence: "maps.divergence",
+  stretch: "maps.stretch",
+  volRank: "maps.volRank",
+  crowded: "maps.crowded",
+  carry: "maps.carry",
+  pairs: "maps.pairs",
+  leadLag: "maps.leadLag",
+  sectors: "maps.sectors",
+  edge: "maps.edge",
+  exposure: "maps.exposure",
 };
 /** The views that read every market's hourly history. */
 const HISTORY_VIEWS: readonly View[] = [
@@ -304,6 +387,16 @@ const HISTORY_VIEWS: readonly View[] = [
   "breadth",
   "corr",
   "beta",
+  "scanner",
+  "regime",
+  "levels",
+  "divergence",
+  "stretch",
+  "volRank",
+  "crowded",
+  "pairs",
+  "leadLag",
+  "exposure",
 ];
 /** Dots on the rotation and beta charts: the busiest markets. */
 const SCATTER_POINTS = 60;
@@ -311,6 +404,10 @@ const SCATTER_POINTS = 60;
 const RANKED_MARKETS = 300;
 /** Dots on the open-interest map: the biggest by open interest. */
 const OI_POINTS = 60;
+/** Markets paired off on the pair spread view: every pair of them is worked out. */
+const PAIR_MARKETS = 30;
+/** Rows of pairs shown: the most stretched. */
+const PAIR_ROWS = 80;
 
 const GROUP_VIEW_KEY = "pd.maps.groupView";
 
@@ -355,6 +452,27 @@ const VIEW_SETTINGS: Record<View, readonly string[]> = {
   sessions: [],
   cvd: ["flowBucket"],
   bigTrades: ["largeShare"],
+  scanner: [
+    "regimeFilter",
+    "scanNear",
+    "scanStretch",
+    "scanVol",
+    "scanDivergence",
+    "scanFunding",
+    "mapScope",
+  ],
+  regime: ["regimeFilter", "mapScope"],
+  levels: ["mapScope"],
+  divergence: ["bandFrame", "mapScope"],
+  stretch: ["mapScope"],
+  volRank: ["volRankSide", "mapScope"],
+  crowded: [],
+  carry: [],
+  pairs: ["mapScope"],
+  leadLag: ["mapScope"],
+  sectors: ["sectorPeriod"],
+  edge: [],
+  exposure: [],
 };
 /** The views about one market, whose saved views keep it. */
 const MARKET_VIEWS: readonly View[] = [
@@ -427,6 +545,15 @@ interface MapsPageProps {
   markets: Market[];
   /** The market on screen, which the liquidation heatmap starts on. */
   selected?: string;
+  /** The account's open positions, and whether there is an account to read. */
+  positions: readonly Position[];
+  connected: boolean;
+  /** The account's closed trades: read only while the view that needs them is open. */
+  closed: { trades: readonly ClosedTrade[]; loading: boolean; error?: string };
+  onWantClosed: (want: boolean) => void;
+  scanAlerts: ReturnType<typeof useScanAlerts>;
+  /** Shows a market's levels on the Trade chart, and goes there. */
+  onShowLevels: (market: Market, analysis: ChartAnalysis) => void;
   /** Opens a market on the Trade page. */
   onTrade: (market: Market) => void;
 }
@@ -438,7 +565,19 @@ interface MapsPageProps {
  * public feed) and the estimated liquidation heatmap (from the venue's
  * hourly candles and open interest).
  */
-export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: MapsPageProps) {
+export function MapsPage({
+  venue,
+  venueLabel,
+  markets,
+  selected,
+  positions,
+  connected,
+  closed,
+  onWantClosed,
+  scanAlerts,
+  onShowLevels,
+  onTrade,
+}: MapsPageProps) {
   const [view, setView] = useStoredChoice<View>("pd.maps.view", VIEWS, "rsi");
   const [frame, setFrame] = useStoredChoice("pd.maps.rsiFrame", RSI_FRAMES, "4h");
   const [scope, setScope] = useStoredChoice("pd.maps.rsiScope", RSI_SCOPES, "all");
@@ -458,7 +597,11 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [heatPeriod, setHeatPeriod] = useStoredChoice("pd.maps.heatPeriod", HEAT_PERIODS, "24h");
   const [heatTop, setHeatTop] = useStoredChoice("pd.maps.heatTop", HEAT_TOPS, "20");
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(loadExcluded);
-  const sectors = useCoinSectors(view === "heatmap");
+  const sectors = useCoinSectors(view === "heatmap" || view === "sectors");
+  useEffect(() => {
+    onWantClosed(view === "edge");
+    return () => onWantClosed(false);
+  }, [view, onWantClosed]);
   const [liqWindow, setLiqWindow] = useStoredChoice("pd.maps.liqWindow", LIQ_WINDOWS, "4h");
   const [span, setSpan] = useStoredChoice<Span>("pd.maps.liqSpan", SPANS, "48");
   const [heatMarket, setHeatMarket] = useState(selected);
@@ -514,6 +657,30 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   const [shareTop, setShareTop] = useStoredChoice("pd.maps.shareTop", MAP_TOPS, "60");
   const [flowBucket, setFlowBucket] = useStoredChoice("pd.maps.flowBucket", FLOW_BUCKETS, "1m");
   const [largeShare, setLargeShare] = useStoredChoice("pd.maps.largeShare", LARGE_SHARES, "5");
+  const [regimeFilter, setRegimeFilter] = useStoredChoice(
+    "pd.maps.regimeFilter",
+    REGIME_FILTERS,
+    "all",
+  );
+  const [volRankSide, setVolRankSide] = useStoredChoice(
+    "pd.maps.volRankSide",
+    VOL_RANK_SIDES,
+    "quiet",
+  );
+  const [sectorPeriod, setSectorPeriod] = useStoredChoice(
+    "pd.maps.sectorPeriod",
+    SECTOR_PERIODS,
+    "24h",
+  );
+  const [scanNear, setScanNear] = useStoredChoice("pd.maps.scanNear", SCAN_NEAR, "any");
+  const [scanStretch, setScanStretch] = useStoredChoice("pd.maps.scanStretch", SCAN_STRETCH, "any");
+  const [scanVol, setScanVol] = useStoredChoice("pd.maps.scanVol", SCAN_VOL, "any");
+  const [scanDivergence, setScanDivergence] = useStoredChoice(
+    "pd.maps.scanDivergence",
+    SCAN_DIVERGENCE,
+    "any",
+  );
+  const [scanFunding, setScanFunding] = useStoredChoice("pd.maps.scanFunding", SCAN_FUNDING, "any");
   const [groupViews, setGroupViews] = useState(loadGroupViews);
   const group = groupOf(view);
   const openView = (next: View) => {
@@ -827,6 +994,169 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     });
   }, [view, busiest, histories]);
 
+  const dayChange = useCallback(
+    (id: string) => {
+      const s = summaryById.get(id);
+      const prev = Number(s?.prevDayPrice);
+      return s && prev > 0 ? Number(s.markPrice) / prev - 1 : undefined;
+    },
+    [summaryById],
+  );
+  const regimeRows = useMemo<RegimeRow[]>(() => {
+    if (view !== "regime") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const read = candles && regimeRead(candles);
+      return read ? [{ market: m, read, change24h: dayChange(m.id) }] : [];
+    });
+  }, [view, busiest, histories, dayChange]);
+  const levelRows = useMemo<LevelRow[]>(() => {
+    if (view !== "levels") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const read = candles && levelsRead(candles, price, now);
+      return read ? [{ market: m, price, read }] : [];
+    });
+  }, [view, busiest, histories, summaryById, now]);
+  const divergenceRows = useMemo<DivergenceRow[]>(() => {
+    if (view !== "divergence") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const read = candles && divergence(candles, BAND_FRAME_HOURS[bandFrame]);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, busiest, histories, bandFrame]);
+  const stretchRows = useMemo<StretchRow[]>(() => {
+    if (view !== "stretch") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const price = Number(summaryById.get(m.id)?.markPrice ?? 0);
+      const read = candles && stretchRead(candles, price);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, busiest, histories, summaryById]);
+  const volRankRows = useMemo<VolRankRow[]>(() => {
+    if (view !== "volRank") return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const read = candles && volRank(candles);
+      return read ? [{ market: m, read, change24h: dayChange(m.id) }] : [];
+    });
+  }, [view, busiest, histories, dayChange]);
+  const pairRows = useMemo(() => {
+    if (view !== "pairs") return [];
+    const inputs = busiest.slice(0, PAIR_MARKETS).flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      return candles ? [{ market: m, candles }] : [];
+    });
+    return pairSpreads(inputs).slice(0, PAIR_ROWS);
+  }, [view, busiest, histories]);
+  const lagRows = useMemo<LagRow[]>(() => {
+    if (view !== "leadLag" || !btc || !btcCandles) return [];
+    return busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      if (!candles || m.id === btc.id) return [];
+      const read = leadLag(candles, btcCandles);
+      return read ? [{ market: m, read }] : [];
+    });
+  }, [view, btc, btcCandles, busiest, histories]);
+  // The scanner's readings, read again each minute and as candles arrive, not
+  // on every price tick: there are hundreds of markets to work through.
+  const scanInputs = useRef({ busiest, summaryById, dayChange });
+  scanInputs.current = { busiest, summaryById, dayChange };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `busiest` changes on every tick; `scanned` below follows the scope
+  const scannerRows = useMemo<ScannerRow[]>(() => {
+    if (view !== "scanner") return [];
+    const inputs = scanInputs.current;
+    return inputs.busiest.flatMap((m) => {
+      const candles = histories.get(m.id)?.candles;
+      const s = inputs.summaryById.get(m.id);
+      const price = Number(s?.markPrice ?? 0);
+      if (!candles || !s || !(price > 0)) return [];
+      const read = readingsOf(candles, price, now, fundingPerHour(s), inputs.dayChange(m.id));
+      return [{ market: m, read }];
+    });
+  }, [view, histories, now, mapScope]);
+  const scanFilters = {
+    regime: regimeFilter,
+    near: scanNear,
+    stretch: scanStretch,
+    vol: scanVol,
+    divergence: scanDivergence,
+    funding: scanFunding,
+  };
+  const setScanFilters = (change: Partial<typeof scanFilters>) => {
+    if (change.regime) setRegimeFilter(change.regime);
+    if (change.near) setScanNear(change.near);
+    if (change.stretch) setScanStretch(change.stretch);
+    if (change.vol) setScanVol(change.vol);
+    if (change.divergence) setScanDivergence(change.divergence);
+    if (change.funding) setScanFunding(change.funding);
+  };
+
+  // A market's card, opened from a scan: its readings, from the candles the
+  // scans hold, or its own where the view holds none (Carry, Sector rotation).
+  const [cardId, setCardId] = useState<string>();
+  const card = cardId ? byId.get(cardId) : undefined;
+  const openCard = (m: Market) => setCardId(m.id);
+  const cardOwn = useSeasonCandles(venue, cardId, cardId !== undefined && !histories.has(cardId));
+  const cardCandles = cardId
+    ? (histories.get(cardId)?.candles ?? cardOwn.candles?.slice(-168))
+    : undefined;
+  const cardSummary = cardId ? summaryById.get(cardId) : undefined;
+  const cardPrice = Number(cardSummary?.markPrice ?? 0) || undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `dayChange` follows every tick; the minute's reading will do
+  const cardRead = useMemo<MarketReadings | undefined>(() => {
+    if (!cardId || !cardCandles || !cardPrice || !cardSummary) return undefined;
+    return readingsOf(cardCandles, cardPrice, now, fundingPerHour(cardSummary), dayChange(cardId));
+  }, [cardId, cardCandles, now, cardPrice !== undefined]);
+  const showLevels = (market: Market, read: MarketReadings) => {
+    const levels: ChartAnalysis["levels"] = [
+      ...(read.levels?.levels ?? []).map((l) => ({
+        price: l.price,
+        kind: l.distance >= 0 ? ("resistance" as const) : ("support" as const),
+        label: t(`mapx.levels.${l.kind}`),
+      })),
+      ...(read.poc === undefined
+        ? []
+        : [{ price: read.poc, kind: "entry" as const, label: t("mapx.card.poc") }]),
+    ];
+    setCardId(undefined);
+    onShowLevels(market, { levels });
+  };
+
+  const watch = useWatchlist(venue);
+  const lists = useLists();
+  const scanActions: ScanActions = {
+    starred: (m) => watch.starred.has(m.id),
+    onStar: (m) => watch.toggle(m.id),
+    onSaveList: (name, found) =>
+      lists.createWith(
+        name,
+        found.map((m) => watchKey(m.venue ?? venue, m.id)),
+      ),
+  };
+
+  const exposure = useMemo(() => {
+    if (view !== "exposure") return [];
+    return exposureGroups(
+      positions.flatMap((p) => {
+        const market = byId.get(p.market);
+        if (!market) return [];
+        return [
+          {
+            market,
+            side: p.side,
+            value: Number(p.size) * Number(p.markPrice),
+            candles: histories.get(p.market)?.candles,
+          },
+        ];
+      }),
+    );
+  }, [view, positions, byId, histories]);
+  const edge = useMemo(() => edgeMap(view === "edge" ? closed.trades : []), [view, closed.trades]);
+
   // Funding over the week, in 8-hour buckets ending with the one now.
   const fundingStart =
     Math.floor(now / FUNDING_BUCKET_MS) * FUNDING_BUCKET_MS -
@@ -862,10 +1192,13 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
 
   const flow = useTradeFlow(venue, heatMarket, view === "cvd" || view === "bigTrades");
 
-  const oiHistory = useOiHistory(venue, summaryList, view === "oi");
+  const oiHistory = useOiHistory(venue, summaryList, view === "oi" || view === "crowded");
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again each minute, for the hour's new samples
   const oiSince = useMemo(
-    () => (view === "oi" && !OI_HISTORY_VENUES.includes(venue) ? loadOi(venue) : undefined),
+    () =>
+      (view === "oi" || view === "crowded") && !OI_HISTORY_VENUES.includes(venue)
+        ? loadOi(venue)
+        : undefined,
     [view, venue, now],
   );
   // The points over the window chosen; on a venue the app samples itself,
@@ -905,6 +1238,29 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     };
   }, [view, summaryList, oiWindow, byId, oiSince, oiHistory, histories]);
 
+  // The markets with the most open interest: it's what there is to crowd into.
+  const crowdRows = useMemo<CrowdRow[]>(() => {
+    if (view !== "crowded" || !summaryList) return [];
+    const at = Date.now();
+    return [...summaryList]
+      .map((s) => ({ s, value: Number(s.openInterest) * Number(s.markPrice) }))
+      .filter(({ value }) => value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, OI_POINTS)
+      .flatMap(({ s }) => {
+        const market = byId.get(s.market);
+        const perHour = fundingPerHour(s);
+        if (!market || perHour === undefined) return [];
+        const price = Number(s.markPrice);
+        const stored = oiSince ? oiSince.markets[s.market] : oiHistory.get(s.market);
+        const samples = [...(stored ?? []), { time: at, oi: Number(s.openInterest), price }];
+        const oiChange =
+          oiChangeOver(samples, 24) ?? (oiSince ? oiChangeSoFar(samples)?.oi : undefined);
+        const priceChange = dayChange(s.market);
+        return [{ market, read: crowding(perHour, oiChange, priceChange), oiChange, priceChange }];
+      });
+  }, [view, summaryList, byId, oiSince, oiHistory, dayChange]);
+
   const lsSource = longShortSource(venue);
   const longShort = useLongShort(view === "ls", lsSource);
   const lsRows = useMemo(
@@ -932,7 +1288,15 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     };
   }, [view, scoped, histories, summaryById, corrWindow, corrSize]);
 
-  const cross = useCrossVenue(view === "funding" || view === "spread");
+  const cross = useCrossVenue(view === "funding" || view === "spread" || view === "carry");
+  const carryRows = useMemo<Carry[]>(() => {
+    if (view !== "carry") return [];
+    const taker = Object.fromEntries(VENUE_IDS.map((v) => [v, VENUES[v].fees.taker])) as Record<
+      VenueId,
+      number
+    >;
+    return cross.rows.flatMap((r) => carryOf(r, taker) ?? []);
+  }, [view, cross.rows]);
   const crossByBase = useMemo(
     () => new Map<string, CoinRow>(cross.rows.map((r) => [r.base, r])),
     [cross.rows],
@@ -949,7 +1313,7 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
   };
   const tradeCoin = (base: string) => {
     const m = byBase.get(base);
-    if (m) onTrade(m);
+    if (m) openCard(m);
   };
 
   const season = useSeasonCandles(
@@ -1011,6 +1375,14 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
     moneyWindow: choice(moneyWindow, setMoneyWindow, FLOW_WINDOWS),
     obvWindow: choice(obvWindow, setObvWindow, RANGE_WINDOWS),
     shareTop: choice(shareTop, setShareTop, MAP_TOPS),
+    regimeFilter: choice(regimeFilter, setRegimeFilter, REGIME_FILTERS),
+    volRankSide: choice(volRankSide, setVolRankSide, VOL_RANK_SIDES),
+    sectorPeriod: choice(sectorPeriod, setSectorPeriod, SECTOR_PERIODS),
+    scanNear: choice(scanNear, setScanNear, SCAN_NEAR),
+    scanStretch: choice(scanStretch, setScanStretch, SCAN_STRETCH),
+    scanVol: choice(scanVol, setScanVol, SCAN_VOL),
+    scanDivergence: choice(scanDivergence, setScanDivergence, SCAN_DIVERGENCE),
+    scanFunding: choice(scanFunding, setScanFunding, SCAN_FUNDING),
   };
   const [saved, setSaved] = useState(loadSaved);
   const updateSaved = (next: SavedMapView[]) => {
@@ -1193,424 +1565,574 @@ export function MapsPage({ venue, venueLabel, markets, selected, onTrade }: Maps
         />
       </header>
       <section className="maps-body">
-        {view === "perf" ? (
-          <PerformanceMap
-            tiles={perfTiles}
-            window={perfWindow}
-            onWindow={setPerfWindow}
-            top={perfTop}
-            onTop={setPerfTop}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "matrix" ? (
-          <MomentumMatrix
-            rows={matrixRows}
-            side={matrixSide}
-            onSide={setMatrixSide}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "squeeze" ? (
-          <SqueezeMap
-            rows={squeezeRows}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "bands" ? (
-          <BollingerMap
-            rows={bandRows}
-            frame={bandFrame}
-            onFrame={setBandFrame}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "rsiBands" ? (
-          <ConfluenceMap
-            rows={confluenceRows}
-            frame={bandFrame}
-            onFrame={setBandFrame}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "emaCross" ? (
-          <EmaCrossMap
-            rows={crossRows}
-            window={crossWindow}
-            onWindow={setCrossWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "valueArea" ? (
-          <ValueAreaMap
-            rows={valueRows}
-            window={valueWindow}
-            onWindow={setValueWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "profile" ? (
-          <ProfileMap
-            market={heatMarketInfo}
-            profile={profileData?.profile}
-            price={
-              heatMarket ? Number(summaryById.get(heatMarket)?.markPrice) || undefined : undefined
-            }
-            naked={profileData?.naked ?? []}
-            span={profileSpan}
-            onSpan={setProfileSpan}
-            controls={marketPicker}
-            loader={<LoadingMark size={44} />}
-            error={season.error}
-          />
-        ) : view === "moneyFlow" ? (
-          <MoneyFlowMap
-            rows={flowRows}
-            window={moneyWindow}
-            onWindow={setMoneyWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "obv" ? (
-          <ObvMap
-            rows={obvRows}
-            window={obvWindow}
-            onWindow={setObvWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "volRotation" ? (
-          <VolumeRotationMap
-            tiles={shareTiles}
-            top={shareTop}
-            onTop={setShareTop}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "rs" ? (
-          <RelativeStrengthMap
-            rows={strengthRows}
-            benchmark={strengthRows.find((r) => r.market.id === btc?.id)}
-            window={rsWindow}
-            onWindow={setRsWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "rotation" ? (
-          <RotationMap
-            points={rotationPoints}
-            lens={rotationLens}
-            onLens={setRotationLens}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "breakout" ? (
-          <BreakoutMap
-            rows={breakoutRows}
-            window={rangeWindow}
-            onWindow={setRangeWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "spikes" ? (
-          <VolumeSpikeMap
-            rows={spikeRows}
-            window={spikeWindow}
-            onWindow={setSpikeWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "breadth" ? (
-          <BreadthMap
-            now={
-              breadth?.now ?? {
-                total: 0,
-                up24h: 0,
-                aboveEma20: 0,
-                aboveEma50: 0,
-                newHighs: 0,
-                newLows: 0,
+        <ScanActionsContext.Provider value={scanActions}>
+          {view === "scanner" ? (
+            <ScannerMap
+              rows={scannerRows}
+              filters={scanFilters}
+              onFilters={setScanFilters}
+              alerts={{
+                starred: (rule) =>
+                  findScanAlert(scanAlerts.alerts, rule, venue, null) !== undefined,
+                onStarred: (rule: ScanRule) => scanAlerts.toggle(rule, venue, null),
+                items: scanAlerts.alerts
+                  .filter((a) => a.market !== null)
+                  .map((a) => ({
+                    id: a.id,
+                    label: `${a.symbol ?? a.market}: ${t(`mapx.alert.rule.${a.rule}`)}`,
+                    onRemove: () => scanAlerts.remove(a.id),
+                  })),
+              }}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "regime" ? (
+            <RegimeMap
+              rows={regimeRows}
+              filter={regimeFilter}
+              onFilter={setRegimeFilter}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "levels" ? (
+            <KeyLevelsMap
+              rows={levelRows}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "divergence" ? (
+            <DivergenceMap
+              rows={divergenceRows}
+              frame={bandFrame}
+              onFrame={setBandFrame}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "stretch" ? (
+            <StretchMap
+              rows={stretchRows}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "volRank" ? (
+            <VolRankMap
+              rows={volRankRows}
+              side={volRankSide}
+              onSide={setVolRankSide}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "crowded" ? (
+            <CrowdedMap
+              rows={crowdRows}
+              progress={{ done: 0, total: 0 }}
+              loader={<LoadingMark size={44} />}
+              onTrade={openCard}
+            />
+          ) : view === "carry" ? (
+            <CarryMap
+              rows={carryRows}
+              labelOf={(v) => VENUES[v].label}
+              iconFor={iconFor}
+              loading={cross.loading}
+              loader={<LoadingMark size={44} />}
+              onTrade={tradeCoin}
+            />
+          ) : view === "pairs" ? (
+            <PairsMap
+              rows={pairRows}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "leadLag" ? (
+            <LeadLagMap
+              rows={lagRows}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "sectors" ? (
+            <SectorRotationMap
+              rows={sectorRows(sectors.groups, sectorPeriod)}
+              period={sectorPeriod}
+              onPeriod={setSectorPeriod}
+              labelOf={(s) => t(`heat.sector.${s}`)}
+              progress={{ done: sectors.done, total: sectors.total }}
+              loader={<LoadingMark size={44} />}
+              error={sectors.error}
+            />
+          ) : view === "edge" ? (
+            <EdgeMap
+              grid={edge.grid}
+              markets={edge.markets}
+              total={edge.total}
+              nameOf={(id) => byId.get(id)?.symbol ?? id}
+              connected={connected}
+              loading={closed.loading}
+              error={closed.error}
+              loader={<LoadingMark size={44} />}
+            />
+          ) : view === "exposure" ? (
+            <ExposureMap
+              groups={exposure}
+              connected={connected}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              onTrade={openCard}
+            />
+          ) : view === "perf" ? (
+            <PerformanceMap
+              tiles={perfTiles}
+              window={perfWindow}
+              onWindow={setPerfWindow}
+              top={perfTop}
+              onTop={setPerfTop}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "matrix" ? (
+            <MomentumMatrix
+              rows={matrixRows}
+              side={matrixSide}
+              onSide={setMatrixSide}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "squeeze" ? (
+            <SqueezeMap
+              rows={squeezeRows}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "bands" ? (
+            <BollingerMap
+              rows={bandRows}
+              frame={bandFrame}
+              onFrame={setBandFrame}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "rsiBands" ? (
+            <ConfluenceMap
+              rows={confluenceRows}
+              frame={bandFrame}
+              onFrame={setBandFrame}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "emaCross" ? (
+            <EmaCrossMap
+              rows={crossRows}
+              window={crossWindow}
+              onWindow={setCrossWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "valueArea" ? (
+            <ValueAreaMap
+              rows={valueRows}
+              window={valueWindow}
+              onWindow={setValueWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "profile" ? (
+            <ProfileMap
+              market={heatMarketInfo}
+              profile={profileData?.profile}
+              price={
+                heatMarket ? Number(summaryById.get(heatMarket)?.markPrice) || undefined : undefined
               }
-            }
-            series={breadth?.series ?? []}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-          />
-        ) : view === "beta" ? (
-          <BetaMap
-            points={betaPoints}
-            window={betaWindow}
-            onWindow={setBetaWindow}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "fundingHist" ? (
-          <FundingHistoryMap
-            rows={fundingRows}
-            start={fundingStart}
-            pick={fundingPick}
-            onPick={setFundingPick}
-            size={fundingSize}
-            onSize={setFundingSize}
-            progress={{ done: fundingHistory.done, total: fundingHistory.total }}
-            loader={<LoadingMark size={44} />}
-            onTrade={onTrade}
-          />
-        ) : view === "liqBoard" ? (
-          <LiqLeaderboard
-            rows={liqBoardRows}
-            controls={liqWindowSeg}
-            loader={<LoadingMark size={44} />}
-            error={liquidations.error}
-            onTrade={onTrade}
-          />
-        ) : view === "cvd" ? (
-          <CvdMap
-            market={heatMarketInfo}
-            trades={flow.trades}
-            bucket={flowBucket}
-            onBucket={setFlowBucket}
-            controls={marketPicker}
-            loader={<LoadingMark size={44} />}
-            error={flow.error}
-          />
-        ) : view === "bigTrades" ? (
-          <LargeTradesMap
-            market={heatMarketInfo}
-            trades={flow.trades}
-            share={largeShare}
-            onShare={setLargeShare}
-            controls={marketPicker}
-            loader={<LoadingMark size={44} />}
-            error={flow.error}
-          />
-        ) : view === "vol" ? (
-          <VolatilityMap
-            rows={volRows}
-            measure={volMeasure}
-            onMeasure={setVolMeasure}
-            rowCount={volRowCount}
-            onRowCount={setVolRowCount}
-            filter={volFilter}
-            onFilter={setVolFilter}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "funding" ? (
-          <FundingMap
-            rows={cross.rows}
-            venues={mapVenues}
-            unit={fundingUnit}
-            onUnit={setFundingUnit}
-            sort={fundingSort}
-            onSort={setFundingSort}
-            iconFor={iconFor}
-            onTrade={tradeCoin}
-            loading={cross.loading}
-            loader={<LoadingMark size={44} />}
-          />
-        ) : view === "oi" ? (
-          <OpenInterestMap
-            points={oiMap.points}
-            soFarMinutes={oiMap.soFarMinutes}
-            window={oiWindow}
-            onWindow={setOiWindow}
-            history={OI_HISTORY_VENUES.includes(venue)}
-            since={oiSince?.since}
-            loader={<LoadingMark size={44} />}
-            onTrade={onTrade}
-          />
-        ) : view === "ls" ? (
-          <LongShortMap
-            rows={lsRows}
-            sort={lsSort}
-            onSort={setLsSort}
-            progress={{ done: longShort.done, total: longShort.total }}
-            loader={<LoadingMark size={44} />}
-            error={longShort.error}
-            source={VENUES[lsSource].label}
-            onTrade={(r) => r.market && onTrade(r.market)}
-          />
-        ) : view === "corr" ? (
-          <CorrelationMap
-            markets={corr.markets}
-            matrix={corr.matrix}
-            window={corrWindow}
-            onWindow={setCorrWindow}
-            size={corrSize}
-            onSize={setCorrSize}
-            progress={historyProgress}
-            loader={<LoadingMark size={44} />}
-            extra={scopeSeg}
-            onTrade={onTrade}
-          />
-        ) : view === "spread" ? (
-          <SpreadMap
-            rows={cross.rows}
-            venues={mapVenues}
-            sort={spreadSort}
-            onSort={setSpreadSort}
-            iconFor={iconFor}
-            onTrade={tradeCoin}
-            loading={cross.loading}
-            loader={<LoadingMark size={44} />}
-          />
-        ) : view === "book" ? (
-          <BookHeatmap
-            columns={book.columns}
-            capacity={BOOK_COLUMNS}
-            top={book.top}
-            step={book.step}
-            rows={BOOK_ROWS}
-            decimals={heatMarketInfo ? decimalsOf(heatMarketInfo.tickSize) : 2}
-            loader={<LoadingMark size={44} />}
-            error={book.error}
-            controls={
-              <>
-                {marketPicker}
-                <MapSeg
-                  options={BOOK_SPANS}
-                  value={bookSpan}
-                  onChange={setBookSpan}
-                  label={t("mapx.book.span")}
-                  text={(s) => `±${s}%`}
-                />
-              </>
-            }
-          />
-        ) : view === "season" ? (
-          <SeasonalityMap
-            grid={seasonData.grid}
-            profile={seasonData.profile}
-            days={SEASON_DAYS}
-            controls={marketPicker}
-            loader={<LoadingMark size={44} />}
-            error={season.error}
-            now={now}
-          />
-        ) : view === "sessions" ? (
-          <SessionsMap
-            profile={seasonData.profile}
-            stats={seasonData.stats}
-            days={SEASON_DAYS}
-            controls={marketPicker}
-            loader={<LoadingMark size={44} />}
-            error={season.error}
-            now={now}
-          />
-        ) : view === "rsi" ? (
-          <RsiHeatmap
-            slots={slots}
-            values={rsi.values}
-            quotes={quotes}
-            frame={frame}
-            onFrame={setFrame}
-            scope={scope}
-            onScope={setScope}
-            view={rsiView}
-            onView={setRsiView}
-            loading={rsi.loading}
-            progress={{ done: rsi.done, total: rsi.total }}
-            onRefresh={rsi.refresh}
-            onTrade={onTrade}
-          />
-        ) : view === "heatmap" ? (
-          <MarketHeatmap
-            groups={sectors.groups}
-            index={heatIndex}
-            onIndex={setHeatIndex}
-            colourBy={heatPeriod}
-            onColourBy={setHeatPeriod}
-            top={heatTop}
-            onTop={setHeatTop}
-            excluded={excluded}
-            onExcluded={(next) => {
-              saveExcluded(next);
-              setExcluded(next);
+              naked={profileData?.naked ?? []}
+              span={profileSpan}
+              onSpan={setProfileSpan}
+              controls={marketPicker}
+              loader={<LoadingMark size={44} />}
+              error={season.error}
+            />
+          ) : view === "moneyFlow" ? (
+            <MoneyFlowMap
+              rows={flowRows}
+              window={moneyWindow}
+              onWindow={setMoneyWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "obv" ? (
+            <ObvMap
+              rows={obvRows}
+              window={obvWindow}
+              onWindow={setObvWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "volRotation" ? (
+            <VolumeRotationMap
+              tiles={shareTiles}
+              top={shareTop}
+              onTop={setShareTop}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "rs" ? (
+            <RelativeStrengthMap
+              rows={strengthRows}
+              benchmark={strengthRows.find((r) => r.market.id === btc?.id)}
+              window={rsWindow}
+              onWindow={setRsWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "rotation" ? (
+            <RotationMap
+              points={rotationPoints}
+              lens={rotationLens}
+              onLens={setRotationLens}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "breakout" ? (
+            <BreakoutMap
+              rows={breakoutRows}
+              window={rangeWindow}
+              onWindow={setRangeWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "spikes" ? (
+            <VolumeSpikeMap
+              rows={spikeRows}
+              window={spikeWindow}
+              onWindow={setSpikeWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "breadth" ? (
+            <BreadthMap
+              now={
+                breadth?.now ?? {
+                  total: 0,
+                  up24h: 0,
+                  aboveEma20: 0,
+                  aboveEma50: 0,
+                  newHighs: 0,
+                  newLows: 0,
+                }
+              }
+              series={breadth?.series ?? []}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+            />
+          ) : view === "beta" ? (
+            <BetaMap
+              points={betaPoints}
+              window={betaWindow}
+              onWindow={setBetaWindow}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "fundingHist" ? (
+            <FundingHistoryMap
+              rows={fundingRows}
+              start={fundingStart}
+              pick={fundingPick}
+              onPick={setFundingPick}
+              size={fundingSize}
+              onSize={setFundingSize}
+              progress={{ done: fundingHistory.done, total: fundingHistory.total }}
+              loader={<LoadingMark size={44} />}
+              onTrade={openCard}
+            />
+          ) : view === "liqBoard" ? (
+            <LiqLeaderboard
+              rows={liqBoardRows}
+              controls={liqWindowSeg}
+              loader={<LoadingMark size={44} />}
+              error={liquidations.error}
+              onTrade={openCard}
+            />
+          ) : view === "cvd" ? (
+            <CvdMap
+              market={heatMarketInfo}
+              trades={flow.trades}
+              bucket={flowBucket}
+              onBucket={setFlowBucket}
+              controls={marketPicker}
+              loader={<LoadingMark size={44} />}
+              error={flow.error}
+            />
+          ) : view === "bigTrades" ? (
+            <LargeTradesMap
+              market={heatMarketInfo}
+              trades={flow.trades}
+              share={largeShare}
+              onShare={setLargeShare}
+              controls={marketPicker}
+              loader={<LoadingMark size={44} />}
+              error={flow.error}
+            />
+          ) : view === "vol" ? (
+            <VolatilityMap
+              rows={volRows}
+              measure={volMeasure}
+              onMeasure={setVolMeasure}
+              rowCount={volRowCount}
+              onRowCount={setVolRowCount}
+              filter={volFilter}
+              onFilter={setVolFilter}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "funding" ? (
+            <FundingMap
+              rows={cross.rows}
+              venues={mapVenues}
+              unit={fundingUnit}
+              onUnit={setFundingUnit}
+              sort={fundingSort}
+              onSort={setFundingSort}
+              iconFor={iconFor}
+              onTrade={tradeCoin}
+              loading={cross.loading}
+              loader={<LoadingMark size={44} />}
+            />
+          ) : view === "oi" ? (
+            <OpenInterestMap
+              points={oiMap.points}
+              soFarMinutes={oiMap.soFarMinutes}
+              window={oiWindow}
+              onWindow={setOiWindow}
+              history={OI_HISTORY_VENUES.includes(venue)}
+              since={oiSince?.since}
+              loader={<LoadingMark size={44} />}
+              onTrade={openCard}
+            />
+          ) : view === "ls" ? (
+            <LongShortMap
+              rows={lsRows}
+              sort={lsSort}
+              onSort={setLsSort}
+              progress={{ done: longShort.done, total: longShort.total }}
+              loader={<LoadingMark size={44} />}
+              error={longShort.error}
+              source={VENUES[lsSource].label}
+              onTrade={(r) => r.market && openCard(r.market)}
+            />
+          ) : view === "corr" ? (
+            <CorrelationMap
+              markets={corr.markets}
+              matrix={corr.matrix}
+              window={corrWindow}
+              onWindow={setCorrWindow}
+              size={corrSize}
+              onSize={setCorrSize}
+              progress={historyProgress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
+              onTrade={openCard}
+            />
+          ) : view === "spread" ? (
+            <SpreadMap
+              rows={cross.rows}
+              venues={mapVenues}
+              sort={spreadSort}
+              onSort={setSpreadSort}
+              iconFor={iconFor}
+              onTrade={tradeCoin}
+              loading={cross.loading}
+              loader={<LoadingMark size={44} />}
+            />
+          ) : view === "book" ? (
+            <BookHeatmap
+              columns={book.columns}
+              capacity={BOOK_COLUMNS}
+              top={book.top}
+              step={book.step}
+              rows={BOOK_ROWS}
+              decimals={heatMarketInfo ? decimalsOf(heatMarketInfo.tickSize) : 2}
+              loader={<LoadingMark size={44} />}
+              error={book.error}
+              controls={
+                <>
+                  {marketPicker}
+                  <MapSeg
+                    options={BOOK_SPANS}
+                    value={bookSpan}
+                    onChange={setBookSpan}
+                    label={t("mapx.book.span")}
+                    text={(s) => `±${s}%`}
+                  />
+                </>
+              }
+            />
+          ) : view === "season" ? (
+            <SeasonalityMap
+              grid={seasonData.grid}
+              profile={seasonData.profile}
+              days={SEASON_DAYS}
+              controls={marketPicker}
+              loader={<LoadingMark size={44} />}
+              error={season.error}
+              now={now}
+            />
+          ) : view === "sessions" ? (
+            <SessionsMap
+              profile={seasonData.profile}
+              stats={seasonData.stats}
+              days={SEASON_DAYS}
+              controls={marketPicker}
+              loader={<LoadingMark size={44} />}
+              error={season.error}
+              now={now}
+            />
+          ) : view === "rsi" ? (
+            <RsiHeatmap
+              slots={slots}
+              values={rsi.values}
+              quotes={quotes}
+              frame={frame}
+              onFrame={setFrame}
+              scope={scope}
+              onScope={setScope}
+              view={rsiView}
+              onView={setRsiView}
+              loading={rsi.loading}
+              progress={{ done: rsi.done, total: rsi.total }}
+              onRefresh={rsi.refresh}
+              onTrade={openCard}
+            />
+          ) : view === "heatmap" ? (
+            <MarketHeatmap
+              groups={sectors.groups}
+              index={heatIndex}
+              onIndex={setHeatIndex}
+              colourBy={heatPeriod}
+              onColourBy={setHeatPeriod}
+              top={heatTop}
+              onTop={setHeatTop}
+              excluded={excluded}
+              onExcluded={(next) => {
+                saveExcluded(next);
+                setExcluded(next);
+              }}
+              progress={{ done: sectors.done, total: sectors.total }}
+              loader={<LoadingMark size={44} />}
+              error={sectors.error}
+              marketFor={(symbol) => byBase.get(symbol)}
+              onTrade={openCard}
+            />
+          ) : view === "liquidations" ? (
+            <Liquidations
+              events={liquidations.events}
+              backfill={liquidations.okx.loading ? liquidations.okx : undefined}
+              loader={<LoadingMark size={48} />}
+              markets={byId}
+              window={liqWindow}
+              onWindow={setLiqWindow}
+              onTrade={openCard}
+              error={liquidations.error}
+            />
+          ) : (
+            <LiqHeatmap
+              map={heatNow.map}
+              loading={heatNow.loading}
+              error={heatNow.error}
+              loader={<LoadingMark size={48} />}
+              note={t(heat.fromVolume ? "liqmap.noteVolume" : "liqmap.note")}
+              controls={
+                <>
+                  <h2 className="maps-liqmap-title">
+                    {t("liqmap.title", {
+                      venue: venueLabel,
+                      market: (heatMarket && byId.get(heatMarket)?.symbol) ?? "",
+                    })}
+                  </h2>
+                  {marketPicker}
+                  <div className="pd-map-seg" role="radiogroup" aria-label={t("liqmap.span")}>
+                    {SPANS.map((s) => (
+                      // biome-ignore lint/a11y/useSemanticElements: compact segmented control
+                      <button
+                        key={s}
+                        type="button"
+                        role="radio"
+                        aria-checked={s === span}
+                        data-checked={s === span || undefined}
+                        onClick={() => setSpan(s)}
+                      >
+                        {s === "48" ? "48H" : "7D"}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              }
+            />
+          )}
+        </ScanActionsContext.Provider>
+        {card && (
+          <MarketCard
+            market={card}
+            venue={venue}
+            price={cardPrice}
+            decimals={decimalsOf(card.tickSize)}
+            read={cardRead}
+            starred={watch.starred.has(card.id)}
+            alerts={scanAlerts.alerts}
+            onStar={() => watch.toggle(card.id)}
+            onAlert={(rule) => scanAlerts.toggle(rule, venue, card.id, card.symbol)}
+            onMark={() => cardRead && showLevels(card, cardRead)}
+            onTrade={() => {
+              setCardId(undefined);
+              onTrade(card);
             }}
-            progress={{ done: sectors.done, total: sectors.total }}
-            loader={<LoadingMark size={44} />}
-            error={sectors.error}
-            marketFor={(symbol) => byBase.get(symbol)}
-            onTrade={onTrade}
-          />
-        ) : view === "liquidations" ? (
-          <Liquidations
-            events={liquidations.events}
-            backfill={liquidations.okx.loading ? liquidations.okx : undefined}
-            loader={<LoadingMark size={48} />}
-            markets={byId}
-            window={liqWindow}
-            onWindow={setLiqWindow}
-            onTrade={onTrade}
-            error={liquidations.error}
-          />
-        ) : (
-          <LiqHeatmap
-            map={heatNow.map}
-            loading={heatNow.loading}
-            error={heatNow.error}
-            loader={<LoadingMark size={48} />}
-            note={t(heat.fromVolume ? "liqmap.noteVolume" : "liqmap.note")}
-            controls={
-              <>
-                <h2 className="maps-liqmap-title">
-                  {t("liqmap.title", {
-                    venue: venueLabel,
-                    market: (heatMarket && byId.get(heatMarket)?.symbol) ?? "",
-                  })}
-                </h2>
-                {marketPicker}
-                <div className="pd-map-seg" role="radiogroup" aria-label={t("liqmap.span")}>
-                  {SPANS.map((s) => (
-                    // biome-ignore lint/a11y/useSemanticElements: compact segmented control
-                    <button
-                      key={s}
-                      type="button"
-                      role="radio"
-                      aria-checked={s === span}
-                      data-checked={s === span || undefined}
-                      onClick={() => setSpan(s)}
-                    >
-                      {s === "48" ? "48H" : "7D"}
-                    </button>
-                  ))}
-                </div>
-              </>
-            }
+            onClose={() => setCardId(undefined)}
           />
         )}
         <MapHelp

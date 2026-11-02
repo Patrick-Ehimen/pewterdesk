@@ -861,6 +861,8 @@ interface OpenAlgoChartProps {
   onDrawingAlert?: (price: number, last: number, note: string) => void;
   /** Exchange rates, to show the chart in another currency; no choice without them. */
   fx?: FxSource;
+  /** Offers to take `analysis` off the chart again. */
+  onClearAnalysis?: () => void;
   /** Told what a bar replay has on screen; `undefined` once it ends. */
   onReplay?: (progress: ReplayProgress | undefined) => void;
   /** Economic releases, as badges along the chart's foot; none without it. */
@@ -911,6 +913,7 @@ export function OpenAlgoChart({
   orders: openOrders = NO_ORDERS,
   fills: ownFills,
   analysis: ownAnalysis,
+  onClearAnalysis,
   fx,
   onDrawingAlert,
   onReplay,
@@ -1500,6 +1503,11 @@ export function OpenAlgoChart({
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
         {replay.switching && <div className="pd-replay-cover">{loading}</div>}
+        {analysis && onClearAnalysis && (
+          <button type="button" className="pd-chart-marks" onClick={onClearAnalysis}>
+            {tr("chart.clearMarks")}
+          </button>
+        )}
         <ReplayControls replay={replay} />
         {widget && <ChartTools widget={widget} />}
         {widget && (
