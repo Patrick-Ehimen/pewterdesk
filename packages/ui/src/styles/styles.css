@@ -10,7 +10,8 @@
 }
 
 [data-theme="light"],
-[data-theme="parchment"] {
+[data-theme="parchment"],
+[data-theme="white"] {
   color-scheme: light;
 }
 
@@ -391,7 +392,7 @@ input {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   text-decoration: none;
@@ -402,7 +403,7 @@ input {
 }
 .pd-tip-trigger.pd-book-mark:hover,
 .pd-tip-trigger.pd-book-mark:focus-visible {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 
 /* Bid/ask ratio: a split bar with the two shares either side of it */
@@ -1866,8 +1867,9 @@ input {
 .pd-chart-news-badge[data-impact="high"] {
   --impact: var(--pd-warning);
 }
+/* Not the accent: on an orange one, high and medium would look the same. */
 .pd-chart-news-badge[data-impact="medium"] {
-  --impact: var(--pd-brass);
+  --impact: var(--pd-info);
 }
 .pd-chart-news-flag {
   display: block;
@@ -1934,7 +1936,7 @@ input {
   --impact: var(--pd-warning);
 }
 .pd-chart-news-item[data-impact="medium"] {
-  --impact: var(--pd-brass);
+  --impact: var(--pd-info);
 }
 .pd-chart-news-impact {
   color: var(--impact);
@@ -3986,6 +3988,9 @@ fieldset.pd-alerts-chips {
   font-size: 15px;
   text-align: left;
   outline: none;
+}
+.pd-alerts-value input:focus-visible {
+  box-shadow: none;
 }
 .pd-alerts-value input[aria-invalid="true"] {
   color: var(--pd-warning);

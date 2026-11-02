@@ -187,6 +187,31 @@
   --pd-info: #2a6499;
 }
 
+/* White: pure white panels and chart on the palest grey, with the core
+   light palette's brass. Neutral where Parchment is warm. */
+[data-theme="white"] {
+  --pd-bg: #f3f4f6;
+  --pd-surface: #ffffff;
+  --pd-surface-raised: #ffffff;
+  --pd-border: #e5e7eb;
+  --pd-border-strong: #d1d5db;
+  --pd-text: #16181c;
+  --pd-pewter: #5b6068;
+  --pd-pewter-dim: #80858d;
+  --pd-brass: #b08a3e;
+  --pd-brass-text: #7f6126;
+  --pd-brass-hover: #9c7932;
+  --pd-on-brass: #111110;
+  --pd-buy: #137a50;
+  --pd-on-buy: #ffffff;
+  --pd-buy-tint: rgb(19 122 80 / 0.1);
+  --pd-sell: #c2352b;
+  --pd-on-sell: #ffffff;
+  --pd-sell-tint: rgb(194 53 43 / 0.1);
+  --pd-warning: #9a4b10;
+  --pd-info: #2a6aa3;
+}
+
 /* Bybit: its amber on near-black, with its own green and red. The red is
    nudged for text; candles keep the original (--pd-candle-down). */
 [data-theme="bybit"] {
@@ -239,6 +264,59 @@
   --pd-info: #5aa9ff;
   --pd-candle-up: var(--pd-buy);
   --pd-candle-down: #f6465d;
+}
+
+/* KuCoin: its mint on graphite, with mint for rising too, as it has it. */
+[data-theme="kucoin"] {
+  --pd-bg: #101114;
+  --pd-surface: #191b1f;
+  --pd-surface-raised: #212429;
+  --pd-border: #2b2e34;
+  --pd-border-strong: #43474f;
+  --pd-text: #f3f4f6;
+  --pd-pewter: #b0b5bd;
+  --pd-pewter-dim: #858a93;
+  --pd-brass: #01bc8d;
+  --pd-brass-text: #1ccf9f;
+  --pd-brass-hover: #1fd6a6;
+  --pd-on-brass: #06140f;
+  --pd-buy: #01bc8d;
+  --pd-on-buy: #04160f;
+  --pd-buy-tint: rgb(1 188 141 / 0.12);
+  --pd-sell: #f65454;
+  --pd-on-sell: #270808;
+  --pd-sell-tint: rgb(246 84 84 / 0.13);
+  --pd-warning: #ff9f43;
+  --pd-info: #6ea8fe;
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: var(--pd-sell);
+}
+
+/* Coinbase: its blue on near-black. That blue can't be read as text, so
+   text takes the lighter one its dark mode uses. */
+[data-theme="coinbase"] {
+  --pd-bg: #0a0b0d;
+  --pd-surface: #141519;
+  --pd-surface-raised: #1e2025;
+  --pd-border: #2a2c32;
+  --pd-border-strong: #43464e;
+  --pd-text: #f5f6f8;
+  --pd-pewter: #b4b8c0;
+  --pd-pewter-dim: #8a919e;
+  --pd-brass: #0052ff;
+  --pd-brass-text: #6b9bff;
+  --pd-brass-hover: #2f6fff;
+  --pd-on-brass: #ffffff;
+  --pd-buy: #27ad75;
+  --pd-on-buy: #04170e;
+  --pd-buy-tint: rgb(39 173 117 / 0.12);
+  --pd-sell: #f0616d;
+  --pd-on-sell: #28090c;
+  --pd-sell-tint: rgb(240 97 109 / 0.13);
+  --pd-warning: #f7a23b;
+  --pd-info: #5ac4f6;
+  --pd-candle-up: var(--pd-buy);
+  --pd-candle-down: var(--pd-sell);
 }
 
 /* FTX, after the Tealstreet theme: turquoise and red on blue-black, the

@@ -14,9 +14,12 @@ export const THEMES = [
   "dark",
   "palenight",
   "parchment",
+  "white",
   // After venues and Tealstreet's themes of the same names.
   "bybit",
   "binance",
+  "kucoin",
+  "coinbase",
   "ftx",
   "hyrotrader",
   "bambam",
@@ -31,7 +34,7 @@ export type Theme = (typeof THEMES)[number];
 export const DEFAULT_THEME: Theme = "monokai";
 
 /** Light-background themes, which take the light logo. */
-export const isLightTheme = (theme: Theme) => theme === "parchment";
+export const isLightTheme = (theme: Theme) => theme === "parchment" || theme === "white";
 /** Market colors: the standard green/red, or the colorblind-safe blue/orange. */
 export type MarketColors = "standard" | "colorblind";
 

@@ -143,6 +143,9 @@
   font-size: 15px;
   outline: none;
 }
+.paper-amount input:focus-visible {
+  box-shadow: none;
+}
 .paper-amount em {
   color: var(--pd-text);
   font-size: 13px;

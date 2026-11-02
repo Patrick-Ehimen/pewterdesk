@@ -32,7 +32,7 @@
   font-size: 16px;
 }
 .ai-brand svg {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-new {
   display: flex;
@@ -250,7 +250,7 @@
 }
 .ai-banner > svg {
   flex: none;
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-banner-text {
   flex: 1;
@@ -377,7 +377,7 @@
   gap: 8px;
 }
 .ai-key-card-head svg {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-key-row {
   display: flex;
@@ -692,7 +692,7 @@
   gap: 8px;
 }
 .ai-analyst-head svg {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-analyst-head h1 {
   flex: 1;
@@ -912,7 +912,7 @@
   color: var(--pd-pewter);
 }
 .ai-access[data-on] .ai-access-row svg {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-access p {
   margin: 6px 0 0;
@@ -978,7 +978,7 @@
   flex: 1;
 }
 .ai-key-list li[data-on] > svg:first-child {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-key-off {
   color: var(--pd-pewter-dim);
@@ -1040,7 +1040,7 @@
   background: var(--pd-surface);
 }
 .ai-suggest-list button:hover:not(:disabled) .ai-suggest-icon {
-  color: var(--pd-brass);
+  color: var(--pd-brass-text);
 }
 .ai-suggest-list button:disabled {
   opacity: 0.5;

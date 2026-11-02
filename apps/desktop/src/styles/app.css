@@ -2584,13 +2584,13 @@ button.coin-chip:hover {
   --impact: var(--pd-warning);
 }
 .calendar-panel [data-impact="medium"] {
-  --impact: var(--pd-brass);
+  --impact: var(--pd-info);
 }
 .calendar-panel [data-impact="low"] {
   --impact: var(--pd-pewter-dim);
 }
 .calendar-panel [data-impact="holiday"] {
-  --impact: var(--pd-info);
+  --impact: var(--pd-pewter);
 }
 .calendar-key {
   display: flex;

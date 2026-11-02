@@ -53,7 +53,7 @@ Colorblind mode (`data-market="colorblind"`): buy #4C9BE8, sell #E8894A, warning
 
 ## Themes
 
-Twelve themes in the app's picker, in this order, set with `data-theme` on
+Eighteen themes in the app's picker, in this order, set with `data-theme` on
 `<html>`. Monokai Pro is the default until one is picked; Pewter's tokens are
 the bare `:root` set, so it needs no attribute. Every text
 token passes WCAG AA (4.5:1) on bg, surface and surface-raised, with the
@@ -67,8 +67,11 @@ exceptions noted under Contrast.
 | `dark` | Pewter | Pewter and brass on near-black | #111110 | brass #C9A45C |
 | `palenight` | Palenight | Soft purple on slate blue | #202331 | purple #C792EA |
 | `parchment` | Parchment | Warm, paper-toned light | #F2ECDF | brass #A9803A |
+| `white` | White | Clean, neutral white | #F3F4F6 | brass #B08A3E |
 | `bybit` | Bybit | The venue's amber on near-black | #101014 | amber #F7A600 |
 | `binance` | Binance | The venue's yellow on charcoal | #0B0E11 | yellow #FCD535 |
+| `kucoin` | KuCoin | Mint on graphite | #101114 | mint #01BC8D |
+| `coinbase` | Coinbase | Bright blue on near-black | #0A0B0D | blue #0052FF |
 | `ftx` | FTX | Turquoise and red on blue-black | #0F1218 | turquoise #02D4C3 |
 | `hyrotrader` | Hyrotrader | Indigo on midnight, mint and rose | #0D0E1B | indigo #4D54F5 |
 | `bambam` | BAMBAM | One hue: deep teal and mint on navy | #202431 | teal #006064 |
@@ -87,7 +90,7 @@ used only where brass would be, and green/red remain market-only in every theme.
 Their market reds are lightened slightly from the editor originals where the
 original fails contrast. Don't carry these accents into the pewter themes.
 
-**Venue-styled themes.** The last six copy a venue's look, or a Tealstreet
+**Venue-styled themes.** Bybit to Cosku copy a venue's look, or a Tealstreet
 theme of the same name (FTX, Hyrotrader, BAMBAM and Cosku were sampled from
 it). Like the editor themes, each puts its one accent through `--pd-brass*`.
 Where the original's colours can't be read as text, the text tokens are
