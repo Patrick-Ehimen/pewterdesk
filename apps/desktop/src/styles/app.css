@@ -1181,6 +1181,16 @@ button.app-status-venue[aria-expanded="true"] {
 .bar-watch-row:hover {
   background: var(--pd-surface);
 }
+.bar-watch-row[data-unlisted] {
+  background: none;
+  cursor: default;
+}
+.bar-watch-unlisted {
+  grid-column: 3 / -1;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  text-align: right;
+}
 .bar-watch-name {
   overflow: hidden;
   text-overflow: ellipsis;

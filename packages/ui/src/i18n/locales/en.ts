@@ -2248,6 +2248,7 @@ export const en = {
   "venues.missingBody":
     "Every venue is one adapter in the open-source repo. Request one, or build it.",
   "venues.request": "Request a venue",
+  "watch.unlisted": "Not listed here",
   "watch.empty":
     "Nothing starred on {venue} yet. Star markets in the market picker or the screener.",
   "venues.switch": "Switch venue",

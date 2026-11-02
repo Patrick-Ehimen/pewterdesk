@@ -2286,6 +2286,7 @@ export const messages: Messages = {
   "venues.missingBody":
     "各取引所はオープンソースのリポジトリ内のアダプター 1 つです。リクエストするか、作ってください。",
   "venues.request": "取引所をリクエスト",
+  "watch.unlisted": "ここには未上場",
   "watch.empty":
     "{venue} のお気に入りはまだありません。銘柄選択やスクリーナーで星を付けてください。",
   "venues.switch": "取引所を切り替え",

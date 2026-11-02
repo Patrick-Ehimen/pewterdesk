@@ -2198,6 +2198,7 @@ export const messages: Messages = {
   "venues.missing": "缺少交易所？",
   "venues.missingBody": "每个交易所都是开源仓库中的一个适配器。提出需求，或自己构建。",
   "venues.request": "申请交易所",
+  "watch.unlisted": "此处未上市",
   "watch.empty": "{venue} 上还没有收藏。可在市场选择器或筛选器中点星标收藏。",
   "venues.switch": "切换交易所",
   "venues.search": "搜索交易所",

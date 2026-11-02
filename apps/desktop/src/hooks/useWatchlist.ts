@@ -57,6 +57,18 @@ function setIds(update: (current: string[]) => string[]) {
 }
 
 /**
+ * The starred ids in order, each with its market where the venue lists it.
+ * A star stays when its market doesn't: it may be delisted, or only on the
+ * other of an exchange's two lists (Demo Trading's own, for one).
+ */
+export function starredRows<M extends { id: string }>(
+  starred: Iterable<string>,
+  markets: readonly M[],
+): { id: string; market: M | undefined }[] {
+  return [...starred].map((id) => ({ id, market: markets.find((m) => m.id === id) }));
+}
+
+/**
  * Starred markets, remembered between sessions. `starred` holds the
  * `Market::id`s starred on `venue`; `toggle` takes one of those ids.
  */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseWatchlist, watchKey } from "../src/hooks/useWatchlist";
+import { parseWatchlist, starredRows, watchKey } from "../src/hooks/useWatchlist";
 
 describe("parseWatchlist", () => {
   it("reads a stored list", () => {
@@ -24,5 +24,21 @@ describe("parseWatchlist", () => {
 describe("watchKey", () => {
   it("keeps the same symbol on different venues apart", () => {
     expect(watchKey("hyperliquid", "BTC")).not.toBe(watchKey("aster", "BTC"));
+  });
+});
+
+describe("starredRows", () => {
+  const listed = { id: "BTCUSDT" };
+
+  it("keeps a star whose market isn't listed, in its place", () => {
+    expect(starredRows(new Set(["GONEUSDT", "BTCUSDT"]), [listed])).toEqual([
+      { id: "GONEUSDT", market: undefined },
+      { id: "BTCUSDT", market: listed },
+    ]);
+  });
+
+  it("gives a row for every star, so the list matches its count", () => {
+    const stars = new Set(["A", "B", "C"]);
+    expect(starredRows(stars, [])).toHaveLength(stars.size);
   });
 });

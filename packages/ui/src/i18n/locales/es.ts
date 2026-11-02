@@ -2324,6 +2324,7 @@ export const messages: Messages = {
   "venues.missingBody":
     "Cada exchange es un adaptador en el repositorio de código abierto. Pídelo o constrúyelo.",
   "venues.request": "Pedir un exchange",
+  "watch.unlisted": "No disponible aquí",
   "watch.empty":
     "Aún no hay nada destacado en {venue}. Marca mercados con la estrella en el selector o el screener.",
   "venues.switch": "Cambiar de exchange",

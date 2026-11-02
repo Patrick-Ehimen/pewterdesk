@@ -2269,6 +2269,7 @@ export const messages: Messages = {
   "venues.missingBody":
     "각 거래소는 오픈소스 저장소의 어댑터 하나입니다. 요청하거나 직접 만들어 보세요.",
   "venues.request": "거래소 요청",
+  "watch.unlisted": "여기에 상장되지 않음",
   "watch.empty":
     "{venue}에 즐겨찾기한 마켓이 아직 없습니다. 마켓 선택기나 스크리너에서 별표를 누르세요.",
   "venues.switch": "거래소 전환",

@@ -2314,6 +2314,7 @@ export const messages: Messages = {
   "venues.missingBody":
     "Cada corretora é um adaptador no repositório open source. Peça uma ou construa.",
   "venues.request": "Pedir uma corretora",
+  "watch.unlisted": "Não listado aqui",
   "watch.empty":
     "Nada favoritado na {venue} ainda. Marque mercados com a estrela no seletor ou no screener.",
   "venues.switch": "Trocar de corretora",

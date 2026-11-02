@@ -2336,6 +2336,7 @@ export const messages: Messages = {
   "venues.missingBody":
     "Chaque plateforme est un adaptateur du dépôt open source. Demandez-la, ou construisez-la.",
   "venues.request": "Demander une plateforme",
+  "watch.unlisted": "Non listé ici",
   "watch.empty":
     "Rien en favori sur {venue} pour l'instant. Ajoutez des marchés depuis le sélecteur ou le screener.",
   "venues.switch": "Changer de plateforme",

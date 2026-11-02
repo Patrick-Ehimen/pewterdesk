@@ -4,7 +4,7 @@ import { decimalsOf, formatNumber, formatSigned, StarButton, TokenIcon, t } from
 import { useState } from "react";
 import { LuStar } from "react-icons/lu";
 import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
-import { useWatchlist } from "../../hooks/useWatchlist";
+import { starredRows, useWatchlist } from "../../hooks/useWatchlist";
 import { VENUES } from "../../lib/venues";
 import { BarPopover } from "./BarPopover";
 
@@ -29,10 +29,7 @@ function VenueList({
   const markets =
     venue === current ? currentMarkets : ((loaded(other) as Market[] | undefined) ?? []);
   const summaries = loaded(useMarketSummaries(venue, starred.size > 0));
-  const rows = [...starred].flatMap((id) => {
-    const market = markets.find((m) => m.id === id);
-    return market ? [market] : [];
-  });
+  const rows = markets.length > 0 ? starredRows(starred, markets) : [];
   const waiting = starred.size > 0 && markets.length === 0;
 
   if (starred.size === 0) {
@@ -41,7 +38,20 @@ function VenueList({
   return (
     <ul className="bar-watch-list">
       {waiting && <li className="bar-watch-empty">{t("feed.loading")}</li>}
-      {rows.map((m) => {
+      {rows.map(({ id, market: m }) => {
+        // Counted on its tab, so it's shown, and can be unstarred.
+        if (!m) {
+          return (
+            <li key={id}>
+              <div className="bar-watch-row" data-unlisted>
+                <span />
+                <span className="bar-watch-name">{id}</span>
+                <span className="bar-watch-unlisted">{t("watch.unlisted")}</span>
+              </div>
+              <StarButton starred name={id} size={14} onToggle={() => toggle(id)} />
+            </li>
+          );
+        }
         const s = summaries?.find((x) => x.market === m.id);
         const price = s ? Number(s.markPrice) : undefined;
         const prev = s ? Number(s.prevDayPrice) : 0;
