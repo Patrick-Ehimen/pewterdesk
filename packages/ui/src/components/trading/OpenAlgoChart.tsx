@@ -68,10 +68,11 @@ import {
   type ChartAnalysis,
   type ChartNewsEvent,
   chartCode,
+  chartSymbol,
+  type FxSource,
   keptLayout,
   levelLine,
   levelLineId,
-  marketOfSymbol,
   outOfAutoscale,
   registerMonthIntervals,
 } from "../../lib/openAlgoChart";
@@ -84,6 +85,7 @@ import {
   tradeLevels,
 } from "../../lib/tradeMarks";
 import type { ProfileRow } from "../../lib/volumeProfile";
+import { ChartCurrency } from "./ChartCurrency";
 import { ChartNewsBadges, ChartNewsCard, newsCardPlace } from "./ChartNews";
 import { type ChartReplay, newLiveGate, ReplayControls, useChartReplay } from "./ChartReplay";
 import {
@@ -312,6 +314,19 @@ function barsOnScreen(widget: Widget): number | undefined {
   if (widget.series.getData().length === 0) return undefined;
   const { from, to } = widget.chart.getVisibleLogicalRange();
   return to > from ? to - from : undefined;
+}
+
+const CURRENCY_KEY = "pd.chartCurrency";
+
+/** The Trade chart's currency, if it's still one on offer. */
+function savedCurrency(fx: FxSource): string | undefined {
+  const code = storage()?.getItem(CURRENCY_KEY) ?? undefined;
+  return code && fx.currencies.includes(code) ? code : undefined;
+}
+
+function keepCurrency(code: string | undefined) {
+  if (code) storage()?.setItem(CURRENCY_KEY, code);
+  else storage()?.removeItem(CURRENCY_KEY);
 }
 
 function storage(): Storage | null {
@@ -813,6 +828,8 @@ interface OpenAlgoChartProps {
    * levels, as the chart's own drawings pinned to the candles. Read-only.
    */
   analysis?: ChartAnalysis;
+  /** Exchange rates, to show the chart in another currency; no choice without them. */
+  fx?: FxSource;
   /** Economic releases, as badges along the chart's foot; none without it. */
   news?: readonly ChartNewsEvent[];
   /**
@@ -857,10 +874,11 @@ export function OpenAlgoChart({
   favoriteTypes,
   onToggleFavoriteType,
   onScreenshot,
-  position,
-  orders = NO_ORDERS,
-  fills,
-  analysis,
+  position: heldPosition,
+  orders: openOrders = NO_ORDERS,
+  fills: ownFills,
+  analysis: ownAnalysis,
+  fx,
   news,
   onMoveExit,
   compact = false,
@@ -872,6 +890,17 @@ export function OpenAlgoChart({
 }: OpenAlgoChartProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [widget, setWidget] = useState<Widget | null>(null);
+  // Another currency, where one is picked. Everything of the account's is in
+  // the market's own, so while it's on none of it is drawn and nothing can
+  // be dragged: a price on this chart must never reach an order.
+  const [currency, setCurrency] = useState<string | undefined>(() =>
+    onLayout || !fx ? undefined : savedCurrency(fx),
+  );
+  const converted = currency !== undefined;
+  const position = converted ? undefined : heldPosition;
+  const orders = converted ? NO_ORDERS : openOrders;
+  const fills = converted ? undefined : ownFills;
+  const analysis = converted ? undefined : ownAnalysis;
   // The studies, chart style and their settings live in the widget: this
   // redraws the toolbar and readout when they change.
   const [, redraw] = useReducer((n: number) => n + 1, 0);
@@ -891,10 +920,12 @@ export function OpenAlgoChart({
   const liveGate = useRef(newLiveGate());
   const replay = useChartReplay(widget, liveGate.current, `${market.id}|${interval}`);
   const replaying = replay.mode !== "off";
-  const movable = replaying ? undefined : onMoveExit;
+  const movable = replaying || converted ? undefined : onMoveExit;
   const latestProps = useRef({ markets, interval, onInterval, onMoveExit: movable, onLayout });
   latestProps.current = { markets, interval, onInterval, onMoveExit: movable, onLayout };
   const firstMarket = useRef(market.id);
+  const firstCurrency = useRef(currency);
+  const feedFx = useRef(fx);
   /** The layout as last given to, or taken from, the caller. */
   const keptRef = useRef<string | undefined>(undefined);
   /** The trade levels' lines, by line id. */
@@ -923,8 +954,8 @@ export function OpenAlgoChart({
     registerProfileChartTypes();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
-      feed: barFeed(source, () => latestProps.current.markets, liveGate.current),
-      symbol: firstMarket.current,
+      feed: barFeed(source, () => latestProps.current.markets, liveGate.current, feedFx.current),
+      symbol: chartSymbol(firstMarket.current, firstCurrency.current),
       exchange: venue,
       interval: chartCode(latestProps.current.interval),
       intervals: ALL_INTERVALS.map(chartCode),
@@ -1165,13 +1196,14 @@ export function OpenAlgoChart({
   const tick = Number(market.tickSize);
   useEffect(() => {
     if (!widget) return;
-    if (marketOfSymbol(latestProps.current.markets, widget.symbol())?.id !== marketId) {
+    const shown = chartSymbol(marketId, currency);
+    if (widget.symbol().toUpperCase() !== shown.toUpperCase()) {
       zoom.current = barsOnScreen(widget) ?? zoom.current;
-      widget.setSymbol(marketId, venue);
+      widget.setSymbol(shown, venue);
     }
     if (tick > 0) widget.chart.applyOptions({ priceScale: { minMove: tick } });
     sessionProfiles.current?.setTick(tick);
-  }, [widget, marketId, tick, venue]);
+  }, [widget, marketId, currency, tick, venue]);
   useEffect(() => {
     if (!widget || widget.interval() === chartCode(interval)) return;
     zoom.current = barsOnScreen(widget) ?? zoom.current;
@@ -1366,6 +1398,34 @@ export function OpenAlgoChart({
   }, []);
   const opened = newsCard && news?.filter((e) => newsCard.ids.includes(e.id));
 
+  // The axis is one width: long converted prices go short there, in full in the readout.
+  useEffect(() => {
+    if (!widget || widget.isDestroyed) return;
+    widget.chart.applyOptions({
+      priceFormatter: converted
+        ? (price) => (Math.abs(price) >= 1000 ? formatCompact(price) : formatNumber(price, 2))
+        : null,
+    });
+  }, [widget, converted]);
+
+  const pickCurrency = (next: string | undefined) => {
+    if (next === undefined || !fx) {
+      setCurrency(undefined);
+      keepCurrency(undefined);
+      return;
+    }
+    // Only once there's a rate: without one the chart stays as it is, and says so.
+    const now = Math.floor(Date.now() / 1000);
+    fx.rates(next, now, now).then(
+      () => {
+        setProblem(undefined);
+        setCurrency(next);
+        if (!onLayout) keepCurrency(next);
+      },
+      () => setProblem(tr("chart.currencyFailed")),
+    );
+  };
+
   return (
     <div className="pd-oachart">
       <Toolbar
@@ -1376,7 +1436,7 @@ export function OpenAlgoChart({
         onToggleFavoriteInterval={onToggleFavoriteInterval}
         favoriteTypes={favoriteTypes}
         onToggleFavoriteType={onToggleFavoriteType}
-        replay={replay}
+        replay={converted ? undefined : replay}
         onScreenshot={onScreenshot}
         compact={compact}
         tools={tools}
@@ -1385,6 +1445,14 @@ export function OpenAlgoChart({
         <div ref={hostRef} className="pd-oachart-chart" />
         {!latest && slow && loading && <div className="pd-oachart-loading">{loading}</div>}
         <ReplayControls replay={replay} />
+        {fx && !replaying && (
+          <ChartCurrency
+            quote={market.quote}
+            currencies={fx.currencies}
+            value={currency}
+            onChange={pickCurrency}
+          />
+        )}
         {widget && news && <ChartNewsBadges widget={widget} news={news} onPick={pickNews} />}
         {newsCard && opened && opened.length > 0 && (
           <ChartNewsCard events={opened} place={newsCard.place} onClose={closeNews} />

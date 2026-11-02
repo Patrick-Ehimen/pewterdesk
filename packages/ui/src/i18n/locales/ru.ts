@@ -150,6 +150,12 @@ export const messages: Messages = {
     "Ничего не появилось? Разрешите уведомления для PewterDesk в Системных настройках > Уведомления (для Терминала — в сборке для разработки) и проверьте, что режим фокусирования выключен.",
   "notify.testFailed": "Не удалось отправить тест",
   "notify.testFailedHelp": "Уведомления рабочего стола здесь недоступны.",
+  "settings.currency": "Валюта приложения",
+  "settings.currencyHelp":
+    "Показывает балансы, P&L и стоимость счёта в этой валюте по курсу примерно суточной давности, поэтому суммы отмечены ≈. Цены, стакан и тикет остаются в валюте биржи, и ордера всегда выставляются в ней.",
+  "settings.currencyOwn": "Валюта биржи",
+  "settings.currencyFailed":
+    "Не удалось получить курсы, поэтому пока суммы показаны в валюте биржи.",
   "settings.notifications": "Уведомления на рабочем столе",
   "settings.notificationsHelp":
     "Исполнения, изменения позиций, оповещения и предупреждения о ликвидации показываются системными уведомлениями, когда PewterDesk не на переднем плане.",
@@ -605,6 +611,11 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "Профиль объёма по сессиям",
   "chart.type.tpo": "TPO (Time Price Opportunity)",
   "chart.replay": "Повтор баров",
+  "chart.currency": "Валюта графика",
+  "chart.currencies": "Валюты",
+  "chart.currencySearch": "Поиск",
+  "chart.currencyOwn": "Валюта рынка",
+  "chart.currencyFailed": "Не удалось получить курсы, график остаётся прежним.",
   "chart.news": "Экономические новости",
   "chart.newsClose": "Закрыть",
   "chart.newsCount": "Публикаций: {count}",

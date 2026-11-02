@@ -4,9 +4,11 @@ import {
   DateRangePicker,
   dateFormat,
   EmptyState,
+  formatMoney,
   formatNumber,
   formatPercent,
   formatSigned,
+  formatSignedMoney,
   Select,
   SummarySkeleton,
   TableSkeleton,
@@ -15,6 +17,7 @@ import {
   t,
   toDay,
   trendClass,
+  useDisplayCurrency,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useState } from "react";
 import { LuCalendarDays, LuCircleDollarSign, LuClock } from "react-icons/lu";
@@ -269,7 +272,8 @@ export function PortfolioPage({
   const filtered = Object.entries(filter).some(
     ([k, v]) => v !== NO_FILTER[k as keyof HistoryFilter],
   );
-  const money = (v: number) => `${formatSigned(v)} ${quote}`;
+  useDisplayCurrency();
+  const money = (v: number) => formatSignedMoney(v, ` ${quote}`);
 
   if (account.status === "idle") {
     return (
@@ -540,9 +544,7 @@ export function PortfolioPage({
               <>
                 <div className="pf-figure">
                   <span className="pf-label">{t("portfolio.totalValue")}</span>
-                  <strong className="pd-num pf-big">
-                    {formatNumber(s.equity, 2)} {quote}
-                  </strong>
+                  <strong className="pd-num pf-big">{formatMoney(s.equity, ` ${quote}`)}</strong>
                 </div>
                 <div className="pf-figure">
                   <span className="pf-label">{t("account.upnl")}</span>
@@ -553,17 +555,20 @@ export function PortfolioPage({
                 <div className="pf-stats">
                   <Stat
                     label={t("account.available")}
-                    value={formatNumber(Number(snapshot?.availableMargin ?? 0), 2)}
+                    value={formatMoney(Number(snapshot?.availableMargin ?? 0))}
                   />
                   <Stat
                     label={t("account.marginUsed")}
-                    value={`${formatNumber(s.marginUsed, 2)} · ${formatPercent(s.marginRatio)}`}
+                    value={`${formatMoney(s.marginUsed)} · ${formatPercent(s.marginRatio)}`}
                   />
                   <Stat
                     label={t("portfolio.gross")}
-                    value={`${formatNumber(s.gross, 2)} · ${formatNumber(s.grossRatio, 2)}x`}
+                    value={`${formatMoney(s.gross)} · ${formatNumber(s.grossRatio, 2)}x`}
                   />
-                  <Stat label={t("portfolio.net")} value={`${formatSigned(s.net)} · ${bias}`} />
+                  <Stat
+                    label={t("portfolio.net")}
+                    value={`${formatSignedMoney(s.net)} · ${bias}`}
+                  />
                 </div>
               </>
             ) : (
@@ -804,9 +809,9 @@ export function PortfolioPage({
                       <td className={`pd-num ${trendClass(a.netSize)}`}>
                         {formatSigned(a.netSize, 4).replace(/\.?0+$/, "")}
                       </td>
-                      <td className="pd-num">{formatNumber(a.netNotional, 2)}</td>
+                      <td className="pd-num">{formatMoney(a.netNotional)}</td>
                       <td className={`pd-num ${trendClass(a.unrealizedPnl)}`}>
-                        {formatSigned(a.unrealizedPnl, 2)}
+                        {formatSignedMoney(a.unrealizedPnl)}
                       </td>
                       <td className="pd-num">{formatPercent(a.share, 1)}</td>
                     </tr>

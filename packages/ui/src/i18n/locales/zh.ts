@@ -143,6 +143,11 @@ export const messages: Messages = {
     "没有出现？请在系统设置 > 通知中允许 PewterDesk（开发版本则为终端）的通知，并确认未开启专注模式。",
   "notify.testFailed": "无法发送测试",
   "notify.testFailedHelp": "此处无法使用桌面通知。",
+  "settings.currency": "应用货币",
+  "settings.currencyHelp":
+    "以此货币显示余额、盈亏和账户价值，汇率约为一天前的，因此数字带有 ≈。价格、订单簿和下单面板仍使用交易所的货币，订单始终以该货币下达。",
+  "settings.currencyOwn": "交易所的货币",
+  "settings.currencyFailed": "无法读取汇率，金额暂时仍以交易所的货币显示。",
   "settings.notifications": "桌面通知",
   "settings.notificationsHelp":
     "当 PewterDesk 不在最前面时，成交、仓位变化、提醒和强平警告会以系统通知显示。",
@@ -589,6 +594,11 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "交易时段成交量分布",
   "chart.type.tpo": "TPO（时间价格机会）",
   "chart.replay": "K线回放",
+  "chart.currency": "图表货币",
+  "chart.currencies": "货币",
+  "chart.currencySearch": "搜索",
+  "chart.currencyOwn": "市场本身的货币",
+  "chart.currencyFailed": "无法读取汇率，图表保持不变。",
   "chart.news": "经济新闻",
   "chart.newsClose": "关闭",
   "chart.newsCount": "{count} 项数据",

@@ -757,6 +757,18 @@ export const wireClient = {
   open: (id: string) => call<void>("open_wire_link", { id }),
 };
 
+/** One day's exchange rates: units of each currency to a dollar. */
+export interface FxDay {
+  date: string;
+  rates: Record<string, number>;
+}
+
+/** Exchange rates, read in Rust. Display only. */
+export const fxClient = {
+  latest: () => call<FxDay>("fx_latest", {}),
+  history: (dates: string[]) => call<FxDay[]>("fx_history", { dates }),
+};
+
 export const calendarClient = {
   /** This week's economic calendar, soonest first. */
   events: () => call<CalendarEvent[]>("economic_calendar", {}),

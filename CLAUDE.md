@@ -227,6 +227,18 @@ discover it on their own. The reasoning behind the rules is in
   size cap), kept an hour. It reaches the UI as text only (every field
   through `plain`, bounded), with no links. Changing the source is a
   security-relevant change.
+- `apps/desktop/src-tauri/src/fx_rates.rs` - exchange rates, for showing a
+  chart or the app's money in another currency: the community `currency-api`
+  exports on jsDelivr (`cdn.jsdelivr.net` only), the one free source with naira
+  and with rates by date. A data source, not a venue: no key, nothing signed,
+  one read-only GET per file (no redirects followed, a size cap). A currency
+  comes from the fixed `CURRENCIES` and a date is checked before a URL is built.
+  Rates are display only and about a day old: they never reach an order, a
+  trading rule or a limit. Everything an order is made of stays in the venue's
+  own currency. A chart in another currency (`chartSymbol`, "BTC@NGN") draws
+  nothing of the account's, drags nothing and offers no replay, so a converted
+  price can't reach `protect`, an order or the replay account. Changing the
+  source, or letting a rate reach an order, is a security-relevant change.
 - `apps/desktop/src-tauri/src/news_wire.rs` - the live news wire, for the
   News feed panel: posts from X and headlines from two aggregators, Tree
   News (Tree of Alpha) and Phoenix News, over their websockets. Data
@@ -622,7 +634,8 @@ foot of each chart's price pane, moved as it paints, those too close to
 part as one that counts them (`ChartNews.tsx`, `groupNews`); a click opens
 its card, a scrolling list, text only. The chart's settings popover turns
 them off (the Trade chart's view settings, each Multi-chart cell's settings).
-The chart's corner carries our logo in the theme's colours (`logoImage` in
+The price axis has a currency menu (`ChartCurrency.tsx`, `FxSource`, `lib/fxRates.ts`):
+history at each month's rate, live candles at today's, USDT and USDC as dollars. The chart's corner carries our logo in the theme's colours (`logoImage` in
 `lib/logo.ts`, the library's own words and link cleared: it opens nothing). The library's top bar, status line,
 symbol search, side panels and alerts are off, and its colours come from the
 theme's tokens. On the Trade page its layout is kept in this machine's
@@ -739,6 +752,16 @@ trigger, attached and position TP / SL, trailing stops, reduce-only,
 leverage and margin mode, funding at each interval, and liquidation at an
 estimated price. It moves forward once a second while the app runs, for the
 venue on screen only. Trading rules aren't checked on paper orders.
+
+## App currency
+
+Settings > General picks a currency for the main window's money
+(`components/settings/CurrencySetting.tsx`, `lib/appCurrency.ts`,
+`pd.appCurrency`; `lib/displayCurrency.ts` in `packages/ui`): balances, equity,
+P&L, position value, margin, the Portfolio page, closed trades and the paper
+and replay banners, marked "≈". Prices, sizes, the order book, the ticket,
+TP / SL, the tray and the floating window stay in the venue's own currency.
+Amounts go through `formatMoney` and its kin, never anything an order is built from.
 
 ## Trading rules
 

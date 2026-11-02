@@ -40,6 +40,7 @@ import {
   themeOptions,
   VIEW_KEYS,
 } from "../preferences";
+import { CurrencySetting } from "./CurrencySetting";
 import {
   ChoiceCards,
   ConfirmButton,
@@ -271,6 +272,7 @@ function GeneralSection({ soundOn, onSound, confirmOrders, onConfirmOrders }: Se
         onChange={(next) => next !== locale && switchLanguage(next)}
         columns={4}
       />
+      <CurrencySetting />
       <GroupLabel>{t("settings.sounds")}</GroupLabel>
       <SettingRow title={t("settings.sounds")} help={t("settings.soundsHelp")}>
         <Switch checked={soundOn} onChange={onSound} label={t("settings.sounds")} />

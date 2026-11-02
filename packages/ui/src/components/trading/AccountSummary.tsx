@@ -1,5 +1,6 @@
 import type { AccountSnapshot } from "@pewterdesk/core";
 import { t } from "../../i18n";
+import { formatDollars, useDisplayCurrency } from "../../lib/displayCurrency";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
 import { Hint } from "../common/ColumnHeader";
 import { Tooltip } from "../common/Tooltip";
@@ -113,7 +114,8 @@ export function AccountSummary({ snapshot, maxLeverageFor }: AccountSummaryProps
   const totals = snapshot ? accountTotals(snapshot, maxLeverageFor) : undefined;
   const ratio = totals?.maintenanceRatio ?? 0;
   const pnl = totals?.unrealizedPnl ?? 0;
-  const usd = (v: number) => `${v < 0 ? "-" : ""}$${formatNumber(Math.abs(v), 2)}`;
+  useDisplayCurrency();
+  const usd = (v: number) => formatDollars(v);
   return (
     <section className="pd-account">
       <h3 className="pd-account-title">{t("account.summary")}</h3>

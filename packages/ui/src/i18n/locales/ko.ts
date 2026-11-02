@@ -147,6 +147,11 @@ export const messages: Messages = {
     "표시되지 않나요? 시스템 설정 > 알림에서 PewterDesk(개발 빌드에서는 터미널)의 알림을 허용하고 집중 모드가 꺼져 있는지 확인하세요.",
   "notify.testFailed": "테스트를 보낼 수 없습니다",
   "notify.testFailedHelp": "여기에서는 데스크톱 알림을 사용할 수 없습니다.",
+  "settings.currency": "앱 통화",
+  "settings.currencyHelp":
+    "잔고, 손익, 계정 가치를 약 하루 전 환율로 이 통화로 표시하며 수치에는 ≈가 붙습니다. 가격, 호가창, 주문 티켓은 거래소 통화로 유지되고 주문은 항상 거래소 통화로 넣습니다.",
+  "settings.currencyOwn": "거래소 기본 통화",
+  "settings.currencyFailed": "환율을 읽을 수 없어 당분간 거래소 통화로 표시합니다.",
   "settings.notifications": "데스크톱 알림",
   "settings.notificationsHelp":
     "PewterDesk가 맨 앞에 있지 않을 때 체결, 포지션 변화, 알림, 청산 경고를 시스템 알림으로 보여줍니다.",
@@ -598,6 +603,11 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "세션 볼륨 프로파일",
   "chart.type.tpo": "TPO (타임 프라이스 오퍼튜니티)",
   "chart.replay": "바 리플레이",
+  "chart.currency": "차트 통화",
+  "chart.currencies": "통화",
+  "chart.currencySearch": "검색",
+  "chart.currencyOwn": "마켓 기본 통화",
+  "chart.currencyFailed": "환율을 읽을 수 없어 차트를 그대로 유지합니다.",
   "chart.news": "경제 뉴스",
   "chart.newsClose": "닫기",
   "chart.newsCount": "발표 {count}건",

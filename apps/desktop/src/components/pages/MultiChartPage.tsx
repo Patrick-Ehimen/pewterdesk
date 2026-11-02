@@ -38,6 +38,7 @@ import { appClient } from "../../api/appClient";
 import { useChartNews, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { venueBarSource } from "../../lib/barSource";
 import { exportChartImage } from "../../lib/chartPrefs";
+import { chartFx } from "../../lib/fxRates";
 import { isTyping, plainKey } from "../../lib/hotkeys";
 import {
   applySet,
@@ -417,6 +418,7 @@ export function Cell({
             position={settings.levels ? position : undefined}
             orders={settings.levels ? orders : undefined}
             news={settings.news ? news : undefined}
+            fx={chartFx}
             onMoveExit={moveExit}
             loading={
               <div className="chart-loader" role="status" aria-label={t("chart.loading")}>

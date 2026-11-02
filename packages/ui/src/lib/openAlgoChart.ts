@@ -108,7 +108,11 @@ export function asInterval(code: string): CandleInterval | undefined {
  * The chart upper-cases every symbol it is given, and a venue's market ids
  * are case-sensitive ("kPEPE", "xyz:TSLA"): the market a chart symbol names.
  */
-export function marketOfSymbol(markets: readonly Market[], symbol: string): Market | undefined {
+export function marketOfSymbol(
+  markets: readonly Market[],
+  chartSymbol: string,
+): Market | undefined {
+  const symbol = chartSymbol.split(CURRENCY_MARK)[0] ?? chartSymbol;
   return (
     markets.find((m) => m.id === symbol) ??
     markets.find((m) => m.id.toUpperCase() === symbol.toUpperCase())
@@ -117,6 +121,40 @@ export function marketOfSymbol(markets: readonly Market[], symbol: string): Mark
 
 function clampCount(count: number) {
   return Math.min(MAX_BARS_PAGE, Math.max(1, Math.ceil(count)));
+}
+
+/** Exchange rates a chart can be shown in: display only, never an order's. */
+export interface FxSource {
+  /** Codes on offer, beside the market's own quote. */
+  currencies: readonly string[];
+  /** What a dollar is worth in `currency` at a UTC second, over this range. */
+  rates: (currency: string, from: number, to: number) => Promise<(time: number) => number>;
+}
+
+/**
+ * A chart in another currency is a symbol of its own ("BTC@NGN"): its candles
+ * are converted, and its drawings, in those prices, stay apart from the market's.
+ */
+const CURRENCY_MARK = "@";
+
+export const chartSymbol = (market: string, currency?: string) =>
+  currency ? `${market}${CURRENCY_MARK}${currency}` : market;
+
+export const symbolCurrency = (symbol: string): string | undefined =>
+  symbol.split(CURRENCY_MARK)[1];
+
+/** `bars` in the currency `rate` gives, each at its own time's rate. */
+export function convertBars(bars: readonly Bar[], rate: (time: number) => number): Bar[] {
+  return bars.map((bar) => {
+    const r = rate(bar.time);
+    return {
+      ...bar,
+      open: bar.open * r,
+      high: bar.high * r,
+      low: bar.low * r,
+      close: bar.close * r,
+    };
+  });
 }
 
 /**
@@ -128,7 +166,17 @@ export function barFeed(
   source: BarSource,
   markets: () => readonly Market[],
   gate?: LiveGate,
+  fx?: FxSource,
 ): DataFeed {
+  /** The chart's candles in its currency: as they came, without one. */
+  const inCurrency = async (req: BarsRequest, bars: Bar[]) => {
+    const currency = symbolCurrency(req.symbol);
+    const first = bars[0];
+    const last = bars.at(-1);
+    if (!currency || !first || !last) return bars;
+    if (!fx) throw new Error(`No rates for ${currency}`);
+    return convertBars(bars, await fx.rates(currency, first.time, last.time));
+  };
   const resolve = (req: BarsRequest) => {
     const market = marketOfSymbol(markets(), req.symbol);
     const interval = asInterval(req.interval);
@@ -141,6 +189,7 @@ export function barFeed(
     // What this machine last saw draws at once; the venue's history replaces it.
     async getCachedBars(req: BarsRequest): Promise<Bar[] | undefined> {
       const found = resolve(req);
+      if (symbolCurrency(req.symbol)) return undefined;
       const candles = found && source.cached?.(found.market, found.interval);
       return candles?.length ? candles.map(toBar) : undefined;
     },
@@ -159,7 +208,7 @@ export function barFeed(
         (to + 1) * 1000,
         clampCount(count),
       );
-      const bars = candles.map(toBar);
+      const bars = await inCurrency(req, candles.map(toBar));
       // A count was asked for: the start is only a hint then.
       if (req.countBack !== undefined || req.from === undefined) return bars;
       const from = req.from;
@@ -175,7 +224,7 @@ export function barFeed(
         req.before * 1000,
         clampCount(req.countBack),
       );
-      const bars = candles.map(toBar);
+      const bars = await inCurrency(req, candles.map(toBar));
       const oldest = bars[0];
       return oldest ? { bars, hasMore: true, nextBefore: oldest.time } : { bars, hasMore: false };
     },
@@ -186,13 +235,28 @@ export function barFeed(
       // The chart takes only the tail here: nothing older than what it has.
       let newest = opts?.seedFrom?.time ?? Number.NEGATIVE_INFINITY;
       let first = true;
+      // Live candles take today's rate, and wait for it.
+      const currency = symbolCurrency(req.symbol);
+      let live: number | undefined;
+      if (currency && fx) {
+        const now = Math.floor(Date.now() / 1000);
+        void fx.rates(currency, now, now).then(
+          (rate) => {
+            live = rate(now);
+          },
+          () => {},
+        );
+      }
       return source.subscribe(found.market, found.interval, (candles) => {
         // The first batch is the history the chart loaded for itself; only
         // its forming candle is news.
         const batch = first ? candles.slice(-1) : candles;
         first = false;
         for (const candle of batch) {
-          const bar = toBar(candle);
+          const raw = toBar(candle);
+          if (currency && live === undefined) continue;
+          const bar =
+            live === undefined ? raw : (convertBars([raw], () => live as number)[0] ?? raw);
           if (bar.time < newest) continue;
           newest = bar.time;
           if (gate?.held) gate.pending.set(bar.time, () => onBar(bar));

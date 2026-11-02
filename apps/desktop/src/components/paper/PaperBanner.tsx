@@ -1,5 +1,5 @@
 import type { AccountSnapshot } from "@pewterdesk/core";
-import { formatSigned, t } from "@pewterdesk/ui";
+import { formatSigned, formatSignedMoney, t, useDisplayCurrency } from "@pewterdesk/ui";
 import { LuFlaskConical } from "react-icons/lu";
 
 interface PaperBannerProps {
@@ -31,6 +31,7 @@ export function PaperBanner({
   onFunds,
   onLive,
 }: PaperBannerProps) {
+  useDisplayCurrency();
   const pnl = (snapshot ? Number(snapshot.equity) : start) - start;
   return (
     <div className="app-banner paper-banner" role="status">
@@ -43,7 +44,7 @@ export function PaperBanner({
         <div>
           <dt>{t("paper.pnl")}</dt>
           <dd className="pd-num" data-trend={pnl > 0 ? "up" : pnl < 0 ? "down" : undefined}>
-            {`${formatSigned(pnl)} ${quote} · ${formatSigned((pnl / (start || 1)) * 100)}%`}
+            {`${formatSignedMoney(pnl, ` ${quote}`)} · ${formatSigned((pnl / (start || 1)) * 100)}%`}
           </dd>
         </div>
       </dl>

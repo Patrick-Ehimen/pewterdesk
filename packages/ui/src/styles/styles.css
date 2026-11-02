@@ -1835,6 +1835,149 @@ input {
   place-items: center;
   background: var(--pd-chart-bg, var(--pd-surface));
 }
+/* The chart's currency, on the price axis */
+.pd-chart-currency {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 5;
+}
+.pd-chart-currency-button {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  color: var(--pd-text);
+  font: 12px var(--pd-font-mono);
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pd-chart-currency-button:hover {
+  border-color: var(--pd-pewter-dim);
+}
+.pd-chart-currency-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  width: 260px;
+  max-height: 380px;
+  color: var(--pd-text);
+  background: var(--pd-surface-raised);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+}
+.pd-chart-currency-head {
+  margin: 0;
+  padding: 12px 14px 6px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pd-chart-currency-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 10px;
+  color: var(--pd-pewter);
+  border-bottom: 1px solid var(--pd-border);
+}
+.pd-chart-currency-search input {
+  flex: 1;
+  min-width: 0;
+  color: var(--pd-text);
+  background: none;
+  border: 0;
+  outline: none;
+}
+.pd-chart-currency-search input:focus-visible {
+  box-shadow: none;
+}
+.pd-chart-currency-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  overflow-y: auto;
+}
+.pd-chart-currency-row {
+  display: grid;
+  grid-template-columns: 26px 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 14px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.pd-chart-currency-row:hover {
+  background: var(--pd-surface);
+}
+.pd-chart-currency-row[aria-current="true"] {
+  color: var(--pd-brass-text);
+  background: color-mix(in srgb, var(--pd-brass) 14%, transparent);
+}
+.pd-chart-currency-picked {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+}
+.pd-chart-currency-whole {
+  grid-column: 2 / -1;
+}
+/* In a form, not on a chart */
+.pd-chart-currency[data-field] {
+  position: relative;
+  top: auto;
+  right: auto;
+  z-index: 3;
+  width: min(320px, 100%);
+}
+.pd-chart-currency[data-field] .pd-chart-currency-button {
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  font: 14px var(--pd-font-sans);
+  border-radius: 6px;
+}
+.pd-chart-currency[data-field] .pd-chart-currency-menu {
+  right: auto;
+  left: 0;
+  width: 100%;
+  min-width: 260px;
+}
+.pd-chart-currency-flag {
+  font-size: 17px;
+  text-align: center;
+}
+.pd-chart-currency-code {
+  font-weight: 600;
+}
+.pd-chart-currency-name {
+  color: var(--pd-pewter);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Economic releases at their times; only the badges take the pointer */
 .pd-chart-news-badges {
   position: absolute;

@@ -149,6 +149,12 @@ export const messages: Messages = {
     "Rien ne s’affiche ? Autorisez les notifications de PewterDesk dans Réglages Système > Notifications (de Terminal, avec la version de développement) et vérifiez qu’aucun mode de concentration n’est actif.",
   "notify.testFailed": "Le test n’a pas pu être envoyé",
   "notify.testFailedHelp": "Les notifications de bureau ne sont pas disponibles ici.",
+  "settings.currency": "Devise de l'application",
+  "settings.currencyHelp":
+    "Affiche les soldes, le P&L et les valeurs du compte dans cette devise, à un taux d'environ un jour : les montants sont marqués ≈. Les prix, le carnet et le ticket restent dans la devise de la plateforme, et les ordres sont toujours passés dans celle-ci.",
+  "settings.currencyOwn": "La devise de la plateforme",
+  "settings.currencyFailed":
+    "Les taux de change n'ont pas pu être lus : les montants restent dans la devise de la plateforme pour l'instant.",
   "settings.notifications": "Notifications de bureau",
   "settings.notificationsHelp":
     "Les exécutions, changements de position, alertes et avertissements de liquidation s'affichent en notifications système quand PewterDesk n'est pas au premier plan.",
@@ -610,6 +616,11 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "Profil de volume par séance",
   "chart.type.tpo": "Time Price Opportunity (TPO)",
   "chart.replay": "Relecture des barres",
+  "chart.currency": "Devise du graphique",
+  "chart.currencies": "Devises",
+  "chart.currencySearch": "Rechercher",
+  "chart.currencyOwn": "Celle du marché",
+  "chart.currencyFailed": "Les taux de change n'ont pas pu être lus : le graphique reste tel quel.",
   "chart.news": "Actualités économiques",
   "chart.newsClose": "Fermer",
   "chart.newsCount": "{count} publications",

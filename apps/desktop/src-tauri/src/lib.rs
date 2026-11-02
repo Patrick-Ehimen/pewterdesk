@@ -13,6 +13,7 @@ mod coin_info;
 mod daemon;
 mod econ_calendar;
 mod float;
+mod fx_rates;
 mod keychain;
 mod keychain_notice;
 mod live_trading;
@@ -75,6 +76,7 @@ pub fn run() {
             econ_calendar::CalendarState::new(env!("CARGO_PKG_VERSION"))
                 .expect("failed to set up the calendar client"),
         )
+        .manage(fx_rates::FxState::new().expect("failed to set up the exchange rate client"))
         .manage(news_wire::NewsWireState::new().expect("failed to set up the news wire client"))
         .manage(ai_assistant::AiState::new().expect("failed to set up the AI client"))
         .manage(wallet::Onboarding::default())
@@ -254,6 +256,8 @@ pub fn run() {
             news_feeds::news_feed,
             news_feeds::open_news_article,
             econ_calendar::economic_calendar,
+            fx_rates::fx_latest,
+            fx_rates::fx_history,
             news_wire::subscribe_news_wire,
             news_wire::set_news_key,
             news_wire::news_keys,

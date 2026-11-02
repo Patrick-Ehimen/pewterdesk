@@ -3,6 +3,7 @@ import type { AccountSnapshot, VenueId } from "@pewterdesk/core";
 import {
   accountTotals,
   EmptyState,
+  formatDollars,
   formatNumber,
   formatPercent,
   formatSigned,
@@ -12,6 +13,7 @@ import {
   Tooltip,
   t,
   trendClass,
+  useDisplayCurrency,
 } from "@pewterdesk/ui";
 import {
   type KeyboardEvent,
@@ -46,9 +48,8 @@ import { accountId, accountName } from "../wallet/AccountList";
 // anything scrolls. Reads each account's own feed (the one the account
 // panels use); places nothing.
 
-const usd = (n: number) => `${n < 0 ? "-" : ""}$${formatNumber(Math.abs(n), 2)}`;
-const signedUsd = (n: number) =>
-  `${n > 0 ? "+" : n < 0 ? "-" : ""}$${formatNumber(Math.abs(n), 2)}`;
+const usd = (n: number) => formatDollars(n);
+const signedUsd = (n: number) => formatDollars(n, true);
 
 type Feed = { snapshot?: AccountSnapshot; error?: string };
 
@@ -331,6 +332,7 @@ export function BalancesPanel({
   /** Shows the account on the Trade page. */
   onOpen: (account: VenueAccount) => void;
 }) {
+  useDisplayCurrency();
   const venueList = venues.join(",");
   // biome-ignore lint/correctness/useExhaustiveDependencies: `venueList` is `venues`, by value
   const listed = useMemo(() => balanceAccounts(accounts, venues), [accounts, venueList]);

@@ -65,6 +65,7 @@ import {
 } from "../../lib/aiChats";
 import { blocksOf, type Span } from "../../lib/aiText";
 import { venueBarSource } from "../../lib/barSource";
+import { chartFx } from "../../lib/fxRates";
 import { LoadingMark } from "../Splash";
 
 const MODES: readonly ChatMode[] = ["chat", "chart"];
@@ -1087,6 +1088,7 @@ function ChartView({
             onInterval={onInterval}
             analysis={analysis}
             news={chartNews}
+            fx={chartFx}
             loading={
               <div className="chart-loader" role="status" aria-label={t("chart.loading")}>
                 <LoadingMark size={56} />

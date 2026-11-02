@@ -166,6 +166,7 @@ import {
 } from "./lib/account";
 import { accountEvents } from "./lib/accountEvents";
 import type { AlgoTarget } from "./lib/algos";
+import { startAppCurrency } from "./lib/appCurrency";
 import { FEED_TIMEOUT_MS } from "./lib/feedActivity";
 import {
   liquidationDistance,
@@ -797,6 +798,7 @@ export function App() {
       order.price ? ` @ ${formatNumber(order.price)}` : ""
     }`;
   const appearance = useAppearance();
+  useEffect(startAppCurrency, []);
   const themeTransition = useThemeTransition(appearance.setTheme);
   // First-run setup, until it's done; it also picks which venues show.
   const [setup, setSetup] = useState(loadOnboarding);

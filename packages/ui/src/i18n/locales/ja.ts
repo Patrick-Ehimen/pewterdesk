@@ -148,6 +148,11 @@ export const messages: Messages = {
     "表示されない場合は、システム設定 > 通知でPewterDesk（開発版の場合はターミナル）の通知を許可し、集中モードがオフか確認してください。",
   "notify.testFailed": "テストを送信できませんでした",
   "notify.testFailedHelp": "ここではデスクトップ通知を利用できません。",
+  "settings.currency": "アプリの通貨",
+  "settings.currencyHelp":
+    "残高、損益、口座の価値をこの通貨で表示します。レートは約1日前のものなので、数値には≈が付きます。価格、板、注文チケットは取引所の通貨のままで、注文は常にその通貨で行われます。",
+  "settings.currencyOwn": "取引所の通貨",
+  "settings.currencyFailed": "為替レートを読み込めなかったため、当面は取引所の通貨で表示します。",
   "settings.notifications": "デスクトップ通知",
   "settings.notificationsHelp":
     "PewterDesk が最前面でないとき、約定・ポジションの変化・アラート・清算警告をシステム通知で表示します。",
@@ -599,6 +604,11 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "セッション出来高プロファイル",
   "chart.type.tpo": "TPO（タイム・プライス・オポチュニティ）",
   "chart.replay": "バーリプレイ",
+  "chart.currency": "チャートの通貨",
+  "chart.currencies": "通貨",
+  "chart.currencySearch": "検索",
+  "chart.currencyOwn": "市場の通貨",
+  "chart.currencyFailed": "為替レートを読み込めなかったため、チャートはそのままです。",
   "chart.news": "経済ニュース",
   "chart.newsClose": "閉じる",
   "chart.newsCount": "{count}件の発表",

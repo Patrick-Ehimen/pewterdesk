@@ -155,6 +155,12 @@ export const en = {
     "No banner? Allow notifications for PewterDesk in System Settings > Notifications (for Terminal, when running the development build), and check that no Focus mode is on.",
   "notify.testFailed": "The test couldn't be sent",
   "notify.testFailedHelp": "Desktop notifications aren't available here.",
+  "settings.currency": "App currency",
+  "settings.currencyHelp":
+    "Show balances, P&L and account values in this currency, at a rate about a day old, so figures are marked ≈. Prices, the order book and the order ticket stay in the venue's own currency, and orders are always placed in it.",
+  "settings.currencyOwn": "The venue's own currency",
+  "settings.currencyFailed":
+    "Exchange rates couldn't be read, so money stays in the venue's own currency for now.",
   "settings.notifications": "Desktop notifications",
   "settings.notificationsHelp":
     "Fills, position changes, alerts and liquidation warnings show as system notifications while PewterDesk isn't the app in front.",
@@ -612,6 +618,11 @@ export const en = {
   "chart.type.sessionProfile": "Session volume profile",
   "chart.type.tpo": "Time price opportunity",
   "chart.replay": "Bar replay",
+  "chart.currency": "Chart currency",
+  "chart.currencies": "Currencies",
+  "chart.currencySearch": "Search",
+  "chart.currencyOwn": "The market's own",
+  "chart.currencyFailed": "Exchange rates couldn't be read, so the chart stays as it was.",
   "chart.news": "Economic news",
   "chart.newsClose": "Close",
   "chart.newsCount": "{count} releases",

@@ -10,6 +10,7 @@ import type {
 import { useState } from "react";
 import { LuPencil, LuSquareArrowOutUpRight } from "react-icons/lu";
 import { dateFormat, type MessageKey, t } from "../../i18n";
+import { formatMoney, formatSignedMoney, useDisplayCurrency } from "../../lib/displayCurrency";
 import { formatNumber, formatPercent, formatSigned, trendClass } from "../../lib/format";
 import { heldParts } from "../../lib/positionDetail";
 import { toastError } from "../../lib/toasts";
@@ -61,6 +62,7 @@ export function PositionsTable({
   /** Changes a position's TP, SL or trailing stop; unset where it can't be (no edit buttons then). */
   onProtect?: (position: Position, protection: PositionProtection) => Promise<void>;
 }) {
+  useDisplayCurrency();
   const [editing, setEditing] = useState<{ kind: "tpsl" | "trail"; position: Position }>();
   if (positions.length === 0) return <EmptyState>{t("positions.empty")}</EmptyState>;
   const coin = (market: string) => {
@@ -137,8 +139,7 @@ export function PositionsTable({
                   {baseFor && ` ${baseFor(p.market)}`}
                 </td>
                 <td className="pd-num">
-                  {formatNumber(Number(p.size) * Number(p.markPrice), 2)}
-                  {coin(p.market)}
+                  {formatMoney(Number(p.size) * Number(p.markPrice), coin(p.market))}
                 </td>
                 <td className="pd-num">{positionPrice(p.entryPrice)}</td>
                 <td className="pd-num">{formatNumber(p.markPrice)}</td>
@@ -157,9 +158,9 @@ export function PositionsTable({
                   }
                 />
                 <td className={`pd-num ${realized === undefined ? "" : trendClass(realized)}`}>
-                  {realized === undefined ? "-" : `${formatSigned(realized)}${coin(p.market)}`}
+                  {realized === undefined ? "-" : formatSignedMoney(realized, coin(p.market))}
                 </td>
-                <td className="pd-num">{formatNumber(margin, 2)}</td>
+                <td className="pd-num">{formatMoney(margin)}</td>
                 <td className="pd-num pd-tpsl">
                   {/* TP over SL, in the market colors: what it would make, what it would lose. */}
                   <span className="pd-tpsl-pair">
@@ -318,6 +319,7 @@ const buying = (f: Fill) => f.side === "buy";
 
 /** The account's fills, newest first: what each did, at what price, and what it cost or made. */
 export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolFor: SymbolFor }) {
+  useDisplayCurrency();
   if (fills.length === 0) return <EmptyState>{t("history.fillsEmpty")}</EmptyState>;
   return (
     <table className="pd-table pd-positions">
@@ -347,12 +349,12 @@ export function TradeHistoryTable({ fills, symbolFor }: { fills: Fill[]; symbolF
               </td>
               <td className="pd-num">{formatNumber(f.price)}</td>
               <td className="pd-num">{formatNumber(f.size)}</td>
-              <td className="pd-num">{formatNumber(Number(f.price) * Number(f.size), 2)}</td>
+              <td className="pd-num">{formatMoney(Number(f.price) * Number(f.size))}</td>
               <td className="pd-num pd-muted">
                 {formatNumber(f.fee)} {f.feeAsset}
               </td>
               <td className={`pd-num ${pnl === 0 ? "pd-muted" : trendClass(pnl)}`}>
-                {pnl === 0 ? "-" : formatSigned(pnl)}
+                {pnl === 0 ? "-" : formatSignedMoney(pnl)}
               </td>
             </tr>
           );
@@ -370,6 +372,7 @@ export function FundingHistoryTable({
   payments: FundingPayment[];
   symbolFor: SymbolFor;
 }) {
+  useDisplayCurrency();
   if (payments.length === 0) return <EmptyState>{t("history.fundingEmpty")}</EmptyState>;
   return (
     <table className="pd-table pd-positions">
@@ -396,7 +399,7 @@ export function FundingHistoryTable({
               </td>
               <td className="pd-num">{formatNumber(Math.abs(size))}</td>
               <td className="pd-num">{formatSigned(Number(p.rate) * 100, 4)}%</td>
-              <td className={`pd-num ${trendClass(amount)}`}>{formatSigned(amount, 4)}</td>
+              <td className={`pd-num ${trendClass(amount)}`}>{formatSignedMoney(amount, "", 4)}</td>
             </tr>
           );
         })}
@@ -428,14 +431,12 @@ function PnlCell({
   coin: string;
   share?: { label: string; onClick: () => void };
 }) {
+  useDisplayCurrency();
   return (
     <td className={`pd-num ${trendClass(pnl)}`}>
       <span className="pd-pnl-with-share">
         <span className="pd-pnl-stack">
-          <span>
-            {formatNumber(pnl, 2)}
-            {coin}
-          </span>
+          <span>{formatMoney(pnl, coin)}</span>
           {roi !== undefined && <span>({formatNumber(roi, 2)}%)</span>}
         </span>
         {share && (
@@ -496,6 +497,7 @@ export function ClosedTradesTable({
    */
   estimated?: ReadonlySet<ClosedTrade>;
 }) {
+  useDisplayCurrency();
   if (trades.length === 0) return <EmptyState>{t("closed.empty")}</EmptyState>;
   const coin = (fn: ((m: string) => string) | undefined, market: string) =>
     fn ? ` ${fn(market)}` : "";
@@ -549,9 +551,7 @@ export function ClosedTradesTable({
                 {c.leverage ? `${formatNumber(c.leverage)}x` : "-"}
               </td>
               <td className="pd-num">
-                {c.leverage
-                  ? `${formatNumber(closedMargin(c), 2)}${coin(quoteFor, c.market)}`
-                  : "-"}
+                {c.leverage ? formatMoney(closedMargin(c), coin(quoteFor, c.market)) : "-"}
               </td>
               <td className="pd-num">{heldText(c) ?? "-"}</td>
               <td className="pd-muted">{dateFormat(TIME).format(c.time)}</td>

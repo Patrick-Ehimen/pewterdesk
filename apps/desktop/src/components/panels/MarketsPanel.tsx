@@ -42,6 +42,7 @@ import {
   saveChartPrefs,
   toggled,
 } from "../../lib/chartPrefs";
+import { chartFx } from "../../lib/fxRates";
 import { loadViewPrefs, saveViewPrefs, spanFraction, type ViewPrefs } from "../../lib/viewPrefs";
 import type { ExpandMode } from "../../lib/workspace";
 import { FeedView } from "../FeedView";
@@ -335,6 +336,7 @@ export function MarketsPanel({
                     orders={views.chart.levels ? orders : undefined}
                     fills={views.chart.fills ? marketFills : undefined}
                     news={views.chart.news ? chartNews : undefined}
+                    fx={chartFx}
                     onMoveExit={views.chart.levels ? moveExit : undefined}
                     tools={filling ? panelTools : undefined}
                     loading={

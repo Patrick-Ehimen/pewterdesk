@@ -158,6 +158,7 @@ export {
   ratioLevel,
 } from "./components/trading/AccountSummary";
 export { type AlertDraft, AlertsPopover, firedAlertText } from "./components/trading/AlertsPopover";
+export { ChartCurrency } from "./components/trading/ChartCurrency";
 export { ChartToolbar } from "./components/trading/ChartToolbar";
 export {
   BAND,
@@ -286,6 +287,14 @@ export {
   type Wall,
 } from "./lib/depth";
 export {
+  type DisplayCurrency,
+  formatDollars,
+  formatMoney,
+  formatSignedMoney,
+  setDisplayCurrency,
+  useDisplayCurrency,
+} from "./lib/displayCurrency";
+export {
   decimalsOf,
   formatCompact,
   formatNumber,
@@ -327,7 +336,7 @@ export type {
   BarSource,
   ChartAnalysis,
 } from "./lib/openAlgoChart";
-export { analysisDrawings, type ChartNewsEvent } from "./lib/openAlgoChart";
+export { analysisDrawings, type ChartNewsEvent, type FxSource } from "./lib/openAlgoChart";
 export {
   closeOrder,
   intervalFor,

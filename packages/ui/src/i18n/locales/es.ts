@@ -149,6 +149,12 @@ export const messages: Messages = {
     "¿No aparece? Permite las notificaciones de PewterDesk en Ajustes del Sistema > Notificaciones (de Terminal, si usas la versión de desarrollo) y comprueba que no haya un modo de concentración activo.",
   "notify.testFailed": "No se pudo enviar la prueba",
   "notify.testFailedHelp": "Las notificaciones de escritorio no están disponibles aquí.",
+  "settings.currency": "Moneda de la aplicación",
+  "settings.currencyHelp":
+    "Muestra saldos, P&L y valores de la cuenta en esta moneda, a un tipo de cambio de hace un día aproximadamente, por lo que las cifras llevan ≈. Los precios, el libro y el ticket siguen en la moneda del exchange, y las órdenes siempre se colocan en ella.",
+  "settings.currencyOwn": "La moneda del exchange",
+  "settings.currencyFailed":
+    "No se pudieron leer los tipos de cambio, así que los importes siguen en la moneda del exchange por ahora.",
   "settings.notifications": "Notificaciones de escritorio",
   "settings.notificationsHelp":
     "Las ejecuciones, cambios de posición, alertas y avisos de liquidación se muestran como notificaciones del sistema cuando PewterDesk no está en primer plano.",
@@ -607,6 +613,12 @@ export const messages: Messages = {
   "chart.type.sessionProfile": "Perfil de volumen por sesión",
   "chart.type.tpo": "Time Price Opportunity (TPO)",
   "chart.replay": "Repetición de barras",
+  "chart.currency": "Moneda del gráfico",
+  "chart.currencies": "Monedas",
+  "chart.currencySearch": "Buscar",
+  "chart.currencyOwn": "La del mercado",
+  "chart.currencyFailed":
+    "No se pudieron leer los tipos de cambio, así que el gráfico sigue igual.",
   "chart.news": "Noticias económicas",
   "chart.newsClose": "Cerrar",
   "chart.newsCount": "{count} publicaciones",
