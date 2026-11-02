@@ -860,6 +860,25 @@ filled in (`checkRules` on `OrderTicket`, for a live or demo account with
 rules on, never a paper one) and shows what would refuse it, or only warn,
 before it's sent; Rust's own check in `place_order` still decides.
 
+## Screener
+
+A page (`screener`; `components/pages/ScreenerPage.tsx`, `lib/screens.ts` in
+`packages/ui` and in the app): one venue's markets (the one on screen to
+start, switchable) in a table of the columns the trader picks - price,
+changes, volume, OI, funding, RSI, ADX and regime, volatility, VWAP and EMA
+stretch, nearest key level, place in the 7-day range, %B, RSI divergence,
+a technical rating (`techRating`: moving averages and oscillators on the
+hourly candles, each a vote, Strong sell to Strong buy; a reading, not a
+forecast) -
+kept to those that pass every filter (a column above, below or between
+values, or in a state), sorted by any column. Screens are saved on this
+machine (`pd.screens`, the one on screen under `pd.screener.current`), and
+eleven presets come with it. All of it is arithmetic over each market's
+summary and its last week of hourly candles (`useMarketHistories`, as Maps
+reads them); no new source. A row opens the market on the Trade page, its
+star stars it, and what passes can be saved as a watchlist. It places
+nothing.
+
 ## Command palette
 
 Cmd+K (Ctrl+K off macOS) or the header's search button opens it

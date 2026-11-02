@@ -99,6 +99,7 @@ import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
 import { PortfolioPage } from "./components/pages/PortfolioPage";
+import { ScreenerPage } from "./components/pages/ScreenerPage";
 import { TradingRulesPage } from "./components/pages/TradingRulesPage";
 import { VenuesPage } from "./components/pages/VenuesPage";
 import { AccountPanel, AccountViewSwitch } from "./components/panels/AccountPanel";
@@ -2041,6 +2042,15 @@ export function App() {
             onProtect={from("multichart").protect}
             onOrder={marketOrder && ((m, side, size) => marketOrder(m, side, size, "multichart"))}
             tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
+          />
+        ) : page === "screener" ? (
+          <ScreenerPage
+            venue={venue}
+            venues={venueChips}
+            onTrade={(v, id) => {
+              showMarket(v, id);
+              setPage("trade");
+            }}
           />
         ) : page === "maps" ? (
           <MapsPage

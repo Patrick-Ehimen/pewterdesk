@@ -31,6 +31,7 @@ import {
   LuClock,
   LuLayoutDashboard,
   LuLayoutGrid,
+  LuListFilter,
   LuMap,
   LuNewspaper,
   LuPalette,
@@ -67,6 +68,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   venues: "nav.venues",
   news: "nav.news",
   maps: "nav.maps",
+  screener: "nav.screener",
   ai: "nav.ai",
   settings: "settings.title",
 };
@@ -75,6 +77,7 @@ const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = 
   trade: { icon: <LuChartCandlestick size={17} />, tone: "brass" },
   charts: { icon: <LuLayoutDashboard size={17} />, tone: "info" },
   maps: { icon: <LuMap size={17} />, tone: "warning" },
+  screener: { icon: <LuListFilter size={17} />, tone: "info" },
   portfolio: { icon: <LuChartPie size={17} />, tone: "brass" },
   rules: { icon: <LuShieldCheck size={17} />, tone: "info" },
   venues: { icon: <LuStore size={17} />, tone: "warning" },
