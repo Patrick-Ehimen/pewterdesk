@@ -416,6 +416,13 @@ export {
   formatCardPrice,
   type ShareCard,
 } from "./lib/shareCard";
+export {
+  type MaIndicator,
+  type OscIndicator,
+  type TechBreakdown,
+  techBreakdown,
+  techScores,
+} from "./lib/technicals";
 export { sizeFromPercent, ticketOrder } from "./lib/ticket";
 export {
   clearToasts,

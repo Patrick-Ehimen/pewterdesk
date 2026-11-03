@@ -1,9 +1,9 @@
 import type { Candle, Market, MarketSummary } from "@pewterdesk/core";
-import { ema, macd, sma } from "./indicators";
 import type { DivergenceKind, RegimeKind } from "./mapScans";
 import { divergence, levelsRead, regimeRead, stretchRead, volRank } from "./mapScans";
 import { atrShare, bandRead, changeSince, closesEvery, rangePlace, realisedVol } from "./mapStats";
 import { fundingApr, rsi } from "./screener";
+import { techBreakdown, techScores, type Vote } from "./technicals";
 
 // The Screener page: a table of a venue's markets with the columns and
 // filters the trader picks, from data the app already reads (each market's
@@ -262,12 +262,15 @@ export function screenColumns(screen: Screen): ScreenColumn[] {
 
 const isCrypto = (m: Market) => !m.category || m.category === "innovation";
 
+/** Whether a market is in a screen's scope: crypto only, or everything. */
+export const inScope = (m: Market, scope: ScreenScope) => scope === "all" || isCrypto(m);
+
 /** The rows that pass every filter, in the screen's order (unknowns last). */
 export function runScreen(screen: Screen, inputs: readonly ScreenInput[]): ScreenRow[] {
   const columns = screenColumns(screen);
   const rows: ScreenRow[] = [];
   for (const input of inputs) {
-    if (screen.scope === "crypto" && !isCrypto(input.market)) continue;
+    if (!inScope(input.market, screen.scope)) continue;
     const values: ScreenRow["values"] = {};
     for (const c of columns) values[c] = screenValue(c, input);
     if (screen.filters.every((f) => passesFilter(f, values[f.column]))) {
@@ -434,101 +437,49 @@ export function screenFrom(v: unknown): Screen | undefined {
   };
 }
 
-/** Each indicator's say: 1 buy, -1 sell, 0 neither. */
-type Vote = 1 | -1 | 0;
-
-const mean = (votes: readonly Vote[]) =>
-  votes.length === 0 ? undefined : votes.reduce<number>((a, b) => a + b, 0) / votes.length;
-
-/** Stochastic %K over `period` bars, smoothed over `smooth`, with its %D. */
-function stochastic(highs: number[], lows: number[], closes: number[], period = 14, smooth = 3) {
-  const raw: number[] = [];
-  for (let i = period - 1; i < closes.length; i++) {
-    const hi = Math.max(...highs.slice(i - period + 1, i + 1));
-    const lo = Math.min(...lows.slice(i - period + 1, i + 1));
-    raw.push(hi > lo ? (((closes[i] as number) - lo) / (hi - lo)) * 100 : 50);
-  }
-  const k = sma(raw, smooth).filter((v): v is number => v !== undefined);
-  const d = sma(k, smooth).filter((v): v is number => v !== undefined);
-  return { k, d };
-}
-
-/** Commodity channel index over `period` bars: its last two readings. */
-function cci(highs: number[], lows: number[], closes: number[], period = 20): number[] {
-  const typical = closes.map((c, i) => ((highs[i] as number) + (lows[i] as number) + c) / 3);
-  const out: number[] = [];
-  for (let i = typical.length - 2; i < typical.length; i++) {
-    const window = typical.slice(i - period + 1, i + 1);
-    if (window.length < period) return [];
-    const avg = window.reduce((a, b) => a + b, 0) / period;
-    const dev = window.reduce((a, b) => a + Math.abs(b - avg), 0) / period;
-    out.push(dev > 0 ? ((typical[i] as number) - avg) / (0.015 * dev) : 0);
-  }
-  return out;
-}
-
 export interface TechRating {
-  /** Price against ten moving averages. */
+  /** Price against fifteen moving averages. */
   ma: number;
-  /** Five oscillators, each at an extreme and turning, or crossing. */
+  /** Eleven oscillators, each at an extreme and turning, or crossing. */
   osc: number;
   /** The two together. */
   all: number;
 }
 
-/** Candles a rating needs: the longest moving average's, and a little more. */
+/** Candles a rating needs: the 100 averages', and a little more. */
 const RATING_CANDLES = 101;
 
 /**
- * A technical rating from hourly candles: moving averages (the price above
- * or below the simple and exponential 10, 20, 30, 50 and 100) and
- * oscillators (RSI, MACD, stochastic, CCI, momentum), each a vote, averaged
- * per group and then together. Scores from -1 to 1; `ratingOf` names them.
- * A reading of where the indicators stand, not a forecast.
+ * A technical rating: TradingView's, the one Bybit's coin pages show
+ * (`technicals.ts`), on whatever candles it's given. Fifteen moving averages
+ * and eleven oscillators, each a vote, averaged per group and then together;
+ * one without enough candles casts none. Scores from -1 to 1; `ratingOf`
+ * names them. A reading of where the indicators stand, not a forecast.
  */
 export function techRating(candles: readonly Candle[]): TechRating | undefined {
   if (candles.length < RATING_CANDLES) return undefined;
-  const closes = candles.map((c) => Number(c.close));
-  const highs = candles.map((c) => Number(c.high));
-  const lows = candles.map((c) => Number(c.low));
-  const price = closes.at(-1) as number;
+  return techScores(techBreakdown(candles));
+}
 
-  const maVotes: Vote[] = [];
-  for (const period of [10, 20, 30, 50, 100]) {
-    for (const line of [sma(closes, period), ema(closes, period)]) {
-      const v = line.at(-1);
-      if (v !== undefined) maVotes.push(price > v ? 1 : price < v ? -1 : 0);
-    }
-  }
+/** How a rating's indicators voted, counted: the gauge's Sell, Neutral and Buy. */
+export interface TechVotes {
+  sell: number;
+  neutral: number;
+  buy: number;
+}
 
-  const osc: Vote[] = [];
-  const rsiNow = rsi(closes);
-  const rsiBefore = rsi(closes.slice(0, -1));
-  if (rsiNow !== undefined && rsiBefore !== undefined) {
-    osc.push(rsiNow < 30 && rsiNow > rsiBefore ? 1 : rsiNow > 70 && rsiNow < rsiBefore ? -1 : 0);
-  }
-  const m = macd(closes, 12, 26, 9).at(-1);
-  if (m?.macd !== undefined && m.signal !== undefined) {
-    osc.push(m.macd > m.signal ? 1 : m.macd < m.signal ? -1 : 0);
-  }
-  const { k, d } = stochastic(highs, lows, closes);
-  const kNow = k.at(-1);
-  const dNow = d.at(-1);
-  if (kNow !== undefined && dNow !== undefined) {
-    osc.push(kNow < 20 && kNow > dNow ? 1 : kNow > 80 && kNow < dNow ? -1 : 0);
-  }
-  const ccis = cci(highs, lows, closes);
-  if (ccis.length === 2) {
-    const [before, now] = ccis as [number, number];
-    osc.push(now < -100 && now > before ? 1 : now > 100 && now < before ? -1 : 0);
-  }
-  const momentum = (at: number) => (closes[at] as number) - (closes[at - 10] as number);
-  const last = closes.length - 1;
-  const [momNow, momBefore] = [momentum(last), momentum(last - 1)];
-  osc.push(momNow > momBefore ? 1 : momNow < momBefore ? -1 : 0);
+/** Votes counted: every indicator once, or one group's. */
+export function countVotes(votes: readonly Vote[]): TechVotes {
+  return {
+    sell: votes.filter((v) => v === -1).length,
+    neutral: votes.filter((v) => v === 0).length,
+    buy: votes.filter((v) => v === 1).length,
+  };
+}
 
-  const ma = mean(maVotes);
-  const os = mean(osc);
-  if (ma === undefined || os === undefined) return undefined;
-  return { ma, osc: os, all: (ma + os) / 2 };
+/** The votes behind `techRating`, every indicator counted once. */
+export function techVotes(candles: readonly Candle[]): TechVotes | undefined {
+  if (candles.length < RATING_CANDLES) return undefined;
+  const { ma, osc } = techBreakdown(candles);
+  return countVotes([...Object.values(ma), ...Object.values(osc)]);
 }

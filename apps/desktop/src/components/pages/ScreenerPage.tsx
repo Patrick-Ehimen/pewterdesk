@@ -5,6 +5,7 @@ import {
   formatCompact,
   formatNumber,
   formatSigned,
+  inScope,
   isPreset,
   MapSeg,
   type MessageKey,
@@ -44,14 +45,21 @@ import {
   LuChevronUp,
   LuColumns3,
   LuPlus,
+  LuSearch,
   LuX,
 } from "react-icons/lu";
 import { useMarketHistories } from "../../hooks/useMapData";
 import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { useWatchlist, watchKey } from "../../hooks/useWatchlist";
+import { dayChanges } from "../../lib/marketMovers";
 import { keepCurrent, keepSaved, loadCurrent, loadSaved, MAX_SAVED } from "../../lib/screens";
+import { matchesSearch } from "../../lib/tokenDetails";
 import { useLists } from "../../lib/watchlists";
 import { LoadingMark } from "../Splash";
+import { TopMovers, TrendDistribution } from "../screener/MarketMovers";
+import { MarketSentiment } from "../screener/MarketSentiment";
+import { TokenDetails } from "../screener/TokenDetails";
+import { TrendingSectors } from "../screener/TrendingSectors";
 
 const SCOPES: readonly ScreenScope[] = ["crypto", "all"];
 /** Rows drawn at most: a venue lists a few hundred markets. */
@@ -172,7 +180,27 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
     [markets, summaryById, histories, now],
   );
   const rows = useMemo(() => runScreen(screen, inputs), [screen, inputs]);
-  const shown = rows.slice(0, ROWS_MAX);
+  // Ranked in the screen's order, then searched: a market keeps its number.
+  const [query, setQuery] = useState("");
+  const found = useMemo(
+    () =>
+      rows
+        .map((row, i) => ({ ...row, rank: i + 1 }))
+        .filter((row) => matchesSearch(row.market, query)),
+    [rows, query],
+  );
+  const shown = found.slice(0, ROWS_MAX);
+  const [details, setDetails] = useState<string>();
+  // The day's moves, in the screen's scope (crypto only, or everything).
+  const changes = useMemo(
+    () =>
+      dayChanges(
+        (markets ?? []).filter((m) => inScope(m, screen.scope)),
+        summaryById,
+      ),
+    [markets, summaryById, screen.scope],
+  );
+  const detailed = details ? markets?.find((m) => m.id === details) : undefined;
   const progress = {
     done: (markets ?? []).filter((m) => histories.has(m.id)).length,
     total: markets?.length ?? 0,
@@ -275,6 +303,13 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
         />
       </header>
 
+      <div className="screener-cards">
+        <MarketSentiment />
+        <TrendingSectors markets={markets ?? []} onOpen={setDetails} />
+        <TopMovers changes={changes} loading={waiting} onOpen={setDetails} />
+        <TrendDistribution changes={changes} loading={waiting} />
+      </div>
+
       <div className="screener-bar">
         <ul className="screener-filters" aria-label={t("screens.filters")}>
           {screen.filters.map((f, i) => (
@@ -301,7 +336,18 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
       <section className="screener-body">
         <ScanActionsContext.Provider value={actions}>
           <div className="screener-meta">
-            <span className="pd-num">{t("screens.count", { count: rows.length })}</span>
+            <label className="screener-search">
+              <LuSearch size={14} aria-hidden />
+              <input
+                type="search"
+                value={query}
+                placeholder={t("screens.search")}
+                aria-label={t("screens.search")}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+              />
+            </label>
+            <span className="pd-num">{t("screens.count", { count: found.length })}</span>
             {filling && (
               <span className="pd-muted pd-num">
                 {t("screens.filling", { done: progress.done, total: progress.total })}
@@ -315,13 +361,20 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
               <LoadingMark size={44} />
             </div>
           ) : shown.length === 0 ? (
-            <EmptyState>{t(filling ? "screens.waiting" : "screens.none")}</EmptyState>
+            <EmptyState>
+              {query.trim() && rows.length > 0
+                ? t("screens.noMatch", { query: query.trim() })
+                : t(filling ? "screens.waiting" : "screens.none")}
+            </EmptyState>
           ) : (
             <div className="screener-scroll">
               <table className="screener-table">
                 <thead>
                   <tr>
                     <th aria-label={t("screens.star")} />
+                    <th className="screener-rank" title={t("screens.rank")}>
+                      #
+                    </th>
                     <th>{t("screens.market")}</th>
                     {screen.columns.map((c) => (
                       <th
@@ -348,8 +401,8 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.map(({ market, values }) => (
-                    <tr key={market.id} onClick={() => onTrade(venue, market.id)}>
+                  {shown.map(({ market, values, rank }) => (
+                    <tr key={market.id} onClick={() => setDetails(market.id)}>
                       {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star is its own button */}
                       <td onClick={(e) => e.stopPropagation()}>
                         <StarButton
@@ -359,18 +412,27 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
                           onToggle={() => watch.toggle(market.id)}
                         />
                       </td>
+                      <td className="screener-rank pd-num pd-muted">{rank}</td>
                       <td>
                         <button
                           type="button"
                           className="screener-market"
-                          title={t("screens.open")}
+                          title={t("screens.details")}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onTrade(venue, market.id);
+                            setDetails(market.id);
                           }}
                         >
                           <TokenIcon market={market} />
                           <span>{market.symbol}</span>
+                          {market.maxLeverage > 0 && (
+                            <span
+                              className="screener-lev"
+                              title={t("screens.leverage", { value: market.maxLeverage })}
+                            >
+                              {market.maxLeverage}x
+                            </span>
+                          )}
                         </button>
                       </td>
                       {screen.columns.map((c) => {
@@ -399,6 +461,19 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
           )}
         </ScanActionsContext.Provider>
       </section>
+
+      {detailed && (
+        <TokenDetails
+          key={detailed.id}
+          market={detailed}
+          venue={venue}
+          summary={summaryById.get(detailed.id)}
+          starred={watch.starred.has(detailed.id)}
+          onStar={() => watch.toggle(detailed.id)}
+          onTrade={() => onTrade(venue, detailed.id)}
+          onClose={() => setDetails(undefined)}
+        />
+      )}
     </div>
   );
 }

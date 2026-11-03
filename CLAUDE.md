@@ -227,6 +227,13 @@ discover it on their own. The reasoning behind the rules is in
   size cap), kept an hour. It reaches the UI as text only (every field
   through `plain`, bounded), with no links. Changing the source is a
   security-relevant change.
+- `apps/desktop/src-tauri/src/fear_greed.rs` - the crypto Fear & Greed
+  Index, for the Screener's market sentiment card, from Alternative.me (the
+  one Bybit shows). A data source, not a venue: no key, nothing signed, one
+  read-only GET to one fixed URL (`FEED`, on `api.alternative.me`; no
+  redirects followed, a size cap), kept an hour. It reaches the UI as numbers
+  only (a 0-100 value and its day); the page names the band itself
+  (`lib/fearGreed.ts`). Changing the source is a security-relevant change.
 - `apps/desktop/src-tauri/src/fx_rates.rs` - exchange rates, for showing a
   chart or the app's money in another currency: the community `currency-api`
   exports on jsDelivr (`cdn.jsdelivr.net` only), the one free source with naira
@@ -872,13 +879,34 @@ A page (`screener`; `components/pages/ScreenerPage.tsx`, `lib/screens.ts` in
 start, switchable) in a table of the columns the trader picks - price,
 changes, volume, OI, funding, RSI, ADX and regime, volatility, VWAP and EMA
 stretch, nearest key level, place in the 7-day range, %B, RSI divergence,
-a technical rating (`techRating`: moving averages and oscillators on the
-hourly candles, each a vote, Strong sell to Strong buy; a reading, not a
-forecast) -
+a technical rating (`techRating`, `lib/technicals.ts`: TradingView's -
+the one Bybit's coin pages show - fifteen moving averages and eleven
+oscillators by its published rules, each a vote, Strong sell to Strong buy;
+hourly in the table, any timeframe in the token details, 1D first; a
+reading, not a forecast) -
 kept to those that pass every filter (a column above, below or between
 values, or in a state), sorted by any column. Screens are saved on this
 machine (`pd.screens`, the one on screen under `pd.screener.current`), and
-eleven presets come with it. All of it is arithmetic over each market's
+eleven presets come with it. Above the filters, a market sentiment card
+(`components/screener/MarketSentiment.tsx`, after Bybit's Key Metrics) shows
+the crypto Fear & Greed Index on a gauge, with yesterday's, last week's and
+last month's readings (`fear_greed.rs`). Beside it, Trending sectors
+(`TrendingSectors.tsx`, `lib/sectorTrends.ts`): the market heatmap's
+CoinGecko sectors by their market-cap-weighted 24h change, each with its
+best coin the venue lists, which opens its details (`useCoinSectors`, no new
+source); then Top movers (gainers and losers) and Price trend (markets up,
+down and flat), from the summaries, in the screen's scope
+(`MarketMovers.tsx`, `lib/marketMovers.ts`). The four cards sit in one row,
+two by two below 1200px. Rows are numbered in the
+screen's order (a search keeps a market's number), searched by symbol, and
+show the market's max leverage; a row opens the token's details
+(`components/screener/TokenDetails.tsx`, `lib/tokenDetails.ts`, after
+Bybit's coin pages): its price over 24H to 1Y from the venue's candles, the
+range's high and low, the change over 7, 14 and 30 days, CoinGecko's figures
+and about (`useCoinInfo`, with `isAnotherCoin`'s check), the technical rating
+on 1H, 4H, 1D or 1W as a gauge with its votes, and its oscillators' and
+averages' own (`techBreakdown`, `countVotes`), and the RSS headlines that name it.
+It reads only; its Trade button opens the Trade page. All of it is arithmetic over each market's
 summary and its last week of hourly candles (`useMarketHistories`, as Maps
 reads them); no new source. A row opens the market on the Trade page, its
 star stars it, and what passes can be saved as a watchlist. It places

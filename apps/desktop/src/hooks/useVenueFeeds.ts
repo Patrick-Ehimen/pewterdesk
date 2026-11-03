@@ -23,8 +23,10 @@ import {
   type CoinInfo,
   calendarClient,
   coinClient,
+  type FearGreedDay,
   newsClient,
   type StreamHandlers,
+  sentimentClient,
   venueClient,
 } from "../api/venueClient";
 import { chartNews } from "../lib/calendar";
@@ -503,6 +505,18 @@ const CALENDAR_REFRESH_MS = 15 * 60_000;
 /** This week's economic calendar, soonest first. */
 export function useEconomicCalendar(): Feed<CalendarEvent[]> {
   return usePolled<CalendarEvent[]>("calendar", () => calendarClient.events(), CALENDAR_REFRESH_MS);
+}
+
+/** How often the index is asked for; Rust reads it afresh hourly at most. */
+const FEAR_GREED_REFRESH_MS = 15 * 60_000;
+
+/** The crypto Fear & Greed Index, today first. */
+export function useFearGreed(): Feed<FearGreedDay[]> {
+  return usePolled<FearGreedDay[]>(
+    "fear-greed",
+    () => sentimentClient.fearGreed(),
+    FEAR_GREED_REFRESH_MS,
+  );
 }
 
 /** The releases the charts mark, as the calendar has them. */

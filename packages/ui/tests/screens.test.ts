@@ -13,6 +13,7 @@ import {
   screenFrom,
   screenValue,
   techRating,
+  techVotes,
 } from "../src/lib/screens";
 
 const candle = (openTime: number, close: number): Candle =>
@@ -172,8 +173,10 @@ describe("techRating", () => {
   it("reads a steady climb as a buy, a steady fall as a sell", () => {
     const up = techRating(run(Array.from({ length: 168 }, (_, i) => 100 + i)));
     const down = techRating(run(Array.from({ length: 168 }, (_, i) => 300 - i)));
-    expect(up?.ma).toBe(1);
-    expect(down?.ma).toBe(-1);
+    // Most averages: Ichimoku votes only on a cross, and the Hull average
+    // sits on a straight line.
+    expect(up?.ma).toBeGreaterThan(0.7);
+    expect(down?.ma).toBeLessThan(-0.7);
     expect(ratingOf(up?.all ?? 0)).toMatch(/buy/i);
     expect(ratingOf(down?.all ?? 0)).toMatch(/sell/i);
   });
@@ -185,6 +188,18 @@ describe("techRating", () => {
       expect(v).toBeGreaterThanOrEqual(-1);
       expect(v).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("techVotes", () => {
+  const run = (closes: number[]) => closes.map((c, i) => candle(i * HOUR, c));
+
+  it("counts every indicator once, as the rating weighs them", () => {
+    const up = techVotes(run(Array.from({ length: 168 }, (_, i) => 100 + i)));
+    // 168 candles: every indicator but the two 200 averages.
+    expect(up && up.sell + up.neutral + up.buy).toBe(24);
+    expect(up?.buy).toBeGreaterThan(up?.sell ?? 0);
+    expect(techVotes(run(Array.from({ length: 100 }, () => 1)))).toBeUndefined();
   });
 });
 

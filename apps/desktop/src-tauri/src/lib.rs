@@ -12,6 +12,7 @@ mod chart_window;
 mod coin_info;
 mod daemon;
 mod econ_calendar;
+mod fear_greed;
 mod float;
 mod fx_rates;
 mod keychain;
@@ -81,6 +82,9 @@ pub fn run() {
                 .expect("failed to set up the calendar client"),
         )
         .manage(fx_rates::FxState::new().expect("failed to set up the exchange rate client"))
+        .manage(
+            fear_greed::FearGreedState::new().expect("failed to set up the fear and greed client"),
+        )
         .manage(news_wire::NewsWireState::new().expect("failed to set up the news wire client"))
         .manage(ai_assistant::AiState::new().expect("failed to set up the AI client"))
         .manage(wallet::Onboarding::default())
@@ -268,6 +272,7 @@ pub fn run() {
             econ_calendar::economic_calendar,
             fx_rates::fx_latest,
             fx_rates::fx_history,
+            fear_greed::fear_greed,
             news_wire::subscribe_news_wire,
             news_wire::set_news_key,
             news_wire::news_keys,

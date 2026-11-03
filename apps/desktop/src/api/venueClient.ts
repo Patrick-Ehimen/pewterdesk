@@ -769,6 +769,18 @@ export const fxClient = {
   history: (dates: string[]) => call<FxDay[]>("fx_history", { dates }),
 };
 
+/** One day's Fear & Greed Index: 0 is extreme fear, 100 extreme greed. */
+export interface FearGreedDay {
+  /** The day's start, in Unix seconds. */
+  time: number;
+  value: number;
+}
+
+export const sentimentClient = {
+  /** The crypto Fear & Greed Index, today first, then the 30 days before. */
+  fearGreed: () => call<FearGreedDay[]>("fear_greed", {}),
+};
+
 export const calendarClient = {
   /** This week's economic calendar, soonest first. */
   events: () => call<CalendarEvent[]>("economic_calendar", {}),
