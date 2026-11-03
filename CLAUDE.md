@@ -671,7 +671,12 @@ in it kept on the drawing's `props`, left out by `frameFilter.ts`, which wraps e
 and an alert, which opens the alerts dialog on the drawing's
 readings (`drawingPrice`, `AlertPreset`; a plain price alert fixed when it's set,
 not on a converted chart, nor on Multi-chart). Line tools paint their words along the line (`lineText.ts`, wrapping the library's tools), with the rectangle's text settings (all but inside / outside): left, center or right along the line, and above it, below it, or on it, where the line breaks for them. The fixed range volume profile (`rangeProfile.ts`, wrapping the library's tool) draws up and down volume side by side in two colours of the trader's, one line at the point of control, paler rows outside the value area and a background over the range, from `lib/volumeProfile.ts`. A drawing's dialog changes it as you go, so it gets a Cancel of ours, which puts back what the drawing held on opening (`ChartColors.tsx`, `lib/drawingRevert.ts`). Double-click
-a starred tool to keep it armed; right-click to take it off the bar. A tool dragged out shows as it goes (`chartDragDraw.ts`: a first point held while
+a starred tool to keep it armed; right-click to take it off the bar. Drawing tools have keys while the pointer is on a chart
+(`chartShortcuts.ts`): the library's five (Alt+T, H, J, V, C) and more given
+the same way (a tool's `shortcut`, so the widget binds them and its "?"
+panel lists and rebinds them), plus the magnet (Alt+M, the chart's
+crosshair magnet moved to Alt+Shift+M) and "keep the tool armed" (Alt+K) on
+its keymap; Settings › Hotkeys lists them (`drawing` in `lib/hotkeys.ts`). A tool dragged out shows as it goes (`chartDragDraw.ts`: a first point held while
 the drag runs, for the library's preview, which places the points itself on release). Colours in the chart open our own picker (`ChartColors.tsx`, `lib/chartColors.ts`:
 a grid, a custom colour, opacity, no recent list) in place of the library's,
 and a selected drawing's toolbar gains fill and text colours. The price axis has a currency menu (`ChartCurrency.tsx`, `FxSource`, `lib/fxRates.ts`):

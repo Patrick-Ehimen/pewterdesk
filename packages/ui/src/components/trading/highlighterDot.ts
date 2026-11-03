@@ -11,6 +11,8 @@ import type { Widget } from "openalgo-charts/widget";
 
 const TOOL = "highlighter";
 const WIDTH = 12;
+/** The sizes its width menu offers, as TradingView's; the library's run 1 to 4 px. */
+const WIDTHS = [8, 12, 20, 32, 48, 64, 80, 96];
 const OPACITY = 0.28;
 /** How far the pointer moves before a press is a stroke, in pixels. */
 const STROKE_FROM = 4;
@@ -125,5 +127,94 @@ export function attachHighlighterDot(widget: Widget): () => void {
     window.removeEventListener("pointermove", onMove, true);
     window.removeEventListener("pointerup", onUp, true);
     window.removeEventListener("pointercancel", onCancel, true);
+  };
+}
+
+/**
+ * The drawing toolbar's width button, with only highlighters selected, offers
+ * a highlighter's sizes: the library's menu is a line's, 1 to 4 px. The menu
+ * is built from the library's own, so it looks and closes as that does.
+ */
+export function attachHighlighterWidths(widget: Widget): () => void {
+  const { draw, chart, root } = widget;
+  let menu: { el: HTMLElement; close: () => void } | undefined;
+
+  const highlighters = () => {
+    const picked = draw.selection().flatMap((id) => draw.get(id) ?? []);
+    return picked.length > 0 && picked.every((d) => d.tool === TOOL) ? picked : undefined;
+  };
+
+  const open = (button: HTMLElement) => {
+    const picked = highlighters();
+    if (!picked) return;
+    const now = new Set(picked.map((d) => d.style.lineWidth ?? WIDTH));
+    const el = document.createElement("div");
+    el.className = "oac-menu oac-pop";
+    el.setAttribute("role", "menu");
+    el.setAttribute("aria-label", button.title);
+    const body = document.createElement("div");
+    body.className = "oac-menu__body";
+    for (const width of WIDTHS) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "oac-menu__row";
+      row.setAttribute("role", "menuitemradio");
+      row.setAttribute("aria-checked", String(now.size === 1 && now.has(width)));
+      const label = document.createElement("span");
+      label.className = "oac-menu__label";
+      label.textContent = `${width} px`;
+      row.append(label);
+      row.addEventListener("click", () => {
+        draw.updateMany(
+          (highlighters() ?? []).map((d) => ({ id: d.id, patch: { style: { lineWidth: width } } })),
+        );
+        close();
+      });
+      body.append(row);
+    }
+    el.append(body);
+    // Where the library's own menus go, over the chart.
+    const layer = root.querySelector<HTMLElement>(":scope > .oac-layer") ?? root;
+    layer.append(el);
+    const stage = layer.getBoundingClientRect();
+    const at = button.getBoundingClientRect();
+    el.style.left = `${at.left - stage.left}px`;
+    el.style.top = `${at.bottom - stage.top + 4}px`;
+    button.setAttribute("aria-expanded", "true");
+
+    const outside = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!el.contains(target) && !button.contains(target)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    const off = chart.on("draw:select", () => close());
+    function close() {
+      el.remove();
+      button.setAttribute("aria-expanded", "false");
+      window.removeEventListener("pointerdown", outside, true);
+      window.removeEventListener("keydown", onKey, true);
+      off();
+      menu = undefined;
+    }
+    window.addEventListener("pointerdown", outside, true);
+    window.addEventListener("keydown", onKey, true);
+    menu = { el, close };
+  };
+
+  // Heard before the library's own handler, which would open the line widths.
+  const onClick = (e: MouseEvent) => {
+    const button = (e.target as Element).closest?.<HTMLElement>(".oac-drawbar__width");
+    if (!button || !highlighters()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (menu) menu.close();
+    else open(button);
+  };
+  root.addEventListener("click", onClick, true);
+  return () => {
+    root.removeEventListener("click", onClick, true);
+    menu?.close();
   };
 }

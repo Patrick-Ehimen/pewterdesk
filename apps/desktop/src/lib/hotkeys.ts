@@ -81,7 +81,7 @@ export interface HotkeyRow {
   keys: readonly (readonly KeyName[])[];
 }
 
-export const HOTKEY_GROUPS = ["general", "pages", "trade", "charts", "maps"] as const;
+export const HOTKEY_GROUPS = ["general", "pages", "trade", "charts", "drawing", "maps"] as const;
 export type HotkeyGroup = (typeof HOTKEY_GROUPS)[number];
 
 /** Every shortcut, as Settings lists them. The pages' own are in `pageRows`. */
@@ -115,6 +115,27 @@ export const HOTKEYS: Record<HotkeyGroup, readonly HotkeyRow[]> = {
     { id: "maximise", keys: [["1 – 9"]] },
     { id: "restore", keys: [["Esc"]] },
   ],
+  // The chart's own keys (`chartShortcuts.ts` in packages/ui): while the
+  // pointer is on a chart. Its "?" lists them all and changes them there.
+  drawing: [
+    { id: "trendLine", keys: [["Alt", "T"]] },
+    { id: "horizontalLine", keys: [["Alt", "H"]] },
+    { id: "horizontalRay", keys: [["Alt", "J"]] },
+    { id: "verticalLine", keys: [["Alt", "V"]] },
+    { id: "crossLine", keys: [["Alt", "C"]] },
+    { id: "fibRetracement", keys: [["Alt", "Shift", "F"]] },
+    { id: "rectangle", keys: [["Alt", "Shift", "R"]] },
+    { id: "measure", keys: [["Alt", "R"]] },
+    { id: "longPosition", keys: [["Alt", "L"]] },
+    { id: "shortPosition", keys: [["Alt", "S"]] },
+    { id: "text", keys: [["Alt", "N"]] },
+    { id: "brush", keys: [["Alt", "B"]] },
+    { id: "highlighter", keys: [["Alt", "G"]] },
+    { id: "magnet", keys: [["Alt", "M"]] },
+    { id: "stay", keys: [["Alt", "K"]] },
+    { id: "leaveTool", keys: [["Esc"]] },
+    { id: "chartKeys", keys: [["?"]] },
+  ],
   maps: [{ id: "rsiView", keys: [["V"]] }],
 };
 
@@ -127,6 +148,7 @@ export function keyLabel(key: KeyName, mac: boolean): string {
   if (key === "mod") return mac ? "⌘" : "Ctrl";
   if (key === "Alt") return mac ? "⌥" : "Alt";
   if (key === "Ctrl") return mac ? "⌃" : "Ctrl";
+  if (key === "Shift") return mac ? "⇧" : "Shift";
   return key;
 }
 

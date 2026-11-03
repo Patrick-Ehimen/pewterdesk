@@ -83,6 +83,7 @@ const HOTKEY_GROUP_LABEL: Record<HotkeyGroup, MessageKey> = {
   pages: "nav.menu",
   trade: "nav.trade",
   charts: "nav.charts",
+  drawing: "hotkeys.drawing",
   maps: "nav.maps",
 };
 const HOTKEY_LABEL: Record<string, MessageKey> = {
@@ -98,6 +99,23 @@ const HOTKEY_LABEL: Record<string, MessageKey> = {
   maximise: "hotkeys.maximise",
   restore: "hotkeys.restore",
   rsiView: "hotkeys.rsiView",
+  trendLine: "hotkeys.draw.trendLine",
+  horizontalLine: "hotkeys.draw.horizontalLine",
+  horizontalRay: "hotkeys.draw.horizontalRay",
+  verticalLine: "hotkeys.draw.verticalLine",
+  crossLine: "hotkeys.draw.crossLine",
+  fibRetracement: "hotkeys.draw.fibRetracement",
+  rectangle: "hotkeys.draw.rectangle",
+  measure: "hotkeys.draw.measure",
+  longPosition: "hotkeys.draw.longPosition",
+  shortPosition: "hotkeys.draw.shortPosition",
+  text: "hotkeys.draw.text",
+  brush: "hotkeys.draw.brush",
+  highlighter: "hotkeys.draw.highlighter",
+  magnet: "hotkeys.draw.magnet",
+  stay: "hotkeys.draw.stay",
+  leaveTool: "hotkeys.draw.leaveTool",
+  chartKeys: "hotkeys.draw.chartKeys",
 };
 
 /** The keys of one way to press a shortcut, as keycaps. */
