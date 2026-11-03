@@ -110,6 +110,7 @@ import { ChartTools } from "./ChartTools";
 import { attachDragDraw } from "./chartDragDraw";
 import { type Tokens, tokens, withAlpha } from "./chartTheme";
 import { registerFrameFilter } from "./frameFilter";
+import { attachHighlighterDot, registerHighlighterDot } from "./highlighterDot";
 import { registerLineText } from "./lineText";
 import { registerRangeProfile } from "./rangeProfile";
 import {
@@ -1004,6 +1005,7 @@ export function OpenAlgoChart({
     registerProfileChartTypes();
     registerLineText();
     registerRangeProfile();
+    registerHighlighterDot();
     registerFrameFilter();
     let theme = chartTheme(tokens(host));
     const made = createWidget(host, {
@@ -1421,6 +1423,7 @@ export function OpenAlgoChart({
   }, [widget, themed, compact]);
 
   useEffect(() => (widget ? attachDragDraw(widget) : undefined), [widget]);
+  useEffect(() => (widget ? attachHighlighterDot(widget) : undefined), [widget]);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [newsCard, setNewsCard] = useState<{
