@@ -13,11 +13,12 @@ export interface LiveNews {
 }
 
 /**
- * The news wire while mounted: Tree's recent items, then both sources live.
+ * The news wire while mounted and `enabled`: Tree's recent items, then both
+ * sources live.
  * Keys are read when it connects, so one saved in Settings is used once the
  * panel is back on screen.
  */
-export function useLiveNews(): LiveNews {
+export function useLiveNews(enabled = true): LiveNews {
   const [items, setItems] = useState<WireItem[]>([]);
   const [states, setStates] = useState<LiveNews["states"]>({});
   const [error, setError] = useState<string>();
@@ -27,6 +28,7 @@ export function useLiveNews(): LiveNews {
   useEffect(() => {
     setError(undefined);
     setStates({});
+    if (!enabled) return;
     let retry: ReturnType<typeof setTimeout> | undefined;
     const stop = wireClient.subscribe({
       onUpdate: (event) => {

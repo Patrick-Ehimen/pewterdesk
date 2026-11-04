@@ -119,6 +119,7 @@ import {
   PROFILE_HOURS,
   PROFILE_SPANS,
   ProfileMap,
+  PumpWatchMap,
   pairSpreads,
   RANGE_HOURS,
   RANGE_WINDOWS,
@@ -187,9 +188,10 @@ import {
   volRank,
   volumeShares,
   volumeSpike,
+  WATCH_FILTERS,
 } from "@pewterdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { venueClient } from "../../api/venueClient";
+import { type NoticeExchange, venueClient } from "../../api/venueClient";
 import { useCoinSectors } from "../../hooks/useCoinSectors";
 import { liveLiquidationSource, useLiquidations } from "../../hooks/useLiquidations";
 import {
@@ -207,6 +209,7 @@ import {
   useSeasonCandles,
   useTradeFlow,
 } from "../../hooks/useMapData";
+import { usePumpWatch } from "../../hooks/usePumpWatch";
 import { useRsiMap } from "../../hooks/useRsiMap";
 import type { useScanAlerts } from "../../hooks/useScanAlerts";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
@@ -224,6 +227,7 @@ import { loadOi } from "../../lib/oiStore";
 import { loadRsiOrder, saveRsiOrder } from "../../lib/rsiStore";
 import { findScanAlert } from "../../lib/scanAlerts";
 import { VENUE_IDS, VENUES } from "../../lib/venues";
+import { setWatchAlerts, useWatchAlerts } from "../../lib/watchAlerts";
 import { useLists } from "../../lib/watchlists";
 import { MapHelp } from "../maps/MapHelp";
 import { MarketCard } from "../maps/MarketCard";
@@ -272,6 +276,7 @@ const VIEWS = [
   "stretch",
   "volRank",
   "crowded",
+  "watch",
   "carry",
   "pairs",
   "leadLag",
@@ -307,7 +312,7 @@ const GROUP_VIEWS: Record<Group, readonly View[]> = {
     "emaCross",
     "vol",
   ],
-  setups: ["scanner", "regime", "levels", "divergence", "stretch", "volRank"],
+  setups: ["watch", "scanner", "regime", "levels", "divergence", "stretch", "volRank"],
   volume: ["valueArea", "profile", "moneyFlow", "obv", "spikes", "volRotation"],
   positioning: ["funding", "fundingHist", "oi", "ls", "crowded", "carry"],
   liquidations: ["liquidations", "liqBoard", "liqmap", "book"],
@@ -359,6 +364,7 @@ const VIEW_LABEL: Record<View, MessageKey> = {
   stretch: "maps.stretch",
   volRank: "maps.volRank",
   crowded: "maps.crowded",
+  watch: "maps.watch",
   carry: "maps.carry",
   pairs: "maps.pairs",
   leadLag: "maps.leadLag",
@@ -394,6 +400,7 @@ const HISTORY_VIEWS: readonly View[] = [
   "stretch",
   "volRank",
   "crowded",
+  "watch",
   "pairs",
   "leadLag",
   "exposure",
@@ -410,6 +417,13 @@ const PAIR_MARKETS = 30;
 const PAIR_ROWS = 80;
 
 const GROUP_VIEW_KEY = "pd.maps.groupView";
+
+/** Who posted a notice, as the watch names them. */
+const NOTICE_SOURCE: Record<NoticeExchange, string> = {
+  binance: "Binance",
+  okx: "OKX",
+  upbit: "Upbit",
+};
 
 /** The Crypto / All filter on the views that rank every market. */
 const MAP_SCOPES = ["crypto", "all"] as const;
@@ -467,6 +481,7 @@ const VIEW_SETTINGS: Record<View, readonly string[]> = {
   stretch: ["mapScope"],
   volRank: ["volRankSide", "mapScope"],
   crowded: [],
+  watch: ["watchFilter", "mapScope"],
   carry: [],
   pairs: ["mapScope"],
   leadLag: ["mapScope"],
@@ -660,6 +675,11 @@ export function MapsPage({
   const [regimeFilter, setRegimeFilter] = useStoredChoice(
     "pd.maps.regimeFilter",
     REGIME_FILTERS,
+    "all",
+  );
+  const [watchFilter, setWatchFilter] = useStoredChoice(
+    "pd.maps.watchFilter",
+    WATCH_FILTERS,
     "all",
   );
   const [volRankSide, setVolRankSide] = useStoredChoice(
@@ -1261,6 +1281,11 @@ export function MapsPage({
       });
   }, [view, summaryList, byId, oiSince, oiHistory, dayChange]);
 
+  // Every market in scope screened for the start of a big move, the ones that
+  // pass read closer (`usePumpWatch`, which the app's alerts share).
+  const pumpWatch = usePumpWatch(venue, view === "watch", { histories, scope: mapScope });
+  const watchAlerts = useWatchAlerts();
+
   const lsSource = longShortSource(venue);
   const longShort = useLongShort(view === "ls", lsSource);
   const lsRows = useMemo(
@@ -1377,6 +1402,7 @@ export function MapsPage({
     shareTop: choice(shareTop, setShareTop, MAP_TOPS),
     regimeFilter: choice(regimeFilter, setRegimeFilter, REGIME_FILTERS),
     volRankSide: choice(volRankSide, setVolRankSide, VOL_RANK_SIDES),
+    watchFilter: choice(watchFilter, setWatchFilter, WATCH_FILTERS),
     sectorPeriod: choice(sectorPeriod, setSectorPeriod, SECTOR_PERIODS),
     scanNear: choice(scanNear, setScanNear, SCAN_NEAR),
     scanStretch: choice(scanStretch, setScanStretch, SCAN_STRETCH),
@@ -1639,6 +1665,20 @@ export function MapsPage({
               rows={crowdRows}
               progress={{ done: 0, total: 0 }}
               loader={<LoadingMark size={44} />}
+              onTrade={openCard}
+            />
+          ) : view === "watch" ? (
+            <PumpWatchMap
+              rows={pumpWatch.rows}
+              filter={watchFilter}
+              onFilter={setWatchFilter}
+              alerts={watchAlerts}
+              onAlerts={setWatchAlerts}
+              failed={pumpWatch.noticesFailed.map((e) => NOTICE_SOURCE[e])}
+              now={now}
+              progress={pumpWatch.progress}
+              loader={<LoadingMark size={44} />}
+              extra={scopeSeg}
               onTrade={openCard}
             />
           ) : view === "carry" ? (

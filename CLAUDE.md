@@ -234,6 +234,19 @@ discover it on their own. The reasoning behind the rules is in
   redirects followed, a size cap), kept an hour. It reaches the UI as numbers
   only (a 0-100 value and its day); the page names the band itself
   (`lib/fearGreed.ts`). Changing the source is a security-relevant change.
+- `apps/desktop/src-tauri/src/exchange_notices.rs` - exchanges' listing
+  notices, for the Maps page's pump / dump watch: Binance's and OKX's new
+  listings and delistings, Upbit's trading notices (listings, delistings,
+  warnings). Data sources, not venues: no key, nothing signed, one
+  read-only GET to each URL in the fixed `SOURCES` (on `www.binance.com`,
+  `www.okx.com`, `api-manager.upbit.com`; no redirects followed, a size
+  cap), tried twice, kept 45 seconds, and a feed that fails shows its last
+  good read for 10 minutes. A Binance notice whose title names no coin has
+  its article read once for them (`BINANCE_ARTICLE`, by a code checked as 32
+  hex digits; at most five a refresh); its pair removals aren't delistings
+  and are ignored. Notices reach the UI as bounded plain text, a time, a
+  kind and the tickers they name, never a link. Adding a source is a
+  security-relevant change.
 - `apps/desktop/src-tauri/src/fx_rates.rs` - exchange rates, for showing a
   chart or the app's money in another currency: the community `currency-api`
   exports on jsDelivr (`cdn.jsdelivr.net` only), the one free source with naira
@@ -750,7 +763,20 @@ a combined scanner of every reading with its filters, and with scan alerts besid
 the app runs, notifying through `notifyEvent` on the way into a state; they place nothing), each market's
 regime (ADX and efficiency), key levels, RSI divergence, stretch from the 7-day
 VWAP and the 100-hour EMA and volatility rank, a squeeze risk score, funding carry
-between venues, pair spreads, lead and lag against BTC and sector rotation; and,
+between venues, pair spreads, lead and lag against BTC and sector rotation; the pump / dump watch
+(`watch`, first under Setups; `lib/pumpWatch.ts`, `PumpWatchMap`), from three
+years of Bybit's 30% moves: a market moving on volume 2.5× its usual, read by
+funding and open interest (short squeeze, leverage, spot-led; long unwind,
+short pile-on), a week's pump rolling over, or fresh exchange news naming
+its coin before the price moves (`exchange_notices.rs`), each with the newest
+notice, headline or news-wire item; it flags a move as it starts, not
+before. Every market is screened on its day's change and the news, and only
+the ones that pass have their candles and open interest read
+(`hooks/usePumpWatch.ts`; open interest from Bybit or Binance for the same
+coin where the venue keeps no history yet, marked so). With Notify on
+(`lib/watchAlerts.ts`), `usePumpWatchAlerts` in `App.tsx` watches the venue
+on screen every 5 minutes while the app runs, and a market entering a state
+notifies once in 6 hours, through `notifyEvent`; and,
 from the account on screen, the trader's edge by hour and market (closed trades,
 read only while that view is open) and correlated exposure. Any market clicked in a Maps view opens the
 market's card (`components/maps/MarketCard.tsx`: its readings, star, alerts, and its levels

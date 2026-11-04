@@ -776,6 +776,26 @@ export interface FearGreedDay {
   value: number;
 }
 
+/** An exchange whose listing notices are read. */
+export type NoticeExchange = "binance" | "okx" | "upbit";
+
+/** An exchange's notice of a listing, a delisting or a warning. Text only. */
+export interface ExchangeNotice {
+  id: string;
+  exchange: NoticeExchange;
+  kind: "listing" | "delisting" | "warning" | "other";
+  title: string;
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+  /** The tickers its title names, upper case. */
+  tickers: string[];
+}
+
+export const noticesClient = {
+  /** The exchanges' latest notices, newest first, and the feeds that didn't answer. */
+  latest: () => call<{ items: ExchangeNotice[]; failed: NoticeExchange[] }>("exchange_notices", {}),
+};
+
 export const sentimentClient = {
   /** The crypto Fear & Greed Index, today first, then the 30 days before. */
   fearGreed: () => call<FearGreedDay[]>("fear_greed", {}),

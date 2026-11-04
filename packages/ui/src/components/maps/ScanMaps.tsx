@@ -39,6 +39,7 @@ import {
   type VolRankSide,
 } from "../../lib/mapScans";
 import { BAND_FRAMES, type BandFrame } from "../../lib/mapStats";
+import type { WatchRead, WatchSide, WatchState } from "../../lib/pumpWatch";
 import { StarButton } from "../common/StarButton";
 import { TokenIcon } from "../trading/TokenIcon";
 import {
@@ -570,6 +571,190 @@ export function CrowdedMap({
           { head: t("mapx.crowded.funding"), cell: (r) => signedPct(r.read.apr, 1) },
           { head: t("mapx.crowded.oi"), cell: (r) => signedPct(r.oiChange) },
           { head: t("mapx.scan.change24h"), cell: (r) => signedPct(r.priceChange) },
+        ]}
+      />
+    </ScanFrame>
+  );
+}
+
+/** The latest news naming a watched market's coin: an exchange's notice or a headline. */
+export interface WatchCatalyst {
+  /** Who said it: "Upbit", "CoinDesk". */
+  source: string;
+  title: string;
+  /** Milliseconds since the Unix epoch. */
+  time: number;
+}
+
+export interface WatchRow {
+  market: Market;
+  read: WatchRead;
+  change4h?: number;
+  change24h?: number;
+  spike?: number;
+  /** Funding per hour. */
+  fundingPerHour?: number;
+  /** Open interest's change over the day, in dollars. */
+  oiUsd?: number;
+  /** Where the open interest came from, when it isn't this venue's own. */
+  oiFrom?: VenueId;
+  catalyst?: WatchCatalyst;
+}
+
+/** Which of the watch's states notify: none, pumps, dumps or both. */
+export const WATCH_ALERT_CHOICES = ["off", "pump", "dump", "all"] as const;
+export type WatchAlertChoice = (typeof WATCH_ALERT_CHOICES)[number];
+
+export const WATCH_FILTERS = ["all", "pump", "dump"] as const;
+export type WatchFilter = (typeof WATCH_FILTERS)[number];
+
+const WATCH_TONE: Record<WatchState, "up" | "down" | "info" | "warn"> = {
+  squeeze: "up",
+  leverage: "up",
+  spotLed: "up",
+  pumpStarting: "up",
+  listingNews: "info",
+  longUnwind: "down",
+  shortPileOn: "down",
+  dumpStarting: "down",
+  fadeRisk: "warn",
+  delistingNews: "warn",
+};
+
+/** "12m ago", "3h ago", "2d ago". */
+function ago(time: number, now: number) {
+  const minutes = Math.max(0, Math.round((now - time) / 60_000));
+  if (minutes < 60) return t("mapx.watch.minutesAgo", { count: minutes });
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return t("mapx.watch.hoursAgo", { count: hours });
+  return t("mapx.watch.daysAgo", { count: Math.round(hours / 24) });
+}
+
+/**
+ * Markets starting a big move, and how: volume several times the usual with
+ * the price running, read by funding and open interest, or fresh exchange
+ * news about the coin before the price has moved. A reading, not a forecast.
+ */
+export function PumpWatchMap({
+  rows,
+  filter,
+  onFilter,
+  alerts,
+  onAlerts,
+  failed,
+  now,
+  progress,
+  loader,
+  extra,
+  onTrade,
+}: ScanProps & {
+  rows: readonly WatchRow[];
+  filter: WatchFilter;
+  onFilter: (filter: WatchFilter) => void;
+  /** What notifies while the app runs. */
+  alerts: WatchAlertChoice;
+  onAlerts: (alerts: WatchAlertChoice) => void;
+  /** The exchanges whose notices couldn't be read just now. */
+  failed: readonly string[];
+  now: number;
+}) {
+  const shown = rows
+    .filter((r) => filter === "all" || r.read.side === (filter as WatchSide))
+    .sort((a, b) => b.read.strength - a.read.strength);
+  const nameOf = labelsOf(shown.map((r) => r.market));
+  return (
+    <ScanFrame
+      title={t("mapx.watch.title")}
+      markets={shown.map((r) => r.market)}
+      note={t("mapx.watch.note")}
+      count={shown.length}
+      empty={t("mapx.watch.none")}
+      progress={progress}
+      loader={loader}
+      controls={
+        <>
+          <Seg
+            options={WATCH_FILTERS}
+            value={filter}
+            onChange={onFilter}
+            label={t("mapx.watch.filter")}
+            text={(f) => t(`mapx.watch.filter.${f}`)}
+          />
+          <span className="pd-mx-labelled">
+            <span className="pd-muted">{t("mapx.watch.alerts")}</span>
+            <Seg
+              options={WATCH_ALERT_CHOICES}
+              value={alerts}
+              onChange={onAlerts}
+              label={t("mapx.watch.alerts")}
+              text={(a) => t(`mapx.watch.alerts.${a}`)}
+            />
+          </span>
+          {failed.length > 0 && (
+            <span className="pd-muted" title={t("mapx.watch.failedHint")}>
+              {t("mapx.watch.failed", { sources: failed.join(", ") })}
+            </span>
+          )}
+          {extra}
+        </>
+      }
+    >
+      <ScanTable
+        rows={shown}
+        keyOf={(r) => r.market.id}
+        onOpen={(r) => onTrade(r.market)}
+        columns={[
+          marketCell<WatchRow>(nameOf),
+          {
+            head: t("mapx.watch.state"),
+            cell: (r) => (
+              <span
+                className="pd-mx-tag"
+                data-tone={WATCH_TONE[r.read.state]}
+                title={t(`mapx.watch.why.${r.read.state}`)}
+              >
+                {t(`mapx.watch.state.${r.read.state}`)}
+              </span>
+            ),
+          },
+          { head: t("mapx.watch.change4h"), cell: (r) => signedPct(r.change4h, 1) },
+          { head: t("mapx.scan.change24h"), cell: (r) => signedPct(r.change24h, 1) },
+          {
+            head: t("mapx.watch.volume"),
+            cell: (r) => (r.spike === undefined ? "-" : `×${formatNumber(r.spike, 1)}`),
+            heat: (r) => [r.spike === undefined ? undefined : Math.min(r.spike, 10), 10],
+          },
+          {
+            head: t("mapx.watch.funding"),
+            cell: (r) =>
+              signedPct(r.fundingPerHour === undefined ? undefined : r.fundingPerHour * 8, 3),
+          },
+          {
+            head: t("mapx.watch.oi"),
+            cell: (r) =>
+              r.oiFrom ? (
+                <span title={t("mapx.watch.oiFrom", { venue: r.oiFrom })}>
+                  {signedPct(r.oiUsd, 0)}
+                  <sup className="pd-muted">{r.oiFrom === "bybit" ? "B" : "BN"}</sup>
+                </span>
+              ) : (
+                signedPct(r.oiUsd, 0)
+              ),
+          },
+          {
+            head: t("mapx.watch.news"),
+            cell: (r) =>
+              r.catalyst ? (
+                <span className="pd-mx-news" title={r.catalyst.title}>
+                  <span className="pd-muted">
+                    {r.catalyst.source} · {ago(r.catalyst.time, now)}
+                  </span>{" "}
+                  {r.catalyst.title}
+                </span>
+              ) : (
+                "-"
+              ),
+          },
         ]}
       />
     </ScanFrame>

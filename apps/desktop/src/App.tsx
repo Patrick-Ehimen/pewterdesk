@@ -140,6 +140,7 @@ import { useFeedAge } from "./hooks/useFeedAge";
 import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
+import { usePumpWatchAlerts } from "./hooks/usePumpWatchAlerts";
 import { useReplayAccount } from "./hooks/useReplayAccount";
 import { useScanAlerts } from "./hooks/useScanAlerts";
 import { useStoredChoice } from "./hooks/useStoredChoice";
@@ -1155,6 +1156,7 @@ export function App() {
   // liquidation-distance ones.
   const alerts = useAlerts(alertsOpen, liveAccount);
   const scanAlerts = useScanAlerts(marketList);
+  usePumpWatchAlerts(venue);
   // Hyperliquid and Aster publish no open-interest history: sample it for the Maps page.
   useOiRecorder();
   // The notification centre: everything `notifyEvent` has recorded.

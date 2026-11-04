@@ -23,8 +23,11 @@ import {
   type CoinInfo,
   calendarClient,
   coinClient,
+  type ExchangeNotice,
   type FearGreedDay,
+  type NoticeExchange,
   newsClient,
+  noticesClient,
   type StreamHandlers,
   sentimentClient,
   venueClient,
@@ -505,6 +508,20 @@ const CALENDAR_REFRESH_MS = 15 * 60_000;
 /** This week's economic calendar, soonest first. */
 export function useEconomicCalendar(): Feed<CalendarEvent[]> {
   return usePolled<CalendarEvent[]>("calendar", () => calendarClient.events(), CALENDAR_REFRESH_MS);
+}
+
+/** How often the notices are asked for; Rust keeps them 45 seconds. */
+const NOTICES_REFRESH_MS = 45_000;
+
+/** The exchanges' listing notices, newest first, while `enabled`. */
+export function useExchangeNotices(
+  enabled: boolean,
+): Feed<{ items: ExchangeNotice[]; failed: NoticeExchange[] }> {
+  return usePolled(
+    enabled ? "notices" : undefined,
+    () => noticesClient.latest(),
+    NOTICES_REFRESH_MS,
+  );
 }
 
 /** How often the index is asked for; Rust reads it afresh hourly at most. */

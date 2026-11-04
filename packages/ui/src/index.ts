@@ -129,6 +129,7 @@ export {
   LeadLagMap,
   type LevelRow,
   PairsMap,
+  PumpWatchMap,
   RegimeMap,
   type RegimeRow,
   type ScanAlertsPanel,
@@ -139,6 +140,12 @@ export {
   type StretchRow,
   VolRankMap,
   type VolRankRow,
+  WATCH_ALERT_CHOICES,
+  WATCH_FILTERS,
+  type WatchAlertChoice,
+  type WatchCatalyst,
+  type WatchFilter,
+  type WatchRow,
 } from "./components/maps/ScanMaps";
 export {
   BETA_HOURS,
@@ -384,6 +391,7 @@ export {
   positionFills,
   positionFunding,
 } from "./lib/positionDetail";
+export * from "./lib/pumpWatch";
 export {
   changeOver,
   FILTERS,
