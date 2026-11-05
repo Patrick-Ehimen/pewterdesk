@@ -15,6 +15,11 @@ SRC_TAURI   := apps/desktop/src-tauri
 ICON_SRC    := ../../assets/icon/pewterdesk-icon-dark-1024.png
 DEV_PORT    := 1420
 
+# PewterDesk Cloud's project (supabase/README.md): fixed when the app is
+# built, so every cargo and tauri build here gets it from .env.cloud.
+-include .env.cloud
+export PEWTERDESK_CLOUD_URL PEWTERDESK_CLOUD_KEY
+
 .DEFAULT_GOAL := help
 
 # ---------------------------------------------------------------------------

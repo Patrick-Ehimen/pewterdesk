@@ -8,3 +8,4 @@ one; both say so at the top.
 | [0001](0001-venues-in-rust.md) | Venue adapters run in Rust, with trade-only keys | accepted, amended by 0002 |
 | [0002](0002-launch-venues.md) | Launch with Hyperliquid and Aster only | accepted |
 | [0003](0003-bot-engine-daemon.md) | A Rust trading engine, run headless as a daemon, for algos and bots | proposed |
+| [0004](0004-hosted-journal.md) | A hosted store (Supabase) for the plan and journal; trading keeps no backend | accepted |

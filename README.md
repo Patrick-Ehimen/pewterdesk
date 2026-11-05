@@ -1,8 +1,9 @@
 # pewterdesk
 
 Non-custodial, multi-venue crypto derivatives trading terminal for desktop and
-web. No backend, no custody - talks directly to exchange APIs from your own
-machine. Launch venues: Hyperliquid and Aster. Rust adapters, a
+web. No backend for trading, no custody - talks directly to exchange APIs from
+your own machine. (The optional trading plan and journal are kept in
+PewterDesk Cloud; see below.) Launch venues: Hyperliquid and Aster. Rust adapters, a
 TypeScript/React UI, Tauri in between.
 
 > **Status: early scaffold.** The workspace, build tooling, and package
@@ -18,10 +19,15 @@ TypeScript/React UI, Tauri in between.
 
 Two decisions drive the rest of the design:
 
-- **No backend.** Requests go from your machine straight to the exchange. There
-  is no pewterdesk server to trust, to breach, or to go down. The desktop app
-  can do this because Tauri's Rust side makes requests natively; the browser
-  can't, which is why the web build is v2 (see below).
+- **No backend for trading.** Requests go from your machine straight to the
+  exchange. There is no pewterdesk server between you and the venue to trust,
+  to breach, or to go down. The desktop app can do this because Tauri's Rust
+  side makes requests natively; the browser can't, which is why the web build
+  is v2 (see below). The one thing kept with us is optional: the Plan page's
+  trading plan, playbooks and journal, in a hosted Postgres (Supabase), only
+  once you sign in - never a key, a signature or an order. See
+  [ADR 0004](docs/adr/0004-hosted-journal.md) and
+  [supabase/README.md](supabase/README.md).
 - **No custody, and keys stay in Rust.** Keys live in the OS keychain - never
   on disk, in env vars, or in logs. The venue adapters, signing included, are
   Rust, so the webview never holds a key at all. The adapters can place and
@@ -37,6 +43,7 @@ crates/exchange-<venue>         one adapter per venue: hyperliquid, aster
 packages/core                   TS domain types (generated from crates/core) + SecretStore
 packages/ui                     shared React components (order ticket, position table, chart, hotkeys)
 apps/desktop                    the shipped app: Tauri 2 shell (Rust) + its own Vite/React frontend
+supabase                        PewterDesk Cloud's schema (plan, playbooks, journal), Row Level Security
 apps/web                        the landing page for now; the web terminal is v2, deferred - can't run the Rust adapters as-is
 ```
 

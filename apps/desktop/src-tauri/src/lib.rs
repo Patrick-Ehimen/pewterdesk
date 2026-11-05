@@ -9,6 +9,7 @@ mod blofin_key;
 mod browser_connect;
 mod bybit_key;
 mod chart_window;
+mod cloud;
 mod coin_info;
 mod daemon;
 mod econ_calendar;
@@ -58,6 +59,13 @@ fn float_shortcut(app: &tauri::App) {
 const EVENT_LOG: &str = "events.sqlite3";
 
 pub fn run() {
+    // Two rustls crypto backends are compiled in (aws-lc-rs through reqwest,
+    // ring through tauri-plugin-updater), so rustls can't pick one itself and
+    // the first TLS config built without one (a websocket's) would panic.
+    // aws-lc-rs is the one every HTTP client here already uses. An error only
+    // means one is already installed.
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let venues = venues::Venues::new().expect("failed to set up venue adapters");
 
     tauri::Builder::default()
@@ -75,6 +83,7 @@ pub fn run() {
         // the plugin's own commands, and installs nothing itself.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(venues)
+        .manage(cloud::CloudState::new().expect("failed to set up the cloud client"))
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
         .manage(news_feeds::NewsState::new().expect("failed to set up the news client"))
@@ -170,6 +179,16 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             about::app_info,
+            cloud::cloud_status,
+            cloud::cloud_send_code,
+            cloud::cloud_verify,
+            cloud::cloud_sign_out,
+            cloud::cloud_list,
+            cloud::cloud_put,
+            cloud::cloud_delete,
+            cloud::cloud_upload,
+            cloud::cloud_attachment,
+            cloud::cloud_remove_attachment,
             about::open_about_link,
             updater::update_status,
             updater::check_for_update,

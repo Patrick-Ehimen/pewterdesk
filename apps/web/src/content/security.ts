@@ -4,18 +4,20 @@
 export const head = {
   label: "Security",
   title: "Your keys stay on your machine.",
-  lede: "Pewterdesk has no server and holds no funds. This page is what it does with a key, what that key can do, and where the protection stops.",
+  lede: "Pewterdesk holds no funds, and nothing you trade goes through a server of ours. This page is what it does with a key, what that key can do, and where the protection stops.",
 };
 
 export const backend = {
-  label: "§ 01 — No backend",
+  label: "§ 01 — No backend for trading",
   title: "There is nothing in between.",
   body: [
-    "Requests go from your machine straight to the venue. There is no pewterdesk server to trust, to breach, or to go down.",
+    "Requests go from your machine straight to the venue. There is no pewterdesk server between you and the venue to trust, to breach, or to go down.",
     "The venue code is Rust, running natively in the app. The interface never talks to a venue itself; it asks the Rust side, which makes every venue request.",
+    "One thing is kept with us, and only if you sign in for it: your trading plan and journal - what you write, and the figures of trades the venue already reported - so they follow you to any machine. Never a key, a signature or an order, and each account reads only its own. Trading works the same signed out.",
   ],
   route: ["Your machine", "The venue"],
-  routeNote: "No account with us. No relay. No telemetry server.",
+  routeNote:
+    "No relay for orders. No telemetry server. An account with us only for the journal, if you want it.",
 };
 
 export const keys = {

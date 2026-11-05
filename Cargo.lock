@@ -3234,6 +3234,7 @@ dependencies = [
  "pewterdesk-protocol",
  "quick-xml",
  "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "tauri",
