@@ -23,8 +23,11 @@ export const STORE_VERSION = 8;
 export const ICON_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 /** A bigger logo isn't kept; Aster's are about 1.5 KB wrapped, most of Hyperliquid's less. */
 export const MAX_ICON_CHARS = 16 * 1024;
-/** Per venue: stops a large logo set crowding out the rest of storage. */
-export const MAX_STORE_CHARS = 1_500_000;
+/**
+ * Per venue: stops a large logo set crowding out the rest of storage. Five
+ * venues at this share stay well inside the webview's ~2.5M-character quota.
+ */
+export const MAX_STORE_CHARS = 300_000;
 /** Many logos arrive together (the screener asks for every market's); one write for them all. */
 const WRITE_DELAY_MS = 1000;
 

@@ -1,5 +1,6 @@
 import type { VenueId } from "@pewterdesk/core";
 import { isPaperVenue, newPaperState, type PaperState, parsePaperState } from "./paper";
+import { writeSurely } from "./storageRoom";
 
 // Which venues are in paper mode, and each one's paper account: kept on this
 // machine (no key, nothing a venue sees). The switch is read by every window,
@@ -77,11 +78,24 @@ export function paperAccount(venue: VenueId): PaperState {
   return state;
 }
 
+/**
+ * Saves the paper account, or throws: a write storage refuses (it's full) is
+ * never taken as saved. What's held here changes only once it has landed, so
+ * the screen shows what a reload would bring back, never a close that wasn't kept.
+ */
 export function savePaperAccount(state: PaperState) {
   const raw = JSON.stringify(state);
-  write(accountKey(state.venue), raw);
-  accounts.set(state.venue, { raw: read(accountKey(state.venue)) ?? raw, state });
+  if (!writeSurely(accountKey(state.venue), raw)) throw new PaperNotSaved();
+  accounts.set(state.venue, { raw, state });
   notify();
+}
+
+/** The paper account couldn't be saved: storage refused it even after the caches made way. */
+export class PaperNotSaved extends Error {
+  constructor() {
+    super("paper account not saved");
+    this.name = "PaperNotSaved";
+  }
 }
 
 /** Starts the venue's paper account again, with `start` in it. */

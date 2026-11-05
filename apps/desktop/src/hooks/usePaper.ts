@@ -33,6 +33,7 @@ import {
 } from "../lib/paper";
 import {
   isPaperMode,
+  PaperNotSaved,
   paperAccount,
   resetPaperAccount,
   savePaperAccount,
@@ -59,6 +60,17 @@ const ERROR: Record<PaperError, MessageKey> = {
   tooMuch: "paper.error.tooMuch",
   unsupported: "paper.error.unsupported",
 };
+
+/** Runs a save; false where storage refused it. */
+function saveOr(save: () => void): boolean {
+  try {
+    save();
+    return true;
+  } catch (e) {
+    if (e instanceof PaperNotSaved) return false;
+    throw e;
+  }
+}
 
 /** A paper engine's refusal, in words. */
 export const paperErrorText = (error: PaperError) => t(ERROR[error]);
@@ -100,6 +112,7 @@ export function usePaper({
   selected,
   bid,
   ask,
+  engine = true,
 }: {
   venue: VenueId;
   markets: readonly Market[];
@@ -108,6 +121,12 @@ export function usePaper({
   selected?: Market;
   bid?: string;
   ask?: string;
+  /**
+   * Whether this window moves the account forward (fills, funding,
+   * liquidation). The main window does; the floating window only trades the
+   * same stored account, or the two would fill the same order twice.
+   */
+  engine?: boolean;
 }): Paper {
   const available = isPaperVenue(venue);
   const on = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
@@ -138,14 +157,16 @@ export function usePaper({
   const latest = useRef({ quotes, marketMap });
   latest.current = { quotes, marketMap };
   useEffect(() => {
-    if (!on) return;
+    if (!on || !engine) return;
     const id = setInterval(() => {
       const now = paperAccount(venue);
       const next = tick(now, latest.current.quotes, latest.current.marketMap, fees, Date.now());
-      if (next !== now) savePaperAccount(next);
+      // Not saved (storage refused it): the account stays as it was, and the
+      // next second tries again.
+      if (next !== now) saveOr(() => savePaperAccount(next));
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [on, venue, fees]);
+  }, [on, venue, fees, engine]);
 
   const ready = Object.keys(quotes).length > 0;
   const account: Feed<AccountSnapshot> = useMemo(
@@ -171,7 +192,10 @@ export function usePaper({
   /** Applies a change to the stored account, or throws its reason in words. */
   const apply = (run: (s: PaperState) => { state: PaperState; error?: PaperError }) => {
     const result = run(paperAccount(venue));
-    if (result.state !== paperAccount(venue)) savePaperAccount(result.state);
+    if (result.state !== paperAccount(venue)) {
+      // An order, close or cancel that couldn't be saved didn't happen.
+      if (!saveOr(() => savePaperAccount(result.state))) throw new Error(t("paper.error.notSaved"));
+    }
     if (result.error) throw new Error(t(ERROR[result.error]));
   };
 
@@ -190,7 +214,11 @@ export function usePaper({
       apply((s) => protectPosition(s, position.market, protection)),
     settings,
     setLeverage: async (leverage) => {
-      if (selected) savePaperAccount(setLeverage(paperAccount(venue), selected, leverage));
+      if (
+        selected &&
+        !saveOr(() => savePaperAccount(setLeverage(paperAccount(venue), selected, leverage)))
+      )
+        throw new Error(t("paper.error.notSaved"));
     },
     setMarginMode: async (mode) => {
       if (selected) apply((s) => setMarginMode(s, selected, mode));

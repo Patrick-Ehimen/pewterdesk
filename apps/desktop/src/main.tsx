@@ -7,6 +7,7 @@ import "./styles/pages.css";
 import "./styles/ai.css";
 import "./styles/paper.css";
 import "./styles/watchlist.css";
+import "./styles/plan.css";
 import "./styles/settings.css";
 import "./styles/tray.css";
 import "./styles/float.css";
@@ -24,7 +25,11 @@ import { forgetWatchedAddress } from "./lib/account";
 import { syncDemoData } from "./lib/demoData";
 import { storedLanguage, takeLanguageSwitch } from "./lib/language";
 import { installReloadShortcut, wasReloaded } from "./lib/reload";
+import { trimStorage } from "./lib/storageRoom";
 import { TrayPanel } from "./tray/TrayPanel";
+
+// Room for what must be saved: the caches make way when storage is near full.
+trimStorage();
 
 const el = document.getElementById("root");
 if (!el) throw new Error("#root element missing from index.html");
