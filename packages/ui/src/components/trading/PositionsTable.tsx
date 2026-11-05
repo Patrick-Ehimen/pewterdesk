@@ -484,6 +484,7 @@ export function ClosedTradesTable({
   quoteFor,
   baseFor,
   onShare,
+  onOpen,
   estimated,
 }: {
   trades: ClosedTrade[];
@@ -491,6 +492,8 @@ export function ClosedTradesTable({
   quoteFor?: (marketId: string) => string;
   baseFor?: (marketId: string) => string;
   onShare?: (trade: ClosedTrade) => void;
+  /** Opens a trade's details (the journal's trade page). */
+  onOpen?: (trade: ClosedTrade) => void;
   /**
    * Trades whose leverage is the market's setting now, filled in where the
    * venue records none per trade: shown as such.
@@ -515,6 +518,7 @@ export function ClosedTradesTable({
           <th className="pd-num">{t("col.margin")}</th>
           <th className="pd-num">{t("drawer.held")}</th>
           <th>{t("col.time")}</th>
+          {onOpen && <th aria-label={t("closed.details")} />}
         </tr>
       </thead>
       <tbody>
@@ -555,6 +559,13 @@ export function ClosedTradesTable({
               </td>
               <td className="pd-num">{heldText(c) ?? "-"}</td>
               <td className="pd-muted">{dateFormat(TIME).format(c.time)}</td>
+              {onOpen && (
+                <td>
+                  <button type="button" className="pd-link-button" onClick={() => onOpen(c)}>
+                    {t("closed.details")}
+                  </button>
+                </td>
+              )}
             </tr>
           );
         })}

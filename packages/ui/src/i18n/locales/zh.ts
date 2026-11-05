@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Simplified Chinese.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "价格",
   "col.size": "数量",
   "col.total": "累计",
@@ -1502,6 +1505,18 @@ export const messages: Messages = {
   "chart.magnet.strong": "强磁铁：每个点都落在最近的开盘、最高、最低或收盘价",
   "chart.stay.on": "绘制后工具保持选中",
   "chart.stay.off": "每次选择只画一次",
+  "chart.templates.manage": "管理模板…",
+  "chart.templates.title": "{tool} 模板",
+  "chart.templates.close": "完成",
+  "chart.templates.failed": "无法保存：{error}",
+  "chart.templates.default": "新绘图的默认外观",
+  "chart.templates.forget": "清除",
+  "chart.templates.none": "此工具没有已保存的模板",
+  "chart.templates.name": "模板名称",
+  "chart.templates.update": "使用此外观",
+  "chart.templates.updateHint": "将所选绘图当前的外观应用到模板",
+  "chart.templates.delete": "删除",
+  "chart.templates.confirm": "确定删除？",
   "settings.notifications.desc": "成交和强平风险提醒。",
   "settings.network.desc": "交易所端点和连接状态。",
   "settings.appearance.desc": "主题、涨跌颜色，以及订单簿和成交的布局。",
@@ -1990,6 +2005,7 @@ export const messages: Messages = {
   "settings.noConnected": "尚未连接钱包。",
   "settings.wallets.desc": "钱包和交易密钥将随下单功能推出。在此之前，pewterdesk 只显示行情数据。",
   "portfolio.subtitle": "已连接账户",
+  "portfolio.manageAccount": "管理账户",
   "status.online": "在线",
   "status.connecting": "连接中…",
   "status.offline": "离线",
@@ -2318,6 +2334,8 @@ export const messages: Messages = {
   "paper.cancel": "取消",
   "paper.toLive": "切换到实盘",
   "paper.switched": "该交易所已切换到模拟交易，因此未发送任何内容。",
+  "paper.switchedLive": "该交易所已切回实盘交易，因此没有向模拟账户发送任何内容。",
+  "paper.floatOn": "模拟交易：这里的订单进入模拟账户，绝不会发送到交易所。",
   "paper.floatOff": "该交易所正在模拟交易。请在主窗口中交易。",
   "paper.waiting": "正在等待实时价格以进行模拟交易…",
   "paper.funds": "资金",
@@ -3272,6 +3290,7 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP {minutes} 分钟",
   "paper.error.unsupported": "模拟交易无法运行交易所自有的 TWAP。",
+  "paper.error.notSaved": "无法在这台电脑上保存模拟账户，因此没有做任何更改。请重试。",
   "cmd.algoBadge": "算法",
   "cmd.halt": "停止所有算法单",
   "cmd.haltBadge": "停止",

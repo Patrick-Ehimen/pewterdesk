@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Russian.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "Цена",
   "col.size": "Объём",
   "col.total": "Всего",
@@ -1562,6 +1565,18 @@ export const messages: Messages = {
     "Сильный магнит: каждая точка встаёт на ближайшее открытие, максимум, минимум или закрытие",
   "chart.stay.on": "Инструменты остаются выбранными после рисунка",
   "chart.stay.off": "Один рисунок на выбор",
+  "chart.templates.manage": "Управление шаблонами…",
+  "chart.templates.title": "Шаблоны: {tool}",
+  "chart.templates.close": "Готово",
+  "chart.templates.failed": "Не удалось сохранить: {error}",
+  "chart.templates.default": "Вид новых рисунков по умолчанию",
+  "chart.templates.forget": "Сбросить",
+  "chart.templates.none": "Для этого инструмента нет сохранённых шаблонов",
+  "chart.templates.name": "Название шаблона",
+  "chart.templates.update": "Взять этот вид",
+  "chart.templates.updateHint": "Задать шаблону текущий вид выбранного рисунка",
+  "chart.templates.delete": "Удалить",
+  "chart.templates.confirm": "Удалить?",
   "settings.notifications.desc": "Оповещения об исполнениях и риске ликвидации.",
   "settings.network.desc": "Адреса бирж и состояние подключения.",
   "settings.appearance.desc": "Тема, цвета рынка и вид стакана и сделок.",
@@ -2086,6 +2101,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "Кошельки и торговые ключи появятся вместе с размещением ордеров. До тех пор pewterdesk показывает только рыночные данные.",
   "portfolio.subtitle": "Подключённый счёт",
+  "portfolio.manageAccount": "Управление аккаунтом",
   "status.online": "В сети",
   "status.connecting": "Подключение…",
   "status.offline": "Нет связи",
@@ -2439,6 +2455,9 @@ export const messages: Messages = {
   "paper.cancel": "Отмена",
   "paper.toLive": "Перейти в реал",
   "paper.switched": "Эта биржа переключена на бумажную торговлю, поэтому ничего не отправлено.",
+  "paper.switchedLive":
+    "Площадка вернулась к реальной торговле, поэтому на бумажный счёт ничего не отправлено.",
+  "paper.floatOn": "Бумажная торговля: ордера отсюда идут на бумажный счёт, а не на площадку.",
   "paper.floatOff": "Для этой биржи включена бумажная торговля. Торгуйте в главном окне.",
   "paper.waiting": "Ждём живые цены для бумажной торговли…",
   "paper.funds": "Средства",
@@ -3470,6 +3489,8 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP за {minutes} мин",
   "paper.error.unsupported": "Бумажная торговля не может запустить собственный TWAP биржи.",
+  "paper.error.notSaved":
+    "Не удалось сохранить бумажный счёт на этом компьютере, поэтому ничего не изменилось. Попробуйте ещё раз.",
   "cmd.algoBadge": "Алго",
   "cmd.halt": "Остановить все алго",
   "cmd.haltBadge": "Стоп",

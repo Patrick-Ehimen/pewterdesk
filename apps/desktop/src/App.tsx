@@ -114,6 +114,7 @@ import { type PaperDialogMode, PaperFundsDialog } from "./components/paper/Paper
 import { PaperSwitch } from "./components/paper/PaperSwitch";
 import { ReplayBanner } from "./components/paper/ReplayBanner";
 import { ReplaySummary } from "./components/paper/ReplaySummary";
+import { PlanPage, type PlanTarget } from "./components/plan/PlanPage";
 import {
   pageLabel,
   pageOptions,
@@ -188,6 +189,7 @@ import {
 } from "./lib/float";
 import { type HotkeyAction, hotkeyFor, isTyping } from "./lib/hotkeys";
 import { peekSavedIcon } from "./lib/iconCache";
+import { tradeKey } from "./lib/journal";
 import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "./lib/liveTrading";
 import { loadIcon } from "./lib/loadIcon";
 import {
@@ -1069,17 +1071,27 @@ export function App() {
   // The Portfolio page's history: read only while that page is open, or the
   // Maps view that needs it.
   const [closedForMaps, setClosedForMaps] = useState(false);
+  // Where the Plan page opens next (a closed trade picked on the Portfolio page).
+  const [planTarget, setPlanTarget] = useState<PlanTarget>();
+  const clearPlanTarget = useCallback(() => setPlanTarget(undefined), []);
   // Levels the Maps page put on the Trade chart. Read-only: lines to look at.
   const [chartLevels, setChartLevels] = useState<{
     venue: VenueId;
     market: string;
     analysis: ChartAnalysis;
   }>();
+  // The account's positions as a line: when one closes or shrinks, the closed
+  // trades are read again at once rather than at the next poll.
+  const positionsKey =
+    venueAccount.status === "live" || venueAccount.status === "closed"
+      ? venueAccount.data.positions.map((p) => `${p.market}:${p.side}:${p.size}`).join("|")
+      : undefined;
   const venueClosed = useClosedHistory(
     venue,
     paperOn ? undefined : address,
     HISTORY_MS,
-    page === "portfolio" || closedForMaps,
+    page === "portfolio" || page === "plan" || closedForMaps,
+    positionsKey,
   );
   const closedRaw: Feed<ClosedTrade[]> = paperOn
     ? { status: "live", data: paper.state.closed }
@@ -1953,6 +1965,7 @@ export function App() {
             demo={activeOnVenue !== undefined && isDemoAccount(activeOnVenue)}
             connectAuth={venueInfo.auth}
             onOpenWallet={() => openConnect()}
+            onOpenAccount={() => goTo("portfolio")}
           />
         </header>
 
@@ -1963,9 +1976,37 @@ export function App() {
             leverageEstimated={closedLeverage.estimated}
             accountKey={accountKey || undefined}
             onShare={(c) => openShare({ closed: c })}
+            onOpenTrade={(c) => {
+              setPlanTarget({ tab: "journal", trade: tradeKey(c) });
+              goTo("plan");
+            }}
             markets={marketList}
             venue={paperOn ? `${venueInfo.label} · ${paperBadge}` : venueInfo.label}
             connectAuth={venueInfo.auth}
+            onConnect={() => openConnect()}
+            venueId={venue}
+            onManage={() => openConnect()}
+          />
+        ) : page === "plan" ? (
+          <PlanPage
+            venue={venue}
+            venueLabel={paperOn ? `${venueInfo.label} · ${paperBadge}` : venueInfo.label}
+            address={paperOn ? undefined : address}
+            accountKey={accountKey || undefined}
+            closed={closedHistory}
+            markets={marketList}
+            summaries={
+              barSummaries.status === "live" || barSummaries.status === "closed"
+                ? barSummaries.data
+                : undefined
+            }
+            rules={tradingRules.view}
+            rulesStatus={tradingRules.status ?? undefined}
+            equity={accountData ? Number(accountData.equity) : undefined}
+            positions={accountData?.positions}
+            target={planTarget}
+            onTargetDone={clearPlanTarget}
+            onOpenRules={() => goTo("rules")}
             onConnect={() => openConnect()}
           />
         ) : page === "venues" ? (

@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Portuguese (Brazil).
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "Preço",
   "col.size": "Tamanho",
   "col.total": "Total",
@@ -1564,6 +1567,18 @@ export const messages: Messages = {
     "Ímã forte: cada ponto cai na abertura, máxima, mínima ou fecho mais próximo",
   "chart.stay.on": "As ferramentas continuam ativas após cada desenho",
   "chart.stay.off": "Um desenho por seleção",
+  "chart.templates.manage": "Gerir modelos…",
+  "chart.templates.title": "Modelos de {tool}",
+  "chart.templates.close": "Concluído",
+  "chart.templates.failed": "Não foi possível guardar: {error}",
+  "chart.templates.default": "Aspeto predefinido dos novos desenhos",
+  "chart.templates.forget": "Esquecer",
+  "chart.templates.none": "Não há modelos guardados para esta ferramenta",
+  "chart.templates.name": "Nome do modelo",
+  "chart.templates.update": "Usar este aspeto",
+  "chart.templates.updateHint": "Dar ao modelo o aspeto atual do desenho selecionado",
+  "chart.templates.delete": "Eliminar",
+  "chart.templates.confirm": "Eliminar?",
   "settings.notifications.desc": "Alertas de execuções e risco de liquidação.",
   "settings.network.desc": "Endpoints das corretoras e status da conexão.",
   "settings.appearance.desc":
@@ -2090,6 +2105,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "Carteiras e chaves de negociação chegam com o envio de ordens. Até lá, o pewterdesk mostra só dados de mercado.",
   "portfolio.subtitle": "Conta conectada",
+  "portfolio.manageAccount": "Gerenciar conta",
   "status.online": "Online",
   "status.connecting": "Conectando…",
   "status.offline": "Offline",
@@ -2443,6 +2459,9 @@ export const messages: Messages = {
   "paper.cancel": "Cancelar",
   "paper.toLive": "Mudar para o real",
   "paper.switched": "Esta corretora mudou para paper trading, então nada foi enviado.",
+  "paper.switchedLive":
+    "Esta corretora voltou para a negociação real, então nada foi enviado à conta de papel.",
+  "paper.floatOn": "Papel: as ordens daqui vão para a conta de papel, nunca para a corretora.",
   "paper.floatOff": "O paper trading está ativo nesta corretora. Opere-a na janela principal.",
   "paper.waiting": "Aguardando preços ao vivo para operar no papel…",
   "paper.funds": "Fundos",
@@ -3490,6 +3509,8 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP em {minutes} min",
   "paper.error.unsupported": "O paper trading não consegue rodar o TWAP próprio de uma corretora.",
+  "paper.error.notSaved":
+    "Não foi possível salvar a conta de papel neste computador, então nada mudou. Tente de novo.",
   "cmd.algoBadge": "Algo",
   "cmd.halt": "Parar todos os algos",
   "cmd.haltBadge": "Parar",

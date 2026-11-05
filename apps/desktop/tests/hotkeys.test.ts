@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hotkeyFor, type KeyPress, keyLabel, pageRows, plainKey } from "../src/lib/hotkeys";
-import { MENU_PAGES } from "../src/lib/pages";
+import { SHORTCUT_PAGES } from "../src/lib/pages";
 
 const press = (key: string, held: Partial<KeyPress> = {}): KeyPress => ({
   key,
@@ -38,21 +38,22 @@ describe("hotkeys", () => {
     expect(hotkeyFor(press("x", { metaKey: true }), false)).toBeUndefined();
   });
 
-  it("goes to the menu's pages by number", () => {
+  it("goes to the pages by number, Portfolio keeping its own", () => {
     expect(hotkeyFor(press("1", { metaKey: true }), false)).toEqual({
       type: "page",
-      page: MENU_PAGES[0],
+      page: SHORTCUT_PAGES[0],
     });
-    const last = MENU_PAGES.length;
+    // Digits reach the first nine; a longer menu's later pages have none.
+    const last = Math.min(SHORTCUT_PAGES.length, 9);
     expect(hotkeyFor(press(String(last), { ctrlKey: true }), false)).toEqual({
       type: "page",
-      page: MENU_PAGES[last - 1],
+      page: SHORTCUT_PAGES[last - 1],
     });
     // Cmd+9 is the last a digit can reach; it's a page only while the menu has nine.
     expect(hotkeyFor(press("9", { metaKey: true }), false)).toEqual(
-      MENU_PAGES[8] && { type: "page", page: MENU_PAGES[8] },
+      SHORTCUT_PAGES[8] && { type: "page", page: SHORTCUT_PAGES[8] },
     );
-    expect(pageRows().map((r) => r.page)).toEqual(MENU_PAGES);
+    expect(pageRows().map((r) => r.page)).toEqual(SHORTCUT_PAGES.slice(0, 9));
     expect(pageRows()[0]?.keys).toEqual(["mod", "1"]);
   });
 

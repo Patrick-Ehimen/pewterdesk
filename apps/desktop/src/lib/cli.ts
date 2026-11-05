@@ -18,7 +18,7 @@ import {
   scaledOrders,
 } from "./commands";
 import { closeRequest } from "./float";
-import { MENU_PAGES, type Page } from "./pages";
+import { PAGES, type Page } from "./pages";
 
 /**
  * What a line typed into the CLI panel asks for. The trading lines are the
@@ -54,8 +54,7 @@ const WORDS: Record<string, "help" | "clear" | "positions" | "orders" | "balance
 };
 
 /** A page by its name in a command: "portfolio", "charts", "rules". */
-const pageNamed = (word: string): Page | undefined =>
-  [...MENU_PAGES, "settings" as const].find((page) => page === word);
+const pageNamed = (word: string): Page | undefined => PAGES.find((page) => page === word);
 
 export function parseLine(text: string, ctx: CommandContext): CliCommand | undefined {
   const words = text.trim().toLowerCase().split(/\s+/).filter(Boolean);

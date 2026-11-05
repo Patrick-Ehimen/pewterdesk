@@ -11,6 +11,7 @@ import {
   LuLayoutGrid,
   LuListFilter,
   LuNewspaper,
+  LuNotebookPen,
   LuOrbit,
   LuSettings,
   LuShieldCheck,
@@ -65,6 +66,7 @@ const PAGE_ICONS = {
   maps: LuOrbit,
   screener: LuListFilter,
   ai: LuSparkles,
+  plan: LuNotebookPen,
   bots: LuBot,
   settings: LuSettings,
 } as const;

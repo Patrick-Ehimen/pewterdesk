@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Spanish.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "Precio",
   "col.size": "Tamaño",
   "col.total": "Total",
@@ -1575,6 +1578,18 @@ export const messages: Messages = {
     "Imán fuerte: cada punto cae en la apertura, máximo, mínimo o cierre más cercano",
   "chart.stay.on": "Las herramientas siguen activas tras cada dibujo",
   "chart.stay.off": "Un dibujo por selección",
+  "chart.templates.manage": "Gestionar plantillas…",
+  "chart.templates.title": "Plantillas de {tool}",
+  "chart.templates.close": "Listo",
+  "chart.templates.failed": "No se pudo guardar: {error}",
+  "chart.templates.default": "Aspecto por defecto de los dibujos nuevos",
+  "chart.templates.forget": "Olvidar",
+  "chart.templates.none": "No hay plantillas guardadas para esta herramienta",
+  "chart.templates.name": "Nombre de la plantilla",
+  "chart.templates.update": "Usar este aspecto",
+  "chart.templates.updateHint": "Dar a la plantilla el aspecto actual del dibujo seleccionado",
+  "chart.templates.delete": "Eliminar",
+  "chart.templates.confirm": "¿Eliminar?",
   "settings.notifications.desc": "Avisos de ejecuciones y riesgo de liquidación.",
   "settings.network.desc": "Endpoints de los exchanges y estado de conexión.",
   "settings.appearance.desc":
@@ -2101,6 +2116,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "Las wallets y las claves de trading llegan con la colocación de órdenes. Hasta entonces, pewterdesk solo muestra datos de mercado.",
   "portfolio.subtitle": "Cuenta conectada",
+  "portfolio.manageAccount": "Gestionar cuenta",
   "status.online": "En línea",
   "status.connecting": "Conectando…",
   "status.offline": "Sin conexión",
@@ -2453,6 +2469,9 @@ export const messages: Messages = {
   "paper.cancel": "Cancelar",
   "paper.toLive": "Pasar a real",
   "paper.switched": "Este exchange pasó a paper trading, así que no se envió nada.",
+  "paper.switchedLive":
+    "Este mercado volvió a operar en real, así que no se envió nada a la cuenta de práctica.",
+  "paper.floatOn": "Práctica: las órdenes de aquí van a la cuenta de práctica, nunca al mercado.",
   "paper.floatOff":
     "El paper trading está activo en este exchange. Opéralo en la ventana principal.",
   "paper.waiting": "Esperando precios en vivo para operar en papel…",
@@ -3500,6 +3519,8 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP en {minutes} min",
   "paper.error.unsupported": "El paper trading no puede ejecutar el TWAP propio de un exchange.",
+  "paper.error.notSaved":
+    "No se pudo guardar la cuenta de práctica en este equipo, así que no se cambió nada. Inténtalo de nuevo.",
   "cmd.algoBadge": "Algo",
   "cmd.halt": "Detener todos los algos",
   "cmd.haltBadge": "Detener",

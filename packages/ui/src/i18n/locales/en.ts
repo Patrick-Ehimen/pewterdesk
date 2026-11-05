@@ -1,6 +1,10 @@
 // Source strings. Other locales are typed against these keys. Placeholders
 // look like {name}; keep them, in whatever position the grammar needs.
+import { journalEn } from "./journal/en";
+
 export const en = {
+  // The Plan page and PewterDesk Cloud (`journal/en.ts`).
+  ...journalEn,
   // Column headers
   "col.price": "Price",
   "col.size": "Size",
@@ -1503,6 +1507,18 @@ export const en = {
   "chart.magnet.strong": "Magnet strong: every point lands on the nearest open, high, low or close",
   "chart.stay.on": "Tools stay armed after each drawing",
   "chart.stay.off": "One drawing per pick",
+  "chart.templates.manage": "Manage templates…",
+  "chart.templates.title": "{tool} templates",
+  "chart.templates.close": "Done",
+  "chart.templates.failed": "Couldn't save that: {error}",
+  "chart.templates.default": "Default look for new drawings",
+  "chart.templates.forget": "Forget",
+  "chart.templates.none": "No saved templates for this tool",
+  "chart.templates.name": "Template name",
+  "chart.templates.update": "Use this look",
+  "chart.templates.updateHint": "Give the template the selected drawing's current look",
+  "chart.templates.delete": "Delete",
+  "chart.templates.confirm": "Delete?",
   "settings.notifications.desc": "Alerts for fills and liquidation risk.",
   "settings.network.desc": "Venue endpoints and connection status.",
   "settings.appearance.desc":
@@ -2026,6 +2042,7 @@ export const en = {
   "settings.wallets.desc":
     "Wallets and trading keys arrive with order placement. Until then, pewterdesk shows market data only.",
   "portfolio.subtitle": "Connected account",
+  "portfolio.manageAccount": "Manage account",
   "status.online": "Online",
   "status.connecting": "Connecting…",
   "status.offline": "Offline",
@@ -2374,6 +2391,9 @@ export const en = {
   "paper.cancel": "Cancel",
   "paper.toLive": "Switch to live",
   "paper.switched": "This venue switched to paper trading, so nothing was sent.",
+  "paper.switchedLive":
+    "This venue switched back to live trading, so nothing was sent to the paper account.",
+  "paper.floatOn": "Paper trading: orders here go to the paper account, never the venue.",
   "paper.floatOff": "Paper trading is on for this venue. Trade it in the main window.",
   "paper.waiting": "Waiting for live prices to trade on paper…",
   "paper.funds": "Funds",
@@ -3418,6 +3438,8 @@ export const en = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "TWAP over {minutes} min",
   "paper.error.unsupported": "Paper trading can't run a venue's own TWAP.",
+  "paper.error.notSaved":
+    "The paper account couldn't be saved on this computer, so nothing was changed. Try again.",
   "cmd.algoBadge": "Algo",
   "cmd.halt": "Halt every algo",
   "cmd.haltBadge": "Halt",

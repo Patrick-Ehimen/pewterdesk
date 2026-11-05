@@ -279,8 +279,11 @@ function usePolled<T>(
   key: string | undefined,
   load: () => Promise<T>,
   everyMs = HISTORY_REFRESH_MS,
+  /** A change of this reads again at once, keeping what's shown meanwhile. */
+  nudge?: string,
 ): Feed<T> {
   const [feed, setFeed] = useState<Feed<T>>({ status: "idle" });
+  const runRef = useRef<(() => Promise<unknown>) | undefined>(undefined);
   // `load` is rebuilt every render; `key` is what identifies the data.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
@@ -299,13 +302,22 @@ function usePolled<T>(
             prev.status === "live" ? prev : { status: "error", message: e.message },
           ),
       );
+    runRef.current = run;
     void run();
     const id = setInterval(run, everyMs);
     return () => {
       current = false;
+      runRef.current = undefined;
       clearInterval(id);
     };
   }, [key]);
+  // Skips the first render: the key's own effect has just read.
+  const seenNudge = useRef(nudge);
+  useEffect(() => {
+    if (seenNudge.current === nudge) return;
+    seenNudge.current = nudge;
+    void runRef.current?.();
+  }, [nudge]);
   return feed;
 }
 
@@ -355,11 +367,14 @@ export function useClosedHistory(
   address: string | undefined,
   spanMs: number,
   enabled: boolean,
+  /** Changes when the account's positions do, so a trade just closed shows without waiting for the poll. */
+  nudge?: string,
 ) {
   return usePolled<ClosedTrade[]>(
     enabled && address ? `history:${venue}:${address}` : undefined,
     () => venueClient.closedTrades(venue, address ?? "", Date.now() - spanMs),
     CLOSED_HISTORY_REFRESH_MS,
+    nudge,
   );
 }
 

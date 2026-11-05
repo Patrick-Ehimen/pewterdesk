@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // French.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "Prix",
   "col.size": "Taille",
   "col.total": "Total",
@@ -1581,6 +1584,18 @@ export const messages: Messages = {
     "Aimant fort : chaque point tombe sur l'ouverture, le plus haut, le plus bas ou la clôture la plus proche",
   "chart.stay.on": "Les outils restent armés après chaque dessin",
   "chart.stay.off": "Un dessin par choix",
+  "chart.templates.manage": "Gérer les modèles…",
+  "chart.templates.title": "Modèles {tool}",
+  "chart.templates.close": "Terminé",
+  "chart.templates.failed": "Enregistrement impossible : {error}",
+  "chart.templates.default": "Apparence par défaut des nouveaux dessins",
+  "chart.templates.forget": "Oublier",
+  "chart.templates.none": "Aucun modèle enregistré pour cet outil",
+  "chart.templates.name": "Nom du modèle",
+  "chart.templates.update": "Prendre cette apparence",
+  "chart.templates.updateHint": "Donner au modèle l'apparence actuelle du dessin sélectionné",
+  "chart.templates.delete": "Supprimer",
+  "chart.templates.confirm": "Supprimer ?",
   "settings.notifications.desc": "Alertes d'exécution et de risque de liquidation.",
   "settings.network.desc": "Points d'accès des plateformes et état de la connexion.",
   "settings.appearance.desc":
@@ -2112,6 +2127,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "Les wallets et les clés de trading arrivent avec le passage d'ordres. D'ici là, pewterdesk n'affiche que les données de marché.",
   "portfolio.subtitle": "Compte connecté",
+  "portfolio.manageAccount": "Gérer le compte",
   "status.online": "En ligne",
   "status.connecting": "Connexion…",
   "status.offline": "Hors ligne",
@@ -2466,6 +2482,8 @@ export const messages: Messages = {
   "paper.cancel": "Annuler",
   "paper.toLive": "Passer en réel",
   "paper.switched": "Cette plateforme est passée en paper trading, rien n'a été envoyé.",
+  "paper.switchedLive": "Ce marché est repassé en réel, donc rien n'a été envoyé au compte papier.",
+  "paper.floatOn": "Papier : les ordres passés ici vont au compte papier, jamais à la plateforme.",
   "paper.floatOff":
     "Le paper trading est actif sur cette plateforme. Tradez-la dans la fenêtre principale.",
   "paper.waiting": "En attente des prix en direct pour trader sur papier…",
@@ -3521,6 +3539,8 @@ export const messages: Messages = {
   "toast.kindTwap": "TWAP sur {minutes} min",
   "paper.error.unsupported":
     "Le paper trading ne peut pas exécuter le TWAP propre d’une plateforme.",
+  "paper.error.notSaved":
+    "Le compte papier n'a pas pu être enregistré sur cet ordinateur, rien n'a donc changé. Réessayez.",
   "cmd.algoBadge": "Algo",
   "cmd.halt": "Arrêter tous les algos",
   "cmd.haltBadge": "Arrêt",

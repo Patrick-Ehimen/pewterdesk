@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Korean.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "가격",
   "col.size": "수량",
   "col.total": "누적",
@@ -1538,6 +1541,18 @@ export const messages: Messages = {
   "chart.magnet.strong": "자석 강: 모든 점이 가장 가까운 시가·고가·저가·종가에 붙음",
   "chart.stay.on": "그린 뒤에도 도구가 유지됩니다",
   "chart.stay.off": "선택할 때마다 한 번만 그리기",
+  "chart.templates.manage": "템플릿 관리…",
+  "chart.templates.title": "{tool} 템플릿",
+  "chart.templates.close": "완료",
+  "chart.templates.failed": "저장하지 못했습니다: {error}",
+  "chart.templates.default": "새 그리기의 기본 모양",
+  "chart.templates.forget": "해제",
+  "chart.templates.none": "이 도구에 저장된 템플릿이 없습니다",
+  "chart.templates.name": "템플릿 이름",
+  "chart.templates.update": "이 모양으로",
+  "chart.templates.updateHint": "선택한 그리기의 현재 모양을 템플릿에 적용합니다",
+  "chart.templates.delete": "삭제",
+  "chart.templates.confirm": "삭제할까요?",
   "settings.notifications.desc": "체결과 청산 위험 알림.",
   "settings.network.desc": "거래소 엔드포인트와 연결 상태.",
   "settings.appearance.desc": "테마, 시장 색상, 호가창과 체결 내역 배치.",
@@ -2051,6 +2066,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "지갑과 거래 키는 주문 기능과 함께 제공됩니다. 그전까지 pewterdesk는 시장 데이터만 보여 줍니다.",
   "portfolio.subtitle": "연결된 계정",
+  "portfolio.manageAccount": "계정 관리",
   "status.online": "온라인",
   "status.connecting": "연결 중…",
   "status.offline": "오프라인",
@@ -2394,6 +2410,8 @@ export const messages: Messages = {
   "paper.cancel": "취소",
   "paper.toLive": "실거래로 전환",
   "paper.switched": "이 거래소가 모의 거래로 전환되어 아무것도 보내지 않았습니다.",
+  "paper.switchedLive": "이 거래소가 실거래로 돌아가 페이퍼 계정에는 아무것도 보내지 않았습니다.",
+  "paper.floatOn": "페이퍼 트레이딩: 여기서 낸 주문은 거래소가 아닌 페이퍼 계정으로 갑니다.",
   "paper.floatOff": "이 거래소는 모의 거래 중입니다. 메인 창에서 거래하세요.",
   "paper.waiting": "모의 거래를 위해 실시간 가격을 기다리는 중…",
   "paper.funds": "자금",
@@ -3410,6 +3428,8 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "{minutes}분 TWAP",
   "paper.error.unsupported": "페이퍼 트레이딩에서는 거래소 자체 TWAP을 실행할 수 없습니다.",
+  "paper.error.notSaved":
+    "이 컴퓨터에 페이퍼 계정을 저장하지 못해 아무것도 바뀌지 않았습니다. 다시 시도하세요.",
   "cmd.algoBadge": "알고",
   "cmd.halt": "모든 알고 중지",
   "cmd.haltBadge": "중지",

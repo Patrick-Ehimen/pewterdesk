@@ -34,6 +34,7 @@ import {
   LuListFilter,
   LuMap,
   LuNewspaper,
+  LuNotebookPen,
   LuPalette,
   LuPictureInPicture2,
   LuSettings,
@@ -70,6 +71,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   maps: "nav.maps",
   screener: "nav.screener",
   ai: "nav.ai",
+  plan: "nav.plan",
   settings: "settings.title",
 };
 
@@ -83,6 +85,7 @@ const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = 
   venues: { icon: <LuStore size={17} />, tone: "warning" },
   news: { icon: <LuNewspaper size={17} />, tone: "brass" },
   ai: { icon: <LuSparkles size={17} />, tone: "info" },
+  plan: { icon: <LuNotebookPen size={17} />, tone: "brass" },
   settings: { icon: <LuSettings size={17} />, tone: "plain" },
 };
 

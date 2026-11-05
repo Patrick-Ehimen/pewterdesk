@@ -1,7 +1,10 @@
 import type { Messages } from "./en";
+import { journalEn } from "./journal/en";
 
 // Japanese.
 export const messages: Messages = {
+  // The Plan page and PewterDesk Cloud: English until translated.
+  ...journalEn,
   "col.price": "価格",
   "col.size": "数量",
   "col.total": "累計",
@@ -1546,6 +1549,18 @@ export const messages: Messages = {
   "chart.magnet.strong": "マグネット 強: すべての点が最も近い始値・高値・安値・終値に吸着",
   "chart.stay.on": "描画後もツールは選択されたまま",
   "chart.stay.off": "1回の選択で1つの描画",
+  "chart.templates.manage": "テンプレートを管理…",
+  "chart.templates.title": "{tool} のテンプレート",
+  "chart.templates.close": "完了",
+  "chart.templates.failed": "保存できませんでした: {error}",
+  "chart.templates.default": "新しい描画の既定の見た目",
+  "chart.templates.forget": "解除",
+  "chart.templates.none": "このツールの保存済みテンプレートはありません",
+  "chart.templates.name": "テンプレート名",
+  "chart.templates.update": "この見た目にする",
+  "chart.templates.updateHint": "選択中の描画の現在の見た目をテンプレートに反映します",
+  "chart.templates.delete": "削除",
+  "chart.templates.confirm": "削除しますか?",
   "settings.notifications.desc": "約定と清算リスクの通知。",
   "settings.network.desc": "取引所のエンドポイントと接続状態。",
   "settings.appearance.desc": "テーマ、相場の色、板情報と約定履歴のレイアウト。",
@@ -2065,6 +2080,7 @@ export const messages: Messages = {
   "settings.wallets.desc":
     "ウォレットと取引用の鍵は注文機能とともに提供されます。それまでは pewterdesk は市場データのみを表示します。",
   "portfolio.subtitle": "接続中のアカウント",
+  "portfolio.manageAccount": "アカウントを管理",
   "status.online": "オンライン",
   "status.connecting": "接続中…",
   "status.offline": "オフライン",
@@ -2411,6 +2427,9 @@ export const messages: Messages = {
   "paper.cancel": "キャンセル",
   "paper.toLive": "実取引に切り替え",
   "paper.switched": "この取引所はペーパートレードに切り替わったため、何も送られていません。",
+  "paper.switchedLive":
+    "この取引所はライブ取引に戻ったため、ペーパー口座には何も送信されませんでした。",
+  "paper.floatOn": "ペーパー取引: ここでの注文はペーパー口座に送られ、取引所には送られません。",
   "paper.floatOff": "この取引所はペーパートレード中です。メインウィンドウで取引してください。",
   "paper.waiting": "ペーパートレードのためライブ価格を待っています…",
   "paper.funds": "資金",
@@ -3414,6 +3433,8 @@ export const messages: Messages = {
   "orderType.twap": "TWAP",
   "toast.kindTwap": "{minutes}分のTWAP",
   "paper.error.unsupported": "ペーパートレードでは取引所独自のTWAPを実行できません。",
+  "paper.error.notSaved":
+    "この端末にペーパー口座を保存できなかったため、何も変更していません。もう一度お試しください。",
   "cmd.algoBadge": "アルゴ",
   "cmd.halt": "すべてのアルゴを停止",
   "cmd.haltBadge": "停止",

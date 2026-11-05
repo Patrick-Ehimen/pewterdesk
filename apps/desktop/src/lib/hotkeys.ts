@@ -1,4 +1,4 @@
-import { MENU_PAGES, type Page } from "./pages";
+import { type Page, SHORTCUT_PAGES } from "./pages";
 
 /** What a shortcut does, for whoever owns the action. */
 export type HotkeyAction =
@@ -60,8 +60,8 @@ export function hotkeyFor(e: KeyPress, typing: boolean): HotkeyAction | undefine
     // Cmd with an arrow goes back and forward; in a field it moves the caret.
     if (!typing && key === "arrowleft") return { type: "back" };
     if (!typing && key === "arrowright") return { type: "forward" };
-    // Cmd+1 is the first page of the menu, and so on.
-    const page = /^[1-9]$/.test(key) ? MENU_PAGES[Number(key) - 1] : undefined;
+    // Cmd+1 is the first page, and so on (Portfolio keeps its number).
+    const page = /^[1-9]$/.test(key) ? SHORTCUT_PAGES[Number(key) - 1] : undefined;
     if (page) return { type: "page", page };
     return undefined;
   }
@@ -139,9 +139,9 @@ export const HOTKEYS: Record<HotkeyGroup, readonly HotkeyRow[]> = {
   maps: [{ id: "rsiView", keys: [["V"]] }],
 };
 
-/** The pages' shortcuts, in the menu's order: Cmd+1 and on. */
+/** The pages' shortcuts: Cmd+1 and on, Portfolio among them though it isn't in the menu. */
 export const pageRows = (): { page: Page; keys: readonly KeyName[] }[] =>
-  MENU_PAGES.slice(0, 9).map((page, i) => ({ page, keys: ["mod", String(i + 1)] }));
+  SHORTCUT_PAGES.slice(0, 9).map((page, i) => ({ page, keys: ["mod", String(i + 1)] }));
 
 /** A key's label on this machine. */
 export function keyLabel(key: KeyName, mac: boolean): string {
