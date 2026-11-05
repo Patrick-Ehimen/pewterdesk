@@ -1,8 +1,10 @@
 # pewterdesk
 
 Non-custodial, multi-venue crypto derivatives trading terminal (desktop-first,
-web later). No backend - talks directly to exchange APIs from the user's own
-machine. Launch venues: Hyperliquid and Aster - both on-chain.
+web later). No backend for trading - talks directly to exchange APIs from the
+user's own machine. The one hosted piece is PewterDesk Cloud, where the Plan
+page's trading plan, playbooks and journal are kept once the trader signs in
+(`docs/adr/0004-hosted-journal.md`); it is never on the trading path. Launch venues: Hyperliquid and Aster - both on-chain.
 Venue adapters, signing and key handling are Rust; the UI is TypeScript/React
 (see `docs/adr/0001-venues-in-rust.md`).
 
@@ -59,6 +61,10 @@ a key before storing it.
 - `packages/core` - the generated TS domain types and the `SecretStore` contract
 - `packages/ui` - shared React components (order ticket, position table, chart wrapper, hotkeys)
 - `apps/desktop` - the shipped app: Tauri (Rust shell, keychain, the Tauri commands the UI calls) and this workspace's React frontend
+- `supabase/` - PewterDesk Cloud: the hosted store's schema
+  (`migrations/`: plans, playbooks, journal days, trade notes, all under Row
+  Level Security, and a private `journal` bucket for screenshots) and how to
+  set a project up (`README.md`)
 - `apps/web` - the landing site for now: four static pages (home, Features,
   Security, Download) after the editorial mockup in `design/landing/`, one
   `index.html` each, all loading `src/main.tsx`. Copy and facts are in
@@ -92,6 +98,10 @@ pnpm and cargo, so it can't drift from the underlying scripts.
 - `make dev-ui` - desktop frontend in a browser only, no Rust
 - `cargo test -p pewterdesk-keychain -- --ignored` - the keychain tests that
   touch the real OS store, skipped by default
+- `.env.cloud` (gitignored; `.env.cloud.example`) - the Supabase project
+  (`PEWTERDESK_CLOUD_URL`, `PEWTERDESK_CLOUD_KEY`, its public anon key),
+  which the Makefile exports to every build; fixed at build time. Without it
+  the app runs and the Plan page says there's no cloud
 - `make rust-live` - read-only tests against Hyperliquid, Aster, Bybit, Binance and BloFin mainnet
   (needs the network, no key), one at a time so they stay inside rate limits
 
@@ -521,6 +531,29 @@ discover it on their own. The reasoning behind the rules is in
   confirmation on the page. It guards a
   trader against themselves in this app, not against the page, and not
   against an order placed on the venue's own site (which still counts).
+- `apps/desktop/src-tauri/src/cloud.rs` (and `supabase/migrations/`) -
+  PewterDesk Cloud, the hosted store for the Plan page: a Supabase project
+  (Postgres behind PostgREST, its Auth and Storage), reached from Rust only,
+  at the one address fixed when the app is built (`PEWTERDESK_CLOUD_URL`,
+  https only; no redirects followed, size caps). Not a venue and not on the
+  signing surface: nothing in it reaches the router, an account or a key. It
+  holds what the trader writes (plan, playbooks, journal days, trade notes,
+  PNG or JPEG screenshots) and the figures of trades the venue already
+  reported (prices, sizes, P&L, fees, funding, times) - never key material,
+  a signature, a signed payload or a keychain reference. Sign-in is a code
+  sent by email (`cloud_send_code`, `cloud_verify`); the session's refresh
+  token is kept in the keychain (`cloud:session`) and never returned, the
+  access token only in memory; the page sees the signed-in email. The page
+  names a collection from the fixed `Collection` (one table each); Rust
+  builds every request, checks every filter value (`list_params`), sends
+  only that table's own columns (`row`; never `user_id`) and caps every
+  body. Attachments are checked as images, stored under a name Rust picks,
+  and read only from the user's own folder (`own_path`). Each row is its
+  owner's alone by Row Level Security (forced; nothing granted to `anon`).
+  The webview CSP is unchanged: the page never talks to the store. Adding a
+  collection or a column the page can set, changing the host, or sending
+  anything key-related or an account's access to it is a security-relevant
+  change.
 - `apps/desktop/src-tauri/src/updater.rs` - updates (`tauri-plugin-updater`,
   used from Rust only: the page holds none of its permissions). A release
   build checks this repository's latest GitHub release (`latest.json`, the
@@ -565,8 +598,12 @@ discover it on their own. The reasoning behind the rules is in
   kept in this machine's storage, and the venue's own account isn't read;
   nothing is signed or sent, and the paper code imports no venue client. A
   live call checks again that its venue hasn't gone to paper since the
-  render, and the floating window (which calls the venue itself) places no
-  order while its venue is in paper mode. Paper results never reach the
+  render. The floating window (`float/FloatWindow.tsx`) trades the same
+  stored paper account while its venue is in paper mode (orders, closes,
+  cancels, leverage; it never runs the paper engine, which stays the main
+  window's) and the venue's account otherwise; each send checks the mode
+  again, so a paper order can't reach the venue nor a live one the paper
+  account. It shows a "Paper" badge while it does. Paper results never reach the
   menu bar, and a paper share card says "Paper". Routing a paper order to a
   venue, or a live one to the paper account, is a security-relevant change.
 - The replay account (`lib/replayAccount.ts`, `lib/replayStore.ts`,
@@ -685,7 +722,9 @@ be dragged anywhere on the chart and folded away, an armed tool staying in
 sight (`ChartTools.tsx`, `lib/chartTools.ts`, kept under `pd.chartTools`), not
 on the rail. The toolbar's Object tree button lists a chart's drawings and studies; drawings
 take saved templates and a default look per tool (`lib/drawingTemplates.ts`,
-`pd.drawingTemplates:`, styles only). A selected drawing's bar has settings,
+`pd.drawingTemplates:`, styles only), managed from the drawing toolbar's More
+menu (Manage templates…, `templateManager.ts`: rename, take the selected
+drawing's look, delete, forget the default). A selected drawing's bar has settings,
 timeframe ticks (`lib/drawingFrames.ts`: the library's one unbroken range, and the gaps
 in it kept on the drawing's `props`, left out by `frameFilter.ts`, which wraps every tool)
 and an alert, which opens the alerts dialog on the drawing's
@@ -719,8 +758,11 @@ TP or SL line dragged only calls back (`onMoveExit`), into the same
 commands and `hooks/useVenueFeeds.ts` their subscription lifecycle; the rest is
 `components/` (by area), `hooks/`, `lib/` (plain logic, no React) and
 `styles/`. `packages/ui` holds the shared presentational components, fed by
-props. The header's page menu switches between
-Trade (the workspace), Portfolio (the connected account's equity and exposure),
+props. The connected account's picture in the header opens Portfolio (the
+account's equity and exposure, with the venue's connected accounts, live and
+demo, at the top: switch, rename, add, manage), not in the page menu; Cmd+5
+still reaches it. The header's page menu switches between
+Trade (the workspace),
 Settings, News (Bybit's own announcements, read by its adapter's
 `announcements` from the venue's public API whichever venue is on screen,
 and news sites' headlines from their RSS feeds - `news_feeds.rs`; text
@@ -1059,6 +1101,50 @@ fill), read once and written after every change; a chat that can't be
 saved says so in the side panel. It places nothing: an answer can at most open its marks on
 the chart, or the market on the Trade page.
 
+## Plan & journal
+
+A page (`plan`; `components/plan/`, after the Plan and Journal mockups in
+`design/screens/74-86`), kept in PewterDesk Cloud behind a sign-in
+(`CloudGate.tsx`; `api/cloudClient.ts`, `hooks/useJournal.ts`), per account
+(`venue:address`, or `paper:<venue>`). Tabs: Today (the check-in: read the
+plan, key levels, the day's high-impact news, a bias per market, readiness;
+done, it starts the session, which locks the day's pre-market part),
+Trading plan (goal, the account's trading rules from Rust shown beside the
+plan's own, which only the journal checks, session, routine, playbooks,
+in-my-words; each save a new version), Playbooks (the library with each
+one's record, and the editor: in play when, trigger, invalid if, checklist,
+risk and management; versioned), Journal (a card per day with its
+discipline score, every trade with its note, and Insights: what habits
+cost, process against outcome, mood, sleep, entry hour, edge decay; a day's
+entry - pre-market, live session notes, end-of-day review, finalize) and
+Review (a week, the plan, or 90 days: cumulative R, by playbook, followed
+against skipped, rule breaks, findings). A trade opens its own page
+(`TradeDetail.tsx`), from the journal or Portfolio's closed trades
+("Details"): net P&L, R, MFE / MAE from its candles, held, fees and funding
+from the venue, its fills on a chart of its own (`TradeChart.tsx`, an SVG:
+it draws only), the pre-trade plan and checklist, notes and screenshots, a
+reflection, and the rule breaks the app can see (`detectedBreaks`) or the
+trader marks. Trades stay the venue's: a note names one by `tradeKey`
+(market, side, opening and closing times) and keeps a copy of its figures;
+R is from the planned stop (or the risk written down). The arithmetic is
+`lib/journal.ts`, `lib/journalStats.ts`, `lib/journalTrades.ts` (tested in
+`lib/journal.test.ts`). It reads and places nothing. The journal shows the
+venue's trades of its own 90-day window (`JOURNAL_DAYS`), and the trader can
+clear days from it, or all of them (`ClearDialog.tsx`, `clearDays` in
+`hooks/useJournal.ts`): in the app only - their entries, trade notes and
+screenshots are deleted from the cloud, and the day is kept with a
+`clearedAt`, so the venue's trades closed by then are hidden here
+(`clearedTrade`) while the venue's history is untouched. Restoring a day
+shows its trades again; what was deleted stays deleted. The journal lists days as
+cards, a list, a month or a timeline (`JournalDays.tsx`, with a filters
+drawer), and a day opens its entry (`DayEntry.tsx`): the pre-market intent -
+the day's bias, conviction, risk cap and trade count, and each market's own
+bias, risk and thesis, shared out on an allocation bar - checked against the
+trading rules where they're on, the plan where not (`lib/dayIntent.ts`; it
+only warns, the router's gate refuses), lockable and unlockable; then the
+live session (the day's closed trades and, today, the open positions) and
+the end-of-day review. Tags take a hue each from their text (`tagHue`).
+
 Settings › Layout shows every preset and saved layout as a card
 (`components/layout/LayoutGallery.tsx`), each with a miniature drawn from
 its own grid; the layout editor's "All layouts" opens it.
@@ -1130,7 +1216,9 @@ the source of truth, and the other seven locales are typed against it, so a
 new key fails the typecheck until every language has it. The language is fixed
 per session (switching reloads the app behind the splash), so never call `t` at
 module scope - it would run before the locale loads. Numbers stay en-US in
-every language on purpose; dates follow the locale via `dateFormat`.
+every language on purpose; dates follow the locale via `dateFormat`. The Plan
+page's strings are in `locales/journal/en.ts`, spread into every catalogue;
+the other seven languages show them in English until they're translated.
 
 ## Brand
 
