@@ -39,6 +39,7 @@ import {
 import { appClient } from "../api/appClient";
 import { venueClient } from "../api/venueClient";
 import { HoldButton } from "../components/HoldButton";
+import { usePaper } from "../hooks/usePaper";
 import { useStoredChoice } from "../hooks/useStoredChoice";
 import { useTradeSettings } from "../hooks/useTradeSettings";
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
@@ -152,15 +153,12 @@ function FloatWidget() {
   useEffect(() => {
     void refreshLiveTrading();
   }, []);
-  // Paper mode is the main window's: this window places orders on the venue
-  // itself, so while the venue is paper trading it places none at all.
+  // In paper mode this window trades the venue's paper account (the one the
+  // main window runs), never the venue; otherwise the venue's own account.
   const paper = useSyncExternalStore(subscribePaper, () => isPaperMode(venue));
-  const trading = !paper && canTrade(active, liveUids) ? active : undefined;
-  const account = useAccount(venue, active?.id);
-  const snapshot =
-    account.status === "live" || account.status === "closed" ? account.data : undefined;
-  const positions = snapshot?.positions ?? [];
-  const orders = snapshot?.openOrders ?? [];
+  const venueTrading = !paper && canTrade(active, liveUids) ? active : undefined;
+  const trading = paper ? { venue, id: "paper" } : venueTrading;
+  const account = useAccount(venue, paper ? undefined : active?.id);
 
   const marketsFeed = useMarkets(venue);
   const markets = marketsFeed.status === "live" ? marketsFeed.data : undefined;
@@ -186,6 +184,18 @@ function FloatWidget() {
   const marketId =
     (picked?.venue === venue ? picked.id : undefined) ?? loadMarket(venue) ?? info.defaultMarket;
   const market = marketOf(marketId);
+  // The paper account, traded from here; the main window moves it forward.
+  const paperAccountFeed = usePaper({
+    venue,
+    markets: markets ?? [],
+    summaries,
+    selected: market,
+    engine: false,
+  });
+  const live = paper ? paperAccountFeed.account : account;
+  const snapshot = live.status === "live" || live.status === "closed" ? live.data : undefined;
+  const positions = snapshot?.positions ?? [];
+  const orders = snapshot?.openOrders ?? [];
   const summary = summaryOf(marketId);
   const mark = summary ? Number(summary.markPrice) : undefined;
   const dayChange =
@@ -197,13 +207,15 @@ function FloatWidget() {
       : undefined;
   const closes = useCloses(venue, market?.id);
   const position = positions.find((p) => p.market === marketId);
-  const { settings, setLeverage } = useTradeSettings(
+  const venueSettings = useTradeSettings(
     venue,
-    active?.id,
+    paper ? undefined : active?.id,
     market?.id,
-    trading,
+    venueTrading,
     "float",
   );
+  const settings = paper ? paperAccountFeed.settings : venueSettings.settings;
+  const setLeverage = paper ? paperAccountFeed.setLeverage : venueSettings.setLeverage;
   const leverage = settings ? Number(settings.leverage) : Number(position?.leverage) || 10;
   const maxLeverage = Math.max(
     1,
@@ -269,8 +281,15 @@ function FloatWidget() {
     try {
       for (const request of requests) {
         last = orderText(request, marketOf(request.market)?.base ?? "");
-        if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
-        await venueClient.placeOrder(trading.venue, trading.id, request, "float");
+        // Checked again at the moment it's sent: a paper order never reaches the
+        // venue, a live one never the paper account.
+        if (paper) {
+          if (!isPaperMode(trading.venue)) throw new Error(t("paper.switchedLive"));
+          await paperAccountFeed.place(request);
+        } else {
+          if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
+          await venueClient.placeOrder(trading.venue, trading.id, request, "float");
+        }
       }
       setResult({ ok: true, title, body: requests.length === 1 ? last : undefined });
       setSize("");
@@ -343,8 +362,13 @@ function FloatWidget() {
     setBusy(true);
     try {
       for (const o of orders) {
-        if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
-        await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id, "float");
+        if (paper) {
+          if (!isPaperMode(trading.venue)) throw new Error(t("paper.switchedLive"));
+          await paperAccountFeed.cancel(o);
+        } else {
+          if (isPaperMode(trading.venue)) throw new Error(t("paper.switched"));
+          await venueClient.cancelOrder(trading.venue, trading.id, o.market, o.id, "float");
+        }
       }
       setResult({
         ok: true,
@@ -469,7 +493,7 @@ function FloatWidget() {
   };
   const upnl = positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
   const why = paper
-    ? t("paper.floatOff")
+    ? undefined
     : !active
       ? t("float.connect")
       : !trading
@@ -536,6 +560,11 @@ function FloatWidget() {
       <main ref={rootRef} className="float float-pill" data-tauri-drag-region>
         <TokenIcon market={market} size={18} />
         <strong data-tauri-drag-region>{base || marketId}</strong>
+        {paper && (
+          <span className="float-paper" title={t("paper.floatOn")} data-tauri-drag-region>
+            {t("paper.badge")}
+          </span>
+        )}
         <span
           className={`float-num ${dayChange ? trendClass(dayChange.abs) : ""}`}
           data-tauri-drag-region
@@ -627,6 +656,11 @@ function FloatWidget() {
           {market?.symbol ?? marketId}
           <LuChevronDown size={13} aria-hidden />
         </button>
+        {paper && (
+          <span className="float-paper" title={t("paper.floatOn")} data-tauri-drag-region>
+            {t("paper.badge")}
+          </span>
+        )}
         <span className="float-head-fill" data-tauri-drag-region />
         {iconButton(
           t(shared === "off" ? "float.shareHidden" : "float.shareShown"),

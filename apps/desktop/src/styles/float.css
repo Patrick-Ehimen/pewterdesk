@@ -552,3 +552,17 @@ html:has(.float) #root {
   outline: none;
   box-shadow: none;
 }
+
+/* Paper mode: this window trades the paper account; said where it can't be missed. */
+.float-paper {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--pd-info) 55%, transparent);
+  background: color-mix(in srgb, var(--pd-info) 16%, transparent);
+  color: var(--pd-info);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
