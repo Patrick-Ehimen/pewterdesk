@@ -8392,6 +8392,34 @@ button.pd-drawer-exit:hover {
   border-color: var(--pd-brass);
 }
 /* A scan's verdict on a row */
+/* The drawing templates' manager: one row per template */
+.pd-template-manager {
+  width: min(460px, calc(100vw - 32px));
+}
+.pd-template-manager .oac-dialog__body {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  padding-top: 8px;
+  overflow-y: auto;
+}
+.pd-template-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pd-template-name {
+  flex: 1;
+  min-width: 0;
+}
+.pd-template-default {
+  flex: 1;
+}
+.pd-template-none {
+  margin: 4px 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
 /* A control with its name beside it */
 .pd-mx-labelled {
   display: inline-flex;

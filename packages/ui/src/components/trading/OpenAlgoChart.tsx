@@ -126,6 +126,7 @@ import {
   TPO_TYPE,
 } from "./SessionProfiles";
 import { TokenIcon } from "./TokenIcon";
+import { attachTemplateManager } from "./templateManager";
 import {
   type Profiles,
   registerVisibleRangeProfile,
@@ -1432,6 +1433,7 @@ export function OpenAlgoChart({
   useEffect(() => (widget ? attachHighlighterDot(widget) : undefined), [widget]);
   useEffect(() => (widget ? attachHighlighterWidths(widget) : undefined), [widget]);
   useEffect(() => (widget ? attachChartShortcuts(widget) : undefined), [widget]);
+  useEffect(() => (widget ? attachTemplateManager(widget) : undefined), [widget]);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [newsCard, setNewsCard] = useState<{
