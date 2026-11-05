@@ -153,7 +153,7 @@ function EquityChart({
         ? [
             {
               key: "equity",
-              text: `${t("rules.legend.equity")} ${formatNumber(alone.equity, 0)}`,
+              text: `${t("rules.legend.equity")} ${formatNumber(alone.equity, 2)}`,
               at: y(alone.equity),
             },
           ]

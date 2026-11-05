@@ -63,6 +63,8 @@ interface HeaderActionsProps {
   /** How the venue on screen connects, which the button names. */
   connectAuth: "wallet" | "apiKey";
   onOpenWallet: () => void;
+  /** The account's own page (Portfolio), from the connected account's picture. */
+  onOpenAccount: () => void;
 }
 
 /**
@@ -94,6 +96,7 @@ export function HeaderActions({
   demo,
   connectAuth,
   onOpenWallet,
+  onOpenAccount,
 }: HeaderActionsProps) {
   const locale = currentLocale();
   // Clicking the chevron keeps the rest of the actions out; hovering shows them anyway.
@@ -197,7 +200,7 @@ export function HeaderActions({
           aria-label={t("wallet.connectedAddress", {
             address: accountName ? `${accountName} · ${address}` : address,
           })}
-          onClick={onOpenWallet}
+          onClick={onOpenAccount}
         >
           {account ? (
             <AccountAvatar account={account} size={34} live />

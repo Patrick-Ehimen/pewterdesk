@@ -1,4 +1,4 @@
-import type { AccountSnapshot, ClosedTrade, Market } from "@pewterdesk/core";
+import type { AccountSnapshot, ClosedTrade, Market, VenueId } from "@pewterdesk/core";
 import {
   ClosedTradesTable,
   DateRangePicker,
@@ -20,7 +20,7 @@ import {
   useDisplayCurrency,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useState } from "react";
-import { LuCalendarDays, LuCircleDollarSign, LuClock } from "react-icons/lu";
+import { LuCalendarDays, LuCircleDollarSign, LuClock, LuSettings2 } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import type { Feed } from "../../hooks/useVenueFeeds";
 import { type Edge, edge, extremes, type Group, RETURN_EDGES } from "../../lib/edge";
@@ -43,6 +43,7 @@ import {
   type Range,
 } from "../../lib/performance";
 import { portfolioSummary } from "../../lib/portfolio";
+import { AccountList } from "../wallet/AccountList";
 import { EdgeBreakdown, HOLD_LABEL, SIZE_LABEL } from "./EdgeBreakdown";
 import { PnlCalendar } from "./PnlCalendar";
 
@@ -81,7 +82,13 @@ interface PortfolioPageProps {
   /** How the venue connects, which the empty state names. */
   connectAuth: "wallet" | "apiKey";
   onConnect: () => void;
+  /** The venue on screen, whose connected accounts (live and demo) the page lists. */
+  venueId?: VenueId;
+  /** Opens the active account's details: live trading, disconnect. */
+  onManage?: () => void;
   onShare?: (trade: ClosedTrade) => void;
+  /** Opens a closed trade's details in the journal. */
+  onOpenTrade?: (trade: ClosedTrade) => void;
 }
 
 /**
@@ -210,7 +217,10 @@ export function PortfolioPage({
   venue,
   connectAuth,
   onConnect,
+  venueId,
+  onManage,
   onShare,
+  onOpenTrade,
 }: PortfolioPageProps) {
   const quote = markets[0]?.quote ?? "USDC";
   const marketOf = (id: string) => markets.find((m) => m.id === id);
@@ -524,6 +534,17 @@ export function PortfolioPage({
           {t("portfolio.calendar")}
         </button>
       </header>
+      {venueId && (
+        <section className="pf-accounts" aria-label={t("accounts.title")}>
+          <AccountList venue={venueId} onAdd={onConnect} />
+          {onManage && (
+            <button type="button" className="settings-button pf-accounts-manage" onClick={onManage}>
+              <LuSettings2 size={14} aria-hidden />
+              {t("portfolio.manageAccount")}
+            </button>
+          )}
+        </section>
+      )}
 
       {account.status === "closed" && (
         <p className="pd-stale" role="status">
@@ -917,6 +938,7 @@ export function PortfolioPage({
                     quoteFor={(id) => marketOf(id)?.quote ?? quote}
                     estimated={leverageEstimated}
                     onShare={onShare}
+                    onOpen={onOpenTrade}
                   />
                 </div>
               )}

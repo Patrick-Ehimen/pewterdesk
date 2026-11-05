@@ -3098,3 +3098,24 @@ button.ncal-title:hover {
   margin: 8px 0;
   color: var(--pd-pewter);
 }
+
+/* Portfolio's accounts: the venue's connected accounts (live and demo), the
+   list the account pop-up had, as a card at the top of the page. */
+.pf-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border);
+  border-radius: calc(var(--pd-radius) + 4px);
+}
+.pf-accounts .acct {
+  margin: 0;
+}
+.pf-accounts-manage {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
