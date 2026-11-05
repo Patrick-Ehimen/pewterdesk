@@ -22,8 +22,11 @@ if [ "$(uname)" = "Darwin" ]; then
   case "$bin" in
     "$HOME/Documents/"* | "$HOME/Desktop/"* | "$HOME/Downloads/"*)
       run="$HOME/Library/Caches/app.pewterdesk.desktop.dev"
-      if mkdir -p "$run" && cp -f "$bin" "$run/"; then
-        [ -f "$pdd" ] && cp -f "$pdd" "$run/"
+      # Remove before copying: overwriting a signed binary in place keeps its
+      # inode, and macOS then kills the new one on launch (SIGKILL, a stale
+      # cached signature) - the app exits at once with no window.
+      if mkdir -p "$run" && rm -f "$run/$(basename "$bin")" && cp "$bin" "$run/"; then
+        [ -f "$pdd" ] && rm -f "$run/pdd" && cp "$pdd" "$run/"
         bin="$run/$(basename "$bin")"
       else
         echo "dev-run: couldn't copy the app out of a protected folder; desktop notifications won't show" >&2
