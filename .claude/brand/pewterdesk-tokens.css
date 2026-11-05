@@ -39,9 +39,15 @@
      drawn in this dark set. */
   --pd-art-cyan: #5ad8f5;
   --pd-art-violet: #a77bf3;
+  /* Journal tags only (see BRAND.md): each tag's hue comes from its text, at
+     this lightness and chroma, so tags tell apart without meaning anything. */
+  --pd-tag-l: 0.8;
+  --pd-tag-c: 0.1;
 }
 
 [data-theme="light"] {
+  --pd-tag-l: 0.5;
+  --pd-tag-c: 0.13;
   --pd-bg: #f4f3ef;
   --pd-surface: #ffffff;
   --pd-surface-raised: #fafaf7;
@@ -165,6 +171,8 @@
 
 /* Parchment: a warm, paper-toned light theme */
 [data-theme="parchment"] {
+  --pd-tag-l: 0.5;
+  --pd-tag-c: 0.13;
   --pd-bg: #f2ecdf;
   --pd-surface: #fbf7ee;
   --pd-surface-raised: #fffdf7;
@@ -190,6 +198,8 @@
 /* White: pure white panels and chart on the palest grey, with the core
    light palette's brass. Neutral where Parchment is warm. */
 [data-theme="white"] {
+  --pd-tag-l: 0.5;
+  --pd-tag-c: 0.13;
   --pd-bg: #f3f4f6;
   --pd-surface: #ffffff;
   --pd-surface-raised: #ffffff;

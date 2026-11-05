@@ -21,6 +21,26 @@ thing that matters, and green and red belong to the market.
   The one exception is the P&L share card's ring art (`lib/shareCard.ts`), in
   `--pd-art-cyan` and `--pd-art-violet`, after its design: an illustration on an
   image people post, never interface. Nothing else uses them.
+- The journal's tags (and moods shown as tags) are the second exception: each
+  takes a hue from its own text (`tagHue` in `components/plan/parts.tsx`), drawn
+  at `--pd-tag-l` / `--pd-tag-c` from a fixed set that leaves out green, red and
+  the warning orange, so a tag never reads as P&L or risk. Labels only, never
+  a button, a figure or a state. The journal's session map uses the same
+  palette, one hue per session (Asia, EU, US), as labels only. So do the
+  Plan page's Today rail cards (`.jr-rc` in `styles/plan.css`): one hue per
+  card (limits, yesterday, the week) for its icon badge, a wash, its gauges
+  and empty state - identity only; P&L stays green / red, today brass, a limit
+  near its cap the warning colour. Since then, every label colour on the
+  Plan & journal page (`styles/plan.css`, these exceptions included) is a
+  grade of the current theme's accent rather than the tag palette: the
+  accent's hue turned and lightness moved a little per label, so the page
+  follows the theme. Its "Rules on / off" pill is green / red
+  by the user's choice: a state, not P&L.
+  The trading plan's chips and routine use the same palette as labels: the
+  weekdays a hue each (`WEEKDAY_HUES`), each market and playbook its own
+  (`marketHue`, `tagHue`), the routine's before and
+  after lists a hue each (`ROUTINE_HUES`). Playbooks too: each status (`STATUS_HUES`: draft,
+  active, retired) and each timeframe (`timeframeHue`) a hue of its own.
 
 ## Core palette
 
