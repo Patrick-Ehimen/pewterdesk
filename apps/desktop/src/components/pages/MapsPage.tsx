@@ -216,6 +216,7 @@ import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { useMarketSummaries } from "../../hooks/useVenueFeeds";
 import { useWatchlist, watchKey } from "../../hooks/useWatchlist";
 import { isTyping, plainKey } from "../../lib/hotkeys";
+import { BAND_ALERTS, SQUEEZE_ALERTS, setMapAlert, useMapAlerts } from "../../lib/mapAlerts";
 import {
   loadSaved,
   type SavedMapView,
@@ -792,6 +793,32 @@ export function MapsPage({
     done: scoped.filter((m) => histories.has(m.id)).length,
     total: scoped.length,
   };
+  // Each Bollinger view's notify switch, beside its scope: kept on this
+  // machine and watched app-wide (`useMapAlertWatch` in App), as the pump /
+  // dump watch's is.
+  const mapAlertsNow = useMapAlerts();
+  const notifySeg = (view: "squeeze" | "bands" | "rsiBands") => (
+    <span className="pd-mx-labelled">
+      <span className="pd-muted">{t("mapx.watch.alerts")}</span>
+      {view === "squeeze" ? (
+        <MapSeg
+          options={SQUEEZE_ALERTS}
+          value={mapAlertsNow.squeeze}
+          onChange={(v) => setMapAlert("squeeze", v)}
+          label={t("mapx.watch.alerts")}
+          text={(v) => t(`mapx.alerts.squeeze.${v}`)}
+        />
+      ) : (
+        <MapSeg
+          options={BAND_ALERTS}
+          value={mapAlertsNow[view]}
+          onChange={(v) => setMapAlert(view, v)}
+          label={t("mapx.watch.alerts")}
+          text={(v) => t(`mapx.alerts.${view}.${v}`)}
+        />
+      )}
+    </span>
+  );
   const scopeSeg = (
     <MapSeg
       options={MAP_SCOPES}
@@ -1762,7 +1789,12 @@ export function MapsPage({
               rows={squeezeRows}
               progress={historyProgress}
               loader={<LoadingMark size={44} />}
-              extra={scopeSeg}
+              extra={
+                <>
+                  {notifySeg("squeeze")}
+                  {scopeSeg}
+                </>
+              }
               onTrade={openCard}
             />
           ) : view === "bands" ? (
@@ -1772,7 +1804,12 @@ export function MapsPage({
               onFrame={setBandFrame}
               progress={historyProgress}
               loader={<LoadingMark size={44} />}
-              extra={scopeSeg}
+              extra={
+                <>
+                  {notifySeg("bands")}
+                  {scopeSeg}
+                </>
+              }
               onTrade={openCard}
             />
           ) : view === "rsiBands" ? (
@@ -1782,7 +1819,12 @@ export function MapsPage({
               onFrame={setBandFrame}
               progress={historyProgress}
               loader={<LoadingMark size={44} />}
-              extra={scopeSeg}
+              extra={
+                <>
+                  {notifySeg("rsiBands")}
+                  {scopeSeg}
+                </>
+              }
               onTrade={openCard}
             />
           ) : view === "emaCross" ? (

@@ -138,6 +138,7 @@ import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useClosedLeverage } from "./hooks/useClosedLeverage";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
+import { useMapAlertWatch } from "./hooks/useMapAlerts";
 import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
@@ -192,6 +193,7 @@ import { peekSavedIcon } from "./lib/iconCache";
 import { tradeKey } from "./lib/journal";
 import { liveTradingUids, refreshLiveTrading, subscribeLiveTrading } from "./lib/liveTrading";
 import { loadIcon } from "./lib/loadIcon";
+import { startNotesCloud } from "./lib/notesCloud";
 import {
   clearNotes,
   currentNoteSettings,
@@ -1169,6 +1171,10 @@ export function App() {
   const alerts = useAlerts(alertsOpen, liveAccount);
   const scanAlerts = useScanAlerts(marketList);
   usePumpWatchAlerts(venue);
+  // The Maps page's Bollinger alerts (squeeze, band breaks, RSI at a band), as the watch's.
+  useMapAlertWatch(venue, marketList);
+  // The notification centre, kept in PewterDesk Cloud once signed in.
+  useEffect(() => startNotesCloud(), []);
   // Hyperliquid and Aster publish no open-interest history: sample it for the Maps page.
   useOiRecorder();
   // The notification centre: everything `notifyEvent` has recorded.

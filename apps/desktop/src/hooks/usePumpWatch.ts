@@ -30,7 +30,7 @@ const READ_MS = 4 * 60_000;
 /** How often the candidates are looked at again. */
 const CHECK_MS = 5 * 60_000;
 /** Markets read at most each round: the strongest first. */
-const MAX_CANDIDATES = 40;
+const MAX_CANDIDATES = 80;
 const PACE_MS = 150;
 /** A day's move this big is worth a closer look without the hourly history. */
 const SCREEN_DAY = 0.08;
@@ -210,25 +210,35 @@ export function usePumpWatch(
       .map((c) => c.market);
   }, [scoped, byId, histories, notices]);
 
-  // Read the candidates, a few at a time, and again every few minutes.
-  const ids = candidates.map((m) => m.id).join(",");
+  // Read the candidates, a few at a time, and again every few minutes. The
+  // set, not its order, decides a new pass: prices reorder it every few
+  // seconds, and each reorder used to start the count again from 1. The
+  // count is what's been read of the markets on the list, so it only climbs;
+  // a new pass skips straight past what was read moments ago.
+  const ids = candidates
+    .map((m) => m.id)
+    .sort()
+    .join(",");
+  const readCount = (list: readonly Market[]) =>
+    list.filter((m) => reads.has(`${venue}:${m.id}`)).length;
   // biome-ignore lint/correctness/useExhaustiveDependencies: `ids` names the candidates; `round` reads them again
   useEffect(() => {
     if (!enabled || candidates.length === 0) return;
     let live = true;
+    const list = candidates;
     void (async () => {
-      let done = 0;
-      setProgress({ done, total: candidates.length });
-      for (const market of candidates) {
+      setProgress({ done: readCount(list), total: list.length });
+      for (const market of list) {
         const s = byId.get(market.id);
         if (!live) return;
-        if (s) {
-          await readMarket(venue, market, s, histories?.get(market.id)?.candles).catch(() => {});
-        }
-        done += 1;
-        if (live) setProgress({ done, total: candidates.length });
+        const held = reads.get(`${venue}:${market.id}`);
+        if (!s || (held && Date.now() - held.at < READ_MS)) continue;
+        await readMarket(venue, market, s, histories?.get(market.id)?.candles).catch(() => {});
+        if (!live) return;
+        setProgress({ done: readCount(list), total: list.length });
         await sleep(PACE_MS);
       }
+      if (live) setProgress({ done: readCount(list), total: list.length });
     })();
     return () => {
       live = false;
