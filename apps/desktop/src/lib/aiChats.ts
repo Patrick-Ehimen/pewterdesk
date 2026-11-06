@@ -1,19 +1,21 @@
 import type { CandleInterval, MarketSummary, VenueId } from "@pewterdesk/core";
-import type { AiChartMarks, AiProvider, AiSnapshotRow } from "../api/venueClient";
+import type { AiChatRecord, AiChatSummary } from "../api/cloudClient";
+import type { AiChartMarks, AiProvider, AiSnapshotRow, AiSource, AiStep } from "../api/venueClient";
 
-// PewterDesk AI's conversations, kept on this machine in a file Rust writes
-// in the app's data folder (`ai_assistant.rs`): what the page shows (each
-// question and answer as text, with the chart marks an answer drew) and the
-// API's own transcript, handed back to Rust whole with the next question.
-// The transcript holds questions, market data and answers - never a key.
-// Not the webview's storage: the market caches fill that, and a save that
-// doesn't fit there is lost.
+// PewterDesk AI's conversations, kept in PewterDesk Cloud (`cloud.rs`,
+// `ai_chats`): what the page shows (each question and answer as text, with
+// the chart marks an answer drew and the sources it cited) and the API's own
+// transcript, handed back to Rust whole with the next question. The
+// transcript holds questions, market data and answers - never a key. The
+// list reads each chat's `meta` only; its messages and transcript are read
+// when it's opened. Before the cloud they were kept in a file on this
+// machine (and before that the webview's storage), read once to move them.
 
 /** Where chats were kept before the file, read once to move them over. */
 export const LEGACY_KEY = "pd.ai.chats";
-const MAX_CHATS = 100;
-/** The file, at most, written; under Rust's own cap. */
-export const MAX_STORE_CHARS = 40 * 1024 * 1024;
+const MAX_CHATS = 1000;
+/** A message's cited sources, at most. */
+const MAX_SOURCES = 60;
 /** A chat's title: its first question, cut short. */
 export const TITLE_MAX = 60;
 
@@ -30,12 +32,22 @@ export interface ChatMessage {
   marks?: AiChartMarks;
   /** The answer was declined, or stopped short. */
   note?: "refused" | "cutShort";
+  /** What the answer cites, by its `[sN]` tag. */
+  sources?: AiSource[];
+  /** How long it took to answer, in milliseconds. */
+  took?: number;
+  /** How many requests it took. */
+  rounds?: number;
+  /** The trader's thumbs up or down. */
+  rating?: "up" | "down";
+  /** What it thought and read on the way. */
+  steps?: AiStep[];
 }
 
 /** Chats from before there was a choice were Claude's. */
 export const LEGACY_PROVIDER: AiProvider = "claude";
 export const LEGACY_MODEL = "claude-opus-5-5";
-const PROVIDERS: readonly string[] = ["claude", "gemini", "openai"];
+const PROVIDERS: readonly string[] = ["claude", "gemini", "openai", "mistral"];
 
 export interface AiChat {
   id: string;
@@ -51,6 +63,76 @@ export interface AiChat {
   /** The API's conversation, opaque to the page. */
   transcript: unknown;
   updated: number;
+  /**
+   * Only its summary is here (`meta`, from the list): its messages and
+   * transcript are read from the cloud when it's opened.
+   */
+  partial?: boolean;
+  /**
+   * The markets its answers marked on a chart, as `venue:market`: kept in
+   * its summary, so a chat not yet read can be found for a market's analysis.
+   */
+  marked?: string[];
+}
+
+const MAX_MARKED = 50;
+
+/** A market as `marked` names it. */
+export const marketKey = (venue: string, market: string) => `${venue}:${market}`;
+
+/** The markets `chat`'s answers marked, newest last. */
+export function markedOf(chat: Pick<AiChat, "messages" | "marked" | "partial">): string[] {
+  if (chat.partial) return chat.marked ?? [];
+  const keys: string[] = [];
+  for (const m of chat.messages) {
+    if (!m.marks) continue;
+    const key = marketKey(m.marks.venue, m.marks.market);
+    const at = keys.indexOf(key);
+    if (at >= 0) keys.splice(at, 1);
+    keys.push(key);
+  }
+  return keys.slice(-MAX_MARKED);
+}
+
+/** The latest analysis `chat` drew on `market`, if it drew one. */
+function marksIn(chat: AiChat, venue: string, market: string): ChatMessage | undefined {
+  return [...chat.messages]
+    .reverse()
+    .find((m) => m.marks && m.marks.venue === venue && m.marks.market === market);
+}
+
+/**
+ * The analysis to draw for the market on screen: the latest one in the open
+ * chat, else the latest in any other chat. `toRead` names a chat not read
+ * yet whose summary says it marked this market, newest first: reading it
+ * may find a newer analysis.
+ */
+export function marksFor(
+  chats: readonly AiChat[],
+  venue: string,
+  market: string | undefined,
+  openId: string | undefined,
+): { marks?: AiChartMarks; chatId?: string; time?: number; toRead?: string } {
+  if (!market) return {};
+  const key = marketKey(venue, market);
+  const open = chats.find((c) => c.id === openId && !c.partial);
+  const own = open && marksIn(open, venue, market);
+  if (open && own?.marks) return { marks: own.marks, chatId: open.id, time: own.time };
+  let best: { marks: AiChartMarks; chatId: string; time: number } | undefined;
+  let toRead: string | undefined;
+  for (const c of [...chats].sort((a, b) => b.updated - a.updated)) {
+    if (c.partial) {
+      if (!toRead && (c.marked ?? []).includes(key) && (!best || c.updated > best.time)) {
+        toRead = c.id;
+      }
+      continue;
+    }
+    const m = marksIn(c, venue, market);
+    if (m?.marks && (!best || m.time > best.time)) {
+      best = { marks: m.marks, chatId: c.id, time: m.time };
+    }
+  }
+  return { ...best, toRead };
 }
 
 const VENUE_IDS: readonly string[] = ["hyperliquid", "aster", "bybit", "binance", "blofin"];
@@ -66,7 +148,63 @@ function parseMessage(v: unknown): ChatMessage | undefined {
     tools: Array.isArray(m.tools) ? m.tools.filter((t) => typeof t === "string") : undefined,
     marks: m.marks && typeof m.marks === "object" ? m.marks : undefined,
     note: m.note === "refused" || m.note === "cutShort" ? m.note : undefined,
+    sources: Array.isArray(m.sources)
+      ? m.sources.flatMap((x) => parseSource(x) ?? []).slice(0, MAX_SOURCES)
+      : undefined,
+    took: typeof m.took === "number" && m.took >= 0 ? m.took : undefined,
+    rounds: typeof m.rounds === "number" && m.rounds >= 0 ? m.rounds : undefined,
+    rating: m.rating === "up" || m.rating === "down" ? m.rating : undefined,
+    steps: Array.isArray(m.steps) ? stepsOf(m.steps) : undefined,
   };
+}
+
+const MAX_STEPS = 40;
+
+/** Steps as kept, made safe: text only, bounded. */
+export function stepsOf(value: readonly unknown[]): AiStep[] {
+  const out: AiStep[] = [];
+  for (const v of value.slice(0, MAX_STEPS)) {
+    if (!v || typeof v !== "object") continue;
+    const s = v as Record<string, unknown>;
+    if (s.kind === "thought" && typeof s.text === "string") {
+      out.push({ kind: "thought", text: s.text.slice(0, 2000) });
+    } else if (s.kind === "tool" && typeof s.name === "string") {
+      const detail = typeof s.detail === "string" ? s.detail.slice(0, 200) : "";
+      out.push({ kind: "tool", name: s.name.slice(0, 40), detail });
+    }
+  }
+  return out;
+}
+
+const SOURCE_KINDS: readonly string[] = ["post", "headline", "announcement"];
+
+function parseSource(v: unknown): AiSource | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const s = v as Partial<AiSource>;
+  if (typeof s.n !== "number" || !Number.isInteger(s.n) || s.n < 1) return undefined;
+  if (typeof s.kind !== "string" || !SOURCE_KINDS.includes(s.kind)) return undefined;
+  const open =
+    s.open &&
+    typeof s.open === "object" &&
+    (s.open.kind === "article" || s.open.kind === "wire" || s.open.kind === "link") &&
+    typeof s.open.id === "string"
+      ? { kind: s.open.kind, id: s.open.id }
+      : null;
+  return {
+    n: s.n,
+    kind: s.kind,
+    publisher: typeof s.publisher === "string" ? s.publisher.slice(0, 60) : "",
+    title: typeof s.title === "string" ? s.title.slice(0, 160) : "",
+    time: typeof s.time === "number" ? s.time : 0,
+    open,
+  };
+}
+
+/** The highest source tag a chat's answers used, for the next answer to carry on from. */
+export function sourceBase(chat: Pick<AiChat, "messages">): number {
+  let max = 0;
+  for (const m of chat.messages) for (const s of m.sources ?? []) max = Math.max(max, s.n);
+  return max;
 }
 
 /** What was stored, made safe: malformed chats dropped, newest first. */
@@ -78,45 +216,92 @@ export function parseChats(raw: string | null): AiChat[] {
   }
 }
 
+/** A chat id, as the cloud takes it (`cloud.rs`'s `is_chat_key`). */
+export const isChatId = (id: unknown): id is string =>
+  typeof id === "string" && /^[a-z0-9-]{1,64}$/.test(id);
+
 function chatsOf(value: unknown): AiChat[] {
   if (!Array.isArray(value)) return [];
   const out: AiChat[] = [];
   for (const v of value) {
-    if (!v || typeof v !== "object") continue;
-    const c = v as Partial<AiChat>;
-    if (typeof c.id !== "string" || out.some((x) => x.id === c.id)) continue;
-    if (typeof c.venue !== "string" || !VENUE_IDS.includes(c.venue)) continue;
-    out.push({
-      id: c.id,
-      title: typeof c.title === "string" ? c.title.slice(0, TITLE_MAX) : "",
-      mode: c.mode === "chart" ? "chart" : "chat",
-      provider:
-        typeof c.provider === "string" && PROVIDERS.includes(c.provider)
-          ? c.provider
-          : LEGACY_PROVIDER,
-      model: typeof c.model === "string" && c.model ? c.model : LEGACY_MODEL,
-      venue: c.venue,
-      market: typeof c.market === "string" ? c.market : undefined,
-      interval: typeof c.interval === "string" ? c.interval : undefined,
-      messages: Array.isArray(c.messages) ? c.messages.flatMap((m) => parseMessage(m) ?? []) : [],
-      transcript: Array.isArray(c.transcript) ? c.transcript : null,
-      updated: typeof c.updated === "number" ? c.updated : 0,
-    });
+    const chat = chatOf(v);
+    if (chat && !out.some((x) => x.id === chat.id)) out.push(chat);
   }
   return out.sort((a, b) => b.updated - a.updated).slice(0, MAX_CHATS);
+}
+
+function chatOf(v: unknown): AiChat | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const c = v as Partial<AiChat>;
+  if (!isChatId(c.id)) return undefined;
+  if (typeof c.venue !== "string" || !VENUE_IDS.includes(c.venue)) return undefined;
+  return {
+    id: c.id,
+    title: typeof c.title === "string" ? c.title.slice(0, TITLE_MAX) : "",
+    mode: c.mode === "chart" ? "chart" : "chat",
+    provider:
+      typeof c.provider === "string" && PROVIDERS.includes(c.provider)
+        ? c.provider
+        : LEGACY_PROVIDER,
+    model: typeof c.model === "string" && c.model ? c.model : LEGACY_MODEL,
+    venue: c.venue,
+    market: typeof c.market === "string" ? c.market : undefined,
+    interval: typeof c.interval === "string" ? c.interval : undefined,
+    messages: Array.isArray(c.messages) ? c.messages.flatMap((m) => parseMessage(m) ?? []) : [],
+    transcript: Array.isArray(c.transcript) ? c.transcript : null,
+    updated: typeof c.updated === "number" ? c.updated : 0,
+    marked: Array.isArray(c.marked)
+      ? c.marked
+          .filter((k): k is string => typeof k === "string" && k.length <= 120)
+          .slice(-MAX_MARKED)
+      : undefined,
+  };
+}
+
+/** What the cloud keeps as a chat's `meta`: everything but its messages and transcript. */
+export function metaOf(chat: AiChat): Record<string, unknown> {
+  return {
+    title: chat.title,
+    mode: chat.mode,
+    provider: chat.provider,
+    model: chat.model,
+    venue: chat.venue,
+    market: chat.market,
+    interval: chat.interval,
+    updated: chat.updated,
+    marked: markedOf(chat),
+  };
+}
+
+/** A chat in the cloud's list: its summary only, `partial` until opened. */
+export function chatFromSummary(summary: AiChatSummary): AiChat | undefined {
+  const meta = summary.meta && typeof summary.meta === "object" ? summary.meta : {};
+  const chat = chatOf({ ...meta, id: summary.key, messages: [], transcript: null });
+  return chat && { ...chat, partial: true };
+}
+
+/** A whole chat, as the cloud holds it. */
+export function chatFromRecord(record: AiChatRecord): AiChat | undefined {
+  const meta = record.meta && typeof record.meta === "object" ? record.meta : {};
+  return chatOf({
+    ...meta,
+    id: record.key,
+    messages: record.messages,
+    transcript: record.transcript,
+  });
 }
 
 /** The chat open in each view. */
 export type OpenChats = Partial<Record<ChatMode, string>>;
 
-/** What the chats file holds. */
+/** What the old chats file held. */
 export interface ChatStore {
   version: 1;
   chats: AiChat[];
   open: OpenChats;
 }
 
-/** The chats file as read, made safe; empty for nothing or junk. */
+/** The old chats file as read, made safe; empty for nothing or junk. */
 export function parseStore(raw: string | null | undefined): ChatStore {
   const empty: ChatStore = { version: 1, chats: [], open: {} };
   if (!raw) return empty;
@@ -144,35 +329,6 @@ export function mergeChats(kept: readonly AiChat[], extra: readonly AiChat[]): A
   return [...kept, ...extra.filter((c) => !ids.has(c.id))]
     .sort((a, b) => b.updated - a.updated)
     .slice(0, MAX_CHATS);
-}
-
-/**
- * The chats file to write: newest first, the oldest chats dropped until it
- * fits under `max` characters. Says how many were dropped.
- */
-export function storeToSave(
-  chats: readonly AiChat[],
-  open: OpenChats,
-  max = MAX_STORE_CHARS,
-): { store: ChatStore; dropped: number } {
-  const sorted = [...chats].sort((a, b) => b.updated - a.updated);
-  let kept = sorted.slice(0, MAX_CHATS);
-  const sizes = kept.map((c) => JSON.stringify(c).length + 1);
-  let total = sizes.reduce((a, b) => a + b, 64);
-  while (kept.length > 1 && total > max) {
-    total -= sizes[kept.length - 1] ?? 0;
-    kept = kept.slice(0, -1);
-  }
-  const ids = new Set(kept.map((c) => c.id));
-  const stillOpen: OpenChats = {};
-  for (const mode of ["chat", "chart"] as const) {
-    const id = open[mode];
-    if (id && ids.has(id)) stillOpen[mode] = id;
-  }
-  return {
-    store: { version: 1, chats: kept, open: stillOpen },
-    dropped: sorted.length - kept.length,
-  };
 }
 
 /**

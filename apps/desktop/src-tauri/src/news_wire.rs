@@ -755,6 +755,12 @@ pub async fn clear_news_key(source: WireSource) -> Result<(), VenueError> {
         .map_err(|e| VenueError::Key(e.into()))
 }
 
+/// An item's link, as the wire gave it: for PewterDesk AI to sign into a
+/// source it cites (`ai_assistant.rs`). Never sent to the page.
+pub fn link_of(wire: &NewsWireState, id: &str) -> Option<String> {
+    wire.links.lock().unwrap().by_id.get(id).cloned()
+}
+
 /// Opens an item's link in the browser, by the id the wire gave the item -
 /// never a URL from the UI.
 #[tauri::command]

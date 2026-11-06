@@ -110,7 +110,7 @@ export const SHARE_SIZE: Record<ShareLayout, { w: number; h: number }> = {
   portrait: { w: 380, h: 500 },
 };
 
-interface Palette {
+export interface SharePalette {
   bg: string;
   raised: string;
   border: string;
@@ -127,7 +127,8 @@ interface Palette {
   font: string;
 }
 
-function palette(): Palette {
+/** The card's colours: always the dark set (market colours stay the document's). */
+export function sharePalette(): SharePalette {
   // The dark set, read off a probe element (the token selectors work on any
   // element); the market colours stay the document's, so colorblind mode holds.
   const probe = document.createElement("div");
@@ -244,7 +245,7 @@ const SLABS: readonly [number, number, number, number, number, number][] = [
 /** Where the light comes from: up and to the left. */
 const LIGHT = { x: -0.55, y: -0.83 };
 
-function shards(ctx: CanvasRenderingContext2D, p: Palette, w: number, h: number) {
+function shards(ctx: CanvasRenderingContext2D, p: SharePalette, w: number, h: number) {
   const unit = Math.max(w, h);
   const deep = darken(ctx, p.bg, 0.35);
   for (const [fx, fy, fw, fh, deg, shade] of SLABS) {
@@ -353,7 +354,7 @@ function shards(ctx: CanvasRenderingContext2D, p: Palette, w: number, h: number)
  */
 function neon(
   ctx: CanvasRenderingContext2D,
-  p: Palette,
+  p: SharePalette,
   stroke: string | CanvasGradient,
   glow: string,
   width: number,
@@ -384,7 +385,7 @@ function neon(
  */
 function art(
   ctx: CanvasRenderingContext2D,
-  p: Palette,
+  p: SharePalette,
   cx: number,
   cy: number,
   size: number,
@@ -525,7 +526,13 @@ function art(
  * a profit, red for a loss). Every line a
  * hairline, so it stays sharp.
  */
-function horizon(ctx: CanvasRenderingContext2D, p: Palette, w: number, h: number, tone: string) {
+function horizon(
+  ctx: CanvasRenderingContext2D,
+  p: SharePalette,
+  w: number,
+  h: number,
+  tone: string,
+) {
   const deep = darken(ctx, p.bg, 0.35);
   const sky = ctx.createLinearGradient(0, 0, 0, h);
   sky.addColorStop(0, deep);
@@ -664,7 +671,7 @@ function priceIcon(
 /** A tile for one of the two prices: label over value, its icon top right. */
 function tile(
   ctx: CanvasRenderingContext2D,
-  p: Palette,
+  p: SharePalette,
   x: number,
   y: number,
   w: number,
@@ -697,7 +704,7 @@ function tile(
 /** A pill in two halves, e.g. "Position: Short | Leverage: 10x"; returns its width. */
 function positionPill(
   ctx: CanvasRenderingContext2D,
-  p: Palette,
+  p: SharePalette,
   card: ShareCard,
   x: number,
   y: number,
@@ -776,7 +783,7 @@ export function drawShareCard(
   canvas.height = Math.round(h * scale);
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const p = palette();
+  const p = sharePalette();
   const portrait = layout === "portrait";
   const tone = card.profit ? p.buy : p.sell;
   const font = (weight: number, size: number) => `${weight} ${size}px ${p.font}`;

@@ -417,27 +417,161 @@ export interface AnalysisColors {
   sell: string;
   warning: string;
   muted: string;
+  /** The chart's background: a plate behind each level's words, so lines don't run through them. */
+  background?: string;
 }
 
 /** Ids of the analyst's drawings on a chart start with this. */
 export const ANALYSIS_ID = "pd:ai:";
 
-/** Bars a level's ray starts before the latest candle, and an open zone runs past it. */
-const LEVEL_BARS_BACK = 40;
-const ZONE_BARS_AHEAD = 12;
+/** Bars a support or resistance line starts before the latest candle, and an open zone runs past it. */
+const LEVEL_BARS_BACK = 12;
+const ZONE_BARS_AHEAD = 1;
+/** A trade plan's position box runs this many bars past the latest candle. */
+const PLAN_BARS = 8;
+/** Level labels sit this far right of the latest candle: past the plan's box, by the price axis. */
+const LABEL_BARS_AHEAD = PLAN_BARS + 2;
+/** The fib ratios drawn: the ones a trader reads, not every one the tool knows. */
+const FIB_SHOWN = [0, 0.382, 0.5, 0.618, 0.786, 1];
+/** How strongly zones are shaded: enough to see, light enough to read candles through. */
+const ZONE_FILL = 0.08;
+/** A level within this share of the drawing's price range of a fib line is that line. */
+const ON_FIB = 0.004;
+/** Names are kept at least this share of the drawing's price range apart: a line each. */
+const LABEL_GAP = 0.035;
+
+/** A trade plan read from the levels: where in, where wrong, how far it could go. */
+export interface TradePlan {
+  side: "long" | "short";
+  entry: number;
+  stop: number;
+  /** The furthest target on the profit side. */
+  target: number;
+}
+
+/**
+ * The trade the analyst laid out, when its levels make one: an entry (the
+ * middle of an entry range), the invalidation nearest it as the stop, and
+ * targets on the far side. Long when the targets are above the entry and the
+ * stop below; short the other way; nothing when they don't agree.
+ */
+export function tradePlan(levels: readonly AnalysisLevel[]): TradePlan | undefined {
+  const of = (kind: AnalysisKind) =>
+    levels.filter((l) => l.kind === kind && Number.isFinite(l.price)).map((l) => l.price);
+  const entries = of("entry");
+  const stops = of("invalidation");
+  const targets = of("target");
+  if (!entries.length || !stops.length || !targets.length) return undefined;
+  const entry = (Math.min(...entries) + Math.max(...entries)) / 2;
+  const stop = stops.reduce((a, b) => (Math.abs(b - entry) < Math.abs(a - entry) ? b : a));
+  const side = stop < entry ? "long" : stop > entry ? "short" : undefined;
+  if (!side) return undefined;
+  const ahead = targets.filter((t) => (side === "long" ? t > entry : t < entry));
+  if (!ahead.length) return undefined;
+  const target = side === "long" ? Math.max(...ahead) : Math.min(...ahead);
+  return { side, entry, stop, target };
+}
+
+/** A price as a label shows it: at most 8 significant figures, no trailing zeros. */
+function priceText(price: number): string {
+  return String(Number(price.toPrecision(8)));
+}
+
+/** A level's label, where it goes, and whether it draws a line of its own. */
+export interface LevelLabel {
+  /** The price it names: a level's, or a zone's middle. */
+  price: number;
+  /** Where its words go: its price, or eased off it to stay clear of the next. */
+  at: number;
+  text: string;
+  color: string;
+}
+
+/** Every price the analysis draws at, and their spread. */
+function priceRange(analysis: ChartAnalysis): number {
+  const prices = [
+    ...analysis.levels.map((l) => l.price),
+    ...(analysis.zones ?? []).flatMap((z) => [z.top, z.bottom]),
+    ...(analysis.fibs ?? []).flatMap((f) => [f.from.price, f.to.price]),
+  ].filter(Number.isFinite);
+  return prices.length ? Math.max(...prices) - Math.min(...prices) : 0;
+}
+
+/** Whether a fib line already sits at `price`, so a level there needs no line of its own. */
+export function onFibLine(analysis: ChartAnalysis, price: number): boolean {
+  const range = priceRange(analysis);
+  return (analysis.fibs ?? []).some((f) =>
+    FIB_SHOWN.some((r) => {
+      const line = f.from.price + (f.to.price - f.from.price) * r;
+      return range > 0 ? Math.abs(line - price) <= range * ON_FIB : line === price;
+    }),
+  );
+}
+
+/**
+ * The names on the chart, laid out to be read: every level's and every
+ * zone's, in one column by the price axis, highest first. Each says its
+ * price (a zone, its band). Words that would touch are eased apart - each
+ * kept at least `LABEL_GAP` of the drawing's range below the one above -
+ * so every one gets a line of its own.
+ */
+export function levelLabels(
+  analysis: ChartAnalysis,
+  colorOf: (level: AnalysisLevel) => string,
+  zoneColor: (zone: AnalysisZone) => string = () => "",
+  /** The least price apart that reads apart on screen, where the chart can say. */
+  minGap = 0,
+): LevelLabel[] {
+  const range = priceRange(analysis);
+  const labels = [
+    ...analysis.levels
+      .filter((l) => Number.isFinite(l.price))
+      .map((l) => ({
+        price: l.price,
+        text: l.label ? `${l.label} · ${priceText(l.price)}` : priceText(l.price),
+        color: colorOf(l),
+      })),
+    ...(analysis.zones ?? [])
+      .filter((z) => Number.isFinite(z.top) && Number.isFinite(z.bottom))
+      .map((z) => {
+        const band = `${priceText(Math.min(z.top, z.bottom))}–${priceText(Math.max(z.top, z.bottom))}`;
+        return {
+          price: (z.top + z.bottom) / 2,
+          text: z.label ? `${z.label} · ${band}` : band,
+          color: zoneColor(z),
+        };
+      }),
+  ].sort((a, b) => b.price - a.price);
+  const gap = Math.max(range * LABEL_GAP, minGap);
+  const out: LevelLabel[] = [];
+  for (const label of labels) {
+    const above = out[out.length - 1];
+    const at = above && gap > 0 ? Math.min(label.price, above.at - gap) : label.price;
+    out.push({ ...label, at });
+  }
+  return out;
+}
 
 /**
  * The analyst's analysis as the chart's own drawings, pinned to time and
- * price so they stay put as the chart scrolls: zones as shaded rectangles,
- * Fibonacci retracements, trend lines, and each level as a horizontal ray
- * with its label beside it. They're the host's: read-only, and left out of
- * the saved drawings (a copy the trader makes is their own). `last` is the
- * latest candle's time and `bar` one candle's length, both in seconds.
+ * price, in three lanes so nothing written sits on anything else: on the
+ * left the fib's ratios; from the latest candle the trade, as a position box
+ * with its percentages; and past it, by the price axis, every level's and
+ * zone's name, eased apart. Zones are shaded rectangles that stop at the
+ * latest candle (so the lanes stay clear), levels rays. The trader can move,
+ * reshape and delete them like their own; they aren't saved, and a new
+ * analysis, market or interval draws them afresh. `last` is the latest
+ * candle's time and `bar` one candle's length, both in seconds.
  */
 export function analysisDrawings(
   analysis: ChartAnalysis,
   colors: AnalysisColors,
-  view: { last: number; bar: number },
+  view: {
+    last: number;
+    bar: number;
+    /** How much price a line of label text takes on screen, where known. */
+    labelGap?: number;
+  },
 ): DrawingInput[] {
   const out: DrawingInput[] = [];
   const base = (tool: string, points: DrawingInput["points"], style: DrawingStyle) => ({
@@ -446,23 +580,24 @@ export function analysisDrawings(
     points,
     style,
     paneIndex: 0,
-    policy: { editable: false, persistent: false },
+    policy: { editable: true, persistent: false },
   });
   const sec = (ms: number) => Math.floor(ms / 1000);
+  const zoneColor = (z: AnalysisZone) => (z.kind === "demand" ? colors.buy : colors.sell);
   for (const z of analysis.zones ?? []) {
-    const color = z.kind === "demand" ? colors.buy : colors.sell;
+    const color = zoneColor(z);
+    // A live zone runs to the latest candle; its name is in the column by the axis.
     const end = z.end === null ? view.last + ZONE_BARS_AHEAD * view.bar : sec(z.end);
-    out.push({
-      ...base(
+    out.push(
+      base(
         "rectangle",
         [
           { time: sec(z.start), price: z.top },
           { time: Math.max(end, sec(z.start) + view.bar), price: z.bottom },
         ],
-        { color, lineWidth: 1, fill: true, fillColor: color, fillOpacity: 0.14 },
+        { color, lineWidth: 1, fill: true, fillColor: color, fillOpacity: ZONE_FILL },
       ),
-      text: { value: z.label, color, fontSize: 11 },
-    });
+    );
   }
   for (const f of analysis.fibs ?? []) {
     out.push(
@@ -472,7 +607,14 @@ export function analysisDrawings(
           { time: sec(f.from.time), price: f.from.price },
           { time: sec(f.to.time), price: f.to.price },
         ],
-        { color: colors.muted, lineWidth: 1, showLabels: true },
+        {
+          color: colors.muted,
+          lineWidth: 1,
+          showLabels: true,
+          fill: false,
+          // The ratios a trader reads, in one quiet colour, unshaded.
+          levels: FIB_SHOWN.map((ratio) => ({ ratio, color: colors.muted })),
+        },
       ),
     );
   }
@@ -484,34 +626,71 @@ export function analysisDrawings(
           { time: sec(l.from.time), price: l.from.price },
           { time: sec(l.to.time), price: l.to.price },
         ],
-        { color: colors.muted, lineWidth: 2 },
+        { color: colors.muted, lineWidth: 1 },
       ),
     );
   }
   const from = view.last - LEVEL_BARS_BACK * view.bar;
+  const colorOf = (level: AnalysisLevel) =>
+    level.kind === "support" || level.kind === "target"
+      ? colors.buy
+      : level.kind === "resistance"
+        ? colors.sell
+        : level.kind === "invalidation"
+          ? colors.warning
+          : colors.muted;
+  // The trade, as a trader would draw it: a position box from the latest
+  // candle, profit to the furthest target, loss to the stop, with its
+  // percentages and risk/reward (not the tool's sizing example).
+  const plan = tradePlan(analysis.levels);
+  if (plan) {
+    const end = view.last + PLAN_BARS * view.bar;
+    out.push({
+      ...base(
+        plan.side === "long" ? "long-position" : "short-position",
+        [
+          { time: view.last, price: plan.entry },
+          { time: end, price: plan.target },
+          { time: end, price: plan.stop },
+        ],
+        { color: colors.muted, lineWidth: 1, showLabels: true, fillOpacity: 0.1 },
+      ),
+      props: { profitColor: colors.buy, lossColor: colors.sell, showLossSize: false },
+    });
+  }
+  const inPlan = (level: AnalysisLevel) =>
+    plan !== undefined &&
+    (level.kind === "entry" || level.kind === "target" || level.kind === "invalidation");
+  // A line for each level a fib line doesn't already mark: the plan's from
+  // the latest candle on (the box carries them), support and resistance from
+  // a little before it. No price label of its own: its name says it.
   for (const level of analysis.levels) {
-    const color =
-      level.kind === "support" || level.kind === "target"
-        ? colors.buy
-        : level.kind === "resistance"
-          ? colors.sell
-          : level.kind === "invalidation"
-            ? colors.warning
-            : colors.muted;
+    if (!Number.isFinite(level.price) || onFibLine(analysis, level.price)) continue;
     out.push(
-      base("horizontal-ray", [{ time: from, price: level.price }], {
-        color,
+      base("horizontal-ray", [{ time: inPlan(level) ? view.last : from, price: level.price }], {
+        color: colorOf(level),
         lineWidth: 1,
-        lineStyle: "dashed",
-        showLabels: true,
+        lineStyle: inPlan(level) ? "solid" : "dotted",
+        showLabels: false,
       }),
     );
-    if (level.label) {
-      out.push({
-        ...base("text", [{ time: from, price: level.price }], { color }),
-        text: { value: level.label, color, fontSize: 11 },
-      });
-    }
+  }
+  // The names, in one column past the box, on a plate of the chart's own
+  // background, eased apart so each has a line of its own.
+  const at = view.last + LABEL_BARS_AHEAD * view.bar;
+  for (const label of levelLabels(analysis, colorOf, zoneColor, view.labelGap)) {
+    out.push({
+      ...base("text", [{ time: at, price: label.at }], { color: label.color }),
+      text: {
+        value: label.text,
+        color: label.color,
+        fontSize: 11,
+        valign: "middle",
+        ...(colors.background
+          ? { background: true, backgroundColor: colors.background, backgroundOpacity: 0.9 }
+          : {}),
+      },
+    });
   }
   return out;
 }

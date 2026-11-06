@@ -123,9 +123,21 @@
   align-items: center;
   border-radius: 6px;
 }
-.ai-chats li:hover,
+.ai-chats li {
+  /* The row's colour, which its rename / delete buttons sit on too. */
+  --ai-row-bg: var(--pd-surface-raised);
+}
+.ai-chats li:hover {
+  background: var(--ai-row-bg);
+}
+/* The chat open now: a faint wash of the theme's accent, and its edge. */
 .ai-chats li[data-active] {
-  background: var(--pd-surface-raised);
+  --ai-row-bg: color-mix(in srgb, var(--pd-brass) 12%, var(--pd-surface));
+  background: var(--ai-row-bg);
+  box-shadow: inset 2px 0 0 var(--pd-brass);
+}
+.ai-chats li[data-active]:hover {
+  --ai-row-bg: color-mix(in srgb, var(--pd-brass) 16%, var(--pd-surface));
 }
 .ai-chat-open {
   flex: 1;
@@ -167,9 +179,10 @@
   display: none;
   align-items: center;
   gap: 2px;
-  padding-left: 6px;
+  padding-left: 16px;
   transform: translateY(-50%);
-  background: var(--pd-surface-raised);
+  /* The row's own colour, the title fading out under it. */
+  background: linear-gradient(to right, transparent, var(--ai-row-bg) 14px);
 }
 .ai-chats li:hover .ai-chat-actions,
 .ai-chats li:focus-within .ai-chat-actions {
@@ -235,20 +248,34 @@
 .ai-banner {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: 6px;
+  padding-right: 10px;
   border: 1px solid var(--pd-border);
   border-radius: 10px;
   background: var(--pd-surface);
+}
+.ai-banner:has(.ai-banner-main:hover) {
+  border-color: var(--pd-brass);
+}
+.ai-banner-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
   color: var(--pd-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.ai-banner:hover {
-  border-color: var(--pd-brass);
+.ai-banner-close {
+  flex: none;
 }
-.ai-banner > svg {
+.ai-banner-main > svg {
   flex: none;
   color: var(--pd-brass-text);
 }
@@ -1120,4 +1147,499 @@
 .ai-pulse:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ---- An answer, laid out (components/ai/AiAnswer.tsx) ------------------
+   Colour from the theme's one accent (--pd-brass*, which each theme sets),
+   mixed into its surfaces at a few strengths; text and borders from its
+   neutrals. Never green or red: those are market data. */
+.ai-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+.ai-research {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.ai-research strong {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.ai-research-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pd-brass) 22%, transparent);
+  color: var(--pd-brass-text);
+}
+.ai-research-fact + .ai-research-fact::before,
+strong + .ai-research-fact::before {
+  content: "·";
+  margin-right: 10px;
+  color: var(--pd-pewter-dim);
+}
+.ai-research-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  cursor: pointer;
+}
+.ai-research-toggle svg,
+.ai-sources-toggle svg {
+  transition: transform 0.15s ease;
+}
+.ai-research-toggle svg[data-open],
+.ai-sources-toggle svg[data-open] {
+  transform: rotate(180deg);
+}
+.ai-msg .ai-research-tools {
+  flex-basis: 100%;
+  margin: 2px 0 0;
+}
+
+.ai-tldr {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 40%, var(--pd-border));
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      120% 140% at 100% 0%,
+      color-mix(in srgb, var(--pd-brass) 22%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--pd-brass) 12%, var(--pd-surface-raised)),
+      var(--pd-surface)
+    );
+  box-shadow: 0 8px 28px -18px color-mix(in srgb, var(--pd-brass) 60%, transparent);
+}
+.ai-tldr-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--pd-brass-text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.ai-tldr-lead {
+  margin: 0;
+  color: var(--pd-text);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.ai-tldr-lead strong {
+  color: var(--pd-brass-text);
+}
+.ai-tldr-points {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-tldr-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.5;
+}
+.ai-num {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pd-brass) 20%, transparent);
+  color: var(--pd-brass-text);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-dive {
+  gap: 10px;
+}
+.ai-rich .ai-section-label {
+  margin: 6px 0 -2px;
+  color: var(--pd-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+.ai-rich .ai-heading {
+  margin: 6px 0 0;
+  font-size: 15px;
+}
+.ai-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  color: var(--pd-text);
+  font-size: 14.5px;
+  font-weight: 650;
+}
+.ai-rich ul li::marker,
+.ai-rich ol li::marker {
+  color: var(--pd-brass-text);
+}
+.ai-rich strong {
+  color: var(--pd-text);
+}
+.ai-bottom {
+  margin: 2px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--pd-brass);
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--pd-brass) 9%, var(--pd-surface));
+  line-height: 1.55;
+}
+.ai-bottom > strong:first-child {
+  color: var(--pd-brass-text);
+}
+.ai-answer-note {
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+
+.ai-cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  margin: 0 1px 0 3px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--pd-brass) 18%, var(--pd-surface-raised));
+  color: var(--pd-brass-text);
+  font: 600 10px / 1 var(--pd-font-mono, inherit);
+  vertical-align: 2px;
+}
+button.ai-cite {
+  cursor: pointer;
+}
+button.ai-cite:hover,
+button.ai-cite:focus-visible {
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+
+.ai-sources-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 6px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ai-sources-toggle:hover {
+  border-color: color-mix(in srgb, var(--pd-brass) 50%, var(--pd-border));
+}
+.ai-sources-stack {
+  display: inline-flex;
+}
+.ai-sources-stack span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-left: -6px;
+  border: 2px solid var(--pd-surface-raised);
+  border-radius: 50%;
+  color: var(--pd-on-brass);
+  font-size: 10px;
+  font-weight: 700;
+}
+.ai-sources-stack span:first-child {
+  margin-left: 0;
+}
+.ai-sources-stack span[data-i="0"] {
+  background: var(--pd-brass);
+}
+.ai-sources-stack span[data-i="1"] {
+  background: color-mix(in srgb, var(--pd-brass) 70%, var(--pd-pewter));
+}
+.ai-sources-stack span[data-i="2"] {
+  background: color-mix(in srgb, var(--pd-brass) 40%, var(--pd-pewter));
+}
+.ai-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-src {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.ai-src {
+  cursor: pointer;
+}
+button.ai-src:hover {
+  border-color: color-mix(in srgb, var(--pd-brass) 45%, var(--pd-border));
+  background: color-mix(in srgb, var(--pd-brass) 6%, var(--pd-surface));
+}
+.ai-src .ai-cite {
+  margin: 2px 0 0;
+}
+.ai-src-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ai-src-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.ai-src-title {
+  color: var(--pd-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ai-answer-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: -2px;
+}
+.ai-act {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.ai-act:hover,
+.ai-act:focus-visible {
+  border-color: var(--pd-border);
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.ai-act[data-on] {
+  color: var(--pd-brass-text);
+  background: color-mix(in srgb, var(--pd-brass) 14%, transparent);
+}
+.ai-answer[data-compact] .ai-tldr {
+  padding: 14px 16px;
+}
+.ai-answer[data-compact] .ai-tldr-lead {
+  font-size: 14px;
+}
+
+/* A chat being read from the cloud. */
+.ai-opening {
+  display: grid;
+  place-items: center;
+}
+
+/* The cloud's sign-in, in the side panel and its dialog. */
+.ai-cloud-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 6px 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 35%, var(--pd-border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pd-brass) 7%, var(--pd-surface));
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.ai-cloud-card p {
+  margin: 0;
+  color: var(--pd-pewter);
+}
+.ai-cloud-card .settings-button {
+  align-self: flex-start;
+}
+.ai-signin {
+  position: relative;
+  padding: 28px 24px 20px;
+  border: 1px solid var(--pd-border);
+  border-radius: 14px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+}
+.ai-signin::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+.ai-signin-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* Sharing an answer: the card's preview. */
+.ai-share-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+.ai-share-canvas {
+  max-width: 100%;
+  border-radius: 14px;
+}
+
+/* The analyst's thinking (components/ai/AiAnswer.tsx, Thinking): open and
+   pulsing while it works, folded once the answer is in. */
+.ai-think {
+  border: 1px solid var(--pd-border);
+  border-radius: 12px;
+  background: var(--pd-surface);
+}
+.ai-think[data-live] {
+  border-color: color-mix(in srgb, var(--pd-brass) 35%, var(--pd-border));
+  background: color-mix(in srgb, var(--pd-brass) 5%, var(--pd-surface));
+}
+.ai-think-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.ai-think-head > svg:first-child {
+  color: var(--pd-brass-text);
+}
+.ai-think-head > span {
+  flex: 1;
+}
+.ai-think[data-live] .ai-think-head > span {
+  color: var(--pd-text);
+  animation: ai-think-pulse 1.6s ease-in-out infinite;
+}
+.ai-think-head > svg:last-child {
+  transition: transform 0.15s ease;
+}
+.ai-think-head > svg[data-open] {
+  transform: rotate(180deg);
+}
+@keyframes ai-think-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-think[data-live] .ai-think-head > span {
+    animation: none;
+  }
+}
+.ai-think-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 340px;
+  margin: 0;
+  padding: 2px 14px 12px 34px;
+  overflow-y: auto;
+  list-style: none;
+  text-align: left;
+}
+.ai-think-steps li {
+  position: relative;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/* A rail down the left, a dot per step. */
+.ai-think-steps li::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: -16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pd-border-strong);
+}
+.ai-think-steps li[data-kind="tool"]::before {
+  background: var(--pd-brass);
+}
+.ai-think-steps li p {
+  margin: 0;
+}
+.ai-think-steps li p + p {
+  margin-top: 4px;
+}
+.ai-think-steps strong {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.ai-think-tool {
+  color: var(--pd-text);
+}
+.ai-think-detail {
+  margin-left: 8px;
+  color: var(--pd-pewter-dim);
+  font-family: var(--pd-font-mono, inherit);
+  font-size: 12px;
+}
+.ai-think-wait {
+  font-style: italic;
+}
+
+/* The chart's analysis came from another chat: when, and a way to it. */
+.ai-marks-from {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-marks-from > span {
+  flex: 1;
 }

@@ -853,6 +853,23 @@ export interface AiContext {
     account: string;
   }[] /** Deep Think: the model reasons harder on this question. */;
   deep: boolean;
+  /** The highest source tag the chat's earlier answers used. */
+  sourceBase?: number;
+}
+
+/** Something the analyst read and cited, by its `[sN]` tag: text, never a URL. */
+export interface AiSource {
+  n: number;
+  kind: "post" | "headline" | "announcement";
+  publisher: string;
+  title: string;
+  time: number;
+  /**
+   * How Rust opens it: `link`, the link Rust fetched, signed by Rust (opens
+   * only through `openSource`, which checks the signature); `article` /
+   * `wire`, by the id its module gave it (older answers). Null when it can't.
+   */
+  open: { kind: "article" | "wire" | "link"; id: string } | null;
 }
 
 export type AiBias = "bullish" | "bearish" | "neutral";
@@ -890,18 +907,29 @@ export interface AiSpan {
   label: string;
 }
 
+/** A step of the analyst's work: a summary of its reasoning, or a tool it used. Text only. */
+export type AiStep =
+  | { kind: "thought"; text: string }
+  | { kind: "tool"; name: string; detail: string };
+
 export interface AiReply {
   /** The whole conversation, opaque here: handed back with the next question. */
   transcript: unknown;
   text: string;
+  /** What it thought and read on the way. */
+  steps: AiStep[];
+  /** What the answer cites. */
+  sources: AiSource[];
+  /** How many requests it took. */
+  rounds: number;
   marks: AiChartMarks | null;
   /** The tools the analyst used, in order. */
   tools: string[];
   end: "done" | "refused" | "cutShort";
 }
 
-/** Who answers: Anthropic's Claude, Google's Gemini, or OpenAI's ChatGPT models. */
-export type AiProvider = "claude" | "gemini" | "openai";
+/** Who answers: Anthropic's Claude, Google's Gemini, OpenAI's ChatGPT models, or Mistral AI's. */
+export type AiProvider = "claude" | "gemini" | "openai" | "mistral";
 
 /** A model the trader can pick. */
 export interface AiModel {
@@ -910,7 +938,7 @@ export interface AiModel {
   label: string;
   /** The provider's model when none is picked. */
   default: boolean;
-  /** On the provider's free tier (Gemini's only; the others have none). */
+  /** On the provider's free tier (Gemini's and Mistral's; the others have none). */
   free: boolean;
 }
 
@@ -950,7 +978,12 @@ function aiFailureOf(error: VenueError | undefined): AiFailure | undefined {
   try {
     const f = JSON.parse(error.detail.slice(3)) as Partial<AiFailure>;
     if (typeof f.kind !== "string" || !AI_FAILURE_KINDS.has(f.kind)) return undefined;
-    if (f.provider !== "claude" && f.provider !== "gemini" && f.provider !== "openai") {
+    if (
+      f.provider !== "claude" &&
+      f.provider !== "gemini" &&
+      f.provider !== "openai" &&
+      f.provider !== "mistral"
+    ) {
       return undefined;
     }
     return {
@@ -988,14 +1021,20 @@ export const aiClient = {
     transcript: unknown,
     question: string,
     context: AiContext,
-  ) =>
-    callAi<AiReply>("ai_ask", {
+    onStep?: (step: AiStep) => void,
+  ) => {
+    // Each thought and tool arrives as it happens; the reply has them all too.
+    const progress = new Channel<AiStep>();
+    progress.onmessage = (step) => onStep?.(step);
+    return callAi<AiReply>("ai_ask", {
       provider,
       model,
       transcript: transcript ?? null,
       question,
       context,
-    }),
+      progress,
+    });
+  },
   /** The models the trader can pick, by provider. */
   models: () => call<AiModel[]>("ai_models", {}),
   /** Which providers have a key stored (never the key). */
@@ -1008,8 +1047,21 @@ export const aiClient = {
   /** Whether the Gemini key is on Google's paid plan (free by default; kept in Rust). */
   geminiPaid: () => call<boolean>("ai_gemini_paid", {}),
   setGeminiPaid: (paid: boolean) => call<void>("set_ai_gemini_paid", { paid }),
-  /** The chats file as last saved, or null before the first save. */
+  /** The old chats file, or null when there is none: read once, to move it to the cloud. */
   loadChats: () => call<string | null>("load_ai_chats", {}),
-  /** Replaces the chats file with `store`. */
-  saveChats: (store: unknown) => call<void>("save_ai_chats", { store }),
+  /**
+   * Opens a source whose own link can't open any more: Rust finds it again in
+   * the feeds (its link), or opens a search for it.
+   */
+  findSource: (source: Pick<AiSource, "kind" | "publisher" | "title">, id: string | null) =>
+    call<"opened" | "searched">("find_ai_source", {
+      kind: source.kind,
+      id,
+      publisher: source.publisher,
+      title: source.title,
+    }),
+  /** Opens a source an answer cited, by the signed link Rust gave it. */
+  openSource: (token: string) => call<void>("open_ai_source", { token }),
+  /** Deletes the old chats file, once its chats are in the cloud. */
+  forgetChats: () => call<void>("forget_ai_chats", {}),
 };

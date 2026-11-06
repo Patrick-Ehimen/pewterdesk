@@ -247,6 +247,7 @@ export { OrderTicket, type TicketRuleNote } from "./components/trading/OrderTick
 export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
 export {
   PnlShareDialog,
+  SHARE_SITES,
   SHARE_TARGETS,
   type ShareTarget,
 } from "./components/trading/PnlShareDialog";
@@ -422,7 +423,10 @@ export {
   formatCardDollars,
   formatCardPercent,
   formatCardPrice,
+  loadImage,
   type ShareCard,
+  type SharePalette,
+  sharePalette,
 } from "./lib/shareCard";
 export {
   type MaIndicator,

@@ -57,7 +57,7 @@ export const SHARE_TARGETS = [
 export type ShareTarget = (typeof SHARE_TARGETS)[number];
 
 /** Each site's name (a brand, the same in every language) and mark. */
-const SITE: Record<ShareTarget, { name: string; icon: ReactNode }> = {
+export const SHARE_SITES: Record<ShareTarget, { name: string; icon: ReactNode }> = {
   x: { name: "X", icon: <FaXTwitter size={18} aria-hidden /> },
   whatsapp: { name: "WhatsApp", icon: <FaWhatsapp size={20} aria-hidden /> },
   telegram: { name: "Telegram", icon: <FaTelegram size={19} aria-hidden /> },
@@ -174,8 +174,8 @@ export function PnlShareDialog({
       toast({
         title: t("share.title"),
         body: (await copied)
-          ? t("share.pasteImage", { site: SITE[target].name })
-          : t("share.noImage", { site: SITE[target].name }),
+          ? t("share.pasteImage", { site: SHARE_SITES[target].name })
+          : t("share.noImage", { site: SHARE_SITES[target].name }),
       });
     } catch (err) {
       toastError(t("share.title"), err, t("share.failed"));
@@ -303,8 +303,8 @@ export function PnlShareDialog({
                     className="pd-share-site"
                     onClick={() => void share(target)}
                   >
-                    <span className="pd-share-site-mark">{SITE[target].icon}</span>
-                    {SITE[target].name}
+                    <span className="pd-share-site-mark">{SHARE_SITES[target].icon}</span>
+                    {SHARE_SITES[target].name}
                   </button>
                 </li>
               ))}

@@ -1,6 +1,6 @@
 //! The models behind PewterDesk AI, and how each one is asked: Anthropic's
-//! Claude (Messages API), Google's Gemini (Interactions API) and OpenAI's
-//! ChatGPT models (Responses API). `ai_assistant` runs the analyst - its
+//! Claude (Messages API), Google's Gemini (Interactions API), OpenAI's
+//! ChatGPT models (Responses API) and Mistral AI's (Chat Completions). `ai_assistant` runs the analyst - its
 //! tools, its chart marks, its chats; this module only turns one round of
 //! it into each provider's request and reads the answer back.
 //!
@@ -28,6 +28,7 @@ const CLAUDE_VERSION: &str = "2023-06-01";
 const CLAUDE_FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 const GEMINI_API: &str = "https://generativelanguage.googleapis.com/v1beta/interactions";
 const OPENAI_API: &str = "https://api.openai.com/v1/responses";
+const MISTRAL_API: &str = "https://api.mistral.ai/v1/chat/completions";
 
 const MAX_TOKENS: u32 = 16_000;
 /// A per-minute rate limit is waited out, up to this long each time, this
@@ -36,6 +37,9 @@ const MAX_TOKENS: u32 = 16_000;
 /// fails as it is.
 const MAX_RATE_WAIT: std::time::Duration = std::time::Duration::from_secs(65);
 const RATE_RETRIES: u32 = 3;
+/// Mistral's rate limits are by the minute and its 429 says nothing of how
+/// long to wait (no `Retry-After`): this long, `RATE_RETRIES` times.
+const MISTRAL_RATE_WAIT: std::time::Duration = std::time::Duration::from_secs(30);
 /// Searches the provider's own web search may run in one answer.
 const WEB_SEARCHES: u32 = 8;
 
@@ -46,6 +50,7 @@ pub enum Provider {
     Gemini,
     #[serde(rename = "openai")]
     OpenAi,
+    Mistral,
 }
 
 /// A model the trader can pick, as the page lists it.
@@ -57,12 +62,17 @@ pub struct ModelInfo {
     label: &'static str,
     /// The provider's model when none is picked.
     default: bool,
-    /// On the provider's free tier (Gemini's only; the others have none).
+    /// On the provider's free tier (Gemini's and Mistral's; the others have none).
     free: bool,
 }
 
 impl Provider {
-    pub const ALL: [Provider; 3] = [Provider::Claude, Provider::Gemini, Provider::OpenAi];
+    pub const ALL: [Provider; 4] = [
+        Provider::Claude,
+        Provider::Gemini,
+        Provider::OpenAi,
+        Provider::Mistral,
+    ];
 
     /// The keychain entry its key lives under.
     pub fn key_account(self) -> &'static str {
@@ -70,6 +80,7 @@ impl Provider {
             Provider::Claude => "anthropic:api",
             Provider::Gemini => "gemini:api",
             Provider::OpenAi => "openai:api",
+            Provider::Mistral => "mistral:api",
         }
     }
 
@@ -78,6 +89,7 @@ impl Provider {
             Provider::Claude => "Anthropic",
             Provider::Gemini => "Google",
             Provider::OpenAi => "OpenAI",
+            Provider::Mistral => "Mistral AI",
         }
     }
 
@@ -86,6 +98,7 @@ impl Provider {
             Provider::Claude => CLAUDE_API,
             Provider::Gemini => GEMINI_API,
             Provider::OpenAi => OPENAI_API,
+            Provider::Mistral => MISTRAL_API,
         }
     }
 
@@ -106,6 +119,12 @@ impl Provider {
                 ("gpt-6.1-sol", "GPT-6.1 Sol"),
                 ("gpt-6-luna", "GPT-6 Luna"),
             ],
+            // Both on Mistral's free Experiment plan (checked against its
+            // rate-limit headers); Medium, Small and Magistral aren't.
+            Provider::Mistral => &[
+                ("mistral-large-4", "Mistral Large 4"),
+                ("ministral-14b-latest", "Ministral 14B"),
+            ],
         }
     }
 
@@ -113,10 +132,34 @@ impl Provider {
         self.models().iter().any(|(m, _)| *m == id)
     }
 
-    /// Whether `model` can be used on the provider's free tier. Only Gemini
-    /// has one, and not for every model (Google's pricing page).
+    /// Whether `model` can be used on the provider's free tier: Gemini's,
+    /// not for every model (Google's pricing page), and Mistral's Experiment
+    /// plan, which has every model listed here.
     pub fn free_tier(self, model: &str) -> bool {
-        self == Provider::Gemini && matches!(model, "gemini-3.8-flash" | "gemini-3.5-flash-lite")
+        match self {
+            Provider::Gemini => matches!(model, "gemini-3.8-flash" | "gemini-3.5-flash-lite"),
+            Provider::Mistral => self.has_model(model),
+            Provider::Claude | Provider::OpenAi => false,
+        }
+    }
+
+    /// Whether it has a web search of its own to declare. Mistral's is in
+    /// its Agents API only, not Chat Completions.
+    pub fn web_search(self) -> bool {
+        self != Provider::Mistral
+    }
+
+    /// Whether its requests should be kept small: Mistral's free plan counts
+    /// tokens by the minute (20,000 on Large 4), and every round resends the
+    /// conversation.
+    pub fn lean(self) -> bool {
+        self == Provider::Mistral
+    }
+
+    /// Whether a Mistral model takes `reasoning_effort`: Large 4 does,
+    /// Ministral refuses it.
+    fn mistral_reasons(model: &str) -> bool {
+        model == "mistral-large-4"
     }
 
     /// Whether `key` looks like one of its keys: its own prefix where it has
@@ -132,7 +175,7 @@ impl Provider {
             && match self {
                 Provider::Claude => key.starts_with("sk-ant-"),
                 Provider::OpenAi => key.starts_with("sk-") && !key.starts_with("sk-ant-"),
-                Provider::Gemini => key.len() >= 20,
+                Provider::Gemini | Provider::Mistral => key.len() >= 20,
             }
     }
 }
@@ -178,11 +221,30 @@ pub enum RoundEnd {
     Refused,
 }
 
-/// One request and its answer: what it said, and the tools it wants.
+/// One request and its answer: what it said, the tools it wants, and the
+/// summary of its thinking where the provider gives one.
 pub struct Round {
     pub text: String,
     pub calls: Vec<Call>,
     pub end: RoundEnd,
+    /// Readable summaries of the model's reasoning this round (Claude's
+    /// summarized thinking, Gemini's thought summaries, OpenAI's reasoning
+    /// summaries, Mistral's thinking chunks): text, for the page to show.
+    pub thoughts: Vec<String>,
+}
+
+/// The `text` of each `{type: "text", text}` (or `kind`) item in `items`.
+fn item_texts(items: Option<&Value>, kind: &str) -> Vec<String> {
+    items
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|i| i.get("type").and_then(Value::as_str) == Some(kind))
+        .filter_map(|i| i.get("text").and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(str::to_owned)
+        .collect()
 }
 
 /// A tool's result, to hand back.
@@ -207,6 +269,11 @@ pub fn transcript_ok(provider: Provider, transcript: &[Value]) -> bool {
             entry.get("type").and_then(Value::as_str).is_some()
                 || entry.get("role").and_then(Value::as_str).is_some()
         }
+        // The system prompt goes with each request, never into the transcript.
+        Provider::Mistral => matches!(
+            entry.get("role").and_then(Value::as_str),
+            Some("user" | "assistant" | "tool")
+        ),
     })
 }
 
@@ -227,6 +294,10 @@ pub fn user_turn(provider: Provider, context: &str, question: &str) -> Value {
                 {"type": "input_text", "text": context},
                 {"type": "input_text", "text": question},
             ],
+        }),
+        Provider::Mistral => json!({
+            "role": "user",
+            "content": format!("{context}\n\n{question}"),
         }),
     }
 }
@@ -257,19 +328,24 @@ pub fn tools_for(provider: Provider, tools: &[Value], web_search: bool) -> Value
                     "type": "function", "name": name, "description": description,
                     "parameters": schema,
                 }),
+                Provider::Mistral => json!({
+                    "type": "function",
+                    "function": {"name": name, "description": description, "parameters": schema},
+                }),
             }
         })
         .collect();
-    if !web_search {
-        return Value::Array(out);
+    let search = match provider {
+        Provider::Claude => Some(
+            json!({"type": "web_search_20260209", "name": "web_search", "max_uses": WEB_SEARCHES}),
+        ),
+        Provider::Gemini => Some(json!({"type": "google_search", "search_types": ["web_search"]})),
+        Provider::OpenAi => Some(json!({"type": "web_search"})),
+        Provider::Mistral => None,
+    };
+    if let Some(search) = search.filter(|_| web_search) {
+        out.push(search);
     }
-    out.push(match provider {
-        Provider::Claude => {
-            json!({"type": "web_search_20260209", "name": "web_search", "max_uses": WEB_SEARCHES})
-        }
-        Provider::Gemini => json!({"type": "google_search", "search_types": ["web_search"]}),
-        Provider::OpenAi => json!({"type": "web_search"}),
-    });
     Value::Array(out)
 }
 
@@ -316,7 +392,9 @@ fn api_error(
     wait: Option<std::time::Duration>,
 ) -> VenueError {
     let message = serde_json::from_str::<Value>(body).ok().and_then(|v| {
+        // Mistral puts it at the top level, the others under `error`.
         v.pointer("/error/message")
+            .or_else(|| v.get("message"))
             .and_then(Value::as_str)
             .map(|m| {
                 m.chars()
@@ -416,7 +494,7 @@ async fn post_once(
             .header("anthropic-version", CLAUDE_VERSION)
             .header("anthropic-beta", CLAUDE_FALLBACK_BETA),
         Provider::Gemini => request.header("x-goog-api-key", key),
-        Provider::OpenAi => request.bearer_auth(key),
+        Provider::OpenAi | Provider::Mistral => request.bearer_auth(key),
     };
     let response = request
         .send()
@@ -429,13 +507,44 @@ async fn post_once(
         .await
         .map_err(|e| fail(VenueError::Network(e.without_url().to_string())))?;
     if !status.is_success() {
-        let wait = (status == reqwest::StatusCode::TOO_MANY_REQUESTS)
-            .then(|| retry_delay(&headers, &text))
+        let limited = status == reqwest::StatusCode::TOO_MANY_REQUESTS;
+        if limited && provider == Provider::Mistral && no_allowance(&headers) {
+            // A model the plan doesn't include: waiting won't help.
+            return Err(fail(failure(
+                "other",
+                provider,
+                None,
+                Some(NO_ALLOWANCE.into()),
+            )));
+        }
+        let wait = limited
+            .then(|| {
+                retry_delay(&headers, &text)
+                    .or((provider == Provider::Mistral).then_some(MISTRAL_RATE_WAIT))
+            })
             .flatten();
         let error = api_error(provider, status, &text, wait);
         return Err((error, wait.filter(|w| *w <= MAX_RATE_WAIT)));
     }
     serde_json::from_str(&text).map_err(|e| fail(VenueError::Network(e.to_string())))
+}
+
+const NO_ALLOWANCE: &str = "This model has no allowance on your Mistral plan.";
+
+/// Whether Mistral's 429 says the model has a limit of nothing on this
+/// plan: a per-minute limit of 0 (Medium and Small, on the free plan).
+fn no_allowance(headers: &reqwest::header::HeaderMap) -> bool {
+    [
+        "x-ratelimit-limit-req-minute",
+        "x-ratelimit-limit-tokens-minute",
+    ]
+    .iter()
+    .any(|name| {
+        headers
+            .get(*name)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|v| v.trim() == "0")
+    })
 }
 
 fn texts<'a>(blocks: impl Iterator<Item = &'a Value>, kind: &str) -> String {
@@ -463,6 +572,8 @@ fn gemini_body(
         "generation_config": {
             "max_output_tokens": MAX_TOKENS,
             "thinking_level": effort,
+            // Thought summaries, for the page to show while it works.
+            "thinking_summaries": "auto",
             // Google Search with our functions: validated, not auto.
             "tool_choice": "validated",
         },
@@ -506,7 +617,9 @@ pub async fn round(
                 "fallbacks": "default",
                 "system": system,
                 "tools": tools,
-                "thinking": {"type": "adaptive"},
+                // Summarized: the reasoning as readable text, for the page
+                // to show while it works (the default leaves it empty).
+                "thinking": {"type": "adaptive", "display": "summarized"},
                 "output_config": {"effort": effort},
                 "cache_control": {"type": "ephemeral"},
                 "messages": messages,
@@ -521,6 +634,7 @@ pub async fn round(
                     text: String::new(),
                     calls: Vec::new(),
                     end: RoundEnd::Refused,
+                    thoughts: Vec::new(),
                 });
             }
             let content = response
@@ -529,6 +643,14 @@ pub async fn round(
                 .cloned()
                 .unwrap_or_default();
             let text = texts(content.iter(), "text");
+            let thoughts = content
+                .iter()
+                .filter(|b| b.get("type").and_then(Value::as_str) == Some("thinking"))
+                .filter_map(|b| b.get("thinking").and_then(Value::as_str))
+                .map(str::trim)
+                .filter(|t| !t.is_empty())
+                .map(str::to_owned)
+                .collect();
             let calls = content
                 .iter()
                 .filter(|b| b.get("type").and_then(Value::as_str) == Some("tool_use"))
@@ -549,7 +671,12 @@ pub async fn round(
             if !content.is_empty() {
                 messages.push(json!({"role": "assistant", "content": content}));
             }
-            Ok(Round { text, calls, end })
+            Ok(Round {
+                text,
+                calls,
+                end,
+                thoughts,
+            })
         }
         Provider::Gemini => {
             let body = gemini_body(model, system, tools, messages, effort);
@@ -578,6 +705,11 @@ pub async fn round(
                 .filter(|t| !t.is_empty())
                 .collect::<Vec<_>>()
                 .join("\n\n");
+            let thoughts = steps
+                .iter()
+                .filter(|s| s.get("type").and_then(Value::as_str) == Some("thought"))
+                .flat_map(|s| item_texts(s.get("summary"), "text"))
+                .collect();
             let calls = steps
                 .iter()
                 .filter(|s| s.get("type").and_then(Value::as_str) == Some("function_call"))
@@ -599,7 +731,12 @@ pub async fn round(
                 RoundEnd::Done
             };
             messages.extend(steps);
-            Ok(Round { text, calls, end })
+            Ok(Round {
+                text,
+                calls,
+                end,
+                thoughts,
+            })
         }
         Provider::OpenAi => {
             let body = json!({
@@ -607,7 +744,8 @@ pub async fn round(
                 "instructions": system,
                 "input": messages,
                 "tools": tools,
-                "reasoning": {"effort": effort},
+                // Reasoning summaries, for the page to show while it works.
+                "reasoning": {"effort": effort, "summary": "auto"},
                 "max_output_tokens": MAX_TOKENS,
                 "store": false,
             });
@@ -630,8 +768,14 @@ pub async fn round(
                     text: String::new(),
                     calls: Vec::new(),
                     end: RoundEnd::Refused,
+                    thoughts: Vec::new(),
                 });
             }
+            let thoughts = output
+                .iter()
+                .filter(|i| i.get("type").and_then(Value::as_str) == Some("reasoning"))
+                .flat_map(|i| item_texts(i.get("summary"), "summary_text"))
+                .collect();
             let text = output
                 .iter()
                 .filter(|i| i.get("type").and_then(Value::as_str) == Some("message"))
@@ -670,9 +814,107 @@ pub async fn round(
                 RoundEnd::Done
             };
             messages.extend(output);
-            Ok(Round { text, calls, end })
+            Ok(Round {
+                text,
+                calls,
+                end,
+                thoughts,
+            })
+        }
+        Provider::Mistral => {
+            let body = mistral_body(model, system, tools, messages, deep);
+            let response = post(http, provider, key, &body).await?;
+            mistral_round(&response, messages)
         }
     }
+}
+
+/// A Mistral Chat Completions request: the system prompt first, then the
+/// conversation as it is.
+fn mistral_body(model: &str, system: &str, tools: &Value, messages: &[Value], deep: bool) -> Value {
+    let mut all = Vec::with_capacity(messages.len() + 1);
+    all.push(json!({"role": "system", "content": system}));
+    all.extend(messages.iter().cloned());
+    let mut body = json!({
+        "model": model,
+        "messages": all,
+        "tools": tools,
+        "max_tokens": MAX_TOKENS,
+    });
+    if Provider::mistral_reasons(model) {
+        body["reasoning_effort"] = json!(if deep { "high" } else { "medium" });
+    }
+    body
+}
+
+/// Reads Mistral's answer and appends its message. The message goes back as
+/// Mistral gave it (its thinking chunks included, which it takes back), but
+/// for a null `tool_calls`, left out.
+fn mistral_round(response: &Value, messages: &mut Vec<Value>) -> Result<Round, VenueError> {
+    let choice = response
+        .pointer("/choices/0")
+        .ok_or_else(|| VenueError::Network("Mistral sent no answer".into()))?;
+    let finish = choice
+        .get("finish_reason")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if finish == "error" {
+        return Err(VenueError::Rejected("Mistral couldn't answer that".into()));
+    }
+    let mut message = choice.get("message").cloned().unwrap_or(Value::Null);
+    let text = match message.get("content") {
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Array(chunks)) => texts(chunks.iter(), "text"),
+        _ => String::new(),
+    };
+    let thoughts = message
+        .get("content")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|c| c.get("type").and_then(Value::as_str) == Some("thinking"))
+        .flat_map(|c| item_texts(c.get("thinking"), "text"))
+        .collect();
+    let calls = message
+        .get("tool_calls")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            let function = c.get("function")?;
+            // Arguments arrive as a JSON string (an object, sometimes).
+            let input = match function.get("arguments")? {
+                Value::String(s) => serde_json::from_str(s).unwrap_or(Value::Null),
+                other => other.clone(),
+            };
+            Some(Call {
+                id: c.get("id")?.as_str()?.to_owned(),
+                name: function.get("name")?.as_str()?.to_owned(),
+                input,
+            })
+        })
+        .collect::<Vec<_>>();
+    let end = if !calls.is_empty() {
+        RoundEnd::Tools
+    } else if matches!(finish, "length" | "model_length") {
+        RoundEnd::CutShort
+    } else {
+        RoundEnd::Done
+    };
+    if let Some(fields) = message.as_object_mut() {
+        if fields.get("tool_calls").is_some_and(Value::is_null) {
+            fields.remove("tool_calls");
+        }
+        if fields.get("role").and_then(Value::as_str) == Some("assistant") {
+            messages.push(message);
+        }
+    }
+    Ok(Round {
+        text,
+        calls,
+        end,
+        thoughts,
+    })
 }
 
 /// A round's tool results, as the entries to append.
@@ -703,20 +945,34 @@ pub fn results(provider: Provider, outcomes: Vec<Outcome>) -> Vec<Value> {
                 })
             })
             .collect(),
+        Provider::Mistral => outcomes
+            .into_iter()
+            .map(|o| {
+                json!({
+                    "role": "tool", "tool_call_id": o.id, "name": o.name,
+                    "content": if o.error { format!("error: {}", o.text) } else { o.text },
+                })
+            })
+            .collect(),
     }
 }
 
-/// An answer cut short after its tool results ends on them; Claude needs a
-/// turn of its own after them before the next question.
+/// An answer cut short after its tool results ends on them; Claude and
+/// Mistral need a turn of the model's after them before the next question.
 pub fn close_turn(provider: Provider, messages: &mut Vec<Value>, asked_at: usize) {
-    if provider != Provider::Claude || messages.len() <= asked_at + 1 {
+    let results_role = match provider {
+        Provider::Claude => "user",
+        Provider::Mistral => "tool",
+        Provider::Gemini | Provider::OpenAi => return,
+    };
+    if messages.len() <= asked_at + 1 {
         return;
     }
     if messages
         .last()
         .and_then(|m| m.get("role"))
         .and_then(Value::as_str)
-        == Some("user")
+        == Some(results_role)
     {
         messages.push(json!({
             "role": "assistant",
@@ -856,6 +1112,10 @@ mod tests {
             );
         }
         assert_eq!(body["generation_config"]["tool_choice"], json!("validated"));
+        assert_eq!(
+            body["generation_config"]["thinking_summaries"],
+            json!("auto")
+        );
         assert_eq!(body["store"], json!(false));
     }
 
@@ -980,6 +1240,171 @@ mod tests {
             assert!(mine.iter().all(|m| provider.has_model(m.id)));
         }
         assert!(!Provider::Gemini.has_model("gpt-6-astra"));
+    }
+
+    #[test]
+    fn asks_mistral_in_chat_completions_form() {
+        let tools = tools_for(Provider::Mistral, &[tool()], true);
+        // No web search to declare: Mistral's is in its Agents API only.
+        assert_eq!(tools.as_array().map(Vec::len), Some(1));
+        assert_eq!(tools[0]["type"], json!("function"));
+        assert_eq!(tools[0]["function"]["name"], json!("get_candles"));
+        assert_eq!(
+            tools[0]["function"]["parameters"]["required"],
+            json!(["market"])
+        );
+
+        let turn = user_turn(Provider::Mistral, "<context/>", "btc?");
+        assert_eq!(
+            turn,
+            json!({"role": "user", "content": "<context/>\n\nbtc?"})
+        );
+        let body = mistral_body(
+            "mistral-large-4",
+            "sys",
+            &tools,
+            std::slice::from_ref(&turn),
+            true,
+        );
+        assert_eq!(
+            body["messages"][0],
+            json!({"role": "system", "content": "sys"})
+        );
+        assert_eq!(body["messages"][1], turn);
+        assert_eq!(body["reasoning_effort"], json!("high"));
+        let body = mistral_body("mistral-large-4", "sys", &tools, &[], false);
+        assert_eq!(body["reasoning_effort"], json!("medium"));
+        // Ministral refuses reasoning_effort.
+        let body = mistral_body("ministral-14b-latest", "sys", &tools, &[], true);
+        assert!(body.get("reasoning_effort").is_none());
+    }
+
+    #[test]
+    fn reads_mistrals_answers() {
+        // As Mistral Large 4 answered: a tool call after its thinking.
+        let call = json!({"choices": [{"index": 0, "finish_reason": "tool_calls", "message": {
+            "role": "assistant",
+            "tool_calls": [{"id": "IukOwmy8V", "type": "function", "index": 0,
+                "function": {"name": "get_price", "arguments": "{\"market\": \"BTC\"}"}}],
+            "content": [{"type": "thinking", "thinking": [{"type": "text", "text": "use get_price"}], "closed": true}],
+        }}]});
+        let mut messages = vec![json!({"role": "user", "content": "q"})];
+        let round = mistral_round(&call, &mut messages).unwrap();
+        assert_eq!(round.end, RoundEnd::Tools);
+        assert_eq!(round.text, "");
+        assert_eq!(round.calls[0].id, "IukOwmy8V");
+        assert_eq!(round.calls[0].name, "get_price");
+        assert_eq!(round.calls[0].input, json!({"market": "BTC"}));
+        assert_eq!(round.thoughts, vec!["use get_price".to_owned()]);
+        // Kept as given, thinking and all: Mistral takes it back.
+        assert_eq!(messages[1], call["choices"][0]["message"]);
+
+        let answer = json!({"choices": [{"finish_reason": "stop", "message": {
+            "role": "assistant", "tool_calls": null,
+            "content": [
+                {"type": "thinking", "thinking": [{"type": "text", "text": "hm"}], "closed": true},
+                {"type": "text", "text": "BTC is 64,210."},
+            ],
+        }}]});
+        let round = mistral_round(&answer, &mut messages).unwrap();
+        assert_eq!(round.end, RoundEnd::Done);
+        assert_eq!(round.text, "BTC is 64,210.");
+        assert!(messages[2].get("tool_calls").is_none());
+
+        let short = json!({"choices": [{"finish_reason": "length", "message": {"role": "assistant", "content": "cut"}}]});
+        let round = mistral_round(&short, &mut messages).unwrap();
+        assert_eq!(
+            (round.end, round.text.as_str()),
+            (RoundEnd::CutShort, "cut")
+        );
+        assert!(mistral_round(&json!({}), &mut messages).is_err());
+        assert!(transcript_ok(Provider::Mistral, &messages));
+    }
+
+    #[test]
+    fn hands_mistral_its_results_and_closes_its_turns() {
+        let results = results(
+            Provider::Mistral,
+            vec![Outcome {
+                id: "c1".into(),
+                name: "get_candles".into(),
+                text: "no".into(),
+                error: true,
+            }],
+        );
+        assert_eq!(
+            results[0],
+            json!({"role": "tool", "tool_call_id": "c1", "name": "get_candles", "content": "error: no"})
+        );
+        // Cut short on its tool results, it needs a turn of its own before the next question.
+        let mut messages = vec![json!({"role": "user", "content": "q"}), results[0].clone()];
+        close_turn(Provider::Mistral, &mut messages, 0);
+        assert_eq!(messages.len(), 3);
+        assert_eq!(messages[2]["role"], json!("assistant"));
+        assert!(transcript_ok(Provider::Mistral, &messages));
+        assert!(!transcript_ok(
+            Provider::Mistral,
+            &[json!({"role": "system", "content": "x"})]
+        ));
+        assert!(!transcript_ok(
+            Provider::Mistral,
+            &[json!({"type": "user_input"})]
+        ));
+    }
+
+    #[test]
+    fn sorts_mistrals_refusals() {
+        use reqwest::header::{HeaderMap, HeaderValue};
+        let failure_of = |err: VenueError| match err {
+            VenueError::InvalidRequest(detail) => {
+                serde_json::from_str::<Value>(detail.strip_prefix("ai:").unwrap()).unwrap()
+            }
+            other => panic!("not an invalid request: {other:?}"),
+        };
+        // Mistral's words are at the top level.
+        let body = r#"{"object":"error","message":"Rate limit exceeded","type":"rate_limited","code":"1300"}"#;
+        let err = api_error(
+            Provider::Mistral,
+            reqwest::StatusCode::TOO_MANY_REQUESTS,
+            body,
+            Some(MISTRAL_RATE_WAIT),
+        );
+        let rate = failure_of(err);
+        assert_eq!(rate["kind"], json!("rate"));
+        assert_eq!(rate["detail"], json!("Rate limit exceeded"));
+        // A model the plan has nothing of: its limits are 0.
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-ratelimit-limit-req-minute",
+            HeaderValue::from_static("0"),
+        );
+        assert!(no_allowance(&headers));
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "x-ratelimit-limit-req-minute",
+            HeaderValue::from_static("50"),
+        );
+        headers.insert(
+            "x-ratelimit-limit-tokens-minute",
+            HeaderValue::from_static("20000"),
+        );
+        assert!(!no_allowance(&headers));
+    }
+
+    #[test]
+    fn knows_mistrals_plan_and_keys() {
+        assert!(Provider::Mistral.free_tier("mistral-large-4"));
+        assert!(Provider::Mistral.free_tier("ministral-14b-latest"));
+        assert!(!Provider::Mistral.free_tier("mistral-medium-latest"));
+        assert!(!Provider::Mistral.web_search());
+        assert!(Provider::Mistral.lean());
+        assert!(!Provider::Claude.lean());
+        // A made-up key of the new shape, and the older bare one.
+        assert!(Provider::Mistral.key_ok("mstrl_Example0nlyKey_not-real0000000000"));
+        // (Built at run time: a key-shaped literal trips secret scanning.)
+        assert!(Provider::Mistral.key_ok(&"AbCdEfGh".repeat(4)));
+        assert!(!Provider::Mistral.key_ok("mstrl_short"));
+        assert!(!Provider::Mistral.key_ok("mstrl_Example0nly Key_not-real0000000"));
     }
 
     #[test]

@@ -359,6 +359,12 @@ pub async fn headlines(state: &NewsState) -> Result<Vec<Article>, VenueError> {
     Ok(all)
 }
 
+/// An article's link, as its feed gave it: for PewterDesk AI to sign into
+/// a source it cites (`ai_assistant.rs`). Never sent to the page.
+pub fn link_of(state: &NewsState, id: &str) -> Option<String> {
+    state.links.lock().unwrap().get(id).cloned()
+}
+
 /// Opens an article in the browser, by the id `news_feed` gave it - never
 /// a URL from the UI.
 #[tauri::command]

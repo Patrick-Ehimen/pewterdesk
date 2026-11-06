@@ -52,7 +52,8 @@ import {
   type AiProvider,
   aiClient,
 } from "../../api/venueClient";
-import { useAiChats } from "../../hooks/useAiChats";
+import { aiChatsStore, type ChatCloud, useAiChats } from "../../hooks/useAiChats";
+import { useCloudAuth } from "../../hooks/useJournal";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import { useChartNews } from "../../hooks/useVenueFeeds";
 import {
@@ -60,23 +61,27 @@ import {
   type ChatMessage,
   type ChatMode,
   marketPulse,
+  marksFor,
   snapshotOf,
   TITLE_MAX,
 } from "../../lib/aiChats";
-import { blocksOf, type Span } from "../../lib/aiText";
 import { venueBarSource } from "../../lib/barSource";
 import { chartFx } from "../../lib/fxRates";
+import { AiAnswer, Thinking } from "../ai/AiAnswer";
+import { CloudGate } from "../plan/CloudGate";
 import { LoadingMark } from "../Splash";
 
 const MODES: readonly ChatMode[] = ["chat", "chart"];
 const SIDES = ["open", "closed"] as const;
-const PROVIDERS: readonly AiProvider[] = ["claude", "gemini", "openai"];
+const BANNER = ["shown", "hidden"] as const;
+const PROVIDERS: readonly AiProvider[] = ["claude", "gemini", "openai", "mistral"];
 
 /** Each provider's name, and where its keys are made. Names, not words to translate. */
 const PROVIDER_INFO: Record<AiProvider, { name: string; site: string; placeholder: string }> = {
   claude: { name: "Claude", site: "console.anthropic.com", placeholder: "sk-ant-…" },
   gemini: { name: "Gemini", site: "aistudio.google.com/apikey", placeholder: "AIza…" },
   openai: { name: "ChatGPT", site: "platform.openai.com/api-keys", placeholder: "sk-…" },
+  mistral: { name: "Mistral", site: "console.mistral.ai", placeholder: "mstrl_…" },
 };
 
 /** Who runs each provider, for "Google refused the key". Names, not words to translate. */
@@ -84,6 +89,7 @@ const PROVIDER_COMPANY: Record<AiProvider, string> = {
   claude: "Anthropic",
   gemini: "Google",
   openai: "OpenAI",
+  mistral: "Mistral AI",
 };
 
 /** What a failure card can do beyond trying again: the page's own actions. */
@@ -96,6 +102,7 @@ const HELP_KEYS = {
   claude: "ai.key.help.claude",
   gemini: "ai.key.help.gemini",
   openai: "ai.key.help.openai",
+  mistral: "ai.key.help.mistral",
 } as const satisfies Record<AiProvider, MessageKey>;
 
 /** The model picked for new chats, as "provider:model", kept on this machine. */
@@ -200,6 +207,29 @@ export function AiPage({
   onTrade,
 }: AiPageProps) {
   const ai = useAiChats();
+  // The chats are kept in PewterDesk Cloud, behind the Plan page's sign-in
+  // (one session in Rust, so signing in on either page covers both).
+  const cloud = useCloudAuth(true);
+  const [signingIn, setSigningIn] = useState(false);
+  const authState = cloud.auth.state;
+  useEffect(() => {
+    const where: ChatCloud =
+      authState === "signedIn"
+        ? "signedIn"
+        : authState === "signedOut"
+          ? "signedOut"
+          : authState === "loading"
+            ? "unknown"
+            : "off";
+    ai.setCloud(where);
+    if (where === "signedIn") setSigningIn(false);
+  }, [authState, ai.setCloud]);
+  const { lost } = cloud;
+  useEffect(() => {
+    if (!ai.signedOut) return;
+    lost();
+    ai.clearSignedOut();
+  }, [ai.signedOut, lost, ai.clearSignedOut]);
   const [mode, setMode] = useStoredChoice("pd.ai.mode", MODES, "chat");
   // The side panel folds to a rail of icons, for more room to chat and chart.
   const [side, setSide] = useStoredChoice("pd.ai.side", SIDES, "open");
@@ -361,6 +391,22 @@ export function AiPage({
     setShown(undefined);
   };
 
+  // The market on screen's latest analysis, from whichever chat drew it, so
+  // it's still on the chart when the trader comes back to that market. A
+  // chat only listed so far, whose summary says it marked this market, is
+  // read to look.
+  const saved = useMemo(
+    () => marksFor(ai.chats, venue, market?.id, chartChat?.id),
+    [ai.chats, venue, market?.id, chartChat?.id],
+  );
+  const toRead = mode === "chart" ? saved.toRead : undefined;
+  const readChat = ai.ensure;
+  useEffect(() => {
+    if (toRead) readChat(toRead).catch(() => {});
+  }, [toRead, readChat]);
+  const savedChat =
+    saved.chatId && saved.chatId !== chartChat?.id ? chatOf(saved.chatId) : undefined;
+
   const showOnChart = (marks: AiChartMarks) => {
     setShown(marks);
     setChartInterval(marks.interval);
@@ -391,6 +437,13 @@ export function AiPage({
       onShowMarket(marks.venue, marks.market);
     }
   }, [chartId, chartCount]);
+
+  // A chat from the cloud's list is read whole once it's open.
+  const ensure = ai.ensure;
+  const activeId = active?.partial ? active.id : undefined;
+  useEffect(() => {
+    if (activeId) ensure(activeId).catch(() => {});
+  }, [activeId, ensure]);
 
   // Who answers a view: its open chat's provider, or the pick for a new chat.
   const answerer = (c: AiChat | undefined) =>
@@ -505,7 +558,25 @@ export function AiPage({
             {t("ai.pulse.title")}
           </button>
           <h2 className="ai-side-head">{t("ai.chats")}</h2>
-          {ai.chats.length === 0 ? (
+          {cloud.auth.state === "signedOut" && (
+            <div className="ai-cloud-card">
+              <p>{t("ai.cloud.signedOut")}</p>
+              <button
+                type="button"
+                className="settings-button"
+                data-primary
+                onClick={() => setSigningIn(true)}
+              >
+                {t("ai.cloud.signIn")}
+              </button>
+            </div>
+          )}
+          {(cloud.auth.state === "notConfigured" || cloud.auth.state === "unavailable") && (
+            <p className="ai-side-empty">{t("ai.cloud.off")}</p>
+          )}
+          {cloud.auth.state === "signedIn" && !ai.loaded ? (
+            <p className="ai-side-empty">{t("ai.cloud.loading")}</p>
+          ) : ai.chats.length === 0 ? (
             <p className="ai-side-empty">{t("ai.chatsEmpty")}</p>
           ) : (
             <ul className="ai-chats">
@@ -564,6 +635,9 @@ export function AiPage({
                   )}
                 </>
               )}
+              {picked.provider === "mistral" && (
+                <p className="ai-pick-note">{t("ai.mistral.note")}</p>
+              )}
             </div>
           )}
           <div className="ai-access" data-on={accountAccess || undefined}>
@@ -613,13 +687,19 @@ export function AiPage({
         </aside>
       )}
 
+      {signingIn && <SignInDialog cloud={cloud} onClose={() => setSigningIn(false)} />}
+
       <FailureActions.Provider
         value={{
           replaceKey: (p) => void aiClient.clearKey(p).then(readKeys, () => {}),
           newChat: () => pick(mode, undefined),
         }}
       >
-        {mode === "chat" ? (
+        {(mode === "chat" ? chat : chartChat)?.partial ? (
+          <main className="ai-main ai-opening" aria-busy>
+            <LoadingMark size={48} />
+          </main>
+        ) : mode === "chat" ? (
           <ChatView
             chat={chat}
             pending={chat !== undefined && ai.pending.has(chat.id)}
@@ -655,6 +735,12 @@ export function AiPage({
             interval={interval}
             onInterval={setChartInterval}
             shown={shown}
+            saved={saved.marks}
+            savedFrom={
+              savedChat && saved.time !== undefined
+                ? { title: savedChat.title, time: saved.time, onOpen: () => openChat(savedChat) }
+                : undefined
+            }
             onAsk={(q) => ask(q, "chart")}
             onShowOnChart={showOnChart}
             onTrade={onTrade}
@@ -866,6 +952,8 @@ function ChatView({
   onTryCharts,
 }: ChatViewProps) {
   const started = chat !== undefined && (chat.messages.length > 0 || pending);
+  // Closed once, the Agentic Charts banner stays closed on this machine.
+  const [banner, setBanner] = useStoredChoice("pd.ai.banner", BANNER, "shown");
   const pulse = useMemo(() => marketPulse(summaries ?? []), [summaries]);
   const coin = market?.base ?? "BTC";
 
@@ -873,16 +961,29 @@ function ChatView({
     return (
       <main className="ai-main ai-home">
         <div className="ai-home-inner">
-          <button type="button" className="ai-banner" onClick={onTryCharts}>
-            <LuChartCandlestick size={22} aria-hidden />
-            <span className="ai-banner-text">
-              <strong>
-                {t("ai.banner.title")} <span className="ai-badge">{t("ai.banner.new")}</span>
-              </strong>
-              <span>{t("ai.banner.body")}</span>
-            </span>
-            <span className="ai-banner-cta">{t("ai.banner.cta")}</span>
-          </button>
+          {banner === "shown" && (
+            <div className="ai-banner">
+              <button type="button" className="ai-banner-main" onClick={onTryCharts}>
+                <LuChartCandlestick size={22} aria-hidden />
+                <span className="ai-banner-text">
+                  <strong>
+                    {t("ai.banner.title")} <span className="ai-badge">{t("ai.banner.new")}</span>
+                  </strong>
+                  <span>{t("ai.banner.body")}</span>
+                </span>
+                <span className="ai-banner-cta">{t("ai.banner.cta")}</span>
+              </button>
+              <button
+                type="button"
+                className="pd-icon-button ai-banner-close"
+                title={t("ai.banner.dismiss")}
+                aria-label={t("ai.banner.dismiss")}
+                onClick={() => setBanner("hidden")}
+              >
+                <LuX size={16} aria-hidden />
+              </button>
+            </div>
+          )}
           <h1 className="ai-hero">{t("ai.hero")}</h1>
           {keyCard ?? (
             <Composer
@@ -957,6 +1058,8 @@ function ChatView({
         onDismissFailure={onDismissFailure}
         onShowOnChart={onShowOnChart}
         symbolOf={symbolOf}
+        chatId={chat.id}
+        model={modelLabel}
       />
       <div className="ai-thread-foot">
         {keyCard ?? (
@@ -1022,6 +1125,10 @@ interface ChartViewProps {
   onInterval: (interval: CandleInterval) => void;
   /** Marks picked from a chat, shown over the chart chat's own. */
   shown?: AiChartMarks;
+  /** The market on screen's latest analysis, from whichever chat drew it. */
+  saved?: AiChartMarks;
+  /** The chat it came from, when it isn't the one open. */
+  savedFrom?: { title: string; time: number; onOpen: () => void };
   onAsk: (question: string) => void;
   /** Draws an answer's marks again, on their own market and interval. */
   onShowOnChart: (marks: AiChartMarks) => void;
@@ -1044,22 +1151,20 @@ function ChartView({
   interval,
   onInterval,
   shown,
+  saved,
+  savedFrom,
   onAsk,
   onShowOnChart,
   onTrade,
 }: ChartViewProps) {
   const source = useMemo(() => venueBarSource(venue), [venue]);
   const chartNews = useChartNews();
-  const latest = useMemo(
-    () => [...(chat?.messages ?? [])].reverse().find((m) => m.marks)?.marks,
-    [chat],
-  );
-  const candidate = shown ?? latest;
-  // Drawn only on the market they were made for.
-  const marks =
-    candidate && market && candidate.venue === venue && candidate.market === market.id
-      ? candidate
-      : undefined;
+  // Drawn only on the market they were made for: an answer picked to show,
+  // else the market's own latest analysis, whichever chat drew it.
+  const onScreen = (m: AiChartMarks | undefined) =>
+    m && market && m.venue === venue && m.market === market.id ? m : undefined;
+  const marks = onScreen(shown) ?? onScreen(saved);
+  const fromElsewhere = marks === saved && !onScreen(shown) ? savedFrom : undefined;
   const analysis = useMemo<ChartAnalysis | undefined>(
     () =>
       marks && {
@@ -1125,6 +1230,21 @@ function ChartView({
             {pending ? t("ai.thinking") : t("ai.chart.analyze", { market: symbol, interval })}
           </button>
         )}
+        {fromElsewhere && (
+          <p className="ai-marks-from">
+            <LuClock size={13} aria-hidden />
+            <span>
+              {t("ai.chart.from", {
+                when: dateFormat({ dateStyle: "medium", timeStyle: "short" }).format(
+                  fromElsewhere.time,
+                ),
+              })}
+            </span>
+            <button type="button" className="ai-link-button" onClick={fromElsewhere.onOpen}>
+              {t("ai.chart.openChat")}
+            </button>
+          </p>
+        )}
         {marks ? (
           <MarksCard marks={marks} decimals={decimals} symbol={symbol} />
         ) : (
@@ -1141,6 +1261,8 @@ function ChartView({
             onShowOnChart={onShowOnChart}
             drawn={marks}
             symbolOf={(id) => markets.find((m) => m.id === id)?.symbol ?? id}
+            chatId={chat.id}
+            model={modelLabel}
           />
         )}
         {!chat && failure && (
@@ -1263,6 +1385,15 @@ interface ThreadProps {
   drawn?: AiChartMarks;
   symbolOf: (id: string) => string;
   compact?: boolean;
+  /** The chat, for an answer's thumbs. */
+  chatId?: string;
+  /** The model's name, for an answer's share card. */
+  model: string;
+}
+
+function toolName(name: string): string {
+  const key = TOOL_KEYS[name];
+  return key ? t(key) : name;
 }
 
 function Thread({
@@ -1275,13 +1406,18 @@ function Thread({
   drawn,
   symbolOf,
   compact = false,
+  chatId,
+  model,
 }: ThreadProps) {
   const end = useRef<HTMLDivElement>(null);
   const count = messages.length;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls when a message or the pending mark arrives
+  // What the pending answer has thought and read so far.
+  const live = useAiChats().live[chatId ?? ""];
+  const liveCount = live?.length ?? 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrolls when a message, a step or the pending mark arrives
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [count, pending, failure]);
+  }, [count, pending, failure, liveCount]);
   return (
     <div className="ai-thread" data-compact={compact || undefined} aria-live="polite">
       {messages.map((m, i) =>
@@ -1293,11 +1429,19 @@ function Thread({
         ) : (
           // biome-ignore lint/suspicious/noArrayIndexKey: messages are only ever appended
           <div key={i} className="ai-msg" data-role="assistant">
-            {m.tools && m.tools.length > 0 && <ToolTrail tools={m.tools} />}
             {m.note === "refused" ? (
               <p className="ai-note">{t("ai.refused")}</p>
             ) : (
-              <RichText text={m.text} />
+              <AiAnswer
+                message={m}
+                question={
+                  [...messages.slice(0, i)].reverse().find((x) => x.role === "user")?.text ?? ""
+                }
+                model={model}
+                toolLabel={toolName}
+                onRate={chatId ? (r) => aiChatsStore.rate(chatId, m.time, r) : undefined}
+                compact={compact}
+              />
             )}
             {m.note === "cutShort" && <p className="ai-note">{t("ai.cutShort")}</p>}
             {m.marks && onShowOnChart && m.marks === drawn && (
@@ -1323,30 +1467,13 @@ function Thread({
         ),
       )}
       {pending && (
-        <div className="ai-msg ai-pending" data-role="assistant" role="status">
-          <span className="ai-dots" aria-hidden>
-            <span />
-            <span />
-            <span />
-          </span>
-          {t("ai.thinking")}
+        <div className="ai-msg" data-role="assistant" role="status">
+          <Thinking steps={live ?? []} live toolLabel={toolName} />
         </div>
       )}
       {failure && <FailureRow failure={failure} onRetry={onRetry} onDismiss={onDismissFailure} />}
       <div ref={end} />
     </div>
-  );
-}
-
-function ToolTrail({ tools }: { tools: readonly string[] }) {
-  // Each tool once, in the order first used.
-  const names = [...new Set(tools)];
-  return (
-    <p className="ai-tools">
-      {names.map((name) => (
-        <span key={name}>{TOOL_KEYS[name] ? t(TOOL_KEYS[name]) : name}</span>
-      ))}
-    </p>
   );
 }
 
@@ -1397,13 +1524,14 @@ function FailureRow({
   const company = ai ? PROVIDER_COMPANY[ai.provider] : "";
   const name = ai ? PROVIDER_INFO[ai.provider].name : "";
   const free = ai?.provider === "gemini";
+  const mistral = ai?.provider === "mistral";
 
   let title: string;
   let body: string;
   switch (ai?.kind) {
     case "rate":
       title = t("ai.fail.rate.title", { company });
-      body = t(free ? "ai.fail.rate.free" : "ai.fail.rate.body");
+      body = t(free ? "ai.fail.rate.free" : mistral ? "ai.fail.rate.mistral" : "ai.fail.rate.body");
       break;
     case "quota":
       title = t("ai.fail.quota.title", { company });
@@ -1499,67 +1627,6 @@ function FailureRow({
       >
         <LuX size={14} aria-hidden />
       </button>
-    </div>
-  );
-}
-
-function SpanText({ spans }: { spans: readonly Span[] }) {
-  return (
-    <>
-      {spans.map((s, i) =>
-        s.kind === "bold" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: spans don't move
-          <strong key={i}>{s.text}</strong>
-        ) : s.kind === "code" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: spans don't move
-          <code key={i}>{s.text}</code>
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: spans don't move
-          <span key={i}>{s.text}</span>
-        ),
-      )}
-    </>
-  );
-}
-
-/** An answer, as text: headings, paragraphs and lists, never markup or links. */
-function RichText({ text }: { text: string }) {
-  const blocks = useMemo(() => blocksOf(text), [text]);
-  return (
-    <div className="ai-rich">
-      {blocks.map((b, i) =>
-        b.kind === "heading" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: blocks don't move
-          <h3 key={i}>
-            <SpanText spans={b.spans} />
-          </h3>
-        ) : b.kind === "paragraph" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: blocks don't move
-          <p key={i}>
-            <SpanText spans={b.spans} />
-          </p>
-        ) : b.ordered ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: blocks don't move
-          <ol key={i}>
-            {b.items.map((item, j) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: items don't move
-              <li key={j}>
-                <SpanText spans={item} />
-              </li>
-            ))}
-          </ol>
-        ) : (
-          // biome-ignore lint/suspicious/noArrayIndexKey: blocks don't move
-          <ul key={i}>
-            {b.items.map((item, j) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: items don't move
-              <li key={j}>
-                <SpanText spans={item} />
-              </li>
-            ))}
-          </ul>
-        ),
-      )}
     </div>
   );
 }
@@ -1701,5 +1768,40 @@ function Composer({
         </button>
       </div>
     </form>
+  );
+}
+
+/** Signing in to PewterDesk Cloud from the AI page: the Plan page's own form, in a dialog. */
+function SignInDialog({
+  cloud,
+  onClose,
+}: {
+  cloud: ReturnType<typeof useCloudAuth>;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="ai-signin"
+      aria-label={t("ai.cloud.signIn")}
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+    >
+      <button
+        type="button"
+        className="pd-icon-button ai-signin-close"
+        aria-label={t("wallet.close")}
+        onClick={onClose}
+      >
+        <LuX size={18} aria-hidden />
+      </button>
+      <CloudGate cloud={cloud} />
+    </dialog>
   );
 }

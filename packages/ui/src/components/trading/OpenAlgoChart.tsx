@@ -1359,22 +1359,57 @@ export function OpenAlgoChart({
   // The analyst's drawings (zones, fibs, trend lines, levels), pinned to the
   // candles: drawn afresh when they change, when candles load (a new market
   // swaps the drawings out) and with the theme. Read-only, and never saved.
-  const analysed = useRef<{ of: Widget; ids: string[] }>(undefined);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `loaded` redraws on a new market's candles, `themed` recolours them
+  const analysed = useRef<{
+    of: Widget;
+    ids: string[];
+    analysis?: ChartAnalysis;
+    interval?: CandleInterval;
+    themed?: unknown;
+  }>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `loaded` draws once a new market's candles are in, `themed` recolours them
   useEffect(() => {
     const host = hostRef.current;
     if (!widget || !host || widget.isDestroyed) return;
     const draw = widget.draw;
-    if (analysed.current?.of === widget) {
-      for (const id of analysed.current.ids) draw.remove(id, { force: true });
+    const was = analysed.current;
+    // The trader may have moved or deleted them: a new candle alone leaves
+    // them as they are. A new analysis, interval or theme draws them afresh.
+    if (
+      was?.of === widget &&
+      was.ids.length > 0 &&
+      was.analysis === analysis &&
+      was.interval === interval &&
+      was.themed === themed
+    ) {
+      return;
     }
-    analysed.current = { of: widget, ids: [] };
+    if (was?.of === widget) {
+      for (const id of was.ids) {
+        try {
+          draw.remove(id, { force: true });
+        } catch {
+          // Deleted by the trader already.
+        }
+      }
+    }
+    analysed.current = { of: widget, ids: [], analysis, interval, themed };
     const last = widget.series.getData().at(-1)?.time;
     if (!analysis || last === undefined) return;
     const t = tokens(host);
-    const colors = { buy: t.buy, sell: t.sell, warning: t.warning, muted: t.muted };
+    const colors = {
+      buy: t.buy,
+      sell: t.sell,
+      warning: t.warning,
+      muted: t.muted,
+      background: t.bg,
+    };
     const bar = INTERVAL_MS[interval] / 1000;
-    analysed.current.ids = analysisDrawings(analysis, colors, { last, bar }).map(
+    // A line of label text (11px and its plate), as price on this chart now.
+    const top = widget.chart.coordinateToPrice(100);
+    const below = widget.chart.coordinateToPrice(118);
+    const labelGap =
+      top !== null && below !== null && Number.isFinite(top - below) ? Math.abs(top - below) : 0;
+    analysed.current.ids = analysisDrawings(analysis, colors, { last, bar, labelGap }).map(
       (d) => draw.add(d).id,
     );
   }, [widget, analysis, interval, loaded, themed]);

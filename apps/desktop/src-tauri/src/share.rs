@@ -75,7 +75,7 @@ const MAX_CAPTION: usize = 500;
 
 /// `text` percent-encoded for a query value: everything but the unreserved
 /// characters, so the URL holds nothing a shell or a URL parser reads specially.
-fn encode(text: &str) -> String {
+pub(crate) fn encode(text: &str) -> String {
     let mut out = String::with_capacity(text.len() * 3);
     for b in text.bytes() {
         if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
