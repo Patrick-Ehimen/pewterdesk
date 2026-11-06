@@ -80,6 +80,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # PewterDesk Cloud's project, fixed into the build (see .env.cloud.example);
+          # without them the Plan page and the cloud's other parts say there's no cloud.
+          PEWTERDESK_CLOUD_URL: ${{ secrets.PEWTERDESK_CLOUD_URL }}
+          PEWTERDESK_CLOUD_KEY: ${{ secrets.PEWTERDESK_CLOUD_KEY }}
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
@@ -94,15 +98,17 @@ jobs:
             soon as they're connected; on a live account, only once you turn live
             trading on for it. Hyperliquid and Aster also have paper trading.
 
-            New since v0.4.0: Binance's USDT perpetuals, live and on Demo Trading;
-            BloFin's perpetuals, on Demo Trading; every venue's balances together in the
-            Account panel; on the charts, month timeframes, session volume profile and
-            TPO chart types, bar replay, and USD economic news at its time on the chart;
-            many more views on the Maps page, now in seven groups and across the 300
-            busiest markets; a Calendar view of the News page; leverage, margin and hold
-            time on closed trades; a clearer P&L share card; a brighter command palette
-            with token logos; and on macOS, one password prompt per build instead of one
-            for each key.
+            New since v0.5.0: a Plan & journal page (a daily check-in and watchlist,
+            your trading plan, playbooks, a journal of every trade with notes,
+            screenshots and a reflection, and reviews), kept in PewterDesk Cloud once
+            you sign in by email; a Screener page with a technical rating and token
+            details; on the Maps page, a pump / dump watch with exchange listing news,
+            scans and alerts, including squeeze, Bollinger and RSI alerts; PewterDesk AI
+            with Mistral, a thinking panel, cited sources and shareable answers, its
+            chats kept in the cloud; a replay account to practise on past candles;
+            prices and money in other currencies; paper trading in the floating window;
+            Portfolio from your account's picture; market alerts that keep firing with
+            the app quit; new themes; and updates installed from inside the app.
 
             Live trading is new: start with a small order.
 
