@@ -288,30 +288,37 @@ discover it on their own. The reasoning behind the rules is in
   model (a fixed list per provider, `Provider::models`): Anthropic's Claude
   (Messages API, `api.anthropic.com/v1/messages`), Google's Gemini
   (Interactions API, `generativelanguage.googleapis.com/v1beta/interactions`,
-  `store: false`) or OpenAI's ChatGPT models (Responses API,
-  `api.openai.com/v1/responses`, `store: false`). Reached from Rust only,
+  `store: false`), OpenAI's ChatGPT models (Responses API,
+  `api.openai.com/v1/responses`, `store: false`) or Mistral AI's (Chat
+  Completions, `api.mistral.ai/v1/chat/completions`; Large 4 and Ministral
+  14B, both on its free Experiment plan, which may train on what's sent).
+  Reached from Rust only,
   each at its one fixed address (no redirects followed), with the trader's
   own key for it, kept in the keychain (`anthropic:api`, `gemini:api`,
-  `openai:api`), sent only to its own provider and never returned
+  `openai:api`, `mistral:api`), sent only to its own provider and never returned
   (`ai_key_status` says only which are stored). A chat stays with the
   provider it began on: its transcript is that provider's own.
   Not a venue and not on the signing surface: its tools are read-only
   market data through the adapters (`get_candles`, `get_order_book`,
   `get_funding_history`, `get_open_interest`, `get_long_short_ratio`,
   `get_recent_trades` - the trades stream's first snapshot - and
-  `find_markets`; each takes a `venue`, so it can compare venues), OKX's
+  `find_markets`; each takes a `venue`, so it can compare venues; a lean
+  provider, Mistral, whose free plan counts tokens by the minute, gets at
+  most 120 candles a call and a 30-row snapshot, and a 429 is waited out), OKX's
   public liquidation history (`get_liquidations`, through
   `okx_liquidations::liquidations`), what the app's own data sources already read, each
   through its own module and fixed hosts (`search_x_posts` over the news
   wire's X posts - Tree's recent items plus what the live wire brought in,
   `news_wire::recent_items`; `search_headlines` over the wire's headlines,
   the RSS feeds and Bybit's announcements; `get_economic_calendar`),
-  Anthropic's own web search, and
+  the provider's own web search (Mistral's chat API has none), and
   `mark_chart`, whose analysis comes back to the page only as numbers,
   candle times and bounded labels to draw (`analysis` on `OpenAlgoChart`:
   the chart's own drawings - supply/demand zones as rectangles, Fibonacci
-  retracements, trend lines, levels as rays - pinned to the candles,
-  read-only and never saved; `analysisDrawings` in `lib/openAlgoChart.ts`). No tool reaches the router, an account or a key, or
+  retracements (key ratios, muted), trend lines, levels as rays with their
+  labels by the price axis, and an entry, stop and targets as a long or
+  short position box (`tradePlan`) - pinned to the candles,
+  laid out in lanes so no words overlap, movable and deletable by the trader, never saved; `analysisDrawings` in `lib/openAlgoChart.ts`). No tool reaches the router, an account or a key, or
   takes a URL or host. The trader's own account (`get_account`,
   `get_fills`, `get_closed_trades`: the adapters' read-only account, fills
   and closed-trade reads, for the account the page has connected on each
@@ -322,10 +329,27 @@ discover it on their own. The reasoning behind the rules is in
   declared (a conversation's tools can't change) and refuse while it's off.
   Posts and headlines are other people's text, given
   to the model as data (the prompt says never to follow them). Answers reach the page as bounded text, drawn as
-  text (`lib/aiText.ts`: no markup, no links). The conversation is the
-  API's transcript, kept with the chats in `ai-chats.json` in the app's
-  data folder (written whole by `save_ai_chats`, 0600; never key material)
-  and handed back whole; Rust only appends to it. Adding a provider, or
+  text (`lib/aiText.ts`: no markup, no links; a TLDR, numbered sections
+  and a bottom line, as the prompt lays them out, in
+  `components/ai/AiAnswer.tsx`). What an answer cites comes back as
+  `Source`s: Rust numbers each headline, post and announcement the search
+  tools return (`[sN]`, `Ledger`), the model cites the tags, and only the
+  cited ones go to the page - bounded text and its link as Rust fetched it,
+  signed by Rust (`SourceOpen::Link`: the https URL that passes `safe_url`
+  and its HMAC-SHA256 under a key of 32 random bytes kept in the keychain,
+  `ai:source-key`, made on first use and never returned), which opens only
+  through `open_ai_source` once the signature checks out (older answers
+  carry the item's id instead, for `open_news_article` / `open_wire_link`).
+  A source whose link can't open any more goes to `find_ai_source`: Rust
+  looks for the item again in the feeds it reads (by id, or by headline)
+  and opens the link it finds, or else a search it builds itself at a fixed
+  address (`source_search`: `x.com/search` for a post, `duckduckgo.com` for
+  anything else; one percent-encoded query value). The model never names a
+  URL, and the page can't open one Rust didn't sign, find or build.
+  The conversation is the API's transcript, kept with the chat in
+  PewterDesk Cloud (`ai_chats`, below; never key material) and handed back
+  whole; Rust only appends to it. The old `ai-chats.json` is read once
+  (`load_ai_chats`) to move its chats up, then deleted (`forget_ai_chats`). Adding a provider, or
   sending a request anywhere else, is a security-relevant change. Giving the analyst a tool that trades, reads an
   account, or opens a link, or sending its requests anywhere else, is a
   security-relevant change.
@@ -538,7 +562,16 @@ discover it on their own. The reasoning behind the rules is in
   https only; no redirects followed, size caps). Not a venue and not on the
   signing surface: nothing in it reaches the router, an account or a key. It
   holds what the trader writes (plan, playbooks, journal days, trade notes,
-  PNG or JPEG screenshots) and the figures of trades the venue already
+  PNG or JPEG screenshots), PewterDesk AI's chats (`ai_chats`: each one's
+  summary, messages, cited sources and the provider's transcript - which,
+  with account access on, holds what the analyst read of the account; their
+  own commands, `cloud_ai_chats` and the rest, the key checked, each part
+  capped as the table is, the list reading summaries only), the notification
+  centre's notifications (`notifications`: each one's type, title, body, tone,
+  venue, market, time and whether it's read - orders, fills, position changes,
+  fired alerts; `cloud_notifications` and the rest, keys and sizes checked,
+  batches capped; synced by `lib/notesCloud.ts`, which deletes only on the
+  centre's Clear) and the figures of trades the venue already
   reported (prices, sizes, P&L, fees, funding, times) - never key material,
   a signature, a signed payload or a keychain reference. Sign-in is a code
   sent by email (`cloud_send_code`, `cloud_verify`); the session's refresh
@@ -822,7 +855,7 @@ notifies once in 6 hours, through `notifyEvent`; and,
 from the account on screen, the trader's edge by hour and market (closed trades,
 read only while that view is open) and correlated exposure. Any market clicked in a Maps view opens the
 market's card (`components/maps/MarketCard.tsx`: its readings, star, alerts, and its levels
-shown on the Trade chart through `analysis`, read-only and never saved), and what a view
+shown on the Trade chart through `analysis`, movable by the trader, never saved), and what a view
 shows can be saved as a named list (`markets` on `MapFrame`, `SaveList`); plus the
 public long / short account ratio (`long_short_ratio`, a read-only market
 data request) of the venue on screen where it publishes one (Bybit,
@@ -1071,11 +1104,11 @@ A page (`ai`; `components/pages/AiPage.tsx`, `hooks/useAiChats.ts`,
 `lib/aiChats.ts`), after CoinMarketCap's CMC AI: a chat with a market
 analyst, and Agentic Charts, the market on screen charted beside the
 analyst, who reads it and marks its levels (support, resistance, entry,
-targets, invalidation) on the chart. Claude, Gemini or a ChatGPT model
-answers (picked in the side panel for new chats; `ai_models`), through
+targets, invalidation) on the chart. Claude, Gemini, a ChatGPT model or
+Mistral answers (picked in the side panel for new chats; `ai_models`), through
 `ai_assistant.rs` and `ai_providers.rs`, with the trader's own key for that
-provider (set on the page; Gemini's has a free tier, the others are billed
-by their provider). The Google plan (side panel, free unless set to paid,
+provider (set on the page; Gemini's and Mistral's have a free tier, the
+others are billed by their provider). The Google plan (side panel, free unless set to paid,
 `ai-gemini-plan.json`) only takes away: on the free tier Rust refuses the
 paid-only models (`Provider::free_tier`) and declares no web search, and the
 page says Google may use and read what's sent. Each question carries the venue, market and
@@ -1095,9 +1128,22 @@ tabs (Market analysis, Token insights, and Your account with account
 access on), the day's biggest movers as chips to ask about, Deep Think on
 the question box (the provider's higher reasoning effort, per question:
 `deep` on `AskContext`) and Daily Pulse in the side panel (a briefing on
-the day's market, in a new chat). Chats, and the chat open in each view, are kept on this machine
-in `ai-chats.json` (not the webview's storage, which the market caches
-fill), read once and written after every change; a chat that can't be
+the day's market, in a new chat). While it works, a Thinking panel fills
+in as it goes (`Thinking` in `components/ai/AiAnswer.tsx`): the provider's
+own summaries of its reasoning (Claude's summarized thinking, Gemini's
+thought summaries, OpenAI's reasoning summaries, Mistral's thinking) and
+each tool it uses, sent by `ai_ask` over a channel as bounded text (`Step`)
+and kept with the answer, folded, to open again. Each answer shows what it read and how
+long it took, its TLDR in a card in the theme's accent, its sources (opened
+by id) and copy, share (an image card, `AiShareDialog`, as the P&L card
+is shared) and thumbs. Chats are kept in PewterDesk Cloud
+(`hooks/useAiChats.ts`; each one's summary lists the markets it marked,
+so Agentic Charts draws a market's latest analysis, from whichever chat,
+when the trader comes back to it: `marksFor` in `lib/aiChats.ts`), behind the Plan page's sign-in - one session, so
+signing in on either page covers both: the list reads summaries, a chat
+is read whole when opened, and only what changed is written. Signed out,
+new chats last only while the app runs, and go up on sign-in. The chat open
+in each view is kept on this machine (`pd.ai.open`); a chat that can't be
 saved says so in the side panel. It places nothing: an answer can at most open its marks on
 the chart, or the market on the Trade page.
 
