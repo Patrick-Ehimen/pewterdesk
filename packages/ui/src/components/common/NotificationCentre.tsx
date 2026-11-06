@@ -84,14 +84,10 @@ export function NotificationCentre({
     return () => window.removeEventListener("resize", placeIt);
   }, [open]);
 
-  // The latest list and handler, for closing: read is whatever was there to see.
-  const latest = useRef({ notes, onRead });
-  latest.current = { notes, onRead };
-  const close = () => {
-    setOpen(false);
-    const seen = latest.current.notes.filter((n) => !n.read).map((n) => n.id);
-    if (seen.length > 0) latest.current.onRead(seen);
-  };
+  // Closing leaves every notification as it was: one is read only once it's
+  // opened (clicked, or its "Go to"), or by Mark all read or Clear, so the
+  // count on the icon holds until each has been looked at.
+  const close = () => setOpen(false);
   const closeRef = useRef(close);
   closeRef.current = close;
   useEffect(() => {
@@ -120,6 +116,14 @@ export function NotificationCentre({
   const earlier = shown.filter((n) => !isToday(n.time));
   const row = (n: CentreNote, clock: Intl.DateTimeFormatOptions) => (
     <li key={n.id} className="pd-notes-row" data-tone={n.tone} data-unread={!n.read || undefined}>
+      {!n.read && (
+        <button
+          type="button"
+          className="pd-notes-hit"
+          aria-label={t("notes.markOneRead", { title: n.title })}
+          onClick={() => onRead([n.id])}
+        />
+      )}
       <span className="pd-notes-dot" aria-hidden />
       <div className="pd-notes-text">
         <span className="pd-notes-kind">{t(TYPE_LABEL[n.type])}</span>
@@ -130,6 +134,7 @@ export function NotificationCentre({
             type="button"
             className="pd-notes-go"
             onClick={() => {
+              if (!n.read) onRead([n.id]);
               onGoTo(n.id);
               close();
             }}

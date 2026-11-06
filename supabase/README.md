@@ -1,7 +1,7 @@
 # PewterDesk Cloud (Supabase)
 
-The hosted store for the Plan page: trading plan, playbooks, the journal,
-trade notes and their screenshots. Why it's Supabase and what it may hold:
+The hosted store for the Plan page (trading plan, playbooks, the journal,
+trade notes and their screenshots) and PewterDesk AI's chats. Why it's Supabase and what it may hold:
 [ADR 0004](../docs/adr/0004-hosted-journal.md). The app reaches it from Rust
 only (`apps/desktop/src-tauri/src/cloud.rs`).
 
@@ -16,8 +16,9 @@ only (`apps/desktop/src-tauri/src/cloud.rs`).
    ```
 
    or by pasting `migrations/*.sql`, in order, into the SQL editor. This
-   creates the four tables with Row Level Security, and the private
-   `journal` storage bucket.
+   creates the six tables with Row Level Security (`ai_chats` and
+   `notifications` among them),
+   and the private `journal` storage bucket.
 3. **Authentication → Providers → Email**: on. Turn "Confirm email" on.
 4. **Authentication → Email Templates → Magic Link** (and **Confirm
    signup**): the app signs in with a code, not a link, so the template must

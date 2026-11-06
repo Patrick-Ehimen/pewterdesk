@@ -3,7 +3,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 
 /**
  * PewterDesk Cloud (`src-tauri/src/cloud.rs`): the hosted store for the plan,
- * playbooks, journal and trade notes. Every request is built and sent by
+ * playbooks, journal and trade notes, and PewterDesk AI's chats. Every request is built and sent by
  * Rust; the page names a collection and hands over a record's data. The
  * session's tokens never reach the page.
  */
@@ -102,4 +102,45 @@ export const cloudClient = {
     });
   },
   removeAttachment: (path: string) => call<void>("cloud_remove_attachment", { path }),
+  /** PewterDesk AI's chats, newest first: what the list shows of each. */
+  aiChats: () => call<AiChatSummary[]>("cloud_ai_chats"),
+  /** One chat whole; null if it's gone. */
+  aiChat: (key: string) => call<AiChatRecord | null>("cloud_ai_chat", { key }),
+  /** Writes a chat: `meta` always, the messages and transcript only when given. */
+  putAiChat: (key: string, parts: AiChatParts) => call<void>("cloud_put_ai_chat", { key, parts }),
+  removeAiChat: (key: string) => call<void>("cloud_delete_ai_chat", { key }),
+  /** The notification centre's notifications, newest first. */
+  notifications: () => call<NoteRecord[]>("cloud_notifications"),
+  /** Writes notifications, new or changed (read), as one batch. */
+  putNotifications: (notes: readonly NoteRecord[]) =>
+    call<void>("cloud_put_notifications", { notes }),
+  /** Deletes the notifications named, or every one with none named (Clear). */
+  removeNotifications: (keys?: readonly string[]) =>
+    call<void>("cloud_delete_notifications", { keys: keys ?? null }),
 };
+
+/** One notification as the cloud keeps it: its id, its time, and what the centre shows. */
+export interface NoteRecord {
+  key: string;
+  at: number;
+  note: unknown;
+}
+
+export interface AiChatSummary {
+  key: string;
+  meta: unknown;
+  updatedAt: string;
+}
+
+export interface AiChatRecord {
+  key: string;
+  meta: unknown;
+  messages: unknown;
+  transcript: unknown;
+}
+
+export interface AiChatParts {
+  meta: Record<string, unknown>;
+  messages?: unknown[];
+  transcript?: unknown;
+}

@@ -20,6 +20,10 @@
 //!   every request: the filters are typed and checked, the bodies capped.
 //! - Attachments are PNG or JPEG images (checked), stored under the user's
 //!   own id with a name Rust picks.
+//! - PewterDesk AI's chats (`ai_chats`) have commands of their own: a chat
+//!   is named by the app's own key (checked), its parts are capped as the
+//!   table's checks are, and only its own columns are sent. The list reads
+//!   each chat's `meta` alone.
 
 use std::time::{Duration, Instant};
 
@@ -719,6 +723,334 @@ pub async fn cloud_delete(
     }
 }
 
+// ---- PewterDesk AI's chats ----------------------------------------------------
+
+const AI_CHATS: &str = "/rest/v1/ai_chats";
+/// As the table allows each part.
+const MAX_AI_META: usize = 16 * 1024;
+const MAX_AI_MESSAGES: usize = 2 * 1024 * 1024;
+const MAX_AI_TRANSCRIPT: usize = 5 * 1024 * 1024;
+const MAX_AI_CHATS: usize = 1000;
+
+/// The app's own id for a chat: lowercase letters, digits and dashes.
+fn is_chat_key(s: &str) -> bool {
+    (1..=64).contains(&s.len())
+        && s.bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+fn json_size(value: &Value) -> usize {
+    serde_json::to_vec(value).map_or(usize::MAX, |b| b.len())
+}
+
+/// A chat in the list: what it shows, without its messages.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AiChatSummary {
+    #[serde(rename(serialize = "key"), alias = "chat_key")]
+    chat_key: String,
+    meta: Value,
+    #[serde(rename(serialize = "updatedAt"), alias = "updated_at")]
+    updated_at: String,
+}
+
+/// A whole chat.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AiChatRecord {
+    #[serde(rename(serialize = "key"), alias = "chat_key")]
+    chat_key: String,
+    meta: Value,
+    messages: Value,
+    #[serde(default)]
+    transcript: Value,
+}
+
+/// What a write changes: `meta` always, the messages and the transcript
+/// only when given (a rename sends neither).
+#[derive(Clone, Debug, Deserialize)]
+pub struct AiChatParts {
+    meta: Value,
+    #[serde(default)]
+    messages: Option<Value>,
+    #[serde(default)]
+    transcript: Option<Value>,
+}
+
+/// The row a chat's write sends, every part checked. `user_id` is never
+/// sent: the store fills it from the session.
+fn ai_chat_row(key: &str, parts: &AiChatParts) -> Result<Value, CloudError> {
+    if !is_chat_key(key) {
+        return Err(CloudError::Invalid("chat"));
+    }
+    if !parts.meta.is_object() || json_size(&parts.meta) > MAX_AI_META {
+        return Err(CloudError::Invalid("meta"));
+    }
+    let mut row = serde_json::Map::new();
+    row.insert("chat_key".into(), Value::String(key.to_owned()));
+    row.insert("meta".into(), parts.meta.clone());
+    if let Some(messages) = &parts.messages {
+        if !messages.is_array() || json_size(messages) > MAX_AI_MESSAGES {
+            return Err(CloudError::Invalid("too large"));
+        }
+        row.insert("messages".into(), messages.clone());
+    }
+    if let Some(transcript) = &parts.transcript {
+        if !(transcript.is_array() || transcript.is_null())
+            || json_size(transcript) > MAX_AI_TRANSCRIPT
+        {
+            return Err(CloudError::Invalid("too large"));
+        }
+        row.insert("transcript".into(), transcript.clone());
+    }
+    Ok(Value::Object(row))
+}
+
+/// The signed-in user's chats, newest first: each one's `meta` only.
+#[tauri::command]
+pub async fn cloud_ai_chats(
+    state: State<'_, CloudState>,
+) -> Result<Vec<AiChatSummary>, CloudError> {
+    let params = [
+        ("select", "chat_key,meta,updated_at".to_owned()),
+        ("order", "updated_at.desc".to_owned()),
+        ("limit", MAX_AI_CHATS.to_string()),
+    ];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::GET, AI_CHATS, access)?
+                .query(&params))
+        },
+        MAX_LIST,
+    )
+    .await?;
+    if status != 200 {
+        return Err(rejected(status, &bytes));
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|_| CloudError::Rejected("the cloud's answer couldn't be read".into()))
+}
+
+/// One chat whole, for opening it or asking in it; `None` if it's gone.
+#[tauri::command]
+pub async fn cloud_ai_chat(
+    state: State<'_, CloudState>,
+    key: String,
+) -> Result<Option<AiChatRecord>, CloudError> {
+    if !is_chat_key(&key) {
+        return Err(CloudError::Invalid("chat"));
+    }
+    let params = [
+        ("select", "chat_key,meta,messages,transcript".to_owned()),
+        ("chat_key", format!("eq.{key}")),
+    ];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::GET, AI_CHATS, access)?
+                .query(&params))
+        },
+        MAX_AI_META + MAX_AI_MESSAGES + MAX_AI_TRANSCRIPT + 64 * 1024,
+    )
+    .await?;
+    if status != 200 {
+        return Err(rejected(status, &bytes));
+    }
+    let rows: Vec<AiChatRecord> = serde_json::from_slice(&bytes)
+        .map_err(|_| CloudError::Rejected("the cloud's answer couldn't be read".into()))?;
+    Ok(rows.into_iter().next())
+}
+
+/// Writes a chat: a new one, or the parts given of one already stored.
+#[tauri::command]
+pub async fn cloud_put_ai_chat(
+    state: State<'_, CloudState>,
+    key: String,
+    parts: AiChatParts,
+) -> Result<(), CloudError> {
+    let body = ai_chat_row(&key, &parts)?;
+    let conflict = [("on_conflict", "user_id,chat_key")];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::POST, AI_CHATS, access)?
+                .query(&conflict)
+                .header("Prefer", "resolution=merge-duplicates,return=minimal")
+                .json(&body))
+        },
+        64 * 1024,
+    )
+    .await?;
+    if (200..300).contains(&status) {
+        Ok(())
+    } else {
+        Err(rejected(status, &bytes))
+    }
+}
+
+#[tauri::command]
+pub async fn cloud_delete_ai_chat(
+    state: State<'_, CloudState>,
+    key: String,
+) -> Result<(), CloudError> {
+    if !is_chat_key(&key) {
+        return Err(CloudError::Invalid("chat"));
+    }
+    let filter = [("chat_key", format!("eq.{key}"))];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::DELETE, AI_CHATS, access)?
+                .query(&filter))
+        },
+        64 * 1024,
+    )
+    .await?;
+    if (200..300).contains(&status) {
+        Ok(())
+    } else {
+        Err(rejected(status, &bytes))
+    }
+}
+
+// ---- the notification centre's notifications ---------------------------------
+
+const NOTIFICATIONS: &str = "/rest/v1/notifications";
+/// As the table allows one.
+const MAX_NOTE: usize = 8 * 1024;
+/// The newest kept in the list the app reads, and in one write or delete.
+const MAX_NOTES: usize = 500;
+const MAX_NOTE_BATCH: usize = 200;
+
+/// One notification: the app's own id for it, when it happened, and what the
+/// centre shows (type, title, body, tone, venue, market, read).
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NoteRecord {
+    #[serde(rename(serialize = "key"), alias = "note_key")]
+    key: String,
+    at: i64,
+    note: Value,
+}
+
+/// The row a notification's write sends, checked. `user_id` is never sent:
+/// the store fills it from the session.
+fn note_row(record: &NoteRecord) -> Result<Value, CloudError> {
+    if !is_chat_key(&record.key) {
+        return Err(CloudError::Invalid("notification"));
+    }
+    if record.at <= 0 {
+        return Err(CloudError::Invalid("time"));
+    }
+    if !record.note.is_object() || json_size(&record.note) > MAX_NOTE {
+        return Err(CloudError::Invalid("too large"));
+    }
+    Ok(serde_json::json!({
+        "note_key": record.key,
+        "at": record.at,
+        "note": record.note,
+    }))
+}
+
+/// The signed-in user's notifications, newest first.
+#[tauri::command]
+pub async fn cloud_notifications(
+    state: State<'_, CloudState>,
+) -> Result<Vec<NoteRecord>, CloudError> {
+    let params = [
+        ("select", "note_key,at,note".to_owned()),
+        ("order", "at.desc".to_owned()),
+        ("limit", MAX_NOTES.to_string()),
+    ];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::GET, NOTIFICATIONS, access)?
+                .query(&params))
+        },
+        MAX_LIST,
+    )
+    .await?;
+    if status != 200 {
+        return Err(rejected(status, &bytes));
+    }
+    serde_json::from_slice(&bytes)
+        .map_err(|_| CloudError::Rejected("the cloud's answer couldn't be read".into()))
+}
+
+/// Writes notifications, new ones or changed ones (read), as one batch.
+#[tauri::command]
+pub async fn cloud_put_notifications(
+    state: State<'_, CloudState>,
+    notes: Vec<NoteRecord>,
+) -> Result<(), CloudError> {
+    if notes.is_empty() {
+        return Ok(());
+    }
+    if notes.len() > MAX_NOTE_BATCH {
+        return Err(CloudError::Invalid("too many"));
+    }
+    let body = notes.iter().map(note_row).collect::<Result<Vec<_>, _>>()?;
+    let conflict = [("on_conflict", "user_id,note_key")];
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::POST, NOTIFICATIONS, access)?
+                .query(&conflict)
+                .header("Prefer", "resolution=merge-duplicates,return=minimal")
+                .json(&body))
+        },
+        64 * 1024,
+    )
+    .await?;
+    if (200..300).contains(&status) {
+        Ok(())
+    } else {
+        Err(rejected(status, &bytes))
+    }
+}
+
+/// Deletes the notifications named, or with none named every one of the
+/// signed-in user's (the centre's Clear). Row Level Security keeps either to
+/// the user's own rows.
+#[tauri::command]
+pub async fn cloud_delete_notifications(
+    state: State<'_, CloudState>,
+    keys: Option<Vec<String>>,
+) -> Result<(), CloudError> {
+    let filter = match &keys {
+        None => ("note_key", "not.is.null".to_owned()),
+        Some(keys) => {
+            if keys.is_empty() {
+                return Ok(());
+            }
+            if keys.len() > MAX_NOTE_BATCH || !keys.iter().all(|k| is_chat_key(k)) {
+                return Err(CloudError::Invalid("notification"));
+            }
+            ("note_key", format!("in.({})", keys.join(",")))
+        }
+    };
+    let (status, bytes) = send(
+        &state,
+        |access| {
+            Ok(state
+                .request(reqwest::Method::DELETE, NOTIFICATIONS, access)?
+                .query(&[filter.clone()]))
+        },
+        64 * 1024,
+    )
+    .await?;
+    if (200..300).contains(&status) {
+        Ok(())
+    } else {
+        Err(rejected(status, &bytes))
+    }
+}
+
 // ---- attachments -----------------------------------------------------------
 
 fn image_kind(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
@@ -835,6 +1167,83 @@ pub async fn cloud_remove_attachment(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn checks_a_notification_before_it_goes() {
+        let ok = NoteRecord {
+            key: "1f0c3a4e-7b2d-4c1e-9a8f-0d2e6b5c4a31".into(),
+            at: 1_762_400_000_000,
+            note: serde_json::json!({ "type": "alert", "title": "BTC", "read": false }),
+        };
+        let row = note_row(&ok).unwrap();
+        assert_eq!(row["note_key"], ok.key);
+        assert!(row.get("user_id").is_none());
+        let bad_key = NoteRecord {
+            key: "Not A Key!".into(),
+            ..ok.clone()
+        };
+        assert!(note_row(&bad_key).is_err());
+        let bad_time = NoteRecord {
+            at: 0,
+            ..ok.clone()
+        };
+        assert!(note_row(&bad_time).is_err());
+        let not_object = NoteRecord {
+            note: serde_json::json!("text"),
+            ..ok.clone()
+        };
+        assert!(note_row(&not_object).is_err());
+        let huge = NoteRecord {
+            note: serde_json::json!({ "body": "x".repeat(MAX_NOTE) }),
+            ..ok
+        };
+        assert!(note_row(&huge).is_err());
+    }
+
+    #[test]
+    fn checks_an_ai_chat_before_sending_it() {
+        assert!(is_chat_key("mh2k9x-a1b2c3"));
+        assert!(!is_chat_key(""));
+        assert!(!is_chat_key("Upper"));
+        assert!(!is_chat_key("a,b"));
+        assert!(!is_chat_key("eq.x"));
+        assert!(!is_chat_key(&"a".repeat(65)));
+        let parts = |meta: Value, messages: Option<Value>, transcript: Option<Value>| AiChatParts {
+            meta,
+            messages,
+            transcript,
+        };
+        // A rename: meta alone, so the rest stays as stored.
+        let row = ai_chat_row("k1", &parts(serde_json::json!({"title": "t"}), None, None)).unwrap();
+        assert_eq!(
+            row,
+            serde_json::json!({"chat_key": "k1", "meta": {"title": "t"}})
+        );
+        let row = ai_chat_row(
+            "k1",
+            &parts(
+                serde_json::json!({}),
+                Some(serde_json::json!([])),
+                Some(Value::Null),
+            ),
+        )
+        .unwrap();
+        assert!(row.get("user_id").is_none());
+        assert_eq!(row["transcript"], Value::Null);
+        assert!(ai_chat_row("K!", &parts(serde_json::json!({}), None, None)).is_err());
+        assert!(ai_chat_row("k", &parts(serde_json::json!([]), None, None)).is_err());
+        assert!(ai_chat_row(
+            "k",
+            &parts(serde_json::json!({}), Some(serde_json::json!({})), None)
+        )
+        .is_err());
+        let big = Value::String("x".repeat(MAX_AI_MESSAGES));
+        assert!(ai_chat_row(
+            "k",
+            &parts(serde_json::json!({}), Some(Value::Array(vec![big])), None)
+        )
+        .is_err());
+    }
 
     const ID: &str = "3f2b8c1e-9a4d-4e2b-8f1a-2c3d4e5f6a7b";
 

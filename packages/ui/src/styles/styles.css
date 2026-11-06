@@ -7593,6 +7593,29 @@ button.pd-drawer-exit:hover {
 .pd-notes-row:hover {
   background: var(--pd-surface-raised);
 }
+/* An unread row opens (and so is read) with a click anywhere on it; its
+   "Go to" sits above that and works as before. */
+.pd-notes-row[data-unread] {
+  position: relative;
+  cursor: pointer;
+}
+.pd-notes-hit {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+.pd-notes-hit:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.pd-notes-row[data-unread] .pd-notes-go {
+  position: relative;
+  z-index: 1;
+}
 .pd-notes-row[data-tone="buy"] {
   --note-tone: var(--pd-buy);
 }

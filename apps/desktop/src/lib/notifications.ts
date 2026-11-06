@@ -3,7 +3,8 @@
 // warning) goes to `notifyEvent`, which records it in the notification
 // centre and delivers it where the settings say: a toast in the app, a
 // desktop notification when the app isn't in front, a sound. Kept on this
-// machine in browser storage; nothing here leaves it.
+// machine in browser storage, and in PewterDesk Cloud once the trader signs
+// in (`notesCloud.ts`), so they survive a reinstall and follow the trader.
 
 import { type ToastTone, toast } from "@pewterdesk/ui";
 import { desktopNotify } from "./notify";
@@ -178,6 +179,30 @@ export function markNotesRead(ids?: readonly string[]) {
   emit();
 }
 
+/**
+ * Takes in notifications kept in the cloud: new ones join the centre, in
+ * time order, and one read on either side is read. Nothing is delivered
+ * again: they're records, not new events.
+ */
+export function mergeNotes(remote: readonly AppNote[]) {
+  const byId = new Map(notes.map((n) => [n.id, n]));
+  let changed = false;
+  for (const r of remote.filter(isNote)) {
+    const held = byId.get(r.id);
+    if (!held) {
+      byId.set(r.id, r);
+      changed = true;
+    } else if (r.read && !held.read) {
+      byId.set(r.id, { ...held, read: true });
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  notes = [...byId.values()].sort((a, b) => b.time - a.time).slice(0, MAX_NOTES);
+  persist(LOG_KEY, notes);
+  emit();
+}
+
 export function clearNotes() {
   if (notes.length === 0) return;
   notes = [];
@@ -214,8 +239,9 @@ export function notifyEvent(input: NoteInput): void {
     body: input.body,
     tone,
     time: Date.now(),
-    // Shown as a toast in a window that's in front: seen. Otherwise it waits in the centre.
-    read: channels.includes("toast") && document.hasFocus(),
+    // Unread until it's opened in the centre, or marked read or cleared there,
+    // even when a toast showed it: a toast goes by and is easy to miss.
+    read: false,
     venue: input.venue,
     market: input.market,
   });
