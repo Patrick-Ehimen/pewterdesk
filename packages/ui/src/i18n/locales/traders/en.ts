@@ -43,6 +43,10 @@ export const tradersEn = {
   "traders.col.winRate": "Win",
   "traders.col.copiers": "Copiers",
 
+  "traders.col.winHint": "OKX's own figure: the share of their trades that made money",
+  "traders.col.winDays": "Win days",
+  "traders.col.winDaysHint":
+    "The share of the last 30 days that made money, of the days their PnL moved",
   "traders.col.dd": "Max DD",
   "traders.col.ddHint":
     "The largest fall from a peak over the last 30 days, of what they had at that peak",

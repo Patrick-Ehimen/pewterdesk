@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
-use crate::stats::{best_step_share, max_drawdown, weeks_from_cumulative, TraderStats};
+use crate::stats::{best_step_share, max_drawdown, weeks_from_cumulative, win_share, TraderStats};
 use crate::{
     body, client, now_ms, num, plain, ClosedTrade, Holding, Period, PositionSide, SortBy, Source,
     TraderDetail, TraderRow, VenueError,
@@ -387,6 +387,7 @@ fn stats_from(portfolio: &[(String, Window)], now: u64) -> TraderStats {
         weeks: weeks_from_cumulative(&all, now),
         max_drawdown: max_drawdown(&month, base),
         best_day_share: best_step_share(&month),
+        win_days: win_share(&month),
         curve: month,
     }
 }

@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
-use crate::stats::{best_step_share, max_drawdown, weeks_from_weekly, TraderStats};
+use crate::stats::{best_step_share, max_drawdown, weeks_from_weekly, win_share, TraderStats};
 use crate::{
     body, client, hyperliquid::win_rate, now_ms, num, plain, ClosedTrade, Holding, Period,
     PositionSide, SortBy, Source, TraderDetail, TraderRow, VenueError,
@@ -260,6 +260,7 @@ fn stats_from(daily: Vec<PnlPoint>, weekly: Vec<PnlPoint>, now: u64) -> TraderSt
         weeks: weeks_from_weekly(&points(weekly), now),
         max_drawdown: max_drawdown(&ratio, equity),
         best_day_share: best_step_share(&curve),
+        win_days: win_share(&curve),
         curve,
     }
 }

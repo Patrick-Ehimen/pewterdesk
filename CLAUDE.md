@@ -1129,7 +1129,10 @@ cards (`Insights.tsx`, `lib/topInsights.ts`, `hooks/useBoardInsights.ts`):
 how the top traders sit on BTC by value, the markets most of them hold, the
 biggest position one of them opened in the last hour (OKX's opening times;
 on Hyperliquid, which has none, a position first seen at a later look) and
-the traders followed. Its columns beyond the file's own (max drawdown, 8
+the traders followed. Its columns beyond the file's own (win days - the
+share of the month's days that made money, as Hyperliquid's fills say little
+about traders who scale in and out; OKX's own trade win rate beside it -
+max drawdown, 8
 green weeks, what they hold now, the month's line; `BoardCells.tsx`, from
 each trader's record, `stats` in `crates/traders`, kept 30 minutes) are
 read for the same top traders, and its chips filter by account size, style

@@ -52,6 +52,7 @@ describe("trader styles", () => {
       maxDrawdown: null,
       curve: [],
       bestDayShare,
+      winDays: null,
     });
     expect(isOneHit(stats(0.7))).toBe(true);
     expect(isOneHit(stats(0.3))).toBe(false);
