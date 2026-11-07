@@ -18,6 +18,7 @@ import {
   useActivity,
   useTraders,
 } from "../../lib/traders";
+import { AgreeSkeleton, ChipsSkeleton, SideSkeleton } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 import { Side } from "./TraderView";
 
@@ -106,6 +107,8 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
     [snapshots],
   );
   const agree = useMemo(() => agreement(snapshots, keys).slice(0, 8), [snapshots, keys]);
+  /** No one in the list has been checked yet: their first look is still out. */
+  const waiting = keys.length > 0 && !keys.some((k) => byKey.has(k));
   const listMoves = useMemo(() => {
     const wanted = new Set(keys);
     return moves.filter((m) => wanted.has(traderKey(m.source, m.id))).slice(0, 60);
@@ -222,7 +225,9 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
             <h3>{t("traders.agree")}</h3>
             <span className="tr-muted">{t("traders.agreeHint")}</span>
           </header>
-          {agree.length === 0 ? (
+          {waiting ? (
+            <AgreeSkeleton cards={Math.min(4, keys.length)} />
+          ) : agree.length === 0 ? (
             <EmptyState>{t("traders.agree.none")}</EmptyState>
           ) : (
             <div className="tr-agree">
@@ -278,7 +283,7 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
             <h3>{t("traders.positions")}</h3>
           </header>
           <ul className="tr-books">
-            {keys.map((key) => {
+            {keys.map((key, i) => {
               const parsed = parseKey(key);
               const snap = byKey.get(key);
               if (!parsed) return null;
@@ -297,7 +302,11 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
                   </button>
                   <div className="tr-book">
                     {!snap ? (
-                      <span className="tr-muted">{t("traders.watch.waiting")}</span>
+                      <ChipsSkeleton i={i} />
+                    ) : snap.at === 0 ? (
+                      <span className="tr-warn">
+                        {t("traders.watch.failed", { error: snap.error ?? "" })}
+                      </span>
                     ) : held.length === 0 ? (
                       <span className="tr-muted">{t("traders.flat")}</span>
                     ) : (
@@ -344,7 +353,9 @@ function Status({ snapshot }: { snapshot?: TraderSnapshot }) {
 }
 
 function Net({ snapshot }: { snapshot?: TraderSnapshot }) {
-  if (!snapshot) return null;
+  if (!snapshot) return <SideSkeleton />;
+  // The first look failed: nothing to say about their side yet.
+  if (snapshot.at === 0) return null;
   if (snapshot.holdings.length === 0)
     return <span className="tr-muted tr-net">{t("traders.flat")}</span>;
   const long = snapshot.holdings.filter((h) => h.side === "long").reduce((s, h) => s + h.value, 0);

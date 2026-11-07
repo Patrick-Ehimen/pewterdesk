@@ -28,6 +28,13 @@ import {
 } from "../../lib/traders";
 import { PERIODS } from "./Leaderboard";
 import { PnlLine } from "./PnlLine";
+import {
+  BarsSkeleton,
+  LineSkeleton,
+  TableSkeletonRows,
+  ValueSkeleton,
+  WeeksSkeleton,
+} from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 
 interface Props {
@@ -74,6 +81,8 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
     };
   }, [source, id, period, attempt]);
 
+  /** Still reading this trader (not after an error). */
+  const loading = !detail && !error;
   const open = detail?.holdings ?? [];
   const openValue = open.reduce((sum, h) => sum + h.value, 0);
   const history = detail?.pnlHistory ?? [];
@@ -129,6 +138,7 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
           <Kpi
             label={t(okx ? "traders.kpi.aum" : "traders.kpi.account")}
             value={formatCompact(detail?.accountValue || row?.accountValue || 0)}
+            loading={loading && !row}
           />
           <Kpi
             label={`${t("traders.kpi.pnl")} ${okx ? "" : t(`traders.period.${period}`)}`}
@@ -136,6 +146,7 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
               periodPnl === undefined ? (row ? signedMoney(row.pnl) : "–") : signedMoney(periodPnl)
             }
             trend={periodPnl ?? row?.pnl}
+            loading={loading && !row}
           />
           {row && (
             <Kpi
@@ -152,11 +163,13 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
                 ? undefined
                 : t("traders.kpi.winRateHint", { count: detail.closed.length })
             }
+            loading={loading}
           />
           <Kpi
             label={t("traders.kpi.open")}
             value={detail ? `$${formatCompact(openValue)}` : "–"}
             note={detail ? t("traders.kpi.openHint", { count: open.length }) : undefined}
+            loading={loading}
           />
         </div>
       </section>
@@ -184,7 +197,9 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
                 />
               </header>
               {!detail ? (
-                <EmptyState>{t("traders.loading")}</EmptyState>
+                <div className="tr-chart">
+                  <LineSkeleton height={220} />
+                </div>
               ) : history.length < 2 ? (
                 <EmptyState>{t("traders.noHistory")}</EmptyState>
               ) : (
@@ -197,12 +212,12 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
             <section className="tr-panel">
               <header className="tr-panel-head">
                 <h3>{t("traders.holdings")}</h3>
-                <span className="tr-count">{open.length}</span>
+                {detail && <span className="tr-count">{open.length}</span>}
               </header>
               {detail && open.length === 0 ? (
                 <EmptyState>{t("traders.noHoldings")}</EmptyState>
               ) : (
-                <div className="tr-scroll">
+                <div className="tr-scroll" aria-busy={loading || undefined}>
                   <table className="tr-table tr-table-plain">
                     <thead>
                       <tr>
@@ -218,36 +233,40 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
                         {okx && <th className="num">{t("traders.h.opened")}</th>}
                       </tr>
                     </thead>
-                    <tbody>
-                      {[...open]
-                        .sort((a, b) => b.value - a.value)
-                        .map((h) => (
-                          <tr key={`${h.market}-${h.side}-${h.entry}-${h.openedAt ?? 0}`}>
-                            <td>{h.market}</td>
-                            <td>
-                              <Side side={h.side} />
-                            </td>
-                            <td className="num">{size(h.size)}</td>
-                            <td className="num">{formatCompact(h.value)}</td>
-                            <td className="num">{price(h.entry)}</td>
-                            <td className="num">{h.mark == null ? "–" : price(h.mark)}</td>
-                            <td className="num">
-                              {h.leverage == null ? "–" : `${formatNumber(h.leverage, 0)}×`}
-                            </td>
-                            <td className="num tr-warn">
-                              {h.liquidation == null ? "–" : price(h.liquidation)}
-                            </td>
-                            <td className={`num ${trendClass(h.unrealized)}`}>
-                              {signedMoney(h.unrealized)}
-                            </td>
-                            {okx && (
-                              <td className="num tr-muted">
-                                {h.openedAt ? when.format(h.openedAt) : "–"}
+                    {loading ? (
+                      <TableSkeletonRows cols={okx ? 10 : 9} rows={4} />
+                    ) : (
+                      <tbody>
+                        {[...open]
+                          .sort((a, b) => b.value - a.value)
+                          .map((h) => (
+                            <tr key={`${h.market}-${h.side}-${h.entry}-${h.openedAt ?? 0}`}>
+                              <td>{h.market}</td>
+                              <td>
+                                <Side side={h.side} />
                               </td>
-                            )}
-                          </tr>
-                        ))}
-                    </tbody>
+                              <td className="num">{size(h.size)}</td>
+                              <td className="num">{formatCompact(h.value)}</td>
+                              <td className="num">{price(h.entry)}</td>
+                              <td className="num">{h.mark == null ? "–" : price(h.mark)}</td>
+                              <td className="num">
+                                {h.leverage == null ? "–" : `${formatNumber(h.leverage, 0)}×`}
+                              </td>
+                              <td className="num tr-warn">
+                                {h.liquidation == null ? "–" : price(h.liquidation)}
+                              </td>
+                              <td className={`num ${trendClass(h.unrealized)}`}>
+                                {signedMoney(h.unrealized)}
+                              </td>
+                              {okx && (
+                                <td className="num tr-muted">
+                                  {h.openedAt ? when.format(h.openedAt) : "–"}
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                      </tbody>
+                    )}
                   </table>
                 </div>
               )}
@@ -256,12 +275,12 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
             <section className="tr-panel">
               <header className="tr-panel-head">
                 <h3>{t("traders.closed")}</h3>
-                <span className="tr-count">{detail?.closed.length ?? 0}</span>
+                {detail && <span className="tr-count">{detail.closed.length}</span>}
               </header>
               {detail && detail.closed.length === 0 ? (
                 <EmptyState>{t("traders.noClosed")}</EmptyState>
               ) : (
-                <div className="tr-scroll tr-closed">
+                <div className="tr-scroll tr-closed" aria-busy={loading || undefined}>
                   <table className="tr-table tr-table-plain">
                     <thead>
                       <tr>
@@ -273,20 +292,24 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
                         <th className="num">{t("traders.h.closedPnl")}</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {detail?.closed.map((c) => (
-                        <tr key={`${c.time}-${c.market}-${c.size}`}>
-                          <td className="tr-muted">{when.format(c.time)}</td>
-                          <td>{c.market}</td>
-                          <td>
-                            <Side side={c.side} />
-                          </td>
-                          <td className="num">{size(c.size)}</td>
-                          <td className="num">{price(c.price)}</td>
-                          <td className={`num ${trendClass(c.pnl)}`}>{signedMoney(c.pnl)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
+                    {loading ? (
+                      <TableSkeletonRows cols={6} rows={6} sideAt={2} />
+                    ) : (
+                      <tbody>
+                        {detail?.closed.map((c) => (
+                          <tr key={`${c.time}-${c.market}-${c.size}`}>
+                            <td className="tr-muted">{when.format(c.time)}</td>
+                            <td>{c.market}</td>
+                            <td>
+                              <Side side={c.side} />
+                            </td>
+                            <td className="num">{size(c.size)}</td>
+                            <td className="num">{price(c.price)}</td>
+                            <td className={`num ${trendClass(c.pnl)}`}>{signedMoney(c.pnl)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    )}
                   </table>
                 </div>
               )}
@@ -366,6 +389,22 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
               )}
             </section>
 
+            {loading && (
+              <section className="tr-panel" aria-busy="true">
+                <header className="tr-panel-head">
+                  <h3>{t("traders.preferred")}</h3>
+                </header>
+                <BarsSkeleton />
+              </section>
+            )}
+            {loading && okx && (
+              <section className="tr-panel" aria-busy="true">
+                <header className="tr-panel-head">
+                  <h3>{t("traders.weekly")}</h3>
+                </header>
+                <WeeksSkeleton />
+              </section>
+            )}
             {detail && detail.preferred.length > 0 && (
               <section className="tr-panel">
                 <header className="tr-panel-head">
@@ -405,17 +444,26 @@ function Kpi({
   value,
   note,
   trend,
+  loading = false,
 }: {
   label: string;
   value: string;
   note?: string;
   trend?: number;
+  /** Not read yet: a shimmer where the value goes. */
+  loading?: boolean;
 }) {
   return (
-    <div className="tr-kpi">
+    <div className="tr-kpi" aria-busy={loading || undefined}>
       <span>{label}</span>
-      <b className={trend === undefined ? undefined : trendClass(trend)}>{value}</b>
-      {note && <small>{note}</small>}
+      {loading ? (
+        <b className="tr-skel">
+          <ValueSkeleton />
+        </b>
+      ) : (
+        <b className={trend === undefined ? undefined : trendClass(trend)}>{value}</b>
+      )}
+      {note && !loading && <small>{note}</small>}
     </div>
   );
 }
