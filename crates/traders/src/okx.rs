@@ -30,7 +30,6 @@ const BOARD_FRESH_FOR: Duration = Duration::from_secs(10 * 60);
 const PAGE: usize = 20;
 /// The most rows a leaderboard read returns (10 pages, some 5 seconds).
 pub const MAX_ROWS: usize = 200;
-const MAX_MARKETS: usize = 8;
 const MAX_CURVE: usize = 120;
 
 /// Whether `s` is a lead trader's code: 16 or 18 letters and digits.
@@ -110,8 +109,6 @@ struct Rank {
     #[serde(default)]
     lead_days: String,
     #[serde(default)]
-    trader_insts: Vec<String>,
-    #[serde(default)]
     pnl_ratios: Vec<Ratio>,
 }
 
@@ -133,12 +130,6 @@ fn rank_row(r: Rank) -> Option<TraderRow> {
         .collect();
     curve.sort_by_key(|(t, _)| *t);
     let skip = curve.len().saturating_sub(MAX_CURVE);
-    let mut markets: Vec<String> = Vec::new();
-    for m in r.trader_insts.iter().filter_map(|i| base_of(i)) {
-        if !markets.contains(&m) && markets.len() < MAX_MARKETS {
-            markets.push(m);
-        }
-    }
     Some(TraderRow {
         source: Source::Okx,
         name: Some(plain(&r.nick_name, 40)).filter(|n| !n.is_empty()),
@@ -150,7 +141,6 @@ fn rank_row(r: Rank) -> Option<TraderRow> {
         copiers: r.copy_trader_num.parse().ok(),
         lead_days: r.lead_days.parse().ok(),
         positive: None,
-        markets,
         roi_curve: curve.into_iter().skip(skip).map(|(_, v)| v).collect(),
         id: r.unique_code,
     })
@@ -531,7 +521,6 @@ mod tests {
             (r.copiers, r.lead_days, r.win_rate),
             (Some(600), Some(63), Some(0.6452))
         );
-        assert_eq!(r.markets, ["ICP", "BTC"]);
         assert_eq!(r.roi_curve, [5.6, 5.8]);
     }
 
