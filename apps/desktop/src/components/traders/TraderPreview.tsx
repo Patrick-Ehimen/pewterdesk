@@ -141,9 +141,9 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
 
       <div className="tr-preview-chart">
         {loading ? (
-          <LineSkeleton height={140} />
+          <LineSkeleton height={100} />
         ) : detail && detail.pnlHistory.length > 1 ? (
-          <PnlLine points={detail.pnlHistory} height={140} axis label={t("traders.pnlChart")} />
+          <PnlLine points={detail.pnlHistory} height={100} axis label={t("traders.pnlChart")} />
         ) : (
           <p className="tr-note">
             {error ? t("traders.detailError", { error }) : t("traders.noHistory")}
@@ -166,33 +166,43 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
         ))}
       </div>
 
-      <div className="tr-preview-scroll">
+      {/* Every open position, biggest first, scrolling in the room left;
+          what's below it (last closed, Follow) stays put. */}
+      <section className="tr-preview-open" aria-label={t("traders.holdings")}>
         <header className="tr-panel-head">
           <h3>{t("traders.holdings")}</h3>
           {detail && <span className="tr-count">{open.length}</span>}
         </header>
-        {loading ? (
-          <PreviewRowsSkeleton rows={3} />
-        ) : open.length === 0 ? (
-          <p className="tr-note tr-pad">{t("traders.noHoldings")}</p>
-        ) : (
-          open.slice(0, 5).map((h) => (
-            <div key={`${h.market}-${h.side}-${h.entry}`} className="tr-preview-row">
-              <span className="tr-preview-what">
-                <b>
-                  {h.market} <Side side={h.side} />
-                </b>
-                <small>
-                  {sizeText(h.size)} · {t("traders.h.entry")} {price(h.entry)}
-                  {h.leverage != null && ` · ${formatNumber(h.leverage, 0)}×`}
-                </small>
-              </span>
-              <span className="tr-muted">${formatCompact(h.value)}</span>
-              <span className={trendClass(h.unrealized)}>{money(h.unrealized)}</span>
-            </div>
-          ))
-        )}
+        {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll area, reached by keyboard to scroll it */}
+        <div className="tr-preview-list" tabIndex={0}>
+          {loading ? (
+            <PreviewRowsSkeleton rows={3} />
+          ) : open.length === 0 ? (
+            <p className="tr-note tr-pad">{t("traders.noHoldings")}</p>
+          ) : (
+            open.map((h, i) => (
+              <div
+                key={`${h.market}-${h.side}-${h.entry}-${h.openedAt ?? i}`}
+                className="tr-preview-row"
+              >
+                <span className="tr-preview-what">
+                  <b>
+                    {h.market} <Side side={h.side} />
+                  </b>
+                  <small>
+                    {sizeText(h.size)} · {t("traders.h.entry")} {price(h.entry)}
+                    {h.leverage != null && ` · ${formatNumber(h.leverage, 0)}×`}
+                  </small>
+                </span>
+                <span className="tr-muted">${formatCompact(h.value)}</span>
+                <span className={trendClass(h.unrealized)}>{money(h.unrealized)}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
+      <section className="tr-preview-closed" aria-label={t("traders.preview.lastClosed")}>
         <header className="tr-panel-head tr-sub">
           <h3>{t("traders.preview.lastClosed")}</h3>
         </header>
@@ -201,7 +211,7 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
         ) : !detail || detail.closed.length === 0 ? (
           <p className="tr-note tr-pad">{t("traders.noClosed")}</p>
         ) : (
-          detail.closed.slice(0, 3).map((c) => (
+          detail.closed.slice(0, 2).map((c) => (
             <div key={`${c.time}-${c.market}`} className="tr-preview-row">
               <span className="tr-preview-what">
                 <b>
@@ -214,7 +224,7 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
             </div>
           ))
         )}
-      </div>
+      </section>
 
       <p className="tr-note tr-preview-note">
         {followed
