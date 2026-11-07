@@ -20,6 +20,7 @@ import {
 import { traderName } from "../../hooks/useTraderWatch";
 import { followedKeys, isFollowed, MAX_FOLLOWED, traderKey, useTraders } from "../../lib/traders";
 import { PnlLine } from "./PnlLine";
+import { BoardSkeletonRows } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 
 export const PERIODS: readonly TraderPeriod[] = ["day", "week", "month", "allTime"];
@@ -121,10 +122,16 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
           />
         )}
         <span className="app-spacer" />
-        {rows && (
+        {rows ? (
           <span className="tr-muted">
             {t("traders.shown", { shown: shown?.length ?? 0, total: rows.length })}
           </span>
+        ) : (
+          !error && (
+            <span className="tr-muted" role="status">
+              {t(okx ? "traders.loading" : "traders.loadingHl")}
+            </span>
+          )
         )}
       </div>
       {error ? (
@@ -134,12 +141,10 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
             {t("traders.retry")}
           </button>
         </div>
-      ) : !shown ? (
-        <EmptyState>{t(okx ? "traders.loading" : "traders.loadingHl")}</EmptyState>
-      ) : shown.length === 0 ? (
+      ) : shown && shown.length === 0 ? (
         <EmptyState>{t("traders.none")}</EmptyState>
       ) : (
-        <div className="tr-scroll">
+        <div className="tr-scroll" aria-busy={!shown || undefined}>
           <table className="tr-table">
             <thead>
               <tr>
@@ -164,75 +169,81 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                 <th aria-label={t("traders.follow")} />
               </tr>
             </thead>
-            <tbody>
-              {shown.map((r) => {
-                const key = traderKey(r.source, r.id);
-                const name = traderName(r.source, r.id, r.name);
-                const followed = isFollowed(state, key);
-                return (
-                  <tr key={key} onClick={() => onOpen(r)} data-followed={followed || undefined}>
-                    <td className="tr-rank">{ranks.get(r)}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="tr-who"
-                        aria-label={t("traders.open", { name })}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpen(r);
-                        }}
-                      >
-                        <TraderAvatar id={key} />
-                        <span className="tr-who-name">
-                          <b>{name}</b>
-                          {r.name && !okx && <small>{traderName(r.source, r.id, null)}</small>}
-                        </span>
-                      </button>
-                    </td>
-                    <td className={`num ${trendClass(r.pnl)}`}>{money(r.pnl)}</td>
-                    <td className={`num ${trendClass(r.roi)}`}>{pct(r.roi)}</td>
-                    {okx && (
-                      <td className="num">
-                        {r.winRate == null ? "–" : formatPercent(r.winRate, 0)}
+            {!shown ? (
+              <BoardSkeletonRows okx={okx} />
+            ) : (
+              <tbody>
+                {shown.map((r) => {
+                  const key = traderKey(r.source, r.id);
+                  const name = traderName(r.source, r.id, r.name);
+                  const followed = isFollowed(state, key);
+                  return (
+                    <tr key={key} onClick={() => onOpen(r)} data-followed={followed || undefined}>
+                      <td className="tr-rank">{ranks.get(r)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="tr-who"
+                          aria-label={t("traders.open", { name })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpen(r);
+                          }}
+                        >
+                          <TraderAvatar id={key} />
+                          <span className="tr-who-name">
+                            <b>{name}</b>
+                            {r.name && !okx && <small>{traderName(r.source, r.id, null)}</small>}
+                          </span>
+                        </button>
                       </td>
-                    )}
-                    <td className="num">{formatCompact(r.accountValue)}</td>
-                    {okx ? (
-                      <>
-                        <td className="num">{r.copiers ?? "–"}</td>
+                      <td className={`num ${trendClass(r.pnl)}`}>{money(r.pnl)}</td>
+                      <td className={`num ${trendClass(r.roi)}`}>{pct(r.roi)}</td>
+                      {okx && (
                         <td className="num">
-                          {r.leadDays == null ? "–" : t("traders.days", { days: r.leadDays })}
+                          {r.winRate == null ? "–" : formatPercent(r.winRate, 0)}
                         </td>
-                        <td className="tr-spark">
-                          <PnlLine
-                            points={r.roiCurve.map((v, i) => [i, v])}
-                            height={22}
-                            label={t("traders.col.roi")}
-                          />
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="num">{r.volume == null ? "–" : formatCompact(r.volume)}</td>
-                        <td>
-                          <Streak positive={r.positive} />
-                        </td>
-                      </>
-                    )}
-                    {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star inside is the control */}
-                    <td className="tr-star" onClick={(e) => e.stopPropagation()}>
-                      <StarButton
-                        starred={followed}
-                        name={name}
-                        onToggle={() => toggleFollow(key, r.name)}
-                        size={15}
-                        className={!followed && full ? "tr-star-full" : undefined}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+                      )}
+                      <td className="num">{formatCompact(r.accountValue)}</td>
+                      {okx ? (
+                        <>
+                          <td className="num">{r.copiers ?? "–"}</td>
+                          <td className="num">
+                            {r.leadDays == null ? "–" : t("traders.days", { days: r.leadDays })}
+                          </td>
+                          <td className="tr-spark">
+                            <PnlLine
+                              points={r.roiCurve.map((v, i) => [i, v])}
+                              height={22}
+                              label={t("traders.col.roi")}
+                            />
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="num">
+                            {r.volume == null ? "–" : formatCompact(r.volume)}
+                          </td>
+                          <td>
+                            <Streak positive={r.positive} />
+                          </td>
+                        </>
+                      )}
+                      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star inside is the control */}
+                      <td className="tr-star" onClick={(e) => e.stopPropagation()}>
+                        <StarButton
+                          starred={followed}
+                          name={name}
+                          onToggle={() => toggleFollow(key, r.name)}
+                          size={15}
+                          className={!followed && full ? "tr-star-full" : undefined}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            )}
           </table>
         </div>
       )}

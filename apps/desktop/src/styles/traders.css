@@ -886,3 +886,66 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Loading: the shared shimmer (.pd-skel), shaped like what's coming, one
+   sweep across each block rather than one per bar. */
+.tr-skel .pd-skel {
+  background-attachment: fixed;
+  background-size: 200vw 100%;
+}
+.tr-table tbody.tr-skel tr {
+  cursor: default;
+}
+.tr-table tbody.tr-skel tr:hover td {
+  background: none;
+}
+.tr-skel .tr-skel-avatar {
+  flex: none;
+  border-radius: 5px;
+}
+.tr-skel-who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.tr-skel-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tr-skel-pips,
+.tr-skel-chips {
+  display: inline-flex;
+  gap: 4px;
+}
+.tr-skel-chips {
+  gap: 6px;
+}
+.tr-skel-line {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+}
+.tr-skel-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2px 10px 2px 0;
+}
+.tr-skel-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.tr-skel-plot .pd-skel {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  opacity: 0.7;
+}
+.tr-skel .tr-skel-week {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 50%;
+  border-radius: 2px 2px 0 0;
+}
