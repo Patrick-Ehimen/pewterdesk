@@ -657,6 +657,150 @@ export const okxClient = {
     call<OkxLiquidation[]>("okx_liquidations", { market, since }),
 };
 
+/** Where a top trader trades: Hyperliquid, or OKX's copy-trading lead traders. */
+export type TraderSource = "hyperliquid" | "okx";
+/** The window a leaderboard ranks over (Hyperliquid's only; OKX ranks since a trader started leading). */
+export type TraderPeriod = "day" | "week" | "month" | "allTime";
+/** Hyperliquid: volume; OKX: OKX's own overall ranking. */
+export type TraderSort = "pnl" | "roi" | "accountValue" | "volume" | "winRate";
+export type TraderChangeKind = "open" | "add" | "cut" | "close" | "flip";
+export type TraderSide = "long" | "short";
+
+/** One trader's line on a leaderboard. Fractions for ROI and win rate (0.25 is 25%). */
+export interface TraderRow {
+  source: TraderSource;
+  /** A Hyperliquid address (lowercase) or an OKX lead trader's code. */
+  id: string;
+  name: string | null;
+  /** USD; on OKX, the assets they manage. */
+  accountValue: number;
+  pnl: number;
+  roi: number;
+  volume: number | null;
+  winRate: number | null;
+  copiers: number | null;
+  leadDays: number | null;
+  /** Hyperliquid: whether the day's, week's, month's and all time's PnL were above zero. */
+  positive: [boolean, boolean, boolean, boolean] | null;
+  /** OKX: ROI day by day, oldest first. */
+  roiCurve: number[];
+}
+
+export interface TraderHolding {
+  /** The base coin, e.g. "BTC". */
+  market: string;
+  side: TraderSide;
+  /** In base units. */
+  size: number;
+  entry: number;
+  mark: number | null;
+  /** USD notional. */
+  value: number;
+  leverage: number | null;
+  unrealized: number;
+  liquidation: number | null;
+  openedAt: number | null;
+}
+
+export interface TraderClosedTrade {
+  market: string;
+  side: TraderSide;
+  size: number;
+  price: number;
+  pnl: number;
+  time: number;
+  openedAt: number | null;
+}
+
+export interface TraderDetail {
+  source: TraderSource;
+  id: string;
+  accountValue: number;
+  holdings: TraderHolding[];
+  /** Newest first. */
+  closed: TraderClosedTrade[];
+  /** Cumulative PnL: [ms, USD], oldest first. */
+  pnlHistory: [number, number][];
+  winRate: number | null;
+  weeklyPnl: [number, number][];
+  /** [coin, share], largest first. */
+  preferred: [string, number][];
+}
+
+/** What a followed trader did between two looks. */
+export interface TraderChange {
+  market: string;
+  kind: TraderChangeKind;
+  side: TraderSide;
+  sizeBefore: number;
+  sizeAfter: number;
+  price: number;
+  /** USD that changed hands. */
+  value: number;
+}
+
+export interface TraderMove {
+  source: TraderSource;
+  id: string;
+  change: TraderChange;
+  at: number;
+  /** Whether it meets the alert settings for that trader. */
+  alert: boolean;
+}
+
+/** A look at a followed trader's positions. */
+export interface TraderSnapshot {
+  source: TraderSource;
+  id: string;
+  holdings: TraderHolding[];
+  /** When it was read; for an error, the last good read's (0 if none). */
+  at: number;
+  /** Seconds between looks. */
+  every: number;
+  error: string | null;
+}
+
+/** Who Rust watches, and what about them alerts. */
+export interface TraderFollow {
+  source: TraderSource;
+  id: string;
+  minValue: number;
+  kinds: TraderChangeKind[];
+}
+
+/** Top traders: public, keyless reads in Rust (`traders.rs`); nothing here trades. */
+export const tradersClient = {
+  leaderboard: (
+    source: TraderSource,
+    period: TraderPeriod,
+    sort: TraderSort,
+    minAccount: number,
+    limit: number,
+  ) => call<TraderRow[]>("traders_leaderboard", { source, period, sort, minAccount, limit }),
+  detail: (source: TraderSource, id: string, period: TraderPeriod) =>
+    call<TraderDetail>("trader_detail", { source, id, period }),
+  /** Followed traders' leaderboard lines, where they're on one. */
+  rows: (traders: [TraderSource, string][], period: TraderPeriod) =>
+    call<TraderRow[]>("trader_rows", { traders, period }),
+  /** Replaces who Rust watches. */
+  watch: (follows: TraderFollow[]) => call<void>("set_trader_watch", { follows }),
+  snapshots: () => call<TraderSnapshot[]>("trader_snapshots", {}),
+  onMove(handler: (move: TraderMove) => void): () => void {
+    if (!isTauri()) return () => {};
+    const unlisten = listen<TraderMove>("trader-move", (e) => handler(e.payload));
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  },
+  onSnapshot(handler: (snapshot: TraderSnapshot) => void): () => void {
+    if (!isTauri()) return () => {};
+    const unlisten = listen<TraderSnapshot>("trader-snapshot", (e) => handler(e.payload));
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
+  },
+};
+
 /** A news site's headline. Its link stays in Rust; `newsClient.open` opens it. */
 export interface Article {
   /** Names the article to `newsClient.open`. */

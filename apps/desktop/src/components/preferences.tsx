@@ -16,6 +16,7 @@ import {
   LuSettings,
   LuShieldCheck,
   LuSparkles,
+  LuTrophy,
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
@@ -67,6 +68,7 @@ const PAGE_ICONS = {
   screener: LuListFilter,
   ai: LuSparkles,
   plan: LuNotebookPen,
+  traders: LuTrophy,
   bots: LuBot,
   settings: LuSettings,
 } as const;

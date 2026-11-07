@@ -1,0 +1,113 @@
+import { formatCompact, formatNumber, shortAddress, t } from "@pewterdesk/ui";
+import { useEffect, useSyncExternalStore } from "react";
+import { type TraderMove, type TraderSnapshot, tradersClient } from "../api/venueClient";
+import { notifyEvent } from "../lib/notifications";
+import {
+  currentTraders,
+  followedKeys,
+  recordMove,
+  subscribeTraders,
+  traderKey,
+  watchFollows,
+} from "../lib/traders";
+
+// The watch on followed traders, run by App for the whole session: Rust
+// looks at their positions (`traders.rs`); this hands it who to watch,
+// records what they did, alerts on what meets each one's settings, and
+// keeps the last look at each for the Traders page.
+
+const snapshots = new Map<string, TraderSnapshot>();
+const listeners = new Set<() => void>();
+let shown: TraderSnapshot[] = [];
+
+function publish() {
+  const keys = new Set(followedKeys(currentTraders()));
+  shown = [...snapshots.values()].filter((s) => keys.has(traderKey(s.source, s.id)));
+  for (const l of listeners) l();
+}
+
+function take(snapshot: TraderSnapshot) {
+  snapshots.set(traderKey(snapshot.source, snapshot.id), snapshot);
+  publish();
+}
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+/** The last look at each followed trader's positions. */
+export function useTraderSnapshots(): TraderSnapshot[] {
+  return useSyncExternalStore(subscribe, () => shown);
+}
+
+/** A trader's name as the page shows it: theirs, or a short id. */
+export function traderName(source: TraderMove["source"], id: string, name?: string | null) {
+  const stored = name ?? currentTraders().names[traderKey(source, id)];
+  if (stored) return stored;
+  return source === "hyperliquid" ? shortAddress(id) : id.slice(0, 8);
+}
+
+/** A size with as many decimals as it needs: 0.0125, 3.25, 2,355. */
+export const sizeText = (v: number) => formatNumber(v, v < 1 ? 4 : v < 100 ? 2 : 0);
+
+/** "Opened a short: 12 BTC at 75,940 ($911K)". */
+export function moveText(move: TraderMove): string {
+  const c = move.change;
+  const size = sizeText(c.kind === "close" ? c.sizeBefore : Math.abs(c.sizeAfter - c.sizeBefore));
+  return t(`traders.move.${c.kind}`, {
+    side: t(c.side === "long" ? "traders.long" : "traders.short"),
+    size: c.kind === "flip" ? sizeText(c.sizeAfter) : size,
+    market: c.market,
+    price: formatNumber(c.price, c.price < 10 ? 4 : 2),
+    value: `$${formatCompact(c.value)}`,
+  });
+}
+
+function notify(move: TraderMove) {
+  notifyEvent({
+    type: "alert",
+    title: t("traders.note.title", { name: traderName(move.source, move.id) }),
+    body: moveText(move),
+    tone: "neutral",
+    sound: "alert",
+  });
+}
+
+/** Keeps Rust watching whoever is followed, and acts on what they do. */
+export function useTraderWatch() {
+  useEffect(() => {
+    let last = "";
+    const sync = () => {
+      const follows = watchFollows(currentTraders());
+      const next = JSON.stringify(follows);
+      if (next === last) return;
+      last = next;
+      void tradersClient.watch(follows).catch(() => {
+        // Not in the desktop shell: nothing to watch with.
+      });
+      publish();
+    };
+    sync();
+    const stop = subscribeTraders(sync);
+    void tradersClient
+      .snapshots()
+      .then((all) => {
+        for (const s of all) snapshots.set(traderKey(s.source, s.id), s);
+        publish();
+      })
+      .catch(() => {});
+    const offSnapshot = tradersClient.onSnapshot(take);
+    const offMove = tradersClient.onMove((move) => {
+      recordMove(move);
+      if (move.alert) notify(move);
+    });
+    return () => {
+      stop();
+      offSnapshot();
+      offMove();
+    };
+  }, []);
+}
