@@ -110,6 +110,7 @@ export const tradersEn = {
   "traders.noHoldings": "No open positions.",
   "traders.closed": "Closed trades",
   "traders.noClosed": "No closed trades to show.",
+  "traders.history": "Trade history",
   "traders.weekly": "Week by week",
   "traders.preferred": "What they trade",
   "traders.long": "long",
