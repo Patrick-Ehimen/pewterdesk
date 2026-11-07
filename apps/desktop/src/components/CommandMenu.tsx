@@ -42,6 +42,7 @@ import {
   LuShieldCheck,
   LuSparkles,
   LuStore,
+  LuTrophy,
   LuX,
 } from "react-icons/lu";
 import type { AlgoTarget } from "../lib/algos";
@@ -72,6 +73,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   screener: "nav.screener",
   ai: "nav.ai",
   plan: "nav.plan",
+  traders: "nav.traders",
   settings: "settings.title",
 };
 
@@ -86,6 +88,7 @@ const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = 
   news: { icon: <LuNewspaper size={17} />, tone: "brass" },
   ai: { icon: <LuSparkles size={17} />, tone: "info" },
   plan: { icon: <LuNotebookPen size={17} />, tone: "brass" },
+  traders: { icon: <LuTrophy size={17} />, tone: "info" },
   settings: { icon: <LuSettings size={17} />, tone: "plain" },
 };
 

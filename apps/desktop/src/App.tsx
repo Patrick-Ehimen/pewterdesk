@@ -129,6 +129,7 @@ import { Clock, Funding, Latency } from "./components/statusbar/BarInfo";
 import { Movement } from "./components/statusbar/Movement";
 import { Tickers } from "./components/statusbar/Tickers";
 import { WatchlistBar } from "./components/statusbar/WatchlistBar";
+import { TradersPage } from "./components/traders/TradersPage";
 import { accountName } from "./components/wallet/AccountList";
 import { ApiKeyDialog } from "./components/wallet/ApiKeyDialog";
 import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
@@ -147,6 +148,7 @@ import { useReplayAccount } from "./hooks/useReplayAccount";
 import { useScanAlerts } from "./hooks/useScanAlerts";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
+import { useTraderWatch } from "./hooks/useTraderWatch";
 import { useTradeSettings } from "./hooks/useTradeSettings";
 import { useTradingRules } from "./hooks/useTradingRules";
 import { useTraySync } from "./hooks/useTraySync";
@@ -1171,6 +1173,8 @@ export function App() {
   const alerts = useAlerts(alertsOpen, liveAccount);
   const scanAlerts = useScanAlerts(marketList);
   usePumpWatchAlerts(venue);
+  // Followed traders: watched in Rust all session, alerting through notifyEvent.
+  useTraderWatch();
   // The Maps page's Bollinger alerts (squeeze, band breaks, RSI at a band), as the watch's.
   useMapAlertWatch(venue, marketList);
   // The notification centre, kept in PewterDesk Cloud once signed in.
@@ -1993,6 +1997,8 @@ export function App() {
             venueId={venue}
             onManage={() => openConnect()}
           />
+        ) : page === "traders" ? (
+          <TradersPage />
         ) : page === "plan" ? (
           <PlanPage
             venue={venue}

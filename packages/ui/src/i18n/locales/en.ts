@@ -1,10 +1,13 @@
 // Source strings. Other locales are typed against these keys. Placeholders
 // look like {name}; keep them, in whatever position the grammar needs.
 import { journalEn } from "./journal/en";
+import { tradersEn } from "./traders/en";
 
 export const en = {
   // The Plan page and PewterDesk Cloud (`journal/en.ts`).
   ...journalEn,
+  // The Traders page (`traders/en.ts`).
+  ...tradersEn,
   // Column headers
   "col.price": "Price",
   "col.size": "Size",

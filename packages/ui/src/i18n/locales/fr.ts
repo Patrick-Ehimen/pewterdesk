@@ -1,10 +1,13 @@
 import type { Messages } from "./en";
 import { journalEn } from "./journal/en";
+import { tradersEn } from "./traders/en";
 
 // French.
 export const messages: Messages = {
   // The Plan page and PewterDesk Cloud: English until translated.
   ...journalEn,
+  // The Traders page (`traders/en.ts`).
+  ...tradersEn,
   "col.price": "Prix",
   "col.size": "Taille",
   "col.total": "Total",

@@ -8,6 +8,7 @@ import "./styles/ai.css";
 import "./styles/paper.css";
 import "./styles/watchlist.css";
 import "./styles/plan.css";
+import "./styles/traders.css";
 import "./styles/settings.css";
 import "./styles/tray.css";
 import "./styles/float.css";
