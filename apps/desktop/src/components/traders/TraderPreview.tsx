@@ -127,7 +127,8 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
           </span>
         </span>
         <span className="app-spacer" />
-        <span className="tr-muted">#{rank}</span>
+        {/* Opened from elsewhere (a card, the feed), they may not be on this board. */}
+        {rank > 0 && <span className="tr-muted">#{rank}</span>}
         <button
           type="button"
           className="tr-icon"
