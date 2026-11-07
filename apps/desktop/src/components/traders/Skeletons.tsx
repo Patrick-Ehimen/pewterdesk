@@ -35,7 +35,14 @@ const Avatar = ({ size = 28 }: { size?: number }) => (
 );
 
 /** Leaderboard rows: one per trader, under the real column headers. */
-export function BoardSkeletonRows({ okx, rows = 14 }: { okx: boolean; rows?: number }) {
+export function BoardSkeletonRows({
+  cells,
+  rows = 14,
+}: {
+  /** The cells after the trader, in order. */
+  cells: readonly ("num" | "weeks" | "now" | "spark")[];
+  rows?: number;
+}) {
   return (
     <tbody className="tr-skel" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (
@@ -49,27 +56,32 @@ export function BoardSkeletonRows({ okx, rows = 14 }: { okx: boolean; rows?: num
               <Avatar />
               <span className="tr-skel-lines">
                 <Bar width={pick(WIDE, i) * 1.6} px />
-                {i % 4 === 1 && <Bar width={64} px height={7} />}
+                {i % 3 === 1 && <Bar width={64} px height={7} />}
               </span>
             </span>
           </td>
-          {Array.from({ length: okx ? 6 : 4 }, (_, c) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder cells
-            <td key={c} className="num">
-              <Bar width={pick(NUM, i + c * 3)} />
-            </td>
-          ))}
-          <td>
-            {okx ? (
-              <Bar width={86} height={14} />
+          {cells.map((kind, c) =>
+            kind === "num" ? (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder cells
+              <td key={c} className="num">
+                <Bar width={pick(NUM, i + c * 3)} />
+              </td>
             ) : (
-              <span className="tr-skel-pips">
-                {[0, 1, 2, 3].map((p) => (
-                  <Bar key={p} width={20} px height={14} />
-                ))}
-              </span>
-            )}
-          </td>
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed placeholder cells
+              <td key={c}>
+                {kind === "weeks" ? (
+                  <Bar width={78} px height={16} />
+                ) : kind === "now" ? (
+                  <span className="tr-now">
+                    <Bar width={96} px height={5} />
+                    <Bar width={pick(WIDE, i + 2) + 10} px height={7} />
+                  </span>
+                ) : (
+                  <Bar width={84} px height={18} />
+                )}
+              </td>
+            ),
+          )}
           <td className="tr-star">
             <Bar width={15} px height={15} />
           </td>

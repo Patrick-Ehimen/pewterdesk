@@ -760,6 +760,18 @@ export interface TraderSnapshot {
   error: string | null;
 }
 
+/** A trader's record for the leaderboard. Fractions for drawdown and share. */
+export interface TraderStats {
+  /** PnL week by week, the last 8 (oldest first); null before their history. */
+  weeks: (number | null)[];
+  /** The largest fall from a peak over the month, of what they had then. */
+  maxDrawdown: number | null;
+  /** Cumulative PnL over the month: [ms, USD], oldest first. */
+  curve: [number, number][];
+  /** The share of the month's PnL made in its best day, when it's above zero. */
+  bestDayShare: number | null;
+}
+
 /** A leaderboard trader's positions, for the insight cards. */
 export interface TraderSwept {
   source: TraderSource;
@@ -768,6 +780,8 @@ export interface TraderSwept {
   at: number;
   /** [market, side, ms first seen]: positions that appeared after an earlier look. */
   newSince: [string, TraderSide, number][];
+  /** Their record, where read. */
+  stats: TraderStats | null;
 }
 
 /** Who Rust watches, and what about them alerts. */
