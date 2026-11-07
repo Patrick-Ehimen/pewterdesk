@@ -18,6 +18,8 @@ const AGAIN_MS = 5 * 60_000;
 
 export function useBoardInsights(rows: readonly TraderRow[] | undefined, source: TraderSource) {
   const [got, setGot] = useState<ReadonlyMap<string, TraderSwept>>(new Map());
+  /** Traders asked about: one asked about that didn't come back couldn't be read. */
+  const [tried, setTried] = useState<ReadonlySet<string>>(new Set());
   const [round, setRound] = useState(0);
   const ids = useMemo(() => rows?.slice(0, TOP[source]).map((r) => r.id) ?? [], [rows, source]);
 
@@ -33,8 +35,9 @@ export function useBoardInsights(rows: readonly TraderRow[] | undefined, source:
     void round;
     void (async () => {
       for (let i = 0; i < ids.length && live; i += CHUNK) {
+        const asked = ids.slice(i, i + CHUNK);
         try {
-          const part = await tradersClient.sweep(source, ids.slice(i, i + CHUNK));
+          const part = await tradersClient.sweep(source, asked);
           if (!live) return;
           setGot((before) => {
             const next = new Map(before);
@@ -44,6 +47,12 @@ export function useBoardInsights(rows: readonly TraderRow[] | undefined, source:
         } catch {
           // A part that can't be read leaves the cards with the rest.
         }
+        if (!live) return;
+        setTried((before) => {
+          const next = new Set(before);
+          for (const id of asked) next.add(`${source}:${id}`);
+          return next;
+        });
       }
     })();
     return () => {
@@ -55,5 +64,16 @@ export function useBoardInsights(rows: readonly TraderRow[] | undefined, source:
     () => ids.flatMap((id) => got.get(`${source}:${id}`) ?? []),
     [ids, got, source],
   );
-  return { swept, total: ids.length, loading: rows === undefined || swept.length === 0 };
+  /** Whether a trader is still to be read (not yet asked about, or asked and pending). */
+  const pending = useMemo(() => {
+    const top = new Set(ids);
+    return (id: string) =>
+      top.has(id) && !tried.has(`${source}:${id}`) && !got.has(`${source}:${id}`);
+  }, [ids, tried, got, source]);
+  return {
+    swept,
+    total: ids.length,
+    pending,
+    loading: rows === undefined || (swept.length === 0 && ids.some(pending)),
+  };
 }

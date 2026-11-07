@@ -15,6 +15,8 @@ interface Props {
   swept: readonly TraderSwept[];
   /** How many of the top traders are being read. */
   total: number;
+  /** How many of them are still to be read. */
+  left: number;
   loading: boolean;
   onSelect: (row: TraderRow) => void;
 }
@@ -39,10 +41,10 @@ function CardSkeleton({ lines = 2 }: { lines?: number }) {
   );
 }
 
-export function Insights({ source, rows, swept, total, loading, onSelect }: Props) {
+export function Insights({ source, rows, swept, total, left, loading, onSelect }: Props) {
   const insights = useMemo(() => topInsights(swept), [swept]);
   const { btc, mostHeld, biggestNew } = insights;
-  const reading = swept.length < total;
+  const reading = left > 0;
   const progress = reading ? t("traders.ins.reading", { read: swept.length, total }) : undefined;
   const newRow = biggestNew && rows?.find((r) => `${r.source}:${r.id}` === biggestNew.key);
   const now = Date.now();

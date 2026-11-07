@@ -15,13 +15,23 @@ import {
   type TraderRow,
   type TraderSort,
   type TraderSource,
+  type TraderSwept,
   tradersClient,
 } from "../../api/venueClient";
-import { useBoardInsights } from "../../hooks/useBoardInsights";
+import { TOP, useBoardInsights } from "../../hooks/useBoardInsights";
 import { traderName } from "../../hooks/useTraderWatch";
+import {
+  isOneHit,
+  SCALPER_TURNOVER,
+  STYLES,
+  SWING_TURNOVER,
+  stylesOf,
+  type TraderStyle,
+  WHALE,
+} from "../../lib/traderStyles";
 import { followedKeys, isFollowed, MAX_FOLLOWED, traderKey, useTraders } from "../../lib/traders";
+import { Drawdown, GreenWeeks, Month, Now, type Read } from "./BoardCells";
 import { Insights } from "./Insights";
-import { PnlLine } from "./PnlLine";
 import { BoardSkeletonRows } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 import { TraderPreview } from "./TraderPreview";
@@ -32,8 +42,14 @@ const SORTS: Record<TraderSource, readonly TraderSort[]> = {
   okx: ["volume", "pnl", "roi", "winRate", "accountValue"],
 };
 /** Hyperliquid's floors: a big ROI on a tiny account says little. */
-const MIN_ACCOUNTS = [100_000, 1_000_000, 10_000_000] as const;
+const FLOOR = 100_000;
+const MILLION = 1_000_000;
 const LIMIT: Record<TraderSource, number> = { hyperliquid: 300, okx: 100 };
+/** The cells after the trader, in order, for the loading rows. */
+const CELLS: Record<TraderSource, ("num" | "weeks" | "now" | "spark")[]> = {
+  hyperliquid: ["num", "num", "num", "weeks", "num", "now", "spark"],
+  okx: ["num", "num", "num", "num", "weeks", "num", "num", "now", "spark"],
+};
 
 export interface BoardView {
   source: TraderSource;
@@ -46,7 +62,7 @@ export const DEFAULT_BOARD: BoardView = {
   source: "hyperliquid",
   period: "month",
   sort: "pnl",
-  minAccount: 100_000,
+  minAccount: FLOOR,
 };
 
 const sortLabel = (source: TraderSource, sort: TraderSort) =>
@@ -54,6 +70,14 @@ const sortLabel = (source: TraderSource, sort: TraderSort) =>
 
 const pct = (v: number) => `${v > 0 ? "+" : ""}${formatPercent(v, 1)}`;
 const money = (v: number) => `${v > 0 ? "+" : ""}${formatCompact(v)}`;
+
+/** What each style means, for its chip. */
+function styleHint(style: TraderStyle, source: TraderSource): string {
+  if (style === "whale")
+    return t("traders.style.whaleHint", { value: `$${formatCompact(WHALE[source])}` });
+  if (style === "scalper") return t("traders.style.scalperHint", { times: SCALPER_TURNOVER });
+  return t("traders.style.swingHint", { share: formatPercent(SWING_TURNOVER, 0) });
+}
 
 interface Props {
   view: BoardView;
@@ -67,9 +91,13 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
   const [error, setError] = useState<string>();
   const [search, setSearch] = useState("");
   const [attempt, setAttempt] = useState(0);
+  /** The styles picked: a trader with any of them is shown. */
+  const [styles, setStyles] = useState<ReadonlySet<TraderStyle>>(new Set());
+  const [hideOneHit, setHideOneHit] = useState(false);
   /** The trader in the side panel. */
   const [selected, setSelected] = useState<TraderRow>();
   const { source, period, sort, minAccount } = view;
+  const okx = source === "okx";
 
   useEffect(() => {
     let live = true;
@@ -86,20 +114,41 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
     };
   }, [source, period, sort, minAccount, attempt]);
 
+  const insights = useBoardInsights(rows, source);
+  const ranks = useMemo(() => new Map(rows?.map((r, i) => [r, i + 1])), [rows]);
+  /** Each read trader's positions and record, by id. */
+  const reads = useMemo(
+    () => new Map<string, TraderSwept>(insights.swept.map((s) => [s.id, s])),
+    [insights.swept],
+  );
+  // Read, still to be read, or never read (below the top, or couldn't be read): a dash.
+  const readOf = (r: TraderRow): Read =>
+    reads.get(r.id) ?? (insights.pending(r.id) ? "pending" : undefined);
+
   const shown = useMemo(() => {
+    if (!rows) return undefined;
     const q = search.trim().toLowerCase();
-    if (!rows || !q) return rows;
-    return rows.filter((r) => r.id.toLowerCase().includes(q) || r.name?.toLowerCase().includes(q));
-  }, [rows, search]);
+    return rows.filter((r) => {
+      if (q && !r.id.toLowerCase().includes(q) && !r.name?.toLowerCase().includes(q)) return false;
+      if (styles.size > 0 && !stylesOf(r, period).some((s) => styles.has(s))) return false;
+      if (hideOneHit && isOneHit(reads.get(r.id)?.stats)) return false;
+      return true;
+    });
+  }, [rows, search, styles, hideOneHit, reads, period]);
 
   const full = followedKeys(state).length >= MAX_FOLLOWED;
-  const ranks = useMemo(() => new Map(rows?.map((r, i) => [r, i + 1])), [rows]);
-  const okx = source === "okx";
-
-  const insights = useBoardInsights(rows, source);
   const picked = selected?.source === source ? selected : undefined;
   const select = (r: TraderRow) =>
     setSelected((s) => (s?.source === r.source && s.id === r.id ? undefined : r));
+  const toggleStyle = (s: TraderStyle) =>
+    setStyles((before) => {
+      const next = new Set(before);
+      if (next.has(s)) next.delete(s);
+      else next.add(s);
+      return next;
+    });
+  // OKX publishes no volume: whale is its one style.
+  const styleChips = okx ? STYLES.filter((s) => s === "whale") : STYLES;
 
   return (
     <div className="tr-board-page">
@@ -108,6 +157,7 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
         rows={rows}
         swept={insights.swept}
         total={insights.total}
+        left={rows?.slice(0, TOP[source]).filter((r) => insights.pending(r.id)).length ?? 0}
         loading={insights.loading}
         onSelect={(r) => setSelected(r)}
       />
@@ -131,16 +181,39 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
               label={t("traders.sort")}
             />
             {!okx && (
-              <Select
-                value={String(minAccount)}
-                options={MIN_ACCOUNTS.map((m) => ({
-                  value: String(m),
-                  label: `≥ $${formatCompact(m)}`,
-                }))}
-                onChange={(m) => onView({ ...view, minAccount: Number(m) })}
-                label={t("traders.minAccount")}
-              />
+              <button
+                type="button"
+                className="tr-fchip"
+                aria-pressed={minAccount >= MILLION}
+                onClick={() =>
+                  onView({ ...view, minAccount: minAccount >= MILLION ? FLOOR : MILLION })
+                }
+                title={t("traders.chip.millionHint", { floor: `$${formatCompact(FLOOR)}` })}
+              >
+                {t("traders.chip.million")}
+              </button>
             )}
+            {styleChips.map((s) => (
+              <button
+                key={s}
+                type="button"
+                className="tr-fchip"
+                aria-pressed={styles.has(s)}
+                onClick={() => toggleStyle(s)}
+                title={styleHint(s, source)}
+              >
+                {t(`traders.style.${s}`)}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="tr-fchip"
+              aria-pressed={hideOneHit}
+              onClick={() => setHideOneHit((h) => !h)}
+              title={t("traders.chip.oneHitHint")}
+            >
+              {t("traders.chip.oneHit")}
+            </button>
             <span className="app-spacer" />
             {rows ? (
               <span className="tr-muted">
@@ -177,30 +250,27 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                     <th className="num">{t("traders.col.pnl")}</th>
                     <th className="num">{t("traders.col.roi")}</th>
                     {okx && <th className="num">{t("traders.col.winRate")}</th>}
+                    <th className="num" title={t("traders.col.ddHint")}>
+                      {t("traders.col.dd")}
+                    </th>
+                    <th title={t("traders.col.weeksHint")}>{t("traders.col.weeks")}</th>
                     <th className="num">{t(okx ? "traders.col.aum" : "traders.col.account")}</th>
-                    {okx ? (
-                      <>
-                        <th className="num">{t("traders.col.copiers")}</th>
-                        <th className="num">{t("traders.col.leadDays")}</th>
-                        <th>{t("traders.col.roi")}</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="num">{t("traders.col.volume")}</th>
-                        <th title={t("traders.col.streakHint")}>{t("traders.col.streak")}</th>
-                      </>
-                    )}
+                    {okx && <th className="num">{t("traders.col.copiers")}</th>}
+                    <th title={t("traders.col.nowHint")}>{t("traders.col.now")}</th>
+                    <th>{t("traders.col.month")}</th>
                     <th aria-label={t("traders.follow")} />
                   </tr>
                 </thead>
                 {!shown ? (
-                  <BoardSkeletonRows okx={okx} />
+                  <BoardSkeletonRows cells={CELLS[source]} />
                 ) : (
                   <tbody>
                     {shown.map((r) => {
                       const key = traderKey(r.source, r.id);
                       const name = traderName(r.source, r.id, r.name);
                       const followed = isFollowed(state, key);
+                      const read = readOf(r);
+                      const tags = stylesOf(r, period);
                       return (
                         <tr
                           key={key}
@@ -222,8 +292,15 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                               <TraderAvatar id={key} />
                               <span className="tr-who-name">
                                 <b>{name}</b>
-                                {r.name && !okx && (
-                                  <small>{traderName(r.source, r.id, null)}</small>
+                                {(tags.length > 0 || (r.name && !okx)) && (
+                                  <small>
+                                    {r.name && !okx && traderName(r.source, r.id, null)}
+                                    {tags.map((s) => (
+                                      <span key={s} className="tr-style">
+                                        {t(`traders.style.${s}`)}
+                                      </span>
+                                    ))}
+                                  </small>
                                 )}
                               </span>
                             </button>
@@ -235,31 +312,20 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                               {r.winRate == null ? "–" : formatPercent(r.winRate, 0)}
                             </td>
                           )}
+                          <td className="num">
+                            <Drawdown read={read} />
+                          </td>
+                          <td>
+                            <GreenWeeks read={read} />
+                          </td>
                           <td className="num">{formatCompact(r.accountValue)}</td>
-                          {okx ? (
-                            <>
-                              <td className="num">{r.copiers ?? "–"}</td>
-                              <td className="num">
-                                {r.leadDays == null ? "–" : t("traders.days", { days: r.leadDays })}
-                              </td>
-                              <td className="tr-spark">
-                                <PnlLine
-                                  points={r.roiCurve.map((v, i) => [i, v])}
-                                  height={22}
-                                  label={t("traders.col.roi")}
-                                />
-                              </td>
-                            </>
-                          ) : (
-                            <>
-                              <td className="num">
-                                {r.volume == null ? "–" : formatCompact(r.volume)}
-                              </td>
-                              <td>
-                                <Streak positive={r.positive} />
-                              </td>
-                            </>
-                          )}
+                          {okx && <td className="num">{r.copiers ?? "–"}</td>}
+                          <td>
+                            <Now read={read} />
+                          </td>
+                          <td className="tr-spark">
+                            <Month read={read} fallback={r.roiCurve} />
+                          </td>
                           {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star inside is the control */}
                           <td className="tr-star" onClick={(e) => e.stopPropagation()}>
                             <StarButton
@@ -279,7 +345,11 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
             </div>
           )}
           <div className="tr-foot">
-            {full && <span>{t("traders.full", { max: MAX_FOLLOWED })}</span>}
+            <span>
+              {full
+                ? t("traders.full", { max: MAX_FOLLOWED })
+                : t("traders.legend", { top: TOP[source] })}
+            </span>
             <span className="app-spacer" />
             <span>{t("traders.disclaimer", { source: t(`traders.source.${source}`) })}</span>
           </div>
@@ -296,21 +366,6 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
         )}
       </div>
     </div>
-  );
-}
-
-/** Four pips: up over the day, week, month and all time. */
-function Streak({ positive }: { positive: TraderRow["positive"] }) {
-  if (!positive) return <span className="tr-muted">–</span>;
-  const names = ["day", "week", "month", "allTime"] as const;
-  return (
-    <span className="tr-streak">
-      {names.map((n, i) => (
-        <i key={n} data-on={positive[i] || undefined} title={t(`traders.period.${n}`)}>
-          {t(`traders.streak.${n}`)}
-        </i>
-      ))}
-    </span>
   );
 }
 

@@ -29,7 +29,7 @@ const swept = (
   holdings: TraderHolding[],
   newSince: TraderSwept["newSince"] = [],
   source: TraderSwept["source"] = "hyperliquid",
-): TraderSwept => ({ source, id, holdings, at: NOW, newSince });
+): TraderSwept => ({ source, id, holdings, at: NOW, newSince, stats: null });
 
 describe("the leaderboard's insight cards", () => {
   it("weighs BTC by value, and ranks markets by how many hold them", () => {

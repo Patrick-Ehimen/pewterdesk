@@ -266,8 +266,10 @@ discover it on their own. The reasoning behind the rules is in
   and copies nothing. The leaderboard's insight cards read the positions of
   its top traders (`traders_sweep`: Hyperliquid's top 100, OKX's top 50, a
   dozen a call, each look kept 4 minutes) while the page is open, every 5
-  minutes. Adding a source, or letting it trade, is a security-relevant
-  change.
+  minutes, with each one's record (`portfolio`; OKX's daily and weekly
+  PnL). Hyperliquid's requests are spaced by their weight (70 ms a unit,
+  about 860 a minute of its 1200 per IP). Adding a source, or letting it
+  trade, is a security-relevant change.
 - `apps/desktop/src-tauri/src/exchange_notices.rs` - exchanges' listing
   notices, for the Maps page's pump / dump watch: Binance's and OKX's new
   listings and delistings, Upbit's trading notices (listings, delistings,
@@ -1127,7 +1129,13 @@ cards (`Insights.tsx`, `lib/topInsights.ts`, `hooks/useBoardInsights.ts`):
 how the top traders sit on BTC by value, the markets most of them hold, the
 biggest position one of them opened in the last hour (OKX's opening times;
 on Hyperliquid, which has none, a position first seen at a later look) and
-the traders followed; a click on a trader opens a side panel
+the traders followed. Its columns beyond the file's own (max drawdown, 8
+green weeks, what they hold now, the month's line; `BoardCells.tsx`, from
+each trader's record, `stats` in `crates/traders`, kept 30 minutes) are
+read for the same top traders, and its chips filter by account size, style
+(`lib/traderStyles.ts`: whale by size, scalper or swing by turnover a day)
+and one-hit wonders (over half the month's PnL in one day). A click on a
+trader opens a side panel
 (`TraderPreview.tsx`) with Follow and the way to their full page. Each
 trader's picture takes a hue from the tag palette (`TraderAvatar.tsx`,
 BRAND.md). App runs `useTraderWatch` all

@@ -24,7 +24,7 @@ use std::time::{Duration, Instant};
 use pewterdesk_core::{PositionSide, VenueError};
 use pewterdesk_traders::{
     changes, hyperliquid::Hyperliquid, okx::Okx, valid_id, Change, ChangeKind, Holding, Period,
-    SortBy, Source, TraderDetail, TraderRow,
+    SortBy, Source, TraderDetail, TraderRow, TraderStats,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -36,6 +36,8 @@ pub const TRADER_SNAPSHOT: &str = "trader-snapshot";
 const MAX_SWEEP: usize = 12;
 /// How long a sweep's look at a trader is kept.
 const SWEEP_FRESH_FOR: Duration = Duration::from_secs(4 * 60);
+/// How long a sweep's record of a trader is kept: weeks change slowly.
+const STATS_FRESH_FOR: Duration = Duration::from_secs(30 * 60);
 /// The most traders watched at once.
 const MAX_FOLLOWS: usize = 40;
 /// The most names looked up in one call.
@@ -107,7 +109,10 @@ pub struct TradersState {
 /// One trader's last look for the insight cards, and when each position
 /// they hold was first seen (only those that appeared after the first look).
 struct Kept {
+    /// When the positions were read.
     at: Instant,
+    /// When the record (`Swept::stats`) was read, if it has been.
+    stats_at: Option<Instant>,
     seen: Swept,
 }
 
@@ -124,6 +129,8 @@ pub struct Swept {
     /// when they were first seen. Empty after the first look: what was
     /// already held then may be old.
     pub new_since: Vec<(String, PositionSide, u64)>,
+    /// Their record (green weeks, drawdown, the month's line), where read.
+    pub stats: Option<TraderStats>,
 }
 
 impl TradersState {
@@ -134,6 +141,13 @@ impl TradersState {
             watch: Mutex::new(Watch::default()),
             swept: Mutex::new(HashMap::new()),
         })
+    }
+
+    async fn stats(&self, source: Source, id: &str) -> Result<TraderStats, VenueError> {
+        match source {
+            Source::Hyperliquid => self.hl.stats(id).await,
+            Source::Okx => self.okx.stats(id).await,
+        }
     }
 
     async fn holdings(&self, source: Source, id: &str) -> Result<Vec<Holding>, VenueError> {
@@ -285,36 +299,70 @@ pub async fn traders_sweep(
             continue;
         };
         let key = (source, id.clone());
-        let kept = state
-            .swept
-            .lock()
-            .unwrap()
-            .get(&key)
-            .filter(|k| k.at.elapsed() < SWEEP_FRESH_FOR)
-            .map(|k| k.seen.clone());
-        if let Some(seen) = kept {
-            out.push(seen);
+        let (kept, positions_fresh, stats_fresh) = {
+            let swept = state.swept.lock().unwrap();
+            let kept = swept.get(&key);
+            (
+                kept.map(|k| k.seen.clone()),
+                kept.is_some_and(|k| k.at.elapsed() < SWEEP_FRESH_FOR),
+                kept.and_then(|k| k.stats_at)
+                    .is_some_and(|at| at.elapsed() < STATS_FRESH_FOR),
+            )
+        };
+        if let (Some(seen), true, true) = (&kept, positions_fresh, stats_fresh) {
+            out.push(seen.clone());
             continue;
         }
         // One trader that can't be read doesn't stop the rest.
-        let Ok(holdings) = state.holdings(source, &id).await else {
-            continue;
+        let holdings = match &kept {
+            Some(seen) if positions_fresh => seen.holdings.clone(),
+            _ => match state.holdings(source, &id).await {
+                Ok(h) => h,
+                Err(_) => continue,
+            },
+        };
+        let (stats, stats_at) = if stats_fresh {
+            (kept.as_ref().and_then(|k| k.stats.clone()), None)
+        } else {
+            match state.stats(source, &id).await {
+                Ok(s) => (Some(s), Some(Instant::now())),
+                // Kept as it was; asked again at the next sweep.
+                Err(_) => (kept.as_ref().and_then(|k| k.stats.clone()), None),
+            }
         };
         let now = now_ms();
         let mut swept = state.swept.lock().unwrap();
-        let before = swept.get(&key).map(|k| &k.seen);
-        let new_since = new_positions(before, &holdings, now);
+        let previous = swept.get(&key);
+        let new_since = if positions_fresh {
+            kept.as_ref()
+                .map(|k| k.new_since.clone())
+                .unwrap_or_default()
+        } else {
+            new_positions(previous.map(|k| &k.seen), &holdings, now)
+        };
+        let at = if positions_fresh {
+            previous.map_or(Instant::now(), |k| k.at)
+        } else {
+            Instant::now()
+        };
+        let stats_at = stats_at.or(previous.and_then(|k| k.stats_at));
         let seen = Swept {
             source,
             id,
             holdings,
-            at: now,
+            at: if positions_fresh {
+                kept.as_ref().map_or(now, |k| k.at)
+            } else {
+                now
+            },
             new_since,
+            stats,
         };
         swept.insert(
             key,
             Kept {
-                at: Instant::now(),
+                at,
+                stats_at,
                 seen: seen.clone(),
             },
         );
@@ -517,6 +565,7 @@ mod tests {
             holdings: first,
             at: 10,
             new_since: Vec::new(),
+            stats: None,
         };
         let now = vec![
             holding("BTC", Short),
