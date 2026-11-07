@@ -1105,6 +1105,9 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* One row as tall as the page leaves: the table and the panel scroll
+     inside it rather than growing past it. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
 }
 .tr-board-wrap[data-panel] {
@@ -1121,6 +1124,11 @@
 .tr-preview {
   min-height: 0;
   overflow: hidden;
+}
+/* Everything in the panel keeps its size but the open positions, which
+   take what's left and scroll. */
+.tr-preview > * {
+  flex: none;
 }
 .tr-preview-head {
   display: flex;
@@ -1177,16 +1185,32 @@
   font-size: 13.5px;
   font-weight: 500;
 }
-.tr-preview-scroll {
+/* Open positions take the room left and scroll in it; last closed, the
+   note and Follow stay where they are. */
+.tr-preview > .tr-preview-open {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.tr-preview-open .tr-panel-head,
+.tr-preview-closed .tr-panel-head {
+  flex: none;
+  border-bottom: 0;
+}
+.tr-preview-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--pd-border);
 }
-.tr-preview-scroll .tr-panel-head {
-  border-bottom: 0;
+.tr-preview-list:focus-visible {
+  outline: none;
+  box-shadow: inset var(--pd-focus);
 }
-.tr-preview-scroll .tr-panel-head.tr-sub {
-  border-bottom: 0;
+.tr-preview-closed {
+  flex: none;
 }
 .tr-preview-row {
   display: grid;
@@ -1219,10 +1243,11 @@
   font-size: 11px;
 }
 .tr-preview-note {
-  margin: 0 12px 10px;
-  padding: 8px 10px;
-  border: 1px solid var(--pd-border);
-  border-radius: 4px;
+  margin: 0;
+  padding: 8px 12px 0;
+  border-top: 1px solid var(--pd-border);
+  font-size: 11.5px;
+  line-height: 16px;
 }
 .tr-preview-foot {
   display: flex;
