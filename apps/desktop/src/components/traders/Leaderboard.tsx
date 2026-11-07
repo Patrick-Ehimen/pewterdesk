@@ -20,6 +20,7 @@ import {
 } from "../../api/venueClient";
 import { TOP, useBoardInsights } from "../../hooks/useBoardInsights";
 import { traderName } from "../../hooks/useTraderWatch";
+import { BAND_RANGE, SIZE_BANDS, type SizeBand } from "../../lib/accountSize";
 import {
   isOneHit,
   SCALPER_TURNOVER,
@@ -42,8 +43,6 @@ const SORTS: Record<TraderSource, readonly TraderSort[]> = {
   okx: ["volume", "pnl", "roi", "winRate", "accountValue"],
 };
 /** Hyperliquid's floors: a big ROI on a tiny account says little. */
-const FLOOR = 100_000;
-const MILLION = 1_000_000;
 const LIMIT: Record<TraderSource, number> = { hyperliquid: 300, okx: 100 };
 /** The cells after the trader, in order, for the loading rows. */
 const CELLS: Record<TraderSource, ("num" | "weeks" | "now" | "spark")[]> = {
@@ -55,14 +54,15 @@ export interface BoardView {
   source: TraderSource;
   period: TraderPeriod;
   sort: TraderSort;
-  minAccount: number;
+  /** The account sizes kept (on OKX, assets managed). */
+  size: SizeBand;
 }
 
 export const DEFAULT_BOARD: BoardView = {
   source: "hyperliquid",
   period: "month",
   sort: "pnl",
-  minAccount: FLOOR,
+  size: "100kUp",
 };
 
 const sortLabel = (source: TraderSource, sort: TraderSort) =>
@@ -96,7 +96,7 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
   const [hideOneHit, setHideOneHit] = useState(false);
   /** The trader in the side panel. */
   const [selected, setSelected] = useState<TraderRow>();
-  const { source, period, sort, minAccount } = view;
+  const { source, period, sort, size } = view;
   const okx = source === "okx";
 
   useEffect(() => {
@@ -106,13 +106,13 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
     // `attempt` re-reads after an error.
     void attempt;
     tradersClient
-      .leaderboard(source, period, sort, minAccount, LIMIT[source])
+      .leaderboard(source, period, sort, BAND_RANGE[size], LIMIT[source])
       .then((r) => live && setRows(r))
       .catch((e: Error) => live && setError(e.message));
     return () => {
       live = false;
     };
-  }, [source, period, sort, minAccount, attempt]);
+  }, [source, period, sort, size, attempt]);
 
   const insights = useBoardInsights(rows, source);
   const ranks = useMemo(() => new Map(rows?.map((r, i) => [r, i + 1])), [rows]);
@@ -180,19 +180,12 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
               onChange={(s) => onView({ ...view, sort: s })}
               label={t("traders.sort")}
             />
-            {!okx && (
-              <button
-                type="button"
-                className="tr-fchip"
-                aria-pressed={minAccount >= MILLION}
-                onClick={() =>
-                  onView({ ...view, minAccount: minAccount >= MILLION ? FLOOR : MILLION })
-                }
-                title={t("traders.chip.millionHint", { floor: `$${formatCompact(FLOOR)}` })}
-              >
-                {t("traders.chip.million")}
-              </button>
-            )}
+            <Select
+              value={size}
+              options={SIZE_BANDS.map((b) => ({ value: b, label: t(`traders.size.${b}`) }))}
+              onChange={(b) => onView({ ...view, size: b })}
+              label={t(okx ? "traders.size.labelOkx" : "traders.size.label")}
+            />
             {styleChips.map((s) => (
               <button
                 key={s}
@@ -370,10 +363,6 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
             row={picked}
             rank={ranks.get(rows?.find((r) => r.id === picked.id) ?? picked) ?? 0}
             period={period}
-            winDays={(() => {
-              const read = readOf(picked);
-              return read === "pending" ? "pending" : (read?.stats?.winDays ?? null);
-            })()}
             onClose={() => setSelected(undefined)}
             onOpen={() => onOpen(picked)}
           />

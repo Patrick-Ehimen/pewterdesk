@@ -18,25 +18,11 @@ import {
   tradersClient,
 } from "../../api/venueClient";
 import { traderName } from "../../hooks/useTraderWatch";
-import { trades30d } from "../../lib/traderHabits";
-import {
-  alertsFor,
-  CHANGE_KINDS,
-  followedKeys,
-  isFollowed,
-  MAX_FOLLOWED,
-  traderKey,
-  useTraders,
-} from "../../lib/traders";
+import { trades30d, winRateOf } from "../../lib/traderHabits";
+import { followedKeys, isFollowed, MAX_FOLLOWED, traderKey, useTraders } from "../../lib/traders";
 import { PERIODS } from "./Leaderboard";
 import { PnlLine } from "./PnlLine";
-import {
-  BarsSkeleton,
-  LineSkeleton,
-  TableSkeletonRows,
-  ValueSkeleton,
-  WeeksSkeleton,
-} from "./Skeletons";
+import { LineSkeleton, TableSkeletonRows, ValueSkeleton, WeeksSkeleton } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 import { AgainstYou, AlertsCard, HowTheyTrade, type MyBook } from "./TraderSide";
 
@@ -108,7 +94,15 @@ export function TraderView({ source, id, row, period: startPeriod, mine, onBack 
     history.length > 1 ? (history.at(-1)?.[1] ?? 0) - (history[0]?.[1] ?? 0) : undefined;
   const full = !followed && followedKeys(state).length >= MAX_FOLLOWED;
   // Their record (win days, drawdown): the leaderboard's read, kept 30 minutes in Rust.
-  const win = okx ? row?.winRate : record?.stats?.winDays;
+  const win = winRateOf(okx, row, detail);
+  const winNote = (okx: boolean, d: TraderDetail | undefined, w: number | null) =>
+    okx
+      ? t("traders.kpi.winOkx")
+      : w != null && d
+        ? t("traders.kpi.winTrips", { count: d.closed.length })
+        : t("traders.kpi.winFew", {
+            days: record?.stats?.winDays == null ? "–" : formatPercent(record.stats.winDays, 0),
+          });
   const dd = record?.stats?.maxDrawdown;
   const levered = open.filter((h) => h.leverage != null);
   const leverage =
@@ -187,10 +181,10 @@ export function TraderView({ source, id, row, period: startPeriod, mine, onBack 
             trend={row?.roi}
           />
           <Kpi
-            label={t(okx ? "traders.kpi.winRate" : "traders.col.winDays")}
+            label={t("traders.kpi.winRate")}
             value={win == null ? "–" : formatPercent(win, 0)}
-            note={t(okx ? "traders.kpi.winOkx" : "traders.kpi.winDaysHint")}
-            loading={!okx && record === undefined}
+            note={winNote(okx, detail, win)}
+            loading={okx ? false : loading}
           />
           <Kpi
             label={t("traders.kpi.dd")}
@@ -213,9 +207,14 @@ export function TraderView({ source, id, row, period: startPeriod, mine, onBack 
             label={t("traders.kpi.trades")}
             value={recent ? `${recent.count}${recent.more ? "+" : ""}` : "–"}
             note={
-              recent && recent.count > 0
-                ? t("traders.kpi.perDay", { n: formatNumber(recent.count / 30, 1) })
-                : undefined
+              // Hyperliquid's fills may reach back less than 30 days: say over what.
+              detail?.fillsFrom && Date.now() - detail.fillsFrom < 30 * 86_400_000
+                ? t("traders.kpi.tradesIn", {
+                    hours: Math.max(1, Math.round((Date.now() - detail.fillsFrom) / 3_600_000)),
+                  })
+                : recent && recent.count > 0
+                  ? t("traders.kpi.perDay", { n: formatNumber(recent.count / 30, 1) })
+                  : undefined
             }
             loading={loading}
           />

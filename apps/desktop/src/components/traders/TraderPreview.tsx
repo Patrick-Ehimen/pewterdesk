@@ -8,6 +8,7 @@ import {
   tradersClient,
 } from "../../api/venueClient";
 import { sizeText, traderName } from "../../hooks/useTraderWatch";
+import { winRateOf } from "../../lib/traderHabits";
 import {
   FOLLOWING,
   followedKeys,
@@ -30,8 +31,6 @@ interface Props {
   row: TraderRow;
   rank: number;
   period: TraderPeriod;
-  /** Their win days from the leaderboard's read, if it's in; "pending" while it isn't yet. */
-  winDays: number | null | "pending";
   onClose: () => void;
   onOpen: () => void;
 }
@@ -39,7 +38,7 @@ interface Props {
 const money = (v: number) => `${v > 0 ? "+" : ""}${formatCompact(v)}`;
 const price = (v: number) => formatNumber(v, v < 1 ? 5 : v < 100 ? 3 : 1);
 
-export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: Props) {
+export function TraderPreview({ row, rank, period, onClose, onOpen }: Props) {
   const { state, toggleFollow } = useTraders();
   const [detail, setDetail] = useState<TraderDetail>();
   const [error, setError] = useState<string>();
@@ -86,18 +85,14 @@ export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: P
     ],
     [t("traders.kpi.roi"), (row.roi > 0 ? "+" : "") + formatPercent(row.roi, 1), row.roi],
     [
-      // OKX's own trade win rate; on Hyperliquid, whose fills say little about
-      // traders who scale in and out, the share of days that made money.
-      okx ? t("traders.kpi.winRate") : t("traders.col.winDays"),
-      okx
-        ? row.winRate == null
-          ? "–"
-          : formatPercent(row.winRate, 0)
-        : winDays === "pending"
-          ? undefined
-          : winDays == null
-            ? "–"
-            : formatPercent(winDays, 0),
+      // OKX's own; on Hyperliquid, their recent round trips, once there are enough.
+      t("traders.kpi.winRate"),
+      !okx && !detail
+        ? undefined
+        : (() => {
+            const w = winRateOf(okx, row, detail);
+            return w == null ? "–" : formatPercent(w, 0);
+          })(),
       undefined,
     ],
     [

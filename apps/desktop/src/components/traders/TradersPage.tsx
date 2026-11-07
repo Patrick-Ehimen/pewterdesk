@@ -1,6 +1,7 @@
 import { MapSeg, t } from "@pewterdesk/ui";
 import { useState } from "react";
 import type { TraderRow, TraderSource } from "../../api/venueClient";
+import { bandFromFloor, isSizeBand } from "../../lib/accountSize";
 import { followedKeys, useActivity, useTraders } from "../../lib/traders";
 import { ActivityFeed, Following } from "./Following";
 import { BoardSwitches, type BoardView, DEFAULT_BOARD, Leaderboard } from "./Leaderboard";
@@ -29,7 +30,8 @@ function readView(): BoardView {
       sort: ["pnl", "roi", "accountValue", "volume", "winRate"].includes(String(v.sort))
         ? (v.sort as BoardView["sort"])
         : DEFAULT_BOARD.sort,
-      minAccount: Number(v.minAccount) > 0 ? Number(v.minAccount) : DEFAULT_BOARD.minAccount,
+      // A board saved before size bands kept a floor: "Account >= $1M" or $100K.
+      size: isSizeBand(v.size) ? v.size : bandFromFloor((v as { minAccount?: unknown }).minAccount),
     };
   } catch {
     return DEFAULT_BOARD;

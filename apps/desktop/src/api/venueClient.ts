@@ -725,6 +725,8 @@ export interface TraderDetail {
   weeklyPnl: [number, number][];
   /** [coin, share], largest first. */
   preferred: [string, number][];
+  /** Hyperliquid: when the oldest fill read was (it keeps only an account's latest). */
+  fillsFrom: number | null;
 }
 
 /** What a followed trader did between two looks. */
@@ -802,9 +804,9 @@ export const tradersClient = {
     source: TraderSource,
     period: TraderPeriod,
     sort: TraderSort,
-    minAccount: number,
+    range: { min: number; max: number | null },
     limit: number,
-  ) => call<TraderRow[]>("traders_leaderboard", { source, period, sort, minAccount, limit }),
+  ) => call<TraderRow[]>("traders_leaderboard", { source, period, sort, range, limit }),
   detail: (source: TraderSource, id: string, period: TraderPeriod) =>
     call<TraderDetail>("trader_detail", { source, id, period }),
   /** Followed traders' leaderboard lines, where they're on one. */

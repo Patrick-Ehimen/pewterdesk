@@ -1,4 +1,4 @@
-import type { TraderClosedTrade } from "../api/venueClient";
+import type { TraderClosedTrade, TraderDetail, TraderRow } from "../api/venueClient";
 
 // How a trader trades, from their closed trades (the last 100 the source
 // gives): which side, how long they hold, when in the day they're active,
@@ -67,4 +67,21 @@ export function activeHours(closed: readonly TraderClosedTrade[], span = 6) {
 export function trades30d(closed: readonly TraderClosedTrade[], limit: number, now = Date.now()) {
   const recent = closed.filter((t) => now - t.time <= 30 * DAY).length;
   return { count: recent, more: closed.length >= limit && recent === closed.length };
+}
+
+/** Round trips below which a win rate says more about luck than about them. */
+export const MIN_TRADES = 10;
+
+/**
+ * A trader's win rate: OKX's own, by trade; on Hyperliquid, the share of
+ * their recent round trips (open to flat) that made money, once there are
+ * enough of them - null when there aren't.
+ */
+export function winRateOf(
+  okx: boolean,
+  row: Pick<TraderRow, "winRate"> | undefined,
+  detail: Pick<TraderDetail, "winRate" | "closed"> | undefined,
+): number | null {
+  if (okx) return row?.winRate ?? detail?.winRate ?? null;
+  return detail && detail.closed.length >= MIN_TRADES ? detail.winRate : null;
 }
