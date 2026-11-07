@@ -3497,6 +3497,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pewterdesk-traders"
+version = "0.0.0"
+dependencies = [
+ "pewterdesk-core",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "phf"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

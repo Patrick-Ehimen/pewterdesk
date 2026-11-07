@@ -149,12 +149,13 @@ rust-test: ## Run Rust tests and check the generated TS types are committed
 
 # Run one at a time: in parallel they trip the venues' rate limits.
 .PHONY: rust-live
-rust-live: ## Run the read-only venue mainnet tests (needs the network)
+rust-live: ## Run the read-only venue mainnet and top traders tests (needs the network)
 	$(CARGO) test -p pewterdesk-exchange-hyperliquid -- --ignored --test-threads=1
 	$(CARGO) test -p pewterdesk-exchange-aster -- --ignored --test-threads=1
 	$(CARGO) test -p pewterdesk-exchange-bybit -- --ignored --test-threads=1
 	$(CARGO) test -p pewterdesk-exchange-binance -- --ignored --test-threads=1
 	$(CARGO) test -p pewterdesk-exchange-blofin -- --ignored --test-threads=1
+	$(CARGO) test -p pewterdesk-traders -- --ignored --test-threads=1
 
 .PHONY: rust-bindings
 rust-bindings: ## Regenerate packages/core/src/generated from crates/core and protocol
