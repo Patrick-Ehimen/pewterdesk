@@ -59,6 +59,9 @@ pub struct Follow {
     /// The kinds that alert; the rest are kept but don't.
     #[serde(default)]
     pub kinds: Vec<ChangeKind>,
+    /// The markets that alert (base coins); none means every market.
+    #[serde(default)]
+    pub markets: Vec<String>,
 }
 
 /// What a followed trader just did.
@@ -187,7 +190,9 @@ fn every(source: Source) -> Duration {
 
 /// Whether `change` meets `follow`'s alert settings.
 fn alerts(follow: &Follow, change: &Change) -> bool {
-    follow.kinds.contains(&change.kind) && change.value >= follow.min_value
+    follow.kinds.contains(&change.kind)
+        && change.value >= follow.min_value
+        && (follow.markets.is_empty() || follow.markets.iter().any(|m| m == &change.market))
 }
 
 /// A leaderboard. OKX ranks over the time a trader has led, so `period` is
@@ -258,6 +263,9 @@ pub fn set_trader_watch(
             continue;
         };
         f.id = id;
+        f.markets
+            .retain(|m| m.len() <= 20 && m.bytes().all(|b| b.is_ascii_alphanumeric()));
+        f.markets.truncate(50);
         f.min_value = if f.min_value.is_finite() {
             f.min_value.max(0.0)
         } else {
@@ -532,10 +540,17 @@ mod tests {
             id: "0xf5d81a135f756ca16544e53c20fc20643ec3ad53".into(),
             min_value: 250_000.0,
             kinds: vec![ChangeKind::Open, ChangeKind::Close],
+            markets: Vec::new(),
         };
         assert!(alerts(&follow, &change(ChangeKind::Open, 911_000.0)));
         assert!(!alerts(&follow, &change(ChangeKind::Open, 38_000.0)));
         assert!(!alerts(&follow, &change(ChangeKind::Cut, 911_000.0)));
+        // Only some markets: the rest stay quiet.
+        let btc_only = Follow {
+            markets: vec!["ETH".into()],
+            ..follow
+        };
+        assert!(!alerts(&btc_only, &change(ChangeKind::Open, 911_000.0)));
     }
 
     fn holding(market: &str, side: PositionSide) -> Holding {

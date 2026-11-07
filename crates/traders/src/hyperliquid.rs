@@ -278,6 +278,9 @@ struct Fill {
     #[serde(default)]
     closed_pnl: String,
     oid: u64,
+    /// The position's size before this fill (signed), as Hyperliquid reports it.
+    #[serde(default)]
+    start_position: String,
 }
 
 /// The side a fill closed, if it closed one: "Close Long", or "Long > Short" (a flip).
@@ -291,18 +294,33 @@ fn closed_side(dir: &str) -> Option<PositionSide> {
 
 /// Closing fills, one trade per closing order, newest first.
 fn closed_trades(fills: &[Fill]) -> Vec<ClosedTrade> {
-    // (market, side) by order: size, price times size, pnl, latest time.
-    let mut by_order: HashMap<u64, (String, PositionSide, f64, f64, f64, u64)> = HashMap::new();
+    // Oldest first, to follow each market's position from flat.
+    let mut fills: Vec<&Fill> = fills.iter().collect();
+    fills.sort_by_key(|f| f.time);
+    // When each market's position was last opened from flat (or flipped).
+    let mut opened: HashMap<&str, u64> = HashMap::new();
+    // By order: market, side, size, price times size, pnl, latest time, opened.
+    type Order = (String, PositionSide, f64, f64, f64, u64, Option<u64>);
+    let mut by_order: HashMap<u64, Order> = HashMap::new();
     for f in fills {
+        let from_flat = num(&f.start_position).is_some_and(|s| s.abs() < 1e-12);
+        if from_flat && f.dir.starts_with("Open") {
+            opened.insert(f.coin.as_str(), f.time);
+        }
         let (Some(side), true) = (closed_side(&f.dir), perp_coin(&f.coin)) else {
             continue;
         };
+        let since = opened.get(f.coin.as_str()).copied();
+        if f.dir.contains('>') {
+            // A flip: the old side closes here and the new one opens.
+            opened.insert(f.coin.as_str(), f.time);
+        }
         let (Some(px), Some(sz)) = (num(&f.px), num(&f.sz)) else {
             continue;
         };
         let e = by_order
             .entry(f.oid)
-            .or_insert_with(|| (f.coin.clone(), side, 0.0, 0.0, 0.0, 0));
+            .or_insert_with(|| (f.coin.clone(), side, 0.0, 0.0, 0.0, 0, since));
         e.2 += sz;
         e.3 += px * sz;
         e.4 += num(&f.closed_pnl).unwrap_or(0.0);
@@ -311,15 +329,17 @@ fn closed_trades(fills: &[Fill]) -> Vec<ClosedTrade> {
     let mut out: Vec<ClosedTrade> = by_order
         .into_values()
         .filter(|e| e.2 > 0.0)
-        .map(|(market, side, size, notional, pnl, time)| ClosedTrade {
-            market,
-            side,
-            size,
-            price: notional / size,
-            pnl,
-            time,
-            opened_at: None,
-        })
+        .map(
+            |(market, side, size, notional, pnl, time, opened_at)| ClosedTrade {
+                market,
+                side,
+                size,
+                price: notional / size,
+                pnl,
+                time,
+                opened_at,
+            },
+        )
         .collect();
     out.sort_by_key(|t| std::cmp::Reverse(t.time));
     out.truncate(MAX_CLOSED);
@@ -682,6 +702,31 @@ mod tests {
         );
         assert!((h[0].mark.unwrap() - 389367.35856 / 5.12656).abs() < 1e-6);
         assert_eq!(h[0].leverage, Some(3.0));
+    }
+
+    #[test]
+    fn a_close_knows_when_its_position_opened() {
+        let fills: Vec<Fill> = serde_json::from_value(serde_json::json!([
+            { "coin": "BTC", "px": "1", "sz": "1", "time": 100, "dir": "Open Long", "closedPnl": "0", "oid": 1, "startPosition": "0.0" },
+            { "coin": "BTC", "px": "1", "sz": "1", "time": 150, "dir": "Open Long", "closedPnl": "0", "oid": 2, "startPosition": "1.0" },
+            { "coin": "BTC", "px": "2", "sz": "2", "time": 400, "dir": "Long > Short", "closedPnl": "2", "oid": 3, "startPosition": "2.0" },
+            { "coin": "BTC", "px": "1", "sz": "1", "time": 900, "dir": "Close Short", "closedPnl": "1", "oid": 4, "startPosition": "-1.0" },
+            // Its opening fell before the fills on hand: unknown.
+            { "coin": "ETH", "px": "1", "sz": "1", "time": 500, "dir": "Close Long", "closedPnl": "1", "oid": 5, "startPosition": "1.0" }
+        ]))
+        .unwrap();
+        let closed = closed_trades(&fills);
+        let by = |oid_time: u64| {
+            closed
+                .iter()
+                .find(|t| t.time == oid_time)
+                .unwrap()
+                .opened_at
+        };
+        assert_eq!(by(400), Some(100));
+        // The flip opened the short at 400.
+        assert_eq!(by(900), Some(400));
+        assert_eq!(by(500), None);
     }
 
     #[test]
