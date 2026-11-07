@@ -152,7 +152,6 @@ fn row(e: &Entry, period: Period) -> TraderRow {
         copiers: None,
         lead_days: None,
         positive: Some(e.perf.map(|p| p.pnl > 0.0)),
-        markets: Vec::new(),
         roi_curve: Vec::new(),
     }
 }

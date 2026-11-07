@@ -82,8 +82,6 @@ pub struct TraderRow {
     /// Hyperliquid only: whether the day's, week's, month's and all time's
     /// PnL were each above zero, in that order.
     pub positive: Option<[bool; 4]>,
-    /// OKX only: the markets they trade (base coins, at most 8).
-    pub markets: Vec<String>,
     /// OKX only: their ROI day by day, oldest first (a fraction).
     pub roi_curve: Vec<f64>,
 }
