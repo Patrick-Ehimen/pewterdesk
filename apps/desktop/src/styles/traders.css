@@ -469,7 +469,9 @@
    stretches to meet the bottom. Too small a window scrolls the page. */
 .tr-profile {
   flex: 1;
-  min-height: 720px;
+  /* Room for the header, the chart and some positions: in a shorter window
+     the page scrolls rather than one column spilling past the other. */
+  min-height: 800px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -558,7 +560,11 @@
 }
 .tr-profile-main > .tr-positions {
   flex: 1;
-  min-height: 220px;
+  min-height: 200px;
+}
+/* Both columns are the row's height, never more: what doesn't fit scrolls inside. */
+.tr-profile-main {
+  overflow: hidden;
 }
 .tr-positions > .tr-scroll {
   flex: 1;
