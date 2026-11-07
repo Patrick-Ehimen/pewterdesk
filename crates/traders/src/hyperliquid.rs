@@ -20,8 +20,8 @@ use serde::Deserialize;
 
 use crate::stats::{best_step_share, max_drawdown, weeks_from_cumulative, win_share, TraderStats};
 use crate::{
-    body, client, now_ms, num, plain, ClosedTrade, Holding, Period, PositionSide, SortBy, Source,
-    TraderDetail, TraderRow, VenueError,
+    body, client, now_ms, num, plain, AccountRange, ClosedTrade, Holding, Period, PositionSide,
+    SortBy, Source, TraderDetail, TraderRow, VenueError,
 };
 
 const INFO: &str = "https://api.hyperliquid.xyz/info";
@@ -165,7 +165,7 @@ fn rank(
     board: &[Entry],
     period: Period,
     sort: SortBy,
-    min_account: f64,
+    range: AccountRange,
     limit: usize,
 ) -> Vec<TraderRow> {
     let i = index(period);
@@ -177,7 +177,7 @@ fn rank(
     };
     let mut kept: Vec<&Entry> = board
         .iter()
-        .filter(|e| e.account_value >= min_account)
+        .filter(|e| range.holds(e.account_value))
         .collect();
     kept.sort_by(|a, b| key(b).total_cmp(&key(a)));
     kept.into_iter()
@@ -277,10 +277,12 @@ struct Fill {
     dir: String,
     #[serde(default)]
     closed_pnl: String,
-    oid: u64,
     /// The position's size before this fill (signed), as Hyperliquid reports it.
     #[serde(default)]
     start_position: String,
+    /// "B" a buy, "A" a sell.
+    #[serde(default)]
+    side: String,
 }
 
 /// The side a fill closed, if it closed one: "Close Long", or "Long > Short" (a flip).
@@ -297,53 +299,78 @@ fn closed_trades(fills: &[Fill]) -> Vec<ClosedTrade> {
     // Oldest first, to follow each market's position from flat.
     let mut fills: Vec<&Fill> = fills.iter().collect();
     fills.sort_by_key(|f| f.time);
-    // When each market's position was last opened from flat (or flipped).
-    let mut opened: HashMap<&str, u64> = HashMap::new();
-    // By order: market, side, size, price times size, pnl, latest time, opened.
-    type Order = (String, PositionSide, f64, f64, f64, u64, Option<u64>);
-    let mut by_order: HashMap<u64, Order> = HashMap::new();
+    let mut trips: HashMap<&str, Trip> = HashMap::new();
+    let mut out = Vec::new();
     for f in fills {
-        let from_flat = num(&f.start_position).is_some_and(|s| s.abs() < 1e-12);
-        if from_flat && f.dir.starts_with("Open") {
-            opened.insert(f.coin.as_str(), f.time);
+        if !perp_coin(&f.coin) {
+            continue;
         }
-        let (Some(side), true) = (closed_side(&f.dir), perp_coin(&f.coin)) else {
+        let (Some(px), Some(sz), Some(start)) = (num(&f.px), num(&f.sz), num(&f.start_position))
+        else {
             continue;
         };
-        let since = opened.get(f.coin.as_str()).copied();
-        if f.dir.contains('>') {
-            // A flip: the old side closes here and the new one opens.
-            opened.insert(f.coin.as_str(), f.time);
+        let signed = if f.side == "B" { sz } else { -sz };
+        let after = start + signed;
+        let flat = |v: f64| v.abs() <= 1e-9 * start.abs().max(1.0);
+        let coin = f.coin.as_str();
+        if flat(start) && !flat(after) {
+            // Opened from flat: a trip begins, its start known.
+            trips.insert(coin, Trip::new(Some(f.time)));
+            continue;
         }
-        let (Some(px), Some(sz)) = (num(&f.px), num(&f.sz)) else {
+        let Some(side) = closed_side(&f.dir) else {
             continue;
         };
-        let e = by_order
-            .entry(f.oid)
-            .or_insert_with(|| (f.coin.clone(), side, 0.0, 0.0, 0.0, 0, since));
-        e.2 += sz;
-        e.3 += px * sz;
-        e.4 += num(&f.closed_pnl).unwrap_or(0.0);
-        e.5 = e.5.max(f.time);
+        // A close of a position opened before these fills: its start unknown.
+        let trip = trips.entry(coin).or_insert_with(|| Trip::new(None));
+        let closing = sz.min(start.abs());
+        trip.size += closing;
+        trip.notional += px * closing;
+        trip.pnl += num(&f.closed_pnl).unwrap_or(0.0);
+        trip.last = f.time;
+        if flat(after) || after.signum() != start.signum() {
+            let done = trips.remove(coin).expect("just used");
+            if done.size > 0.0 {
+                out.push(ClosedTrade {
+                    market: f.coin.clone(),
+                    side,
+                    size: done.size,
+                    price: done.notional / done.size,
+                    pnl: done.pnl,
+                    time: done.last,
+                    opened_at: done.opened,
+                });
+            }
+            if !flat(after) {
+                // A flip: the other side opens here.
+                trips.insert(coin, Trip::new(Some(f.time)));
+            }
+        }
     }
-    let mut out: Vec<ClosedTrade> = by_order
-        .into_values()
-        .filter(|e| e.2 > 0.0)
-        .map(
-            |(market, side, size, notional, pnl, time, opened_at)| ClosedTrade {
-                market,
-                side,
-                size,
-                price: notional / size,
-                pnl,
-                time,
-                opened_at,
-            },
-        )
-        .collect();
     out.sort_by_key(|t| std::cmp::Reverse(t.time));
     out.truncate(MAX_CLOSED);
     out
+}
+
+/// One position from opening to flat: what of it closed, for how much.
+struct Trip {
+    opened: Option<u64>,
+    size: f64,
+    notional: f64,
+    pnl: f64,
+    last: u64,
+}
+
+impl Trip {
+    fn new(opened: Option<u64>) -> Self {
+        Self {
+            opened,
+            size: 0.0,
+            notional: 0.0,
+            pnl: 0.0,
+            last: 0,
+        }
+    }
 }
 
 pub(crate) fn win_rate(closed: &[ClosedTrade]) -> Option<f64> {
@@ -492,11 +519,11 @@ impl Hyperliquid {
         &self,
         period: Period,
         sort: SortBy,
-        min_account: f64,
+        range: AccountRange,
         limit: usize,
     ) -> Result<Vec<TraderRow>, VenueError> {
         let board = self.board().await?;
-        Ok(rank(&board, period, sort, min_account.max(0.0), limit))
+        Ok(rank(&board, period, sort, range.checked(), limit))
     }
 
     /// `address`'s line on the leaderboard, if it's on it.
@@ -605,6 +632,7 @@ impl Hyperliquid {
             pnl_history: pnl_history(portfolio, period),
             weekly_pnl: Vec::new(),
             preferred,
+            fills_from: fills.iter().map(|f| f.time).min(),
         })
     }
 }
@@ -660,17 +688,28 @@ mod tests {
     #[test]
     fn ranks_by_period_and_sort_above_the_floor() {
         let b = board();
-        let by_pnl = rank(&b, Period::Month, SortBy::Pnl, 100_000.0, 10);
+        let floor = |min: f64| AccountRange { min, max: None };
+        let by_pnl = rank(&b, Period::Month, SortBy::Pnl, floor(100_000.0), 10);
         // The 50k account is under the floor, whatever its PnL.
         assert_eq!(
             by_pnl.iter().map(|r| r.pnl).collect::<Vec<_>>(),
             [900.0, 400.0]
         );
         assert_eq!(by_pnl[0].positive, Some([false, true, true, true]));
-        let by_size = rank(&b, Period::Month, SortBy::AccountValue, 0.0, 2);
+        let by_size = rank(&b, Period::Month, SortBy::AccountValue, floor(0.0), 2);
         assert_eq!(by_size[0].account_value, 9_000_000.0);
         assert_eq!(by_size.len(), 2);
-        let by_volume = rank(&b, Period::Month, SortBy::Volume, 0.0, 1);
+        let by_volume = rank(&b, Period::Month, SortBy::Volume, floor(0.0), 1);
+        // A band: 1M up to (not including) 5M keeps the 2M account only.
+        let band = AccountRange {
+            min: 1_000_000.0,
+            max: Some(5_000_000.0),
+        };
+        let in_band = rank(&b, Period::Month, SortBy::Pnl, band, 10);
+        assert_eq!(
+            in_band.iter().map(|r| r.account_value).collect::<Vec<_>>(),
+            [2_000_000.0]
+        );
         assert_eq!(by_volume[0].volume, Some(500.0));
     }
 
@@ -704,57 +743,63 @@ mod tests {
         assert_eq!(h[0].leverage, Some(3.0));
     }
 
-    #[test]
-    fn a_close_knows_when_its_position_opened() {
-        let fills: Vec<Fill> = serde_json::from_value(serde_json::json!([
-            { "coin": "BTC", "px": "1", "sz": "1", "time": 100, "dir": "Open Long", "closedPnl": "0", "oid": 1, "startPosition": "0.0" },
-            { "coin": "BTC", "px": "1", "sz": "1", "time": 150, "dir": "Open Long", "closedPnl": "0", "oid": 2, "startPosition": "1.0" },
-            { "coin": "BTC", "px": "2", "sz": "2", "time": 400, "dir": "Long > Short", "closedPnl": "2", "oid": 3, "startPosition": "2.0" },
-            { "coin": "BTC", "px": "1", "sz": "1", "time": 900, "dir": "Close Short", "closedPnl": "1", "oid": 4, "startPosition": "-1.0" },
-            // Its opening fell before the fills on hand: unknown.
-            { "coin": "ETH", "px": "1", "sz": "1", "time": 500, "dir": "Close Long", "closedPnl": "1", "oid": 5, "startPosition": "1.0" }
-        ]))
-        .unwrap();
-        let closed = closed_trades(&fills);
-        let by = |oid_time: u64| {
-            closed
-                .iter()
-                .find(|t| t.time == oid_time)
-                .unwrap()
-                .opened_at
-        };
-        assert_eq!(by(400), Some(100));
-        // The flip opened the short at 400.
-        assert_eq!(by(900), Some(400));
-        assert_eq!(by(500), None);
+    // One fill's fields in the order the test reads them.
+    #[allow(clippy::too_many_arguments)]
+    fn fill(
+        coin: &str,
+        side: &str,
+        sz: f64,
+        px: f64,
+        time: u64,
+        start: f64,
+        dir: &str,
+        pnl: f64,
+    ) -> serde_json::Value {
+        serde_json::json!({ "coin": coin, "side": side, "sz": sz.to_string(), "px": px.to_string(),
+            "time": time, "startPosition": start.to_string(), "dir": dir,
+            "closedPnl": pnl.to_string(), "oid": time })
     }
 
     #[test]
-    fn one_closing_order_is_one_trade() {
+    fn a_trade_is_a_position_from_flat_back_to_flat() {
         let fills: Vec<Fill> = serde_json::from_value(serde_json::json!([
-            { "coin": "BTC", "px": "76000", "sz": "1", "time": 10, "dir": "Close Short", "closedPnl": "100", "oid": 7 },
-            { "coin": "BTC", "px": "76100", "sz": "1", "time": 12, "dir": "Close Short", "closedPnl": "50", "oid": 7 },
-            { "coin": "ETH", "px": "2400", "sz": "3", "time": 20, "dir": "Long > Short", "closedPnl": "-30", "oid": 8 },
-            { "coin": "ETH", "px": "2400", "sz": "3", "time": 5, "dir": "Open Long", "closedPnl": "0", "oid": 6 },
-            { "coin": "@107", "px": "1", "sz": "1", "time": 30, "dir": "Sell", "closedPnl": "5", "oid": 9 }
+            // Opened in two fills, closed in three: one trade, +60 in all.
+            fill("BTC", "B", 1.0, 100.0, 10, 0.0, "Open Long", 0.0),
+            fill("BTC", "B", 1.0, 100.0, 20, 1.0, "Open Long", 0.0),
+            fill("BTC", "A", 0.5, 120.0, 30, 2.0, "Close Long", 10.0),
+            fill("BTC", "A", 0.5, 80.0, 40, 1.5, "Close Long", -10.0),
+            fill("BTC", "A", 1.0, 160.0, 50, 1.0, "Close Long", 60.0),
+            // A flip ends a long and opens a short, closed later.
+            fill("ETH", "B", 2.0, 10.0, 60, 0.0, "Open Long", 0.0),
+            fill("ETH", "A", 3.0, 9.0, 70, 2.0, "Long > Short", -2.0),
+            fill("ETH", "B", 1.0, 8.0, 90, -1.0, "Close Short", 1.0),
+            // Closed but opened before these fills: its start unknown.
+            fill("SOL", "A", 5.0, 1.0, 100, 5.0, "Close Long", 3.0),
+            // Still open: not a trade yet.
+            fill("XRP", "B", 1.0, 1.0, 110, 0.0, "Open Long", 0.0),
+            fill("@107", "A", 1.0, 1.0, 120, 1.0, "Sell", 5.0)
         ]))
         .unwrap();
         let closed = closed_trades(&fills);
-        assert_eq!(closed.len(), 2);
+        let at = |t: u64| closed.iter().find(|c| c.time == t).unwrap();
+        assert_eq!(closed.len(), 4);
+        let btc = at(50);
         assert_eq!(
-            (closed[0].market.as_str(), closed[0].side, closed[0].pnl),
-            ("ETH", PositionSide::Long, -30.0)
+            (btc.side, btc.size, btc.pnl, btc.opened_at),
+            (PositionSide::Long, 2.0, 60.0, Some(10))
+        );
+        assert!((btc.price - 130.0).abs() < 1e-9);
+        // The flip closes 2 ETH long (not 3).
+        assert_eq!(
+            (at(70).size, at(70).pnl, at(70).opened_at),
+            (2.0, -2.0, Some(60))
         );
         assert_eq!(
-            (
-                closed[1].size,
-                closed[1].price,
-                closed[1].pnl,
-                closed[1].time
-            ),
-            (2.0, 76050.0, 150.0, 12)
+            (at(90).side, at(90).opened_at),
+            (PositionSide::Short, Some(70))
         );
-        assert_eq!(win_rate(&closed), Some(0.5));
+        assert_eq!(at(100).opened_at, None);
+        assert_eq!(win_rate(&closed), Some(0.75));
         assert_eq!(win_rate(&[]), None);
     }
 
