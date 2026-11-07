@@ -27,6 +27,7 @@ mod notify;
 mod okx_liquidations;
 mod share;
 mod splash;
+mod traders;
 mod trading_rules;
 mod tray;
 mod updater;
@@ -86,6 +87,7 @@ pub fn run() {
         .manage(cloud::CloudState::new().expect("failed to set up the cloud client"))
         .manage(coin_info::CoinInfoState::new().expect("failed to set up the coin info client"))
         .manage(okx_liquidations::OkxState::new().expect("failed to set up the OKX client"))
+        .manage(traders::TradersState::new().expect("failed to set up the top traders client"))
         .manage(news_feeds::NewsState::new().expect("failed to set up the news client"))
         .manage(
             econ_calendar::CalendarState::new(env!("CARGO_PKG_VERSION"))
@@ -298,6 +300,11 @@ pub fn run() {
             coin_info::coin_markets,
             okx_liquidations::okx_liquidation_markets,
             okx_liquidations::okx_liquidations,
+            traders::traders_leaderboard,
+            traders::trader_detail,
+            traders::trader_rows,
+            traders::set_trader_watch,
+            traders::trader_snapshots,
             news_feeds::news_feed,
             news_feeds::open_news_article,
             econ_calendar::economic_calendar,

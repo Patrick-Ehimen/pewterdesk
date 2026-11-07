@@ -3233,6 +3233,7 @@ dependencies = [
  "pewterdesk-keychain",
  "pewterdesk-link",
  "pewterdesk-protocol",
+ "pewterdesk-traders",
  "quick-xml",
  "reqwest",
  "rustls",
