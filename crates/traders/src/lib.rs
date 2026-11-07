@@ -19,8 +19,10 @@ use serde::{Deserialize, Serialize};
 mod events;
 pub mod hyperliquid;
 pub mod okx;
+pub mod stats;
 
 pub use events::{changes, Change, ChangeKind};
+pub use stats::TraderStats;
 
 const USER_AGENT: &str = concat!("pewterdesk/", env!("CARGO_PKG_VERSION"));
 const TIMEOUT: Duration = Duration::from_secs(30);

@@ -25,6 +25,10 @@ async fn hyperliquid_board_and_a_trader() {
     assert!(again.windows(2).all(|w| w[0].roi >= w[1].roi));
 
     let top = &rows[0].id;
+    let stats = hl.stats(top).await.unwrap();
+    assert_eq!(stats.weeks.len(), pewterdesk_traders::stats::WEEKS);
+    assert!(stats.curve.len() > 10, "a month of points");
+    assert!(stats.max_drawdown.is_some_and(|d| (0.0..10.0).contains(&d)));
     let detail = hl.detail(top, Period::Month).await.unwrap();
     assert_eq!(&detail.id, top);
     assert!(!detail.pnl_history.is_empty());
@@ -48,6 +52,9 @@ async fn okx_board_and_a_lead_trader() {
         .all(|r| r.source == Source::Okx && r.copiers.is_some()));
     let code = &rows[0].id;
     assert!(okx.row(code).is_some());
+    let stats = okx.stats(code).await.unwrap();
+    assert!(stats.weeks.iter().any(|w| w.is_some()));
+    assert!(!stats.curve.is_empty());
     let detail = okx.detail(code, Period::Month).await.unwrap();
     assert!(detail
         .holdings

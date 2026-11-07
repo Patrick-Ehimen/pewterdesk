@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
+use crate::stats::{best_step_share, max_drawdown, weeks_from_weekly, TraderStats};
 use crate::{
     body, client, hyperliquid::win_rate, now_ms, num, plain, ClosedTrade, Holding, Period,
     PositionSide, SortBy, Source, TraderDetail, TraderRow, VenueError,
@@ -235,6 +236,32 @@ fn closed(p: &SubPosition, markets: &Markets) -> Option<ClosedTrade> {
 struct PnlPoint {
     begin_ts: String,
     pnl: String,
+    #[serde(default)]
+    pnl_ratio: String,
+}
+
+/// The record from a month of daily PnL (cumulative, with its ratio) and the
+/// weekly figures. Drawdown is on their equity: 1 plus the ratio.
+fn stats_from(daily: Vec<PnlPoint>, weekly: Vec<PnlPoint>, now: u64) -> TraderStats {
+    let mut ratio: Vec<(u64, f64)> = daily
+        .iter()
+        .filter_map(|p| Some((p.begin_ts.parse().ok()?, num(&p.pnl_ratio)?)))
+        .collect();
+    ratio.sort_by_key(|(t, _)| *t);
+    let curve = points(daily);
+    let equity = |t: u64| {
+        1.0 + ratio
+            .iter()
+            .take_while(|(at, _)| *at <= t)
+            .last()
+            .map_or(0.0, |(_, r)| *r)
+    };
+    TraderStats {
+        weeks: weeks_from_weekly(&points(weekly), now),
+        max_drawdown: max_drawdown(&ratio, equity),
+        best_day_share: best_step_share(&curve),
+        curve,
+    }
 }
 
 fn points(rows: Vec<PnlPoint>) -> Vec<(u64, f64)> {
@@ -412,6 +439,29 @@ impl Okx {
         Ok(rows.iter().filter_map(|p| holding(p, &markets)).collect())
     }
 
+    /// `code`'s record for the leaderboard: a month of daily PnL and the
+    /// weekly figures (two requests).
+    pub async fn stats(&self, code: &str) -> Result<TraderStats, VenueError> {
+        let code = Self::checked(code)?;
+        let daily: Vec<PnlPoint> = self
+            .get(
+                "/api/v5/copytrading/public-pnl",
+                &[
+                    ("instType", "SWAP"),
+                    ("uniqueCode", code),
+                    ("lastDays", "2"),
+                ],
+            )
+            .await?;
+        let weekly: Vec<PnlPoint> = self
+            .get(
+                "/api/v5/copytrading/public-weekly-pnl",
+                &[("instType", "SWAP"), ("uniqueCode", code)],
+            )
+            .await?;
+        Ok(stats_from(daily, weekly, now_ms()))
+    }
+
     /// `code`'s page; `period` picks the PnL history's window (7, 30 or 365 days).
     pub async fn detail(&self, code: &str, period: Period) -> Result<TraderDetail, VenueError> {
         let code = Self::checked(code)?;
@@ -547,6 +597,29 @@ mod tests {
             (h[1].side, h[1].size, h[1].opened_at),
             (PositionSide::Long, 5000.0, Some(1793887122806))
         );
+    }
+
+    #[test]
+    fn a_record_from_daily_and_weekly_pnl() {
+        let day = 86_400_000_u64;
+        let now = 100 * day;
+        let daily: Vec<PnlPoint> = serde_json::from_value(serde_json::json!([
+            { "beginTs": (now - 3 * day).to_string(), "pnl": "0", "pnlRatio": "0" },
+            { "beginTs": (now - 2 * day).to_string(), "pnl": "100", "pnlRatio": "1.0" },
+            { "beginTs": (now - day).to_string(), "pnl": "40", "pnlRatio": "0.4" },
+            { "beginTs": now.to_string(), "pnl": "120", "pnlRatio": "1.2" }
+        ]))
+        .unwrap();
+        let weekly: Vec<PnlPoint> = serde_json::from_value(serde_json::json!([
+            { "beginTs": (now - 6 * day).to_string(), "pnl": "-12", "pnlRatio": "0" }
+        ]))
+        .unwrap();
+        let s = stats_from(daily, weekly, now);
+        // From twice the stake (ratio 1.0) down to 1.4: 30% of equity.
+        assert!((s.max_drawdown.unwrap() - 0.3).abs() < 1e-12);
+        assert!((s.best_day_share.unwrap() - 100.0 / 120.0).abs() < 1e-12);
+        assert_eq!(s.weeks.last(), Some(&Some(-12.0)));
+        assert_eq!(s.curve.len(), 4);
     }
 
     #[test]

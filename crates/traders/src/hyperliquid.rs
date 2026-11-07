@@ -18,8 +18,9 @@ use std::time::{Duration, Instant};
 
 use serde::Deserialize;
 
+use crate::stats::{best_step_share, max_drawdown, weeks_from_cumulative, TraderStats};
 use crate::{
-    body, client, num, plain, ClosedTrade, Holding, Period, PositionSide, SortBy, Source,
+    body, client, now_ms, num, plain, ClosedTrade, Holding, Period, PositionSide, SortBy, Source,
     TraderDetail, TraderRow, VenueError,
 };
 
@@ -31,8 +32,10 @@ const LEADERBOARD_CAP: usize = 128 * 1024 * 1024;
 const INFO_CAP: usize = 8 * 1024 * 1024;
 /// How long the leaderboard is kept before it's read again.
 const BOARD_FRESH_FOR: Duration = Duration::from_secs(10 * 60);
-/// Info requests start at least this far apart.
-const SPACING: Duration = Duration::from_millis(120);
+/// Time between info requests per unit of the last one's weight: about 860
+/// weight a minute, inside Hyperliquid's 1200 per IP with room for the rest
+/// of the app's requests.
+const PER_WEIGHT: Duration = Duration::from_millis(70);
 /// The most rows a leaderboard read returns.
 pub const MAX_ROWS: usize = 500;
 /// Closed trades kept on a trader's page.
@@ -343,6 +346,49 @@ fn portfolio_key(period: Period) -> &'static str {
 struct Window {
     #[serde(default)]
     pnl_history: Vec<(u64, String)>,
+    #[serde(default)]
+    account_value_history: Vec<(u64, String)>,
+}
+
+fn points(raw: &[(u64, String)]) -> Vec<(u64, f64)> {
+    raw.iter()
+        .filter_map(|(t, v)| Some((*t, num(v)?)))
+        .collect()
+}
+
+/// A request's weight, by Hyperliquid's docs: 2 for `clearinghouseState`, 20
+/// for most others, and `userFills` 20 more per 20 fills (up to 2,000 here).
+fn weight(request: &serde_json::Value) -> u32 {
+    match request["type"].as_str() {
+        Some("clearinghouseState") => 2,
+        Some("userFills") => 60,
+        _ => 20,
+    }
+}
+
+/// The record from a portfolio: weeks from all time's PnL (about a point a
+/// week), the rest from the month's (about one a day).
+fn stats_from(portfolio: &[(String, Window)], now: u64) -> TraderStats {
+    let window = |k: &str| portfolio.iter().find(|(n, _)| n == k).map(|(_, w)| w);
+    let all = window("perpAllTime").map_or_else(Vec::new, |w| points(&w.pnl_history));
+    let (month, account) = window("perpMonth").map_or_else(Default::default, |w| {
+        (points(&w.pnl_history), points(&w.account_value_history))
+    });
+    // What they had at `t`: the account's value then (or its first).
+    let base = |t: u64| {
+        account
+            .iter()
+            .take_while(|(at, _)| *at <= t)
+            .last()
+            .or(account.first())
+            .map_or(0.0, |(_, v)| *v)
+    };
+    TraderStats {
+        weeks: weeks_from_cumulative(&all, now),
+        max_drawdown: max_drawdown(&month, base),
+        best_day_share: best_step_share(&month),
+        curve: month,
+    }
 }
 
 fn pnl_history(portfolio: Vec<(String, Window)>, period: Period) -> Vec<(u64, f64)> {
@@ -452,7 +498,7 @@ impl Hyperliquid {
         {
             let mut next = self.next.lock().await;
             tokio::time::sleep_until((*next).into()).await;
-            *next = Instant::now() + SPACING;
+            *next = Instant::now() + PER_WEIGHT * weight(&request);
         }
         let response = self
             .http
@@ -493,6 +539,16 @@ impl Hyperliquid {
             num(&state.margin_summary.account_value).unwrap_or(0.0),
             holdings,
         ))
+    }
+
+    /// `address`'s record for the leaderboard: green weeks, max drawdown,
+    /// the month's PnL line. One `portfolio` request (weight 20).
+    pub async fn stats(&self, address: &str) -> Result<TraderStats, VenueError> {
+        let user = Self::checked(address)?;
+        let portfolio: Vec<(String, Window)> = self
+            .info(serde_json::json!({ "type": "portfolio", "user": user }))
+            .await?;
+        Ok(stats_from(&portfolio, now_ms()))
     }
 
     /// `address`'s page: holdings, closed trades, and PnL over `period`.
@@ -654,6 +710,35 @@ mod tests {
         );
         assert_eq!(win_rate(&closed), Some(0.5));
         assert_eq!(win_rate(&[]), None);
+    }
+
+    #[test]
+    fn a_record_from_the_portfolio() {
+        let week = 7 * 86_400_000_u64;
+        let now = 20 * week;
+        let all: Vec<serde_json::Value> = (0..=10)
+            .map(|i| serde_json::json!([now - (10 - i) * week, format!("{}", i * 100)]))
+            .collect();
+        let portfolio: Vec<(String, Window)> = serde_json::from_value(serde_json::json!([
+            ["perpAllTime", { "pnlHistory": all, "accountValueHistory": [] }],
+            ["perpMonth", {
+                "pnlHistory": [[1, "0"], [2, "500"], [3, "300"], [4, "700"]],
+                "accountValueHistory": [[1, "10000"], [2, "10500"], [3, "10300"], [4, "10700"]]
+            }]
+        ]))
+        .unwrap();
+        let s = stats_from(&portfolio, now);
+        assert_eq!(s.weeks.len(), crate::stats::WEEKS);
+        assert!(s.weeks.iter().all(|w| *w == Some(100.0)));
+        // From 500 down to 300, against the 10,500 they had at the top.
+        assert!((s.max_drawdown.unwrap() - 200.0 / 10_500.0).abs() < 1e-12);
+        assert!((s.best_day_share.unwrap() - 500.0 / 700.0).abs() < 1e-12);
+        assert_eq!(s.curve.len(), 4);
+        assert_eq!(
+            weight(&serde_json::json!({ "type": "clearinghouseState" })),
+            2
+        );
+        assert_eq!(weight(&serde_json::json!({ "type": "portfolio" })), 20);
     }
 
     #[test]
