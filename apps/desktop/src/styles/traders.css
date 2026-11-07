@@ -1268,3 +1268,416 @@
     grid-template-columns: minmax(0, 1fr) 340px;
   }
 }
+
+/* A switch (alerts on / off): raised pewter when on, not brass. */
+.tr-switch {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pd-border-strong);
+  cursor: pointer;
+}
+.tr-switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 999px;
+  background: var(--pd-pewter);
+  transition: left 0.15s ease;
+}
+.tr-switch[aria-checked="true"] {
+  background: var(--pd-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--pd-text);
+}
+.tr-switch[aria-checked="true"] i {
+  left: 15px;
+  background: var(--pd-text);
+}
+.tr-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.tr-switch:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.tr-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tr-chip:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.tr-input span {
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+
+/* How they trade */
+.tr-how-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 12px 10px;
+}
+.tr-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.tr-kv > span:first-child {
+  color: var(--pd-pewter);
+}
+.tr-how-split {
+  height: 6px;
+}
+.tr-hold {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 46px;
+}
+.tr-hold i {
+  flex: 1;
+  border-radius: 2px 2px 0 0;
+  background: var(--pd-border-strong);
+}
+.tr-hold i[data-top] {
+  background: var(--pd-pewter);
+}
+.tr-hold-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--pd-pewter-dim);
+  font-size: 10.5px;
+}
+
+/* Against your account */
+.tr-against {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tr-against li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--pd-border);
+  font-size: 12.5px;
+  line-height: 17px;
+}
+.tr-against li:first-child {
+  border-top: 0;
+}
+.tr-against li > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.tr-against b {
+  font-weight: 500;
+}
+.tr-against small {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.tr-against-tag {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--pd-warning) 40%, transparent);
+  border-radius: 4px;
+  color: var(--pd-warning);
+  font-size: 11px;
+  line-height: 16px;
+}
+.tr-against-tag[data-same] {
+  border-color: var(--pd-border-strong);
+  color: var(--pd-text);
+}
+
+/* Following: the header's status and Telegram */
+.tr-status-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tr-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-surface);
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+button.tr-status-chip {
+  cursor: pointer;
+}
+button.tr-status-chip:hover,
+button.tr-status-chip[aria-expanded="true"] {
+  border-color: var(--pd-border-strong);
+  color: var(--pd-text);
+}
+button.tr-status-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+/* The live dot: brass, as everywhere a feed is live. */
+.tr-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--pd-brass);
+}
+.tr-live-dot[data-off] {
+  background: var(--pd-pewter-dim);
+}
+.tr-telegram {
+  position: relative;
+}
+.tr-telegram-note {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 5;
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 12px;
+  line-height: 17px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+}
+.tr-telegram-note b {
+  color: var(--pd-text);
+  font-weight: 500;
+}
+
+/* Following: lists, list alerts, legend */
+.tr-list-names button svg {
+  flex: none;
+  color: var(--pd-pewter);
+}
+.tr-list-names button[aria-current] svg {
+  color: var(--pd-text);
+}
+.tr-list-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px 10px;
+}
+.tr-list-alerts-edit {
+  gap: 8px;
+}
+.tr-chips-left {
+  justify-content: flex-start;
+  max-width: none;
+}
+.tr-input-wide {
+  width: 100%;
+}
+.tr-input-wide input {
+  text-align: right;
+}
+.tr-agree-pick select {
+  height: 26px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 4px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 12px;
+}
+.tr-mini {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 4px;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.tr-mini:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.tr-legend {
+  flex-direction: column;
+  gap: 4px;
+}
+.tr-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The last 24 hours */
+.tr-lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.tr-lg i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.tr-lg i[data-side="long"] {
+  background: var(--pd-buy);
+}
+.tr-lg i[data-side="short"] {
+  background: var(--pd-sell);
+}
+.tr-lg i[data-now] {
+  width: 2px;
+  height: 10px;
+  border-radius: 0;
+  background: var(--pd-brass);
+}
+.tr-tl {
+  padding: 6px 12px 10px;
+}
+.tr-tl-head,
+.tr-tl-row {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  align-items: center;
+}
+.tr-tl-ticks {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 4px;
+  color: var(--pd-pewter-dim);
+  font-size: 10.5px;
+}
+.tr-tl-row {
+  min-height: 38px;
+  border-top: 1px solid var(--pd-border);
+}
+.tr-tl-row .tr-who-name b {
+  font-size: 12px;
+}
+.tr-tl-track {
+  position: relative;
+  min-height: 38px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(16.666% - 1px),
+    var(--pd-border) calc(16.666% - 1px),
+    var(--pd-border) 16.666%
+  );
+}
+.tr-tl-bar {
+  position: absolute;
+  height: 14px;
+  overflow: hidden;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: var(--pd-text);
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+.tr-tl-more {
+  position: absolute;
+  right: 6px;
+  bottom: 1px;
+  color: var(--pd-pewter);
+  font-size: 10px;
+}
+.tr-tl-bar[data-side="long"] {
+  background: color-mix(in srgb, var(--pd-buy) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pd-buy) 55%, transparent);
+}
+.tr-tl-bar[data-side="short"] {
+  background: color-mix(in srgb, var(--pd-sell) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pd-sell) 55%, transparent);
+}
+/* Held before the window, or before the app was watching: no left edge. */
+.tr-tl-bar[data-cut] {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  /* A mask: only the alpha counts. */
+  mask-image: linear-gradient(90deg, transparent 0, var(--pd-text) 14px);
+}
+.tr-tl-now {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--pd-brass);
+}
+.tr-tl-none {
+  position: absolute;
+  top: 12px;
+  left: 8px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+
+/* Activity: the last hour's moves stand out, a brass dot and a wash. */
+.tr-moves li[data-new] {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--pd-brass) 8%, transparent),
+    transparent 70%
+  );
+}
+.tr-moves li[data-new] .tr-link::after {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--pd-brass);
+  vertical-align: middle;
+}
+.tr-moves p .tr-side {
+  margin-right: 2px;
+  vertical-align: 1px;
+}
+.tr-moves small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.tr-moves li[data-alert] small {
+  color: var(--pd-text);
+}

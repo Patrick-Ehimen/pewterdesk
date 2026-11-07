@@ -14,9 +14,11 @@ import {
   type TraderPeriod,
   type TraderRow,
   type TraderSource,
+  type TraderSwept,
   tradersClient,
 } from "../../api/venueClient";
 import { traderName } from "../../hooks/useTraderWatch";
+import { trades30d } from "../../lib/traderHabits";
 import {
   alertsFor,
   CHANGE_KINDS,
@@ -36,6 +38,7 @@ import {
   WeeksSkeleton,
 } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
+import { AgainstYou, AlertsCard, HowTheyTrade, type MyBook } from "./TraderSide";
 
 interface Props {
   source: TraderSource;
@@ -43,6 +46,8 @@ interface Props {
   /** Their leaderboard line, when opened from one. */
   row?: TraderRow;
   period: TraderPeriod;
+  /** Your positions on the venue on screen, to compare with theirs. */
+  mine?: MyBook;
   onBack: () => void;
 }
 
@@ -56,17 +61,31 @@ const when = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-export function TraderView({ source, id, row, period: startPeriod, onBack }: Props) {
-  const { state, toggleFollow, setAlerts } = useTraders();
+export function TraderView({ source, id, row, period: startPeriod, mine, onBack }: Props) {
+  const { state, toggleFollow } = useTraders();
   const [period, setPeriod] = useState<TraderPeriod>(startPeriod);
   const [detail, setDetail] = useState<TraderDetail>();
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
+  /** Their record and positions as the leaderboard reads them; null if it couldn't be read. */
+  const [record, setRecord] = useState<TraderSwept | null>();
   const key = traderKey(source, id);
   const name = traderName(source, id, row?.name);
   const followed = isFollowed(state, key);
   const okx = source === "okx";
+
+  useEffect(() => {
+    let live = true;
+    setRecord(undefined);
+    tradersClient
+      .sweep(source, [id])
+      .then((r) => live && setRecord(r[0] ?? null))
+      .catch(() => live && setRecord(null));
+    return () => {
+      live = false;
+    };
+  }, [source, id]);
 
   useEffect(() => {
     let live = true;
@@ -84,12 +103,30 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
   /** Still reading this trader (not after an error). */
   const loading = !detail && !error;
   const open = detail?.holdings ?? [];
-  const openValue = open.reduce((sum, h) => sum + h.value, 0);
   const history = detail?.pnlHistory ?? [];
   const periodPnl =
     history.length > 1 ? (history.at(-1)?.[1] ?? 0) - (history[0]?.[1] ?? 0) : undefined;
-  const alerts = alertsFor(state, key);
   const full = !followed && followedKeys(state).length >= MAX_FOLLOWED;
+  // Their record (win days, drawdown): the leaderboard's read, kept 30 minutes in Rust.
+  const win = okx ? row?.winRate : record?.stats?.winDays;
+  const dd = record?.stats?.maxDrawdown;
+  const levered = open.filter((h) => h.leverage != null);
+  const leverage =
+    levered.length > 0
+      ? levered.reduce((s, h) => s + h.value * (h.leverage ?? 0), 0) /
+        Math.max(
+          1,
+          levered.reduce((s, h) => s + h.value, 0),
+        )
+      : undefined;
+  const recent = detail ? trades30d(detail.closed, 100) : undefined;
+  /** Their markets, for the alerts card: what they hold, then what they trade most. */
+  const markets = [
+    ...new Set([
+      ...[...open].sort((a, b) => b.value - a.value).map((h) => h.market),
+      ...(detail?.preferred.map(([coin]) => coin) ?? []),
+    ]),
+  ].filter((m) => /^[0-9A-Za-z]{1,20}$/.test(m));
 
   const copy = () => {
     void navigator.clipboard.writeText(id).then(() => {
@@ -136,39 +173,50 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
         </div>
         <div className="tr-kpis">
           <Kpi
-            label={t(okx ? "traders.kpi.aum" : "traders.kpi.account")}
-            value={formatCompact(detail?.accountValue || row?.accountValue || 0)}
-            loading={loading && !row}
-          />
-          <Kpi
             label={`${t("traders.kpi.pnl")} ${okx ? "" : t(`traders.period.${period}`)}`}
             value={
               periodPnl === undefined ? (row ? signedMoney(row.pnl) : "–") : signedMoney(periodPnl)
             }
             trend={periodPnl ?? row?.pnl}
+            note={okx ? t("traders.kpi.sinceLeading") : undefined}
             loading={loading && !row}
           />
-          {row && (
-            <Kpi
-              label={t("traders.kpi.roi")}
-              value={(row.roi > 0 ? "+" : "") + formatPercent(row.roi, 1)}
-              trend={row.roi}
-            />
-          )}
           <Kpi
-            label={t("traders.kpi.winRate")}
-            value={detail?.winRate == null ? "–" : formatPercent(detail.winRate, 0)}
-            note={
-              detail?.winRate == null
-                ? undefined
-                : t("traders.kpi.winRateHint", { count: detail.closed.length })
-            }
-            loading={loading}
+            label={t("traders.kpi.roi")}
+            value={row ? (row.roi > 0 ? "+" : "") + formatPercent(row.roi, 1) : "–"}
+            trend={row?.roi}
           />
           <Kpi
-            label={t("traders.kpi.open")}
-            value={detail ? `$${formatCompact(openValue)}` : "–"}
-            note={detail ? t("traders.kpi.openHint", { count: open.length }) : undefined}
+            label={t(okx ? "traders.kpi.winRate" : "traders.col.winDays")}
+            value={win == null ? "–" : formatPercent(win, 0)}
+            note={t(okx ? "traders.kpi.winOkx" : "traders.kpi.winDaysHint")}
+            loading={!okx && record === undefined}
+          />
+          <Kpi
+            label={t("traders.kpi.dd")}
+            value={dd == null ? "–" : dd > 0 ? `−${formatPercent(dd, 1)}` : "0%"}
+            trend={dd ? -dd : undefined}
+            note={t("traders.kpi.ddHint")}
+            loading={record === undefined}
+          />
+          <Kpi
+            label={t(okx ? "traders.kpi.aum" : "traders.kpi.account")}
+            value={formatCompact(detail?.accountValue || row?.accountValue || 0)}
+            note={
+              leverage === undefined
+                ? undefined
+                : t("traders.kpi.leverage", { x: formatNumber(leverage, 1) })
+            }
+            loading={loading && !row}
+          />
+          <Kpi
+            label={t("traders.kpi.trades")}
+            value={recent ? `${recent.count}${recent.more ? "+" : ""}` : "–"}
+            note={
+              recent && recent.count > 0
+                ? t("traders.kpi.perDay", { n: formatNumber(recent.count / 30, 1) })
+                : undefined
+            }
             loading={loading}
           />
         </div>
@@ -317,121 +365,23 @@ export function TraderView({ source, id, row, period: startPeriod, onBack }: Pro
           </div>
 
           <aside className="tr-profile-side">
-            <section className="tr-panel">
-              <header className="tr-panel-head">
-                <h3>{t("traders.alerts")}</h3>
-                <span className="app-spacer" />
-                {followed && (
-                  <label className="tr-toggle">
-                    <input
-                      type="checkbox"
-                      checked={alerts.on}
-                      onChange={(e) => setAlerts(key, { ...alerts, on: e.target.checked })}
-                    />
-                    <span>{t("traders.alerts.on")}</span>
-                  </label>
+            <AlertsCard traderKey={key} markets={markets} />
+            <HowTheyTrade detail={detail} />
+            {okx && (
+              <section className="tr-panel" aria-busy={loading || undefined}>
+                <header className="tr-panel-head">
+                  <h3>{t("traders.weekly")}</h3>
+                </header>
+                {loading ? (
+                  <WeeksSkeleton />
+                ) : detail && detail.weeklyPnl.length > 0 ? (
+                  <Weekly weeks={detail.weeklyPnl.slice(-12)} />
+                ) : (
+                  <p className="tr-note tr-pad">{t("traders.noHistory")}</p>
                 )}
-              </header>
-              {followed ? (
-                <div className="tr-alerts" data-off={!alerts.on || undefined}>
-                  <div className="tr-alert-row">
-                    <div>
-                      {t("traders.alerts.when")}
-                      <small>{t("traders.alerts.whenHint")}</small>
-                    </div>
-                    <div className="tr-chips">
-                      {CHANGE_KINDS.map((k) => (
-                        <button
-                          type="button"
-                          key={k}
-                          className="tr-chip"
-                          aria-pressed={alerts.kinds.includes(k)}
-                          disabled={!alerts.on}
-                          onClick={() =>
-                            setAlerts(key, {
-                              ...alerts,
-                              kinds: alerts.kinds.includes(k)
-                                ? alerts.kinds.filter((x) => x !== k)
-                                : [...alerts.kinds, k],
-                            })
-                          }
-                        >
-                          {t(`traders.kind.${k}`)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="tr-alert-row">
-                    <div>
-                      {t("traders.alerts.min")}
-                      <small>{t("traders.alerts.minHint")}</small>
-                    </div>
-                    <label className="tr-input">
-                      <span>$</span>
-                      <input
-                        inputMode="numeric"
-                        disabled={!alerts.on}
-                        defaultValue={String(alerts.minValue)}
-                        key={alerts.minValue}
-                        aria-label={t("traders.alerts.min")}
-                        onBlur={(e) => {
-                          const v = Number(e.target.value.replace(/[,\s$]/g, ""));
-                          if (Number.isFinite(v) && v >= 0)
-                            setAlerts(key, { ...alerts, minValue: v });
-                        }}
-                      />
-                    </label>
-                  </div>
-                  <p className="tr-note">{t("traders.alerts.where")}</p>
-                </div>
-              ) : (
-                <p className="tr-note tr-pad">{t("traders.alerts.followFirst")}</p>
-              )}
-            </section>
-
-            {loading && (
-              <section className="tr-panel" aria-busy="true">
-                <header className="tr-panel-head">
-                  <h3>{t("traders.preferred")}</h3>
-                </header>
-                <BarsSkeleton />
               </section>
             )}
-            {loading && okx && (
-              <section className="tr-panel" aria-busy="true">
-                <header className="tr-panel-head">
-                  <h3>{t("traders.weekly")}</h3>
-                </header>
-                <WeeksSkeleton />
-              </section>
-            )}
-            {detail && detail.preferred.length > 0 && (
-              <section className="tr-panel">
-                <header className="tr-panel-head">
-                  <h3>{t("traders.preferred")}</h3>
-                </header>
-                <div className="tr-bars">
-                  {detail.preferred.map(([coin, share]) => (
-                    <div key={coin} className="tr-bar-row">
-                      <span>{coin}</span>
-                      <span className="tr-bar">
-                        <i style={{ width: `${Math.min(100, share * 100)}%` }} />
-                      </span>
-                      <span className="tr-muted">{formatPercent(share, 0)}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {detail && detail.weeklyPnl.length > 0 && (
-              <section className="tr-panel">
-                <header className="tr-panel-head">
-                  <h3>{t("traders.weekly")}</h3>
-                </header>
-                <Weekly weeks={detail.weeklyPnl.slice(-12)} />
-              </section>
-            )}
+            <AgainstYou detail={detail} mine={mine} />
           </aside>
         </div>
       )}

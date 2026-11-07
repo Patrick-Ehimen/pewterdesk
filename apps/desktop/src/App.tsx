@@ -1998,7 +1998,21 @@ export function App() {
             onManage={() => openConnect()}
           />
         ) : page === "traders" ? (
-          <TradersPage />
+          <TradersPage
+            mine={
+              account.status === "live" || account.status === "closed"
+                ? {
+                    label: paperOn ? `${venueInfo.label} · ${paperBadge}` : venueInfo.label,
+                    positions: account.data.positions.map((p) => ({
+                      market: marketList.find((m) => m.id === p.market)?.base ?? p.market,
+                      side: p.side,
+                      size: Number(p.size),
+                      entry: Number(p.entryPrice),
+                    })),
+                  }
+                : undefined
+            }
+          />
         ) : page === "plan" ? (
           <PlanPage
             venue={venue}

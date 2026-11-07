@@ -1138,7 +1138,19 @@ each trader's record, `stats` in `crates/traders`, kept 30 minutes) are
 read for the same top traders, and its chips filter by account size, style
 (`lib/traderStyles.ts`: whale by size, scalper or swing by turnover a day)
 and one-hit wonders (over half the month's PnL in one day). A click on a
-trader opens a side panel
+trader opens a side panel (every open position, scrolling on its own). A
+trader's full page has their win rate (win days on Hyperliquid), max
+drawdown and trades in 30 days, their alerts (kinds, a floor, markets,
+App or Desktop; `TraderSide.tsx`), how they trade (long / short, hold
+time from when each position opened - Hyperliquid's from its fills'
+`startPosition` - active hours; `lib/traderHabits.ts`) and how they sit
+against your own positions on the venue on screen (compared on this
+machine, never sent). Following has lists by source as well as the
+trader's own, each list's alerts (the default for its traders, and an
+alert when N of them hold the same side of a market; `agreements` in
+`lib/traders.ts`), the last 24 hours as bars from what the app saw
+(`lib/timeline.ts`) and a status line; Telegram waits on the watch
+server. A trader opens a side panel
 (`TraderPreview.tsx`) with Follow and the way to their full page. Each
 trader's picture takes a hue from the tag palette (`TraderAvatar.tsx`,
 BRAND.md). App runs `useTraderWatch` all

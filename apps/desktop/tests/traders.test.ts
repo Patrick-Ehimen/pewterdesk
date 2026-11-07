@@ -3,10 +3,14 @@ import type { TraderHolding, TraderMove, TraderSnapshot } from "../src/api/venue
 import { avatarCells } from "../src/components/traders/TraderAvatar";
 import {
   agreement,
+  alertsFor,
   DEFAULT_ALERTS,
+  DEFAULT_LIST_ALERTS,
   FOLLOWING,
   followedKeys,
   isFollowed,
+  type ListAlerts,
+  listAlertsFor,
   MAX_FOLLOWED,
   netSide,
   parseActivity,
@@ -18,8 +22,10 @@ import {
   watchFollows,
   withAlerts,
   withList,
+  withListAlerts,
   withMove,
   withoutList,
+  withoutOwnAlerts,
 } from "../src/lib/traders";
 
 const A = "0xf5d81a135f756ca16544e53c20fc20643ec3ad53";
@@ -93,6 +99,8 @@ describe("stored state", () => {
       on: false,
       minValue: DEFAULT_ALERTS.minValue,
       kinds: ["open"],
+      markets: [],
+      to: ["app", "desktop"],
     });
     expect(Object.keys(parsed.alerts)).toEqual([hl(A)]);
     expect(parsed.names).toEqual({ [hl(A)]: "Glacier" });
@@ -132,16 +140,42 @@ describe("following", () => {
 
   it("hands Rust every followed trader; one with alerts off alerts on nothing", () => {
     let s = toggleFollow(toggleFollow(empty(), hl(A)), `okx:${O}`);
-    s = withAlerts(s, `okx:${O}`, { on: false, minValue: 10, kinds: ["open"] });
+    s = withAlerts(s, `okx:${O}`, {
+      on: false,
+      minValue: 10,
+      kinds: ["open"],
+      markets: ["BTC", "not a coin!"],
+      to: ["app"],
+    });
     expect(watchFollows(s)).toEqual([
       {
         source: "hyperliquid",
         id: A,
         minValue: DEFAULT_ALERTS.minValue,
         kinds: DEFAULT_ALERTS.kinds,
+        markets: [],
       },
-      { source: "okx", id: O, minValue: 10, kinds: [] },
+      { source: "okx", id: O, minValue: 10, kinds: [], markets: ["BTC"] },
     ]);
+  });
+
+  it("a trader without alerts of their own takes their list's", () => {
+    let s = withList(toggleFollow(empty(), hl(A)), "w", "Whales");
+    s = toggledIn(s, "w", hl(B));
+    const whales: ListAlerts = { ...DEFAULT_LIST_ALERTS, minValue: 1_000_000, agree: 3 };
+    s = withListAlerts(s, "w", whales);
+    // A is only in Following (no list alerts there): the defaults.
+    expect(alertsFor(s, hl(A))).toEqual(DEFAULT_ALERTS);
+    expect(alertsFor(s, hl(B)).minValue).toBe(1_000_000);
+    expect(listAlertsFor(s, "w").agree).toBe(3);
+    // Their own win, until they're reset.
+    s = withAlerts(s, hl(B), { ...DEFAULT_ALERTS, minValue: 5 });
+    expect(alertsFor(s, hl(B)).minValue).toBe(5);
+    expect(alertsFor(withoutOwnAlerts(s, hl(B)), hl(B)).minValue).toBe(1_000_000);
+    // An agree count outside 2 to the most followed is off.
+    expect(listAlertsFor(withListAlerts(s, "w", { ...whales, agree: 1 }), "w").agree).toBeNull();
+    // Stored and read back.
+    expect(parseTraders(JSON.stringify(s)).listAlerts.w?.agree).toBe(3);
   });
 });
 
