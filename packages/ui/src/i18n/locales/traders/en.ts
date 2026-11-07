@@ -174,6 +174,11 @@ export const tradersEn = {
   "traders.activity.alerts": "Alerts",
   "traders.activity.none":
     "Nothing yet. Moves show here as the traders you follow make them, while the app runs.",
+  "traders.activity.clear": "Clear all",
+  "traders.activity.clearAsk":
+    "Delete all {count} moves from this machine? Every list's go, and they can't be brought back.",
+  "traders.activity.clearYes": "Delete them",
+  "traders.activity.keepIt": "Keep",
   "traders.activity.sent": "alerted",
   "traders.activity.quiet": "below your alert settings",
   "traders.activity.keep":

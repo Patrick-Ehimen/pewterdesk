@@ -1807,3 +1807,36 @@ button.tr-status-chip:focus-visible {
   flex: 1;
   min-height: 360px;
 }
+
+/* The activity's All / Alerts: a small switch, not the page's. */
+.tr-feed .pd-map-seg {
+  padding: 2px;
+  border-radius: 6px;
+}
+.tr-feed .pd-map-seg button {
+  min-width: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+/* Clearing the activity, asked first. */
+.tr-confirm {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  background: var(--pd-surface-raised);
+  font-size: 12px;
+  line-height: 17px;
+}
+.tr-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.tr-mini-danger {
+  border-color: color-mix(in srgb, var(--pd-sell) 50%, transparent);
+  color: var(--pd-sell);
+}

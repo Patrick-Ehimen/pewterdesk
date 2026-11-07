@@ -10,6 +10,7 @@ import type {
 import { moveText, traderName, useTraderSnapshots } from "../../hooks/useTraderWatch";
 import {
   agreement,
+  clearActivity,
   FOLLOWING,
   LIST_NAME_MAX,
   listKeys,
@@ -48,6 +49,8 @@ export function ActivityFeed({
   compact?: boolean;
 }) {
   const [only, setOnly] = useState<"all" | "alerts">("all");
+  const [confirming, setConfirming] = useState(false);
+  const all = useActivity();
   const shown = only === "alerts" ? moves.filter((m) => m.alert) : moves;
   const now = Date.now();
   return (
@@ -55,6 +58,11 @@ export function ActivityFeed({
       <header className="tr-panel-head">
         <h3>{t("traders.activity")}</h3>
         <span className="app-spacer" />
+        {all.length > 0 && !confirming && (
+          <button type="button" className="tr-mini" onClick={() => setConfirming(true)}>
+            {t("traders.activity.clear")}
+          </button>
+        )}
         <MapSeg
           options={["all", "alerts"] as const}
           value={only}
@@ -63,6 +71,26 @@ export function ActivityFeed({
           text={(o) => t(`traders.activity.${o}`)}
         />
       </header>
+      {confirming && (
+        <div className="tr-confirm" role="alertdialog" aria-label={t("traders.activity.clear")}>
+          <span>{t("traders.activity.clearAsk", { count: all.length })}</span>
+          <span className="tr-confirm-actions">
+            <button type="button" className="tr-mini" onClick={() => setConfirming(false)}>
+              {t("traders.activity.keepIt")}
+            </button>
+            <button
+              type="button"
+              className="tr-mini tr-mini-danger"
+              onClick={() => {
+                clearActivity();
+                setConfirming(false);
+              }}
+            >
+              {t("traders.activity.clearYes")}
+            </button>
+          </span>
+        </div>
+      )}
       {shown.length === 0 ? (
         <EmptyState>{t("traders.activity.none")}</EmptyState>
       ) : (
