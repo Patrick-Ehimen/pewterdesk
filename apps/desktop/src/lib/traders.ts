@@ -459,7 +459,18 @@ function store<T>(key: string, parse: (raw: string | null) => T) {
       listeners.delete(listener);
     };
   };
-  return { current, save, subscribe };
+  /** Gone from storage and from memory: nothing to read back. */
+  const clear = () => {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage unavailable: there was nothing kept there.
+    }
+    cachedRaw = null;
+    cached = parse(null);
+    for (const l of listeners) l();
+  };
+  return { current, save, subscribe, clear };
 }
 
 const traders = store(KEY, parseTraders);
@@ -469,6 +480,14 @@ export const currentTraders = traders.current;
 export const subscribeTraders = traders.subscribe;
 
 /** Records a move in the activity log. */
+/** The activity log as it stands, newest first. */
+export const currentActivity = activity.current;
+
+/** Deletes the activity log: from this machine's storage, and from memory. */
+export function clearActivity() {
+  activity.clear();
+}
+
 export function recordMove(move: TraderMove) {
   activity.save(withMove(activity.current(), move));
 }
