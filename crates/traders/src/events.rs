@@ -7,14 +7,14 @@
 
 use std::collections::BTreeMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{Holding, PositionSide};
 
 /// Changes smaller than this share of the position are noise (rounding).
 const NOISE: f64 = 1e-6;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ChangeKind {
     Open,

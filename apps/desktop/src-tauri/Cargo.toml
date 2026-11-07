@@ -38,6 +38,7 @@ quick-xml = "0.42"
 # already in the tree through reqwest, so nothing new is downloaded.
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs"] }
 pewterdesk-calendar = { path = "../../../crates/calendar" }
+pewterdesk-traders = { path = "../../../crates/traders" }
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-engine = { path = "../../../crates/engine" }
 pewterdesk-keychain = { path = "../../../crates/keychain" }
