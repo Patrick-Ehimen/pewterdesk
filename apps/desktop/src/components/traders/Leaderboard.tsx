@@ -79,6 +79,21 @@ function styleHint(style: TraderStyle, source: TraderSource): string {
   return t("traders.style.swingHint", { share: formatPercent(SWING_TURNOVER, 0) });
 }
 
+/** The board's state, kept while the app runs, so coming back finds it as it was. */
+const kept = new Map<string, unknown>();
+
+/** `useState` whose value outlives the page, for this session. */
+function useRemembered<T>(key: string, initial: T): [T, (next: T | ((before: T) => T)) => void] {
+  const [value, setValue] = useState<T>(() => (kept.has(key) ? (kept.get(key) as T) : initial));
+  const set = (next: T | ((before: T) => T)) =>
+    setValue((before) => {
+      const value = typeof next === "function" ? (next as (b: T) => T)(before) : next;
+      kept.set(key, value);
+      return value;
+    });
+  return [value, set];
+}
+
 interface Props {
   view: BoardView;
   onView: (view: BoardView) => void;
@@ -89,13 +104,13 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
   const { state, toggleFollow } = useTraders();
   const [rows, setRows] = useState<TraderRow[]>();
   const [error, setError] = useState<string>();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useRemembered("search", "");
   const [attempt, setAttempt] = useState(0);
   /** The styles picked: a trader with any of them is shown. */
-  const [styles, setStyles] = useState<ReadonlySet<TraderStyle>>(new Set());
-  const [hideOneHit, setHideOneHit] = useState(false);
+  const [styles, setStyles] = useRemembered<ReadonlySet<TraderStyle>>("styles", new Set());
+  const [hideOneHit, setHideOneHit] = useRemembered("hideOneHit", false);
   /** The trader in the side panel. */
-  const [selected, setSelected] = useState<TraderRow>();
+  const [selected, setSelected] = useRemembered<TraderRow | undefined>("selected", undefined);
   const { source, period, sort, size } = view;
   const okx = source === "okx";
 

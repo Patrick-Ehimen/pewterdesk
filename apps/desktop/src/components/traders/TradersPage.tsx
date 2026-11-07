@@ -44,15 +44,29 @@ interface Opened {
   row?: TraderRow;
 }
 
+/**
+ * Where the page was, kept while the app runs: leaving for another page and
+ * coming back opens the same tab and the same trader.
+ */
+const memory: { tab?: Tab; opened?: Opened } = {};
+
 /** `mine`: your positions on the venue on screen, for a trader's "Against your account". */
 export function TradersPage({ mine }: { mine?: MyBook }) {
   const { state } = useTraders();
   const moves = useActivity();
-  const [tab, setTab] = useState<Tab>(() =>
-    followedKeys(state).length > 0 ? "following" : "board",
+  const [tab, setTabState] = useState<Tab>(
+    () => memory.tab ?? (followedKeys(state).length > 0 ? "following" : "board"),
   );
   const [view, setViewState] = useState<BoardView>(readView);
-  const [opened, setOpened] = useState<Opened>();
+  const [opened, setOpenedState] = useState<Opened | undefined>(() => memory.opened);
+  const setTab = (next: Tab) => {
+    memory.tab = next;
+    setTabState(next);
+  };
+  const setOpened = (next: Opened | undefined) => {
+    memory.opened = next;
+    setOpenedState(next);
+  };
 
   const setView = (next: BoardView) => {
     setViewState(next);

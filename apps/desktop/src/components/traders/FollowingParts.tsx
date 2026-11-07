@@ -219,8 +219,10 @@ export function Timeline({
               )}
               {r.rows.flatMap((lane, i) =>
                 lane.map((b) => {
-                  const left = pct(b.start);
-                  const width = Math.max(0.6, pct(b.end) - left);
+                  // A bar too short to see gets a little width, taken back from
+                  // its left so it still ends where it ends (never past now).
+                  const width = Math.max(0.6, pct(b.end) - pct(b.start));
+                  const left = Math.max(0, Math.min(pct(b.start), pct(b.end) - width));
                   return (
                     <span
                       key={`${b.market}-${b.side}-${b.start}`}

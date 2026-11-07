@@ -762,17 +762,41 @@
 }
 
 /* Following */
+/* Following fills the window: the three columns end at the same line,
+   each scrolling inside itself - the lists' members, the middle as a
+   whole, the activity - so there's no blank space below any of them. */
 .tr-following-grid {
+  flex: 1;
+  min-height: 640px;
   display: grid;
   grid-template-columns: 270px minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
 }
 .tr-following-main {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+.tr-following-main > .tr-panel {
+  flex: none;
+}
+.tr-following-main > .tr-panel:last-child {
+  flex: 1 0 auto;
+}
+.tr-lists {
+  overflow: hidden;
+}
+.tr-lists > * {
+  flex: none;
+}
+.tr-lists > .tr-members {
+  flex: 1 1 auto;
+  min-height: 60px;
+  overflow-y: auto;
 }
 .tr-list-names,
 .tr-members,
@@ -936,8 +960,11 @@
 }
 
 /* Activity */
-.tr-feed[data-compact] {
-  max-height: calc(100vh - 160px);
+.tr-feed {
+  overflow: hidden;
+}
+.tr-feed > .tr-moves {
+  flex: 1;
 }
 .tr-moves {
   overflow-y: auto;
@@ -1015,6 +1042,18 @@
   }
   .tr-following-grid > .tr-feed {
     grid-column: 1 / -1;
+  }
+  /* Two columns and the activity below: the page scrolls, panels at their own height. */
+  .tr-following-grid {
+    flex: none;
+    min-height: 0;
+    grid-template-rows: none;
+  }
+  .tr-following-main {
+    overflow: visible;
+  }
+  .tr-feed > .tr-moves {
+    max-height: 520px;
   }
   /* One column: the page scrolls, each panel at its own height. */
   .tr-profile {
@@ -1761,4 +1800,10 @@ button.tr-status-chip:focus-visible {
 }
 .tr-moves li[data-alert] small {
   color: var(--pd-text);
+}
+
+/* The Activity tab: the feed fills the page and scrolls inside. */
+.traders > .tr-feed {
+  flex: 1;
+  min-height: 360px;
 }
