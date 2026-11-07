@@ -30,7 +30,7 @@ import {
   WHALE,
 } from "../../lib/traderStyles";
 import { followedKeys, isFollowed, MAX_FOLLOWED, traderKey, useTraders } from "../../lib/traders";
-import { Drawdown, GreenWeeks, Month, Now, type Read } from "./BoardCells";
+import { Drawdown, GreenWeeks, Month, Now, type Read, WinDays } from "./BoardCells";
 import { Insights } from "./Insights";
 import { BoardSkeletonRows } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
@@ -47,8 +47,8 @@ const MILLION = 1_000_000;
 const LIMIT: Record<TraderSource, number> = { hyperliquid: 300, okx: 100 };
 /** The cells after the trader, in order, for the loading rows. */
 const CELLS: Record<TraderSource, ("num" | "weeks" | "now" | "spark")[]> = {
-  hyperliquid: ["num", "num", "num", "weeks", "num", "now", "spark"],
-  okx: ["num", "num", "num", "num", "weeks", "num", "num", "now", "spark"],
+  hyperliquid: ["num", "num", "num", "num", "weeks", "num", "now", "spark"],
+  okx: ["num", "num", "num", "num", "num", "weeks", "num", "num", "now", "spark"],
 };
 
 export interface BoardView {
@@ -249,7 +249,14 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                     <th>{t("traders.col.trader")}</th>
                     <th className="num">{t("traders.col.pnl")}</th>
                     <th className="num">{t("traders.col.roi")}</th>
-                    {okx && <th className="num">{t("traders.col.winRate")}</th>}
+                    {okx && (
+                      <th className="num" title={t("traders.col.winHint")}>
+                        {t("traders.col.winRate")}
+                      </th>
+                    )}
+                    <th className="num" title={t("traders.col.winDaysHint")}>
+                      {t("traders.col.winDays")}
+                    </th>
                     <th className="num" title={t("traders.col.ddHint")}>
                       {t("traders.col.dd")}
                     </th>
@@ -313,6 +320,9 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
                             </td>
                           )}
                           <td className="num">
+                            <WinDays read={read} />
+                          </td>
+                          <td className="num">
                             <Drawdown read={read} />
                           </td>
                           <td>
@@ -360,6 +370,10 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
             row={picked}
             rank={ranks.get(rows?.find((r) => r.id === picked.id) ?? picked) ?? 0}
             period={period}
+            winDays={(() => {
+              const read = readOf(picked);
+              return read === "pending" ? "pending" : (read?.stats?.winDays ?? null);
+            })()}
             onClose={() => setSelected(undefined)}
             onOpen={() => onOpen(picked)}
           />

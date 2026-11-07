@@ -23,6 +23,9 @@ pub struct TraderStats {
     /// The share of the month's PnL made in its best step (a day, about),
     /// when the month's PnL is above zero. Over 0.5: one day carried it.
     pub best_day_share: Option<f64>,
+    /// The share of the month's days (steps, about a day each) that made
+    /// money, of those where their PnL moved; `None` with none that did.
+    pub win_days: Option<f64>,
 }
 
 /// The cumulative value at `t`: the last point at or before it, 0 before the first.
@@ -78,6 +81,21 @@ pub fn max_drawdown(pnl: &[(u64, f64)], base: impl Fn(u64) -> f64) -> Option<f64
         }
     }
     worst
+}
+
+/// The share of steps that made money, of the steps where PnL moved at all.
+pub fn win_share(curve: &[(u64, f64)]) -> Option<f64> {
+    let (mut won, mut moved) = (0_u32, 0_u32);
+    for w in curve.windows(2) {
+        let change = w[1].1 - w[0].1;
+        if change.abs() > 1e-9 {
+            moved += 1;
+            if change > 0.0 {
+                won += 1;
+            }
+        }
+    }
+    (moved > 0).then(|| f64::from(won) / f64::from(moved))
 }
 
 /// The share of the period's PnL made in its single best step.
@@ -136,6 +154,15 @@ mod tests {
         assert!((dd - 0.18).abs() < 1e-12);
         assert_eq!(max_drawdown(&[(1, 0.0), (2, 5.0)], |_| 100.0), Some(0.0));
         assert_eq!(max_drawdown(&pnl, |_| 0.0), None);
+    }
+
+    #[test]
+    fn win_days_count_only_days_that_moved() {
+        // Up, flat, down, up, up: 3 of the 4 days that moved.
+        let curve = [(1, 0.0), (2, 5.0), (3, 5.0), (4, 2.0), (5, 3.0), (6, 9.0)];
+        assert_eq!(win_share(&curve), Some(0.75));
+        assert_eq!(win_share(&[(1, 1.0), (2, 1.0)]), None);
+        assert_eq!(win_share(&[]), None);
     }
 
     #[test]

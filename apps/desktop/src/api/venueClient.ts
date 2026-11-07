@@ -770,6 +770,8 @@ export interface TraderStats {
   curve: [number, number][];
   /** The share of the month's PnL made in its best day, when it's above zero. */
   bestDayShare: number | null;
+  /** The share of the month's days that made money, of those their PnL moved. */
+  winDays: number | null;
 }
 
 /** A leaderboard trader's positions, for the insight cards. */

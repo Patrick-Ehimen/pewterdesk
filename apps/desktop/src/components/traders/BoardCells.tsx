@@ -48,6 +48,14 @@ export function Drawdown({ read }: { read: Read }) {
   );
 }
 
+/** The share of the month's days that made money. */
+export function WinDays({ read }: { read: Read }) {
+  if (read === "pending") return <Bar width={36} px />;
+  const share = read?.stats?.winDays;
+  if (share == null) return <Dash />;
+  return <span>{formatPercent(share, 0)}</span>;
+}
+
 /** Their open positions: the long / short split by value, and the biggest markets. */
 export function Now({ read }: { read: Read }) {
   if (read === "pending") {

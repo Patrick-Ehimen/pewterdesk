@@ -30,6 +30,8 @@ interface Props {
   row: TraderRow;
   rank: number;
   period: TraderPeriod;
+  /** Their win days from the leaderboard's read, if it's in; "pending" while it isn't yet. */
+  winDays: number | null | "pending";
   onClose: () => void;
   onOpen: () => void;
 }
@@ -37,7 +39,7 @@ interface Props {
 const money = (v: number) => `${v > 0 ? "+" : ""}${formatCompact(v)}`;
 const price = (v: number) => formatNumber(v, v < 1 ? 5 : v < 100 ? 3 : 1);
 
-export function TraderPreview({ row, rank, period, onClose, onOpen }: Props) {
+export function TraderPreview({ row, rank, period, winDays, onClose, onOpen }: Props) {
   const { state, toggleFollow } = useTraders();
   const [detail, setDetail] = useState<TraderDetail>();
   const [error, setError] = useState<string>();
@@ -84,8 +86,18 @@ export function TraderPreview({ row, rank, period, onClose, onOpen }: Props) {
     ],
     [t("traders.kpi.roi"), (row.roi > 0 ? "+" : "") + formatPercent(row.roi, 1), row.roi],
     [
-      t("traders.kpi.winRate"),
-      detail ? (detail.winRate == null ? "–" : formatPercent(detail.winRate, 0)) : undefined,
+      // OKX's own trade win rate; on Hyperliquid, whose fills say little about
+      // traders who scale in and out, the share of days that made money.
+      okx ? t("traders.kpi.winRate") : t("traders.col.winDays"),
+      okx
+        ? row.winRate == null
+          ? "–"
+          : formatPercent(row.winRate, 0)
+        : winDays === "pending"
+          ? undefined
+          : winDays == null
+            ? "–"
+            : formatPercent(winDays, 0),
       undefined,
     ],
     [
