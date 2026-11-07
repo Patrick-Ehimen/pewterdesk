@@ -464,7 +464,12 @@
 }
 
 /* A trader's page */
+/* A trader's page fills the window: both columns end at the same line,
+   the positions scroll in their panel, and the last card on the right
+   stretches to meet the bottom. Too small a window scrolls the page. */
 .tr-profile {
+  flex: 1;
+  min-height: 720px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -537,10 +542,71 @@
   font-size: 11px;
 }
 .tr-profile-body {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+}
+.tr-profile-main,
+.tr-profile-side {
+  min-height: 0;
+}
+.tr-profile-main > .tr-panel {
+  flex: none;
+}
+.tr-profile-main > .tr-positions {
+  flex: 1;
+  min-height: 220px;
+}
+.tr-positions > .tr-scroll {
+  flex: 1;
+  min-height: 0;
+}
+.tr-profile-side {
+  overflow-y: auto;
+}
+.tr-profile-side > .tr-panel {
+  flex: none;
+}
+.tr-profile-side > .tr-panel:last-child {
+  flex: 1 0 auto;
+}
+
+/* Tabs on a panel: the view on screen underlined in brass, as the app's tabs are. */
+.tr-tabs {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  height: 40px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.tr-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tr-tab:hover {
+  color: var(--pd-text);
+}
+.tr-tab[aria-selected="true"] {
+  color: var(--pd-text);
+  font-weight: 500;
+  box-shadow: inset 0 -2px 0 var(--pd-brass);
+}
+.tr-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
 }
 .tr-profile-main,
 .tr-profile-side {
@@ -548,9 +614,6 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-}
-.tr-closed {
-  max-height: 420px;
 }
 .tr-toggle {
   display: inline-flex;
@@ -589,7 +652,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 4px;
-  max-width: 200px;
+  max-width: 236px;
 }
 .tr-chip {
   height: 24px;
@@ -947,8 +1010,20 @@
   .tr-following-grid > .tr-feed {
     grid-column: 1 / -1;
   }
+  /* One column: the page scrolls, each panel at its own height. */
+  .tr-profile {
+    flex: none;
+    min-height: 0;
+  }
   .tr-profile-body {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .tr-profile-side {
+    overflow: visible;
+  }
+  .tr-positions > .tr-scroll {
+    max-height: 480px;
   }
 }
 

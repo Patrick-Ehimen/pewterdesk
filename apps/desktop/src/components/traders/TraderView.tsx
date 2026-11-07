@@ -37,6 +37,9 @@ interface Props {
   onBack: () => void;
 }
 
+/** The PnL chart's height: room enough to read the line. */
+const CHART_HEIGHT = 300;
+
 const price = (v: number) => formatNumber(v, v < 1 ? 5 : v < 100 ? 3 : 1);
 const size = (v: number) => formatNumber(v, v < 10 ? 4 : v < 1000 ? 2 : 0);
 const signedMoney = (v: number) => `${v > 0 ? "+" : ""}${formatCompact(v)}`;
@@ -54,6 +57,8 @@ export function TraderView({ source, id, row, period: startPeriod, mine, onBack 
   const [error, setError] = useState<string>();
   const [attempt, setAttempt] = useState(0);
   const [copied, setCopied] = useState(false);
+  /** The positions panel's view. */
+  const [tab, setTab] = useState<"open" | "history">("open");
   /** Their record and positions as the leaderboard reads them; null if it couldn't be read. */
   const [record, setRecord] = useState<TraderSwept | null>();
   const key = traderKey(source, id);
@@ -245,120 +250,144 @@ export function TraderView({ source, id, row, period: startPeriod, mine, onBack 
               </header>
               {!detail ? (
                 <div className="tr-chart">
-                  <LineSkeleton height={220} />
+                  <LineSkeleton height={CHART_HEIGHT} />
                 </div>
               ) : history.length < 2 ? (
                 <EmptyState>{t("traders.noHistory")}</EmptyState>
               ) : (
                 <div className="tr-chart">
-                  <PnlLine points={history} height={220} axis label={t("traders.pnlChart")} />
+                  <PnlLine
+                    points={history}
+                    height={CHART_HEIGHT}
+                    axis
+                    label={t("traders.pnlChart")}
+                  />
                 </div>
               )}
             </section>
 
-            <section className="tr-panel">
-              <header className="tr-panel-head">
-                <h3>{t("traders.holdings")}</h3>
-                {detail && <span className="tr-count">{open.length}</span>}
-              </header>
-              {detail && open.length === 0 ? (
-                <EmptyState>{t("traders.noHoldings")}</EmptyState>
-              ) : (
-                <div className="tr-scroll" aria-busy={loading || undefined}>
-                  <table className="tr-table tr-table-plain">
-                    <thead>
-                      <tr>
-                        <th>{t("traders.h.market")}</th>
-                        <th>{t("traders.h.side")}</th>
-                        <th className="num">{t("traders.h.size")}</th>
-                        <th className="num">{t("traders.h.value")}</th>
-                        <th className="num">{t("traders.h.entry")}</th>
-                        <th className="num">{t("traders.h.mark")}</th>
-                        <th className="num">{t("traders.h.leverage")}</th>
-                        <th className="num">{t("traders.h.liq")}</th>
-                        <th className="num">{t("traders.h.unrealized")}</th>
-                        {okx && <th className="num">{t("traders.h.opened")}</th>}
-                      </tr>
-                    </thead>
-                    {loading ? (
-                      <TableSkeletonRows cols={okx ? 10 : 9} rows={4} />
-                    ) : (
-                      <tbody>
-                        {[...open]
-                          .sort((a, b) => b.value - a.value)
-                          .map((h) => (
-                            <tr key={`${h.market}-${h.side}-${h.entry}-${h.openedAt ?? 0}`}>
-                              <td>{h.market}</td>
-                              <td>
-                                <Side side={h.side} />
-                              </td>
-                              <td className="num">{size(h.size)}</td>
-                              <td className="num">{formatCompact(h.value)}</td>
-                              <td className="num">{price(h.entry)}</td>
-                              <td className="num">{h.mark == null ? "–" : price(h.mark)}</td>
-                              <td className="num">
-                                {h.leverage == null ? "–" : `${formatNumber(h.leverage, 0)}×`}
-                              </td>
-                              <td className="num tr-warn">
-                                {h.liquidation == null ? "–" : price(h.liquidation)}
-                              </td>
-                              <td className={`num ${trendClass(h.unrealized)}`}>
-                                {signedMoney(h.unrealized)}
-                              </td>
-                              {okx && (
-                                <td className="num tr-muted">
-                                  {h.openedAt ? when.format(h.openedAt) : "–"}
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                      </tbody>
-                    )}
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="tr-panel">
-              <header className="tr-panel-head">
-                <h3>{t("traders.closed")}</h3>
-                {detail && <span className="tr-count">{detail.closed.length}</span>}
-              </header>
-              {detail && detail.closed.length === 0 ? (
-                <EmptyState>{t("traders.noClosed")}</EmptyState>
-              ) : (
-                <div className="tr-scroll tr-closed" aria-busy={loading || undefined}>
-                  <table className="tr-table tr-table-plain">
-                    <thead>
-                      <tr>
-                        <th>{t("traders.h.closedAt")}</th>
-                        <th>{t("traders.h.market")}</th>
-                        <th>{t("traders.h.side")}</th>
-                        <th className="num">{t("traders.h.size")}</th>
-                        <th className="num">{t("traders.h.price")}</th>
-                        <th className="num">{t("traders.h.closedPnl")}</th>
-                      </tr>
-                    </thead>
-                    {loading ? (
-                      <TableSkeletonRows cols={6} rows={6} sideAt={2} />
-                    ) : (
-                      <tbody>
-                        {detail?.closed.map((c) => (
-                          <tr key={`${c.time}-${c.market}-${c.size}`}>
-                            <td className="tr-muted">{when.format(c.time)}</td>
-                            <td>{c.market}</td>
-                            <td>
-                              <Side side={c.side} />
-                            </td>
-                            <td className="num">{size(c.size)}</td>
-                            <td className="num">{price(c.price)}</td>
-                            <td className={`num ${trendClass(c.pnl)}`}>{signedMoney(c.pnl)}</td>
+            {/* Open positions and their trade history, one panel, two views. */}
+            <section className="tr-panel tr-positions">
+              <div className="tr-tabs" role="tablist" aria-label={t("traders.holdings")}>
+                <button
+                  type="button"
+                  role="tab"
+                  className="tr-tab"
+                  aria-selected={tab === "open"}
+                  onClick={() => setTab("open")}
+                >
+                  {t("traders.holdings")}
+                  {detail && <span className="tr-count">{open.length}</span>}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className="tr-tab"
+                  aria-selected={tab === "history"}
+                  onClick={() => setTab("history")}
+                >
+                  {t("traders.history")}
+                  {detail && <span className="tr-count">{detail.closed.length}</span>}
+                </button>
+              </div>
+              {tab === "open" ? (
+                <>
+                  {detail && open.length === 0 ? (
+                    <EmptyState>{t("traders.noHoldings")}</EmptyState>
+                  ) : (
+                    <div className="tr-scroll" aria-busy={loading || undefined}>
+                      <table className="tr-table tr-table-plain">
+                        <thead>
+                          <tr>
+                            <th>{t("traders.h.market")}</th>
+                            <th>{t("traders.h.side")}</th>
+                            <th className="num">{t("traders.h.size")}</th>
+                            <th className="num">{t("traders.h.value")}</th>
+                            <th className="num">{t("traders.h.entry")}</th>
+                            <th className="num">{t("traders.h.mark")}</th>
+                            <th className="num">{t("traders.h.leverage")}</th>
+                            <th className="num">{t("traders.h.liq")}</th>
+                            <th className="num">{t("traders.h.unrealized")}</th>
+                            {okx && <th className="num">{t("traders.h.opened")}</th>}
                           </tr>
-                        ))}
-                      </tbody>
-                    )}
-                  </table>
-                </div>
+                        </thead>
+                        {loading ? (
+                          <TableSkeletonRows cols={okx ? 10 : 9} rows={4} />
+                        ) : (
+                          <tbody>
+                            {[...open]
+                              .sort((a, b) => b.value - a.value)
+                              .map((h) => (
+                                <tr key={`${h.market}-${h.side}-${h.entry}-${h.openedAt ?? 0}`}>
+                                  <td>{h.market}</td>
+                                  <td>
+                                    <Side side={h.side} />
+                                  </td>
+                                  <td className="num">{size(h.size)}</td>
+                                  <td className="num">{formatCompact(h.value)}</td>
+                                  <td className="num">{price(h.entry)}</td>
+                                  <td className="num">{h.mark == null ? "–" : price(h.mark)}</td>
+                                  <td className="num">
+                                    {h.leverage == null ? "–" : `${formatNumber(h.leverage, 0)}×`}
+                                  </td>
+                                  <td className="num tr-warn">
+                                    {h.liquidation == null ? "–" : price(h.liquidation)}
+                                  </td>
+                                  <td className={`num ${trendClass(h.unrealized)}`}>
+                                    {signedMoney(h.unrealized)}
+                                  </td>
+                                  {okx && (
+                                    <td className="num tr-muted">
+                                      {h.openedAt ? when.format(h.openedAt) : "–"}
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
+                          </tbody>
+                        )}
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {detail && detail.closed.length === 0 ? (
+                    <EmptyState>{t("traders.noClosed")}</EmptyState>
+                  ) : (
+                    <div className="tr-scroll" aria-busy={loading || undefined}>
+                      <table className="tr-table tr-table-plain">
+                        <thead>
+                          <tr>
+                            <th>{t("traders.h.closedAt")}</th>
+                            <th>{t("traders.h.market")}</th>
+                            <th>{t("traders.h.side")}</th>
+                            <th className="num">{t("traders.h.size")}</th>
+                            <th className="num">{t("traders.h.price")}</th>
+                            <th className="num">{t("traders.h.closedPnl")}</th>
+                          </tr>
+                        </thead>
+                        {loading ? (
+                          <TableSkeletonRows cols={6} rows={6} sideAt={2} />
+                        ) : (
+                          <tbody>
+                            {detail?.closed.map((c) => (
+                              <tr key={`${c.time}-${c.market}-${c.size}`}>
+                                <td className="tr-muted">{when.format(c.time)}</td>
+                                <td>{c.market}</td>
+                                <td>
+                                  <Side side={c.side} />
+                                </td>
+                                <td className="num">{size(c.size)}</td>
+                                <td className="num">{price(c.price)}</td>
+                                <td className={`num ${trendClass(c.pnl)}`}>{signedMoney(c.pnl)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        )}
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </section>
           </div>
