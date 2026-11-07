@@ -1,5 +1,5 @@
 import { formatCompact } from "@pewterdesk/ui";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 // A line of cumulative PnL (or ROI): green where it ends above where it
 // started, red where below; a dashed line at zero when zero is in range.
@@ -43,6 +43,8 @@ function Line({
   format = formatCompact,
   label,
 }: Props & { width: number }) {
+  // An id `url(#…)` can always point at: letters, digits and dashes only.
+  const fill = `tr-fill-${useId().replace(/[^\w-]/g, "")}`;
   const first = points[0];
   const last = points[points.length - 1];
   if (points.length < 2 || !first || !last) return null;
@@ -83,10 +85,30 @@ function Line({
         <line className="tr-line-zero" x1={left} x2={width} y1={y(0)} y2={y(0)} />
       )}
       {axis && (
-        <path
-          className="tr-line-area"
-          d={`${d} L${x(last[0]).toFixed(1)} ${bottom} L${left} ${bottom}Z`}
-        />
+        <>
+          {/* The area under the line in its colour, fading towards the foot. */}
+          <defs>
+            <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
+              <stop
+                className="tr-line-stop"
+                data-up={up || undefined}
+                offset="0"
+                stopOpacity="0.32"
+              />
+              <stop
+                className="tr-line-stop"
+                data-up={up || undefined}
+                offset="1"
+                stopOpacity="0.02"
+              />
+            </linearGradient>
+          </defs>
+          <path
+            className="tr-line-area"
+            fill={`url(#${fill})`}
+            d={`${d} L${x(last[0]).toFixed(1)} ${bottom} L${left} ${bottom}Z`}
+          />
+        </>
       )}
       <path
         className="tr-line-path"

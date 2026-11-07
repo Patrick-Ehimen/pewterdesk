@@ -441,9 +441,12 @@
 .tr-line-path[data-up] {
   stroke: var(--pd-buy);
 }
-.tr-line-area {
-  fill: var(--pd-text);
-  opacity: 0.05;
+/* The fill takes the line's colour: green up over the window, red down. */
+.tr-line-stop {
+  stop-color: var(--pd-sell);
+}
+.tr-line-stop[data-up] {
+  stop-color: var(--pd-buy);
 }
 .tr-line-grid {
   stroke: var(--pd-border);
