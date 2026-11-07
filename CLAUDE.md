@@ -53,6 +53,10 @@ a key before storing it.
   LaunchAgent that keeps it running
 - `crates/calendar` - the economic calendar (and its text helpers), shared
   by the app and `pdd`
+- `crates/traders` - top traders: Hyperliquid's and OKX's public
+  leaderboards, a trader's public positions and history, and what changed
+  between two looks (`changes`); shared by the app and, later, the watch
+  server (`docs/adr/0005-watch-server.md`)
 - `apps/daemon` (`pdd`) - the engine headless, served over a Unix socket and
   a 127.0.0.1 WebSocket to paired clients
 - `apps/cli` (`pd`) - the command line
@@ -244,6 +248,23 @@ discover it on their own. The reasoning behind the rules is in
   redirects followed, a size cap), kept an hour. It reaches the UI as numbers
   only (a 0-100 value and its day); the page names the band itself
   (`lib/fearGreed.ts`). Changing the source is a security-relevant change.
+- `crates/traders` and `apps/desktop/src-tauri/src/traders.rs` - top
+  traders, for the Traders page: Hyperliquid's leaderboard (the file its web
+  app reads, `stats-data.hyperliquid.xyz/Mainnet/leaderboard`, undocumented,
+  some 40 MB: read at most every 10 minutes, only the top rows leave the
+  crate) and a trader's positions, PnL history and fills from the info API
+  (`api.hyperliquid.xyz/info`); OKX's copy-trading lead traders, their
+  positions, closed positions and PnL (`www.okx.com`,
+  `/api/v5/copytrading/public-*`, spaced inside 5 requests per 2 seconds).
+  Data sources, not venues: no key, nothing signed, read-only, fixed hosts,
+  no redirects followed, size caps, never an account of the trader's own. A
+  trader is named by an id checked before any request is built (an address,
+  or an OKX code of 16 or 18 letters and digits); source, period and sort
+  come from fixed sets. The watch (`set_trader_watch`) reads followed
+  traders' positions while the app runs (Hyperliquid every 15 seconds, OKX
+  every 30, at most 40 traders) and emits what changed; it places nothing
+  and copies nothing. Adding a source, or letting it trade, is a
+  security-relevant change.
 - `apps/desktop/src-tauri/src/exchange_notices.rs` - exchanges' listing
   notices, for the Maps page's pump / dump watch: Binance's and OKX's new
   listings and delistings, Upbit's trading notices (listings, delistings,
@@ -1085,6 +1106,27 @@ own, in turn from the theme's tokens (never green or red): its tile's
 outline, its share and its part of the allocation bar. There is no
 Balances panel of its own any more: a layout's former one is an Account
 panel open on All venues. It reads only; it places nothing.
+
+## Top traders
+
+A page (`traders`; `components/traders/`, `lib/traders.ts`,
+`hooks/useTraderWatch.ts`, after the Top traders mockups in
+`design/screens/93-96`): Hyperliquid's leaderboard (PnL, ROI, account size
+or volume over a day, week, month or all time, above an account floor, with
+whether each window's PnL was positive) and OKX's copy-trading lead traders
+(their win rate, copiers, days leading, ROI curve); a trader's page (PnL
+over a window, open positions, closed trades - Hyperliquid's from its fills,
+one per closing order - what they trade, OKX's week by week); and the
+traders followed, starred into lists (`pd.traders`, at most 40), with where
+they agree (each trader's net side per market), their positions and what
+they did (`pd.traders.activity`, 30 days). App runs `useTraderWatch` all
+session: Rust reads the followed traders' positions (`traders.rs`) and a
+move - opened, added, cut, closed or flipped, per market by net size - that
+meets that trader's alert settings (kinds and a USD floor) notifies through
+`notifyEvent` as an alert. Nothing fires with the app quit until the watch
+server (ADR 0005) exists, and nothing goes to Telegram yet. It reads public
+data and places nothing: it never copies a trade. Its strings
+(`locales/traders/en.ts`) are English in every language until translated.
 
 ## News feed panel
 

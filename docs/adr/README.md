@@ -9,3 +9,4 @@ one; both say so at the top.
 | [0002](0002-launch-venues.md) | Launch with Hyperliquid and Aster only | accepted |
 | [0003](0003-bot-engine-daemon.md) | A Rust trading engine, run headless as a daemon, for algos and bots | proposed |
 | [0004](0004-hosted-journal.md) | A hosted store (Supabase) for the plan and journal; trading keeps no backend | accepted |
+| [0005](0005-watch-server.md) | A watch server, always on and free, for alerts, trader tracking and Telegram | proposed |
