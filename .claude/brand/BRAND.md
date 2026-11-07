@@ -41,6 +41,9 @@ thing that matters, and green and red belong to the market.
   (`marketHue`, `tagHue`), the routine's before and
   after lists a hue each (`ROUTINE_HUES`). Playbooks too: each status (`STATUS_HUES`: draft,
   active, retired) and each timeframe (`timeframeHue`) a hue of its own.
+  A top trader's picture (`components/traders/TraderAvatar.tsx`) takes one
+  of the same hues from the trader's key, at `--pd-tag-l` / `--pd-tag-c`: a
+  wash behind and the pattern in it. Identity only, never a figure or a state.
 
 ## Core palette
 

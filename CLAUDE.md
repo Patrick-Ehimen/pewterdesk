@@ -263,8 +263,11 @@ discover it on their own. The reasoning behind the rules is in
   come from fixed sets. The watch (`set_trader_watch`) reads followed
   traders' positions while the app runs (Hyperliquid every 15 seconds, OKX
   every 30, at most 40 traders) and emits what changed; it places nothing
-  and copies nothing. Adding a source, or letting it trade, is a
-  security-relevant change.
+  and copies nothing. The leaderboard's insight cards read the positions of
+  its top traders (`traders_sweep`: Hyperliquid's top 100, OKX's top 50, a
+  dozen a call, each look kept 4 minutes) while the page is open, every 5
+  minutes. Adding a source, or letting it trade, is a security-relevant
+  change.
 - `apps/desktop/src-tauri/src/exchange_notices.rs` - exchanges' listing
   notices, for the Maps page's pump / dump watch: Binance's and OKX's new
   listings and delistings, Upbit's trading notices (listings, delistings,
@@ -1119,7 +1122,15 @@ over a window, open positions, closed trades - Hyperliquid's from its fills,
 one per closing order - what they trade, OKX's week by week); and the
 traders followed, starred into lists (`pd.traders`, at most 40), with where
 they agree (each trader's net side per market), their positions and what
-they did (`pd.traders.activity`, 30 days). App runs `useTraderWatch` all
+they did (`pd.traders.activity`, 30 days). Above the leaderboard, insight
+cards (`Insights.tsx`, `lib/topInsights.ts`, `hooks/useBoardInsights.ts`):
+how the top traders sit on BTC by value, the markets most of them hold, the
+biggest position one of them opened in the last hour (OKX's opening times;
+on Hyperliquid, which has none, a position first seen at a later look) and
+the traders followed; a click on a trader opens a side panel
+(`TraderPreview.tsx`) with Follow and the way to their full page. Each
+trader's picture takes a hue from the tag palette (`TraderAvatar.tsx`,
+BRAND.md). App runs `useTraderWatch` all
 session: Rust reads the followed traders' positions (`traders.rs`) and a
 move - opened, added, cut, closed or flipped, per market by net size - that
 meets that trader's alert settings (kinds and a USD floor) notifies through

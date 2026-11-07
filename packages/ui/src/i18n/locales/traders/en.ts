@@ -147,6 +147,38 @@ export const tradersEn = {
   "traders.activity.keep":
     "Kept 30 days, on this machine. It shows what they did; it never copies it.",
 
+  "traders.ins.btc": "Top {n} on BTC",
+  "traders.ins.byNotional": "by notional",
+  "traders.ins.short": "{pct} short",
+  "traders.ins.long": "{pct} long",
+  "traders.ins.btcHold": "{count} hold BTC",
+  "traders.ins.reading": "read {read} of {total}",
+  "traders.ins.noBtc": "No one holds BTC",
+  "traders.ins.mostHeld": "Most held by the top {n}",
+  "traders.ins.traders": "{count} traders",
+  "traders.ins.none": "No open positions",
+  "traders.ins.new": "Biggest new · 1h",
+  "traders.ins.newRank": "#{rank} on the board · {ago}",
+  "traders.ins.noNew": "Nothing new this hour",
+  "traders.ins.noNewHl": "New positions show from the next look, within 5 minutes.",
+  "traders.ins.noNewOkx": "No lead trader opened a position in the last hour.",
+  "traders.ins.followed": "Your followed",
+  "traders.ins.ofFollowed": "{total} followed",
+  "traders.ins.inTrade": "{count} in a trade",
+  "traders.ins.lead": "{count} {side} {market}",
+  "traders.ins.last": "last trade {ago}",
+  "traders.ins.noFollowed": "No one yet",
+  "traders.ins.starHint": "Star a trader to follow them.",
+
+  "traders.preview.close": "Close",
+  "traders.preview.open": "Open profile",
+  "traders.preview.leading": "leading {days} days",
+  "traders.preview.leverage": "Leverage",
+  "traders.preview.lastClosed": "Last closed",
+  "traders.preview.followNote":
+    "Following adds them to {list}: an alert when they open, add to, close or flip a position.",
+  "traders.preview.followingNote": "You follow them. Their alert settings are on their full page.",
+
   "traders.empty.title": "Follow up to {max} traders",
   "traders.empty.body":
     "Star anyone on the leaderboard. While the app runs you'll hear when they open, add to, cut, close or flip a position.",

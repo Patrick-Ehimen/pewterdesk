@@ -760,6 +760,16 @@ export interface TraderSnapshot {
   error: string | null;
 }
 
+/** A leaderboard trader's positions, for the insight cards. */
+export interface TraderSwept {
+  source: TraderSource;
+  id: string;
+  holdings: TraderHolding[];
+  at: number;
+  /** [market, side, ms first seen]: positions that appeared after an earlier look. */
+  newSince: [string, TraderSide, number][];
+}
+
 /** Who Rust watches, and what about them alerts. */
 export interface TraderFollow {
   source: TraderSource;
@@ -785,6 +795,9 @@ export const tradersClient = {
   /** Replaces who Rust watches. */
   watch: (follows: TraderFollow[]) => call<void>("set_trader_watch", { follows }),
   snapshots: () => call<TraderSnapshot[]>("trader_snapshots", {}),
+  /** The positions of up to 12 leaderboard traders, for the insight cards. */
+  sweep: (source: TraderSource, ids: string[]) =>
+    call<TraderSwept[]>("traders_sweep", { source, ids }),
   onMove(handler: (move: TraderMove) => void): () => void {
     if (!isTauri()) return () => {};
     const unlisten = listen<TraderMove>("trader-move", (e) => handler(e.payload));

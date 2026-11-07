@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use pewterdesk_core::VenueError;
+use pewterdesk_core::{PositionSide, VenueError};
 use pewterdesk_traders::{
     changes, hyperliquid::Hyperliquid, okx::Okx, valid_id, Change, ChangeKind, Holding, Period,
     SortBy, Source, TraderDetail, TraderRow,
@@ -32,6 +32,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 pub const TRADER_MOVE: &str = "trader-move";
 pub const TRADER_SNAPSHOT: &str = "trader-snapshot";
 
+/// The most leaderboard traders read in one sweep call.
+const MAX_SWEEP: usize = 12;
+/// How long a sweep's look at a trader is kept.
+const SWEEP_FRESH_FOR: Duration = Duration::from_secs(4 * 60);
 /// The most traders watched at once.
 const MAX_FOLLOWS: usize = 40;
 /// The most names looked up in one call.
@@ -96,6 +100,30 @@ pub struct TradersState {
     hl: Hyperliquid,
     okx: Okx,
     watch: Mutex<Watch>,
+    /// The leaderboard's top traders, as last looked at for its insight cards.
+    swept: Mutex<HashMap<(Source, String), Kept>>,
+}
+
+/// One trader's last look for the insight cards, and when each position
+/// they hold was first seen (only those that appeared after the first look).
+struct Kept {
+    at: Instant,
+    seen: Swept,
+}
+
+/// A leaderboard trader's positions, for the insight cards.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Swept {
+    pub source: Source,
+    pub id: String,
+    pub holdings: Vec<Holding>,
+    /// When it was read, ms since the epoch.
+    pub at: u64,
+    /// Positions (market, side) that weren't there at an earlier look, and
+    /// when they were first seen. Empty after the first look: what was
+    /// already held then may be old.
+    pub new_since: Vec<(String, PositionSide, u64)>,
 }
 
 impl TradersState {
@@ -104,6 +132,7 @@ impl TradersState {
             hl: Hyperliquid::new()?,
             okx: Okx::new()?,
             watch: Mutex::new(Watch::default()),
+            swept: Mutex::new(HashMap::new()),
         })
     }
 
@@ -241,6 +270,93 @@ pub fn set_trader_watch(
     Ok(())
 }
 
+/// The positions of the leaderboard's top traders, for its insight cards:
+/// read again only after `SWEEP_FRESH_FOR`. At most `MAX_SWEEP` a call, so
+/// the page asks a few at a time and fills the cards in as they come.
+#[tauri::command]
+pub async fn traders_sweep(
+    state: State<'_, TradersState>,
+    source: Source,
+    ids: Vec<String>,
+) -> Result<Vec<Swept>, VenueError> {
+    let mut out = Vec::new();
+    for id in ids.into_iter().take(MAX_SWEEP) {
+        let Ok(id) = checked(source, &id) else {
+            continue;
+        };
+        let key = (source, id.clone());
+        let kept = state
+            .swept
+            .lock()
+            .unwrap()
+            .get(&key)
+            .filter(|k| k.at.elapsed() < SWEEP_FRESH_FOR)
+            .map(|k| k.seen.clone());
+        if let Some(seen) = kept {
+            out.push(seen);
+            continue;
+        }
+        // One trader that can't be read doesn't stop the rest.
+        let Ok(holdings) = state.holdings(source, &id).await else {
+            continue;
+        };
+        let now = now_ms();
+        let mut swept = state.swept.lock().unwrap();
+        let before = swept.get(&key).map(|k| &k.seen);
+        let new_since = new_positions(before, &holdings, now);
+        let seen = Swept {
+            source,
+            id,
+            holdings,
+            at: now,
+            new_since,
+        };
+        swept.insert(
+            key,
+            Kept {
+                at: Instant::now(),
+                seen: seen.clone(),
+            },
+        );
+        out.push(seen);
+    }
+    Ok(out)
+}
+
+/// What's held now that wasn't at the last look, with when it was first
+/// seen; carried over from the last look for what's still held. Nothing on
+/// a first look.
+fn new_positions(
+    before: Option<&Swept>,
+    now: &[Holding],
+    at: u64,
+) -> Vec<(String, PositionSide, u64)> {
+    let Some(before) = before else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for h in now {
+        let key = (h.market.clone(), h.side);
+        if out.iter().any(|(m, s, _)| (m, s) == (&key.0, &key.1)) {
+            continue;
+        }
+        let carried = before
+            .new_since
+            .iter()
+            .find(|(m, s, _)| (m, s) == (&key.0, &key.1));
+        if let Some((_, _, t)) = carried {
+            out.push((key.0, key.1, *t));
+        } else if !before
+            .holdings
+            .iter()
+            .any(|b| b.market == h.market && b.side == h.side)
+        {
+            out.push((key.0, key.1, at));
+        }
+    }
+    out
+}
+
 /// The last look at each followed trader, for a page that just opened.
 #[tauri::command]
 pub fn trader_snapshots(state: State<'_, TradersState>) -> Vec<Snapshot> {
@@ -348,7 +464,6 @@ async fn look(app: &AppHandle, follow: &Follow) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pewterdesk_core::PositionSide;
 
     fn change(kind: ChangeKind, value: f64) -> Change {
         Change {
@@ -373,6 +488,59 @@ mod tests {
         assert!(alerts(&follow, &change(ChangeKind::Open, 911_000.0)));
         assert!(!alerts(&follow, &change(ChangeKind::Open, 38_000.0)));
         assert!(!alerts(&follow, &change(ChangeKind::Cut, 911_000.0)));
+    }
+
+    fn holding(market: &str, side: PositionSide) -> Holding {
+        Holding {
+            market: market.into(),
+            side,
+            size: 1.0,
+            entry: 1.0,
+            mark: None,
+            value: 1.0,
+            leverage: None,
+            unrealized: 0.0,
+            liquidation: None,
+            opened_at: None,
+        }
+    }
+
+    #[test]
+    fn new_positions_are_the_ones_not_there_before() {
+        use PositionSide::{Long, Short};
+        let first = vec![holding("BTC", Short)];
+        // A first look: nothing counts as new.
+        assert!(new_positions(None, &first, 10).is_empty());
+        let before = Swept {
+            source: Source::Hyperliquid,
+            id: "x".into(),
+            holdings: first,
+            at: 10,
+            new_since: Vec::new(),
+        };
+        let now = vec![
+            holding("BTC", Short),
+            holding("ETH", Long),
+            holding("ETH", Long),
+        ];
+        let seen = new_positions(Some(&before), &now, 20);
+        assert_eq!(seen, [("ETH".to_string(), Long, 20)]);
+        // Still held at the next look: keeps when it was first seen.
+        let later = Swept {
+            holdings: now.clone(),
+            new_since: seen,
+            ..before
+        };
+        assert_eq!(
+            new_positions(Some(&later), &now, 30),
+            [("ETH".to_string(), Long, 20)]
+        );
+        // Flipped to the other side: that's new.
+        let flipped = vec![holding("BTC", Long)];
+        assert_eq!(
+            new_positions(Some(&later), &flipped, 40),
+            [("BTC".to_string(), Long, 40)]
+        );
     }
 
     #[test]

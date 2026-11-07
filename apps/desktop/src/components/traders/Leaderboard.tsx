@@ -17,11 +17,14 @@ import {
   type TraderSource,
   tradersClient,
 } from "../../api/venueClient";
+import { useBoardInsights } from "../../hooks/useBoardInsights";
 import { traderName } from "../../hooks/useTraderWatch";
 import { followedKeys, isFollowed, MAX_FOLLOWED, traderKey, useTraders } from "../../lib/traders";
+import { Insights } from "./Insights";
 import { PnlLine } from "./PnlLine";
 import { BoardSkeletonRows } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
+import { TraderPreview } from "./TraderPreview";
 
 export const PERIODS: readonly TraderPeriod[] = ["day", "week", "month", "allTime"];
 const SORTS: Record<TraderSource, readonly TraderSort[]> = {
@@ -64,6 +67,8 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
   const [error, setError] = useState<string>();
   const [search, setSearch] = useState("");
   const [attempt, setAttempt] = useState(0);
+  /** The trader in the side panel. */
+  const [selected, setSelected] = useState<TraderRow>();
   const { source, period, sort, minAccount } = view;
 
   useEffect(() => {
@@ -91,168 +96,206 @@ export function Leaderboard({ view, onView, onOpen }: Props) {
   const ranks = useMemo(() => new Map(rows?.map((r, i) => [r, i + 1])), [rows]);
   const okx = source === "okx";
 
+  const insights = useBoardInsights(rows, source);
+  const picked = selected?.source === source ? selected : undefined;
+  const select = (r: TraderRow) =>
+    setSelected((s) => (s?.source === r.source && s.id === r.id ? undefined : r));
+
   return (
-    <section className="tr-panel tr-board">
-      <div className="tr-toolbar">
-        <label className="tr-search">
-          <LuSearch size={14} aria-hidden />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("traders.search")}
-            aria-label={t("traders.search")}
-            spellCheck={false}
-          />
-        </label>
-        <Select
-          value={sort}
-          options={SORTS[source].map((s) => ({ value: s, label: sortLabel(source, s) }))}
-          onChange={(s) => onView({ ...view, sort: s })}
-          label={t("traders.sort")}
-        />
-        {!okx && (
-          <Select
-            value={String(minAccount)}
-            options={MIN_ACCOUNTS.map((m) => ({
-              value: String(m),
-              label: `≥ $${formatCompact(m)}`,
-            }))}
-            onChange={(m) => onView({ ...view, minAccount: Number(m) })}
-            label={t("traders.minAccount")}
-          />
-        )}
-        <span className="app-spacer" />
-        {rows ? (
-          <span className="tr-muted">
-            {t("traders.shown", { shown: shown?.length ?? 0, total: rows.length })}
-          </span>
-        ) : (
-          !error && (
-            <span className="tr-muted" role="status">
-              {t(okx ? "traders.loading" : "traders.loadingHl")}
-            </span>
-          )
-        )}
-      </div>
-      {error ? (
-        <div className="tr-state">
-          <EmptyState error>{error}</EmptyState>
-          <button type="button" className="tr-following" onClick={() => setAttempt((a) => a + 1)}>
-            {t("traders.retry")}
-          </button>
-        </div>
-      ) : shown && shown.length === 0 ? (
-        <EmptyState>{t("traders.none")}</EmptyState>
-      ) : (
-        <div className="tr-scroll" aria-busy={!shown || undefined}>
-          <table className="tr-table">
-            <thead>
-              <tr>
-                <th className="tr-rank">{t("traders.col.rank")}</th>
-                <th>{t("traders.col.trader")}</th>
-                <th className="num">{t("traders.col.pnl")}</th>
-                <th className="num">{t("traders.col.roi")}</th>
-                {okx && <th className="num">{t("traders.col.winRate")}</th>}
-                <th className="num">{t(okx ? "traders.col.aum" : "traders.col.account")}</th>
-                {okx ? (
-                  <>
-                    <th className="num">{t("traders.col.copiers")}</th>
-                    <th className="num">{t("traders.col.leadDays")}</th>
-                    <th>{t("traders.col.roi")}</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="num">{t("traders.col.volume")}</th>
-                    <th title={t("traders.col.streakHint")}>{t("traders.col.streak")}</th>
-                  </>
-                )}
-                <th aria-label={t("traders.follow")} />
-              </tr>
-            </thead>
-            {!shown ? (
-              <BoardSkeletonRows okx={okx} />
+    <div className="tr-board-page">
+      <Insights
+        source={source}
+        rows={rows}
+        swept={insights.swept}
+        total={insights.total}
+        loading={insights.loading}
+        onSelect={(r) => setSelected(r)}
+      />
+      <div className="tr-board-wrap" data-panel={picked ? true : undefined}>
+        <section className="tr-panel tr-board">
+          <div className="tr-toolbar">
+            <label className="tr-search">
+              <LuSearch size={14} aria-hidden />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("traders.search")}
+                aria-label={t("traders.search")}
+                spellCheck={false}
+              />
+            </label>
+            <Select
+              value={sort}
+              options={SORTS[source].map((s) => ({ value: s, label: sortLabel(source, s) }))}
+              onChange={(s) => onView({ ...view, sort: s })}
+              label={t("traders.sort")}
+            />
+            {!okx && (
+              <Select
+                value={String(minAccount)}
+                options={MIN_ACCOUNTS.map((m) => ({
+                  value: String(m),
+                  label: `≥ $${formatCompact(m)}`,
+                }))}
+                onChange={(m) => onView({ ...view, minAccount: Number(m) })}
+                label={t("traders.minAccount")}
+              />
+            )}
+            <span className="app-spacer" />
+            {rows ? (
+              <span className="tr-muted">
+                {t("traders.shown", { shown: shown?.length ?? 0, total: rows.length })}
+              </span>
             ) : (
-              <tbody>
-                {shown.map((r) => {
-                  const key = traderKey(r.source, r.id);
-                  const name = traderName(r.source, r.id, r.name);
-                  const followed = isFollowed(state, key);
-                  return (
-                    <tr key={key} onClick={() => onOpen(r)} data-followed={followed || undefined}>
-                      <td className="tr-rank">{ranks.get(r)}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="tr-who"
-                          aria-label={t("traders.open", { name })}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpen(r);
-                          }}
+              !error && (
+                <span className="tr-muted" role="status">
+                  {t(okx ? "traders.loading" : "traders.loadingHl")}
+                </span>
+              )
+            )}
+          </div>
+          {error ? (
+            <div className="tr-state">
+              <EmptyState error>{error}</EmptyState>
+              <button
+                type="button"
+                className="tr-following"
+                onClick={() => setAttempt((a) => a + 1)}
+              >
+                {t("traders.retry")}
+              </button>
+            </div>
+          ) : shown && shown.length === 0 ? (
+            <EmptyState>{t("traders.none")}</EmptyState>
+          ) : (
+            <div className="tr-scroll" aria-busy={!shown || undefined}>
+              <table className="tr-table">
+                <thead>
+                  <tr>
+                    <th className="tr-rank">{t("traders.col.rank")}</th>
+                    <th>{t("traders.col.trader")}</th>
+                    <th className="num">{t("traders.col.pnl")}</th>
+                    <th className="num">{t("traders.col.roi")}</th>
+                    {okx && <th className="num">{t("traders.col.winRate")}</th>}
+                    <th className="num">{t(okx ? "traders.col.aum" : "traders.col.account")}</th>
+                    {okx ? (
+                      <>
+                        <th className="num">{t("traders.col.copiers")}</th>
+                        <th className="num">{t("traders.col.leadDays")}</th>
+                        <th>{t("traders.col.roi")}</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="num">{t("traders.col.volume")}</th>
+                        <th title={t("traders.col.streakHint")}>{t("traders.col.streak")}</th>
+                      </>
+                    )}
+                    <th aria-label={t("traders.follow")} />
+                  </tr>
+                </thead>
+                {!shown ? (
+                  <BoardSkeletonRows okx={okx} />
+                ) : (
+                  <tbody>
+                    {shown.map((r) => {
+                      const key = traderKey(r.source, r.id);
+                      const name = traderName(r.source, r.id, r.name);
+                      const followed = isFollowed(state, key);
+                      return (
+                        <tr
+                          key={key}
+                          onClick={() => select(r)}
+                          data-followed={followed || undefined}
+                          data-selected={picked?.id === r.id || undefined}
                         >
-                          <TraderAvatar id={key} />
-                          <span className="tr-who-name">
-                            <b>{name}</b>
-                            {r.name && !okx && <small>{traderName(r.source, r.id, null)}</small>}
-                          </span>
-                        </button>
-                      </td>
-                      <td className={`num ${trendClass(r.pnl)}`}>{money(r.pnl)}</td>
-                      <td className={`num ${trendClass(r.roi)}`}>{pct(r.roi)}</td>
-                      {okx && (
-                        <td className="num">
-                          {r.winRate == null ? "–" : formatPercent(r.winRate, 0)}
-                        </td>
-                      )}
-                      <td className="num">{formatCompact(r.accountValue)}</td>
-                      {okx ? (
-                        <>
-                          <td className="num">{r.copiers ?? "–"}</td>
-                          <td className="num">
-                            {r.leadDays == null ? "–" : t("traders.days", { days: r.leadDays })}
+                          <td className="tr-rank">{ranks.get(r)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="tr-who"
+                              aria-label={t("traders.open", { name })}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                select(r);
+                              }}
+                            >
+                              <TraderAvatar id={key} />
+                              <span className="tr-who-name">
+                                <b>{name}</b>
+                                {r.name && !okx && (
+                                  <small>{traderName(r.source, r.id, null)}</small>
+                                )}
+                              </span>
+                            </button>
                           </td>
-                          <td className="tr-spark">
-                            <PnlLine
-                              points={r.roiCurve.map((v, i) => [i, v])}
-                              height={22}
-                              label={t("traders.col.roi")}
+                          <td className={`num ${trendClass(r.pnl)}`}>{money(r.pnl)}</td>
+                          <td className={`num ${trendClass(r.roi)}`}>{pct(r.roi)}</td>
+                          {okx && (
+                            <td className="num">
+                              {r.winRate == null ? "–" : formatPercent(r.winRate, 0)}
+                            </td>
+                          )}
+                          <td className="num">{formatCompact(r.accountValue)}</td>
+                          {okx ? (
+                            <>
+                              <td className="num">{r.copiers ?? "–"}</td>
+                              <td className="num">
+                                {r.leadDays == null ? "–" : t("traders.days", { days: r.leadDays })}
+                              </td>
+                              <td className="tr-spark">
+                                <PnlLine
+                                  points={r.roiCurve.map((v, i) => [i, v])}
+                                  height={22}
+                                  label={t("traders.col.roi")}
+                                />
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="num">
+                                {r.volume == null ? "–" : formatCompact(r.volume)}
+                              </td>
+                              <td>
+                                <Streak positive={r.positive} />
+                              </td>
+                            </>
+                          )}
+                          {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star inside is the control */}
+                          <td className="tr-star" onClick={(e) => e.stopPropagation()}>
+                            <StarButton
+                              starred={followed}
+                              name={name}
+                              onToggle={() => toggleFollow(key, r.name)}
+                              size={15}
+                              className={!followed && full ? "tr-star-full" : undefined}
                             />
                           </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="num">
-                            {r.volume == null ? "–" : formatCompact(r.volume)}
-                          </td>
-                          <td>
-                            <Streak positive={r.positive} />
-                          </td>
-                        </>
-                      )}
-                      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the star inside is the control */}
-                      <td className="tr-star" onClick={(e) => e.stopPropagation()}>
-                        <StarButton
-                          starred={followed}
-                          name={name}
-                          onToggle={() => toggleFollow(key, r.name)}
-                          size={15}
-                          className={!followed && full ? "tr-star-full" : undefined}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            )}
-          </table>
-        </div>
-      )}
-      <div className="tr-foot">
-        {full && <span>{t("traders.full", { max: MAX_FOLLOWED })}</span>}
-        <span className="app-spacer" />
-        <span>{t("traders.disclaimer", { source: t(`traders.source.${source}`) })}</span>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                )}
+              </table>
+            </div>
+          )}
+          <div className="tr-foot">
+            {full && <span>{t("traders.full", { max: MAX_FOLLOWED })}</span>}
+            <span className="app-spacer" />
+            <span>{t("traders.disclaimer", { source: t(`traders.source.${source}`) })}</span>
+          </div>
+        </section>
+        {picked && (
+          <TraderPreview
+            key={`${picked.source}:${picked.id}`}
+            row={picked}
+            rank={ranks.get(rows?.find((r) => r.id === picked.id) ?? picked) ?? 0}
+            period={period}
+            onClose={() => setSelected(undefined)}
+            onOpen={() => onOpen(picked)}
+          />
+        )}
       </div>
-    </section>
+    </div>
   );
 }
 

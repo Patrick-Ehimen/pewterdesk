@@ -1,6 +1,13 @@
-// A trader's picture: a 5×5 mirrored pattern drawn from their key, in the
-// theme's text and pewter tones (no accent: it's identity, not state). The
-// same trader looks the same everywhere.
+import type { CSSProperties } from "react";
+
+// A trader's picture: a 5×5 mirrored pattern drawn from their key, in a hue
+// of its own. Identity, not state, so the hues are the tag palette's
+// (BRAND.md: never green, red or the warning orange, so a picture can't read
+// as PnL or risk), at the theme's --pd-tag-l / --pd-tag-c. The same trader
+// looks the same everywhere.
+
+/** The tag palette's hues (`TAG_HUES` in components/plan/parts.tsx). */
+const HUES = [205, 235, 265, 295, 325, 355, 95, 185] as const;
 
 /** 32 bits of FNV-1a, run on `key` with `round` mixed in, for as many bits as asked. */
 function bits(key: string, count: number): boolean[] {
@@ -14,6 +21,13 @@ function bits(key: string, count: number): boolean[] {
     for (let b = 0; b < 32 && out.length < count; b++) out.push(((h >>> b) & 1) === 1);
   }
   return out;
+}
+
+/** The trader's hue, from the tag palette. */
+export function avatarHue(key: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+  return HUES[(h >>> 0) % HUES.length] ?? 235;
 }
 
 /** The cells to fill: [x, y, dim], mirrored about the middle column. */
@@ -36,8 +50,8 @@ export function TraderAvatar({ id, size = 28 }: { id: string; size?: number }) {
   return (
     <span
       className="tr-avatar"
-      style={{ width: size, height: size }}
-      data-alt={bits(id, 33)[32] || undefined}
+      style={{ width: size, height: size, "--tr-h": avatarHue(id) } as CSSProperties}
+      data-tone={bits(id, 33)[32] ? "soft" : undefined}
       aria-hidden
     >
       <svg viewBox="-1 -1 7 7" width={size} height={size} aria-hidden="true">
