@@ -4,7 +4,9 @@ import type { TraderRow, TraderSource } from "../../api/venueClient";
 import { followedKeys, useActivity, useTraders } from "../../lib/traders";
 import { ActivityFeed, Following } from "./Following";
 import { BoardSwitches, type BoardView, DEFAULT_BOARD, Leaderboard } from "./Leaderboard";
+import type { MyBook } from "./TraderSide";
 import { TraderView } from "./TraderView";
+import { WatchStatus } from "./WatchStatus";
 
 // The Traders page (after the Top traders mockups, design/screens/93-96):
 // Hyperliquid's and OKX's leaderboards, a trader's page, the traders the
@@ -40,7 +42,8 @@ interface Opened {
   row?: TraderRow;
 }
 
-export function TradersPage() {
+/** `mine`: your positions on the venue on screen, for a trader's "Against your account". */
+export function TradersPage({ mine }: { mine?: MyBook }) {
   const { state } = useTraders();
   const moves = useActivity();
   const [tab, setTab] = useState<Tab>(() =>
@@ -80,6 +83,7 @@ export function TradersPage() {
         />
         <span className="app-spacer" />
         {tab === "board" && !opened && <BoardSwitches view={view} onView={setView} />}
+        {tab !== "board" && <WatchStatus />}
       </header>
       {opened ? (
         <TraderView
@@ -88,6 +92,7 @@ export function TradersPage() {
           id={opened.id}
           row={opened.row}
           period={view.source === opened.source ? view.period : "month"}
+          mine={mine}
           onBack={() => setOpened(undefined)}
         />
       ) : tab === "board" ? (

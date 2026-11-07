@@ -1,6 +1,6 @@
 import { EmptyState, formatCompact, MapSeg, t } from "@pewterdesk/ui";
 import { type FormEvent, useMemo, useState } from "react";
-import { LuPlus, LuStar, LuTrash2 } from "react-icons/lu";
+import { LuCheck, LuCircle, LuPlus, LuSquare, LuStar, LuTrash2 } from "react-icons/lu";
 import type {
   TraderHolding,
   TraderMove,
@@ -12,12 +12,15 @@ import {
   agreement,
   FOLLOWING,
   LIST_NAME_MAX,
+  listKeys,
   MAX_FOLLOWED,
   parseKey,
+  SOURCE_LISTS,
   traderKey,
   useActivity,
   useTraders,
 } from "../../lib/traders";
+import { ListAlertsPanel, Timeline, WatchLegend } from "./FollowingParts";
 import { AgreeSkeleton, ChipsSkeleton, SideSkeleton } from "./Skeletons";
 import { TraderAvatar } from "./TraderAvatar";
 import { Side } from "./TraderView";
@@ -67,7 +70,11 @@ export function ActivityFeed({
           {shown.map((m) => {
             const key = traderKey(m.source, m.id);
             return (
-              <li key={`${key}-${m.at}-${m.change.market}`} data-alert={m.alert || undefined}>
+              <li
+                key={`${key}-${m.at}-${m.change.market}`}
+                data-alert={m.alert || undefined}
+                data-new={now - m.at < 60 * 60_000 || undefined}
+              >
                 <TraderAvatar id={key} size={26} />
                 <div>
                   <div className="tr-move-top">
@@ -81,8 +88,13 @@ export function ActivityFeed({
                     <span className="tr-src">{t(`traders.source.short.${m.source}`)}</span>
                     <time>{ago(m.at, now)}</time>
                   </div>
-                  <p>{moveText(m)}</p>
-                  <small>{t(m.alert ? "traders.activity.sent" : "traders.activity.quiet")}</small>
+                  <p>
+                    <Side side={m.change.side} /> {moveText(m)}
+                  </p>
+                  <small>
+                    {m.alert && <LuCheck size={11} aria-hidden />}
+                    {t(m.alert ? "traders.activity.sent" : "traders.activity.quiet")}
+                  </small>
                 </div>
               </li>
             );
@@ -100,9 +112,19 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
   const moves = useActivity();
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("");
-  const list = state.lists.find((l) => l.id === state.active) ??
-    state.lists[0] ?? { id: FOLLOWING, name: "", keys: [] };
-  const keys = list.keys;
+  // The list on screen: one of the trader's own, or one made by source.
+  const bySource = (SOURCE_LISTS as readonly string[]).includes(state.active);
+  const own = state.lists.find((l) => l.id === state.active) ?? state.lists[0];
+  const listId = bySource ? state.active : (own?.id ?? FOLLOWING);
+  const keys = useMemo(() => listKeys(state, listId), [state, listId]);
+  const listName = (id: string) =>
+    id === FOLLOWING
+      ? t("traders.list.following")
+      : id === "source:hyperliquid"
+        ? t("traders.source.hyperliquid")
+        : id === "source:okx"
+          ? t("traders.source.okx")
+          : (state.lists.find((l) => l.id === id)?.name ?? "");
   const byKey = useMemo(
     () => new Map(snapshots.map((s) => [traderKey(s.source, s.id), s] as const)),
     [snapshots],
@@ -154,18 +176,30 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
           </button>
         </header>
         <ul className="tr-list-names">
-          {state.lists.map((l) => (
-            <li key={l.id}>
-              <button
-                type="button"
-                aria-current={l.id === list.id || undefined}
-                onClick={() => setActive(l.id)}
-              >
-                <span>{l.id === FOLLOWING ? t("traders.list.following") : l.name}</span>
-                <span className="tr-muted">{l.keys.length}</span>
-              </button>
-            </li>
-          ))}
+          {[...state.lists.map((l) => l.id), ...SOURCE_LISTS].map((id) => {
+            const count = listKeys(state, id).length;
+            const auto = (SOURCE_LISTS as readonly string[]).includes(id);
+            if (auto && count === 0) return null;
+            return (
+              <li key={id}>
+                <button
+                  type="button"
+                  aria-current={id === listId || undefined}
+                  onClick={() => setActive(id)}
+                >
+                  {id === FOLLOWING ? (
+                    <LuStar size={13} aria-hidden />
+                  ) : auto ? (
+                    <LuSquare size={12} aria-hidden />
+                  ) : (
+                    <LuCircle size={12} aria-hidden />
+                  )}
+                  <span>{listName(id)}</span>
+                  <span className="tr-muted">{count}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
         {naming && (
           <form className="tr-new-list" onSubmit={submit}>
@@ -183,13 +217,14 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
           </form>
         )}
         <header className="tr-panel-head tr-sub">
-          <h3>{list.id === FOLLOWING ? t("traders.list.following") : list.name}</h3>
+          <h3>{listName(listId)}</h3>
           <span className="app-spacer" />
-          {list.id !== FOLLOWING && (
+          <span className="tr-muted">{t("traders.inTrade")}</span>
+          {listId !== FOLLOWING && !bySource && (
             <button
               type="button"
               className="tr-icon"
-              onClick={() => removeList(list.id)}
+              onClick={() => removeList(listId)}
               aria-label={t("traders.list.delete")}
             >
               <LuTrash2 size={13} aria-hidden />
@@ -218,6 +253,12 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
             })}
           </ul>
         )}
+        {bySource ? (
+          <p className="tr-note tr-pad">{t("traders.listAlerts.bySource")}</p>
+        ) : (
+          <ListAlertsPanel listId={listId} size={keys.length} />
+        )}
+        <WatchLegend />
       </section>
 
       <div className="tr-following-main">
@@ -278,6 +319,8 @@ export function Following({ onOpen, onBrowse }: { onOpen: Open; onBrowse: () => 
             </div>
           )}
         </section>
+
+        <Timeline keys={keys} moves={moves} snapshots={snapshots} onOpen={onOpen} />
 
         <section className="tr-panel">
           <header className="tr-panel-head">

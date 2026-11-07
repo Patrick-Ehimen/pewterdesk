@@ -792,6 +792,8 @@ export interface TraderFollow {
   id: string;
   minValue: number;
   kinds: TraderChangeKind[];
+  /** The markets that alert; none means all. */
+  markets: string[];
 }
 
 /** Top traders: public, keyless reads in Rust (`traders.rs`); nothing here trades. */
