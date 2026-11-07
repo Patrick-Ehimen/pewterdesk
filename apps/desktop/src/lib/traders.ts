@@ -215,7 +215,7 @@ export interface Agreement {
 
 /** Where the followed traders in `keys` are positioned, most traders first. */
 export function agreement(
-  snapshots: readonly TraderSnapshot[],
+  snapshots: readonly Pick<TraderSnapshot, "source" | "id" | "holdings">[],
   keys: readonly string[],
 ): Agreement[] {
   const wanted = new Set(keys);

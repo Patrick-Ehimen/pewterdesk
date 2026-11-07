@@ -305,6 +305,7 @@ pub fn run() {
             traders::trader_rows,
             traders::set_trader_watch,
             traders::trader_snapshots,
+            traders::traders_sweep,
             news_feeds::news_feed,
             news_feeds::open_news_article,
             econ_calendar::economic_calendar,

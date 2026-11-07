@@ -24,7 +24,8 @@ import { Side } from "./TraderView";
 
 type Open = (source: TraderSource, id: string) => void;
 
-const ago = (at: number, now: number) => {
+/** "3 min. ago", in the app's language. */
+export const ago = (at: number, now: number) => {
   const minutes = Math.round((now - at) / 60_000);
   const format = new Intl.RelativeTimeFormat(undefined, { style: "short", numeric: "auto" });
   if (minutes < 60) return format.format(-minutes, "minute");
