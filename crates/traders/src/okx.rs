@@ -15,8 +15,8 @@ use serde::Deserialize;
 
 use crate::stats::{best_step_share, max_drawdown, weeks_from_weekly, win_share, TraderStats};
 use crate::{
-    body, client, hyperliquid::win_rate, now_ms, num, plain, ClosedTrade, Holding, Period,
-    PositionSide, SortBy, Source, TraderDetail, TraderRow, VenueError,
+    body, client, hyperliquid::win_rate, now_ms, num, plain, AccountRange, ClosedTrade, Holding,
+    Period, PositionSide, SortBy, Source, TraderDetail, TraderRow, VenueError,
 };
 
 const BASE: &str = "https://www.okx.com";
@@ -294,7 +294,8 @@ type Board = (Instant, Arc<Vec<TraderRow>>);
 pub struct Okx {
     http: reqwest::Client,
     markets: Mutex<Option<(Instant, Arc<Markets>)>>,
-    boards: Mutex<HashMap<SortBy, Board>>,
+    /// By sort and the range asked for (whole USD, `u64::MAX` for no ceiling).
+    boards: Mutex<HashMap<(SortBy, u64, u64), Board>>,
     next: tokio::sync::Mutex<Instant>,
 }
 
@@ -370,10 +371,16 @@ impl Okx {
     pub async fn leaderboard(
         &self,
         sort: SortBy,
+        range: AccountRange,
         limit: usize,
     ) -> Result<Vec<TraderRow>, VenueError> {
         let limit = limit.clamp(1, MAX_ROWS);
-        if let Some((at, rows)) = self.boards.lock().unwrap().get(&sort) {
+        let range = range.checked();
+        // Whole dollars: what OKX takes, and what the cache is keyed by.
+        let min = range.min.floor() as u64;
+        let max = range.max.map_or(u64::MAX, |m| m.ceil() as u64);
+        let key = (sort, min, max);
+        if let Some((at, rows)) = self.boards.lock().unwrap().get(&key) {
             if at.elapsed() < BOARD_FRESH_FOR && rows.len() >= limit {
                 return Ok(rows[..limit].to_vec());
             }
@@ -389,6 +396,13 @@ impl Okx {
                 ("limit", limit_s.as_str()),
                 ("page", page_s.as_str()),
             ];
+            let (min_s, max_s) = (min.to_string(), max.to_string());
+            if min > 0 {
+                query.push(("minAum", min_s.as_str()));
+            }
+            if max < u64::MAX {
+                query.push(("maxAum", max_s.as_str()));
+            }
             // Every page from the same version of the board.
             if version.len() == 14 && version.bytes().all(|b| b.is_ascii_digit()) {
                 query.push(("dataVer", version.as_str()));
@@ -413,7 +427,7 @@ impl Okx {
         self.boards
             .lock()
             .unwrap()
-            .insert(sort, (Instant::now(), Arc::clone(&rows)));
+            .insert(key, (Instant::now(), Arc::clone(&rows)));
         Ok(rows.iter().take(limit).cloned().collect())
     }
 
@@ -518,6 +532,7 @@ impl Okx {
                 .filter_map(|p| Some((plain(&p.ccy, 20), num(&p.ratio)?)))
                 .take(6)
                 .collect(),
+            fills_from: None,
         })
     }
 }

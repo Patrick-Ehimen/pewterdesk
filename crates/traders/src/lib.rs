@@ -58,6 +58,32 @@ pub enum SortBy {
     WinRate,
 }
 
+/// Account sizes a leaderboard keeps (USD; on OKX, assets managed): at least
+/// `min`, and under `max` when there is one.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountRange {
+    pub min: f64,
+    pub max: Option<f64>,
+}
+
+impl AccountRange {
+    /// Finite, and the right way round; anything else keeps every size.
+    pub fn checked(self) -> Self {
+        let min = if self.min.is_finite() {
+            self.min.max(0.0)
+        } else {
+            0.0
+        };
+        let max = self.max.filter(|m| m.is_finite() && *m > min);
+        Self { min, max }
+    }
+
+    pub fn holds(&self, value: f64) -> bool {
+        value >= self.min && self.max.is_none_or(|m| value < m)
+    }
+}
+
 /// One trader's line on a leaderboard.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -143,6 +169,9 @@ pub struct TraderDetail {
     pub weekly_pnl: Vec<(u64, f64)>,
     /// What they trade most: (base coin, share), largest first.
     pub preferred: Vec<(String, f64)>,
+    /// Hyperliquid: the time of the oldest fill read (it keeps only an
+    /// account's latest fills), so a page can say how far back trades go.
+    pub fills_from: Option<u64>,
 }
 
 /// An HTTP client for one fixed host: no redirects, a timeout, gzip.

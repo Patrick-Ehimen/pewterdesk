@@ -2,14 +2,20 @@
 //! but they need the network (and the leaderboard is some 40 MB), so they're
 //! skipped by default. Run them one at a time (`make rust-live`).
 
-use pewterdesk_traders::{changes, hyperliquid::Hyperliquid, okx::Okx, Period, SortBy, Source};
+use pewterdesk_traders::{
+    changes, hyperliquid::Hyperliquid, okx::Okx, AccountRange, Period, SortBy, Source,
+};
+
+const fn floor(min: f64) -> AccountRange {
+    AccountRange { min, max: None }
+}
 
 #[tokio::test]
 #[ignore = "reads Hyperliquid's leaderboard and a trader's account"]
 async fn hyperliquid_board_and_a_trader() {
     let hl = Hyperliquid::new().unwrap();
     let rows = hl
-        .leaderboard(Period::Month, SortBy::Pnl, 100_000.0, 50)
+        .leaderboard(Period::Month, SortBy::Pnl, floor(100_000.0), 50)
         .await
         .unwrap();
     assert_eq!(rows.len(), 50);
@@ -19,10 +25,28 @@ async fn hyperliquid_board_and_a_trader() {
         .all(|r| r.source == Source::Hyperliquid && r.account_value >= 100_000.0));
     // Read again: from memory, not another 40 MB.
     let again = hl
-        .leaderboard(Period::Week, SortBy::Roi, 1_000_000.0, 10)
+        .leaderboard(Period::Week, SortBy::Roi, floor(1_000_000.0), 10)
         .await
         .unwrap();
     assert!(again.windows(2).all(|w| w[0].roi >= w[1].roi));
+    // "Account >= $1M", and a band of small accounts.
+    let million = hl
+        .leaderboard(Period::Month, SortBy::Pnl, floor(1_000_000.0), 300)
+        .await
+        .unwrap();
+    assert!(!million.is_empty() && million.iter().all(|r| r.account_value >= 1_000_000.0));
+    let band = AccountRange {
+        min: 10_000.0,
+        max: Some(100_000.0),
+    };
+    let small = hl
+        .leaderboard(Period::Month, SortBy::Pnl, band, 300)
+        .await
+        .unwrap();
+    assert!(!small.is_empty());
+    assert!(small
+        .iter()
+        .all(|r| (10_000.0..100_000.0).contains(&r.account_value)));
 
     let top = &rows[0].id;
     let stats = hl.stats(top).await.unwrap();
@@ -45,11 +69,27 @@ async fn hyperliquid_board_and_a_trader() {
 #[ignore = "reads OKX's lead traders"]
 async fn okx_board_and_a_lead_trader() {
     let okx = Okx::new().unwrap();
-    let rows = okx.leaderboard(SortBy::Pnl, 40).await.unwrap();
+    let rows = okx
+        .leaderboard(SortBy::Pnl, AccountRange::default(), 40)
+        .await
+        .unwrap();
     assert_eq!(rows.len(), 40);
     assert!(rows
         .iter()
         .all(|r| r.source == Source::Okx && r.copiers.is_some()));
+    let band = AccountRange {
+        min: 1_000.0,
+        max: Some(10_000.0),
+    };
+    let small = okx.leaderboard(SortBy::Pnl, band, 20).await.unwrap();
+    assert!(!small.is_empty());
+    assert!(
+        small
+            .iter()
+            .all(|r| (1_000.0..10_000.0).contains(&r.account_value)),
+        "{:?}",
+        small.iter().map(|r| r.account_value).collect::<Vec<_>>()
+    );
     let code = &rows[0].id;
     assert!(okx.row(code).is_some());
     let stats = okx.stats(code).await.unwrap();

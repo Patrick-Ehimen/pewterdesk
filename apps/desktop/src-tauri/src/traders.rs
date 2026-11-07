@@ -23,8 +23,8 @@ use std::time::{Duration, Instant};
 
 use pewterdesk_core::{PositionSide, VenueError};
 use pewterdesk_traders::{
-    changes, hyperliquid::Hyperliquid, okx::Okx, valid_id, Change, ChangeKind, Holding, Period,
-    SortBy, Source, TraderDetail, TraderRow, TraderStats,
+    changes, hyperliquid::Hyperliquid, okx::Okx, valid_id, AccountRange, Change, ChangeKind,
+    Holding, Period, SortBy, Source, TraderDetail, TraderRow, TraderStats,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -195,20 +195,20 @@ fn alerts(follow: &Follow, change: &Change) -> bool {
         && (follow.markets.is_empty() || follow.markets.iter().any(|m| m == &change.market))
 }
 
-/// A leaderboard. OKX ranks over the time a trader has led, so `period` is
-/// Hyperliquid's only, as is `min_account` (USD).
+/// A leaderboard of the accounts in `range` (USD; on OKX, assets managed).
+/// OKX ranks over the time a trader has led, so `period` is Hyperliquid's only.
 #[tauri::command]
 pub async fn traders_leaderboard(
     state: State<'_, TradersState>,
     source: Source,
     period: Period,
     sort: SortBy,
-    min_account: f64,
+    range: AccountRange,
     limit: usize,
 ) -> Result<Vec<TraderRow>, VenueError> {
     match source {
-        Source::Hyperliquid => state.hl.leaderboard(period, sort, min_account, limit).await,
-        Source::Okx => state.okx.leaderboard(sort, limit).await,
+        Source::Hyperliquid => state.hl.leaderboard(period, sort, range, limit).await,
+        Source::Okx => state.okx.leaderboard(sort, range, limit).await,
     }
 }
 
