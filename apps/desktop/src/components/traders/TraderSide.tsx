@@ -28,6 +28,12 @@ export interface MyBook {
 
 const HOLD_LABELS = ["<1h", "4h", "12h", "1d", "3d", "1w", "1w+"];
 
+/** "7 h", "3 d": how long a stretch of time is, roughly. */
+function span(ms: number): string {
+  const hours = Math.max(1, Math.round(ms / 3_600_000));
+  return hours < 48 ? `${hours} h` : `${Math.round(hours / 24)} d`;
+}
+
 /** Alerts for one trader: when, how big, which markets, where to. */
 export function AlertsCard({ traderKey: key, markets }: { traderKey: string; markets: string[] }) {
   const { state, setAlerts, resetAlerts } = useTraders();
@@ -195,7 +201,9 @@ export function HowTheyTrade({ detail }: { detail: TraderDetail | undefined }) {
     <section className="tr-panel">
       <header className="tr-panel-head">
         <h3>{t("traders.how")}</h3>
-        <span className="tr-muted">{t("traders.howHint", { count: detail.closed.length })}</span>
+        {detail.closed.length > 0 && (
+          <span className="tr-muted">{t("traders.howHint", { count: detail.closed.length })}</span>
+        )}
       </header>
       {detail.preferred.length > 0 && (
         <div className="tr-bars">
@@ -233,7 +241,9 @@ export function HowTheyTrade({ detail }: { detail: TraderDetail | undefined }) {
           <span>
             {hold.known > 0
               ? t("traders.how.holdMost", { span: HOLD_LABELS[usual] ?? "" })
-              : t("traders.how.holdUnknown")}
+              : detail.fillsFrom
+                ? t("traders.how.holdLonger", { span: span(Date.now() - detail.fillsFrom) })
+                : t("traders.how.holdUnknown")}
           </span>
         </div>
         {hold.known > 0 && (
