@@ -49,7 +49,7 @@ import {
   LuX,
 } from "react-icons/lu";
 import { useMarketHistories } from "../../hooks/useMapData";
-import { useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
+import { useMarketCaps, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { useWatchlist, watchKey } from "../../hooks/useWatchlist";
 import { dayChanges } from "../../lib/marketMovers";
 import { keepCurrent, keepSaved, loadCurrent, loadSaved, MAX_SAVED } from "../../lib/screens";
@@ -156,6 +156,17 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
   const summaries =
     summaryFeed.status === "live" || summaryFeed.status === "closed" ? summaryFeed.data : undefined;
   const columns = screenColumns(screen);
+  // Market caps, for the Market column's sort: crypto markets only (a
+  // stock's ticker would match some unrelated coin), read once it's asked for.
+  const capBases = useMemo(
+    () =>
+      columns.includes("marketCap") && markets
+        ? [...new Set(markets.filter((m) => inScope(m, "crypto")).map((m) => m.base))].sort()
+        : undefined,
+    [columns, markets],
+  );
+  const capsFeed = useMarketCaps(venue, capBases);
+  const caps = capsFeed.status === "live" ? capsFeed.data : undefined;
   const histories = useMarketHistories(venue, columns.some(needsHistory));
 
   // The key levels are the day's and the week's: read against a clock that
@@ -176,8 +187,9 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
         summary: summaryById.get(market.id),
         candles: histories.get(market.id)?.candles,
         now,
+        marketCap: inScope(market, "crypto") ? caps?.[market.base] : undefined,
       })),
-    [markets, summaryById, histories, now],
+    [markets, summaryById, histories, now, caps],
   );
   const rows = useMemo(() => runScreen(screen, inputs), [screen, inputs]);
   // Ranked in the screen's order, then searched: a market keeps its number.
@@ -375,7 +387,30 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
                     <th className="screener-rank" title={t("screens.rank")}>
                       #
                     </th>
-                    <th>{t("screens.market")}</th>
+                    <th
+                      aria-sort={
+                        screen.sort.column === "marketCap"
+                          ? screen.sort.desc
+                            ? "descending"
+                            : "ascending"
+                          : undefined
+                      }
+                    >
+                      {/* Largest market cap first, then smallest on a second click. */}
+                      <button
+                        type="button"
+                        title={t("screens.sortCap")}
+                        onClick={() => sortBy("marketCap")}
+                      >
+                        {t("screens.market")}
+                        {screen.sort.column === "marketCap" &&
+                          (screen.sort.desc ? (
+                            <LuArrowDown size={12} aria-hidden />
+                          ) : (
+                            <LuArrowUp size={12} aria-hidden />
+                          ))}
+                      </button>
+                    </th>
                     {screen.columns.map((c) => (
                       <th
                         key={c}

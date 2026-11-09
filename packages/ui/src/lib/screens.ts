@@ -51,6 +51,7 @@ export const SCREEN_COLUMNS = [
   "rating",
   "maRating",
   "oscRating",
+  "marketCap",
 ] as const;
 export type ScreenColumn = (typeof SCREEN_COLUMNS)[number];
 
@@ -80,6 +81,7 @@ export const SCREEN_UNIT: Record<ScreenColumn, ScreenUnit> = {
   rating: "rating",
   maRating: "rating",
   oscRating: "rating",
+  marketCap: "usd",
 };
 
 export const RATINGS = ["strongSell", "sell", "neutral", "buy", "strongBuy"] as const;
@@ -104,7 +106,14 @@ export const SCREEN_STATES: Partial<Record<ScreenColumn, readonly string[]>> = {
 };
 
 /** Columns read from the summary alone: there from the start, before any history. */
-const SUMMARY_COLUMNS = new Set<ScreenColumn>(["price", "change24h", "volume", "oi", "funding"]);
+const SUMMARY_COLUMNS = new Set<ScreenColumn>([
+  "price",
+  "change24h",
+  "volume",
+  "oi",
+  "funding",
+  "marketCap",
+]);
 export const needsHistory = (column: ScreenColumn) => !SUMMARY_COLUMNS.has(column);
 
 /** One market, as a screen reads it. */
@@ -114,6 +123,8 @@ export interface ScreenInput {
   /** Oldest first, hourly, up to 7 days. */
   candles?: readonly Candle[];
   now: number;
+  /** The coin's market cap in USD, from CoinGecko; absent where it has none. */
+  marketCap?: number;
 }
 
 export type ScreenValue = number | string | undefined;
@@ -140,6 +151,8 @@ export function screenValue(column: ScreenColumn, input: ScreenInput): ScreenVal
       return priced !== undefined && s ? finite(Number(s.openInterest) * priced) : undefined;
     case "funding":
       return s ? finite(fundingApr(Number(s.fundingRate), s.fundingIntervalSecs)) : undefined;
+    case "marketCap":
+      return finite(input.marketCap);
   }
   if (!candles || candles.length === 0) return undefined;
   const closes = () => candles.map((c) => Number(c.close));

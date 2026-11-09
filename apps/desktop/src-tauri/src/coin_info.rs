@@ -4,7 +4,9 @@
 //! default; a CoinGecko demo API key, if the user adds one, raises the rate
 //! limit.
 //!
-//! It also serves a coin's logo, as a last resort for a market whose own
+//! It also serves the market as a whole for the AI page (`crypto_overview`:
+//! `/global` and the top 100 of `/coins/markets`, fixed requests, numbers
+//! only; the arithmetic is `coin_overview`), and a coin's logo, as a last resort for a market whose own
 //! venue (and the venues it borrows from) has none: CoinGecko's search names
 //! the logo's file on its image host, `IMAGES`.
 //!
@@ -36,6 +38,7 @@ use tauri::State;
 use zeroize::Zeroizing;
 
 use crate::about::open_url;
+use crate::coin_overview::{self, CryptoOverview};
 use crate::keychain::{self, KeychainKeySource};
 
 const BASE: &str = "https://api.coingecko.com/api/v3";
@@ -63,6 +66,14 @@ const MAX_DESCRIPTION: usize = 4000;
 const SECTOR_COINS: usize = 60;
 /// How long a sector's coins are kept before they're fetched again.
 const SECTOR_FRESH_FOR: Duration = Duration::from_secs(5 * 60);
+/// How long the market overview is kept.
+const OVERVIEW_FRESH_FOR: Duration = Duration::from_secs(10 * 60);
+/// Coins read for the Screener's market caps: CoinGecko's largest, in pages
+/// of its maximum size.
+const CAP_PAGES: usize = 2;
+const CAP_PAGE_SIZE: usize = 250;
+/// Most bases one `coin_market_caps` call takes: more than a venue lists.
+const MAX_CAP_BASES: usize = 2000;
 /// Sector requests start at least this far apart: the heatmap asks for ten
 /// in a row. CoinGecko's keyless limit is a few a minute (a sixth request
 /// 4s apart was refused when this was written); a demo key allows 30.
@@ -221,6 +232,9 @@ struct Found {
     image: String,
 }
 
+/// Market caps by ticker.
+type Caps = HashMap<String, f64>;
+
 /// A sector's coins and when they were read.
 type SectorCoins = (Instant, Arc<Vec<CoinMarket>>);
 
@@ -238,8 +252,13 @@ pub struct CoinInfoState {
     coins: Mutex<HashMap<String, (Instant, Arc<Coin>)>>,
     /// Each sector's coins for the market heatmap, and when they were read.
     sectors: Mutex<HashMap<CoinSector, SectorCoins>>,
-    /// When the next sector request may start; see `SECTOR_SPACING`.
+    /// When the next sector request may start; see `SECTOR_SPACING`. The
+    /// market overview's requests wait their turn here too.
     next_sector: tokio::sync::Mutex<Instant>,
+    /// The market overview, and when it was read.
+    overview: Mutex<Option<(Instant, Arc<CryptoOverview>)>>,
+    /// The largest coins' market caps by ticker, and when they were read.
+    caps: Mutex<Option<(Instant, Arc<Caps>)>>,
     /// The demo key, read from the keychain once per session (`None` until
     /// then): every keychain read can raise a macOS permission prompt, and
     /// this is a data key, not a trading one, so it needn't be re-read.
@@ -269,6 +288,8 @@ impl CoinInfoState {
             coins: Mutex::default(),
             sectors: Mutex::default(),
             next_sector: tokio::sync::Mutex::new(Instant::now()),
+            overview: Mutex::default(),
+            caps: Mutex::default(),
             key: tokio::sync::Mutex::new(None),
         })
     }
@@ -354,6 +375,101 @@ impl CoinInfoState {
             .unwrap()
             .insert(sector, (Instant::now(), Arc::clone(&coins)));
         Ok(coins)
+    }
+
+    /// The crypto market as a whole (`coin_overview`), from memory while
+    /// fresh: two fixed requests, spaced with the sectors'.
+    async fn overview(&self, key: Option<&str>) -> Result<Arc<CryptoOverview>, VenueError> {
+        let cached = |this: &Self| {
+            this.overview
+                .lock()
+                .unwrap()
+                .as_ref()
+                .filter(|(at, _)| at.elapsed() < OVERVIEW_FRESH_FOR)
+                .map(|(_, o)| Arc::clone(o))
+        };
+        if let Some(o) = cached(self) {
+            return Ok(o);
+        }
+        let mut next = self.next_sector.lock().await;
+        if let Some(o) = cached(self) {
+            return Ok(o);
+        }
+        tokio::time::sleep_until((*next).into()).await;
+        let spacing = if key.is_some() {
+            SECTOR_SPACING_WITH_KEY
+        } else {
+            SECTOR_SPACING
+        };
+        // Two requests: the next caller waits twice as long.
+        *next = Instant::now() + spacing * 2;
+        let global: coin_overview::WireGlobal = self.get("/global", &[], key).await?;
+        let top: Vec<coin_overview::WireTop> = self
+            .get(
+                "/coins/markets",
+                &[
+                    ("vs_currency", "usd"),
+                    ("order", "market_cap_desc"),
+                    ("per_page", &coin_overview::TOP_COINS.to_string()),
+                    ("page", "1"),
+                    ("sparkline", "true"),
+                    ("price_change_percentage", "30d"),
+                ],
+                key,
+            )
+            .await?;
+        let overview = Arc::new(coin_overview::build(global, top));
+        *self.overview.lock().unwrap() = Some((Instant::now(), Arc::clone(&overview)));
+        Ok(overview)
+    }
+
+    /// The largest coins' market caps by ticker (upper case), from memory
+    /// while fresh: `CAP_PAGES` fixed requests, spaced with the sectors'. A
+    /// ticker two coins share goes to the larger.
+    async fn caps(&self, key: Option<&str>) -> Result<Arc<Caps>, VenueError> {
+        let cached = |this: &Self| {
+            this.caps
+                .lock()
+                .unwrap()
+                .as_ref()
+                .filter(|(at, _)| at.elapsed() < OVERVIEW_FRESH_FOR)
+                .map(|(_, c)| Arc::clone(c))
+        };
+        if let Some(c) = cached(self) {
+            return Ok(c);
+        }
+        let mut next = self.next_sector.lock().await;
+        if let Some(c) = cached(self) {
+            return Ok(c);
+        }
+        tokio::time::sleep_until((*next).into()).await;
+        let spacing = if key.is_some() {
+            SECTOR_SPACING_WITH_KEY
+        } else {
+            SECTOR_SPACING
+        };
+        *next = Instant::now() + spacing * CAP_PAGES as u32;
+        let mut caps = HashMap::new();
+        for page in 1..=CAP_PAGES {
+            let rows: Vec<WireMarket> = self
+                .get(
+                    "/coins/markets",
+                    &[
+                        ("vs_currency", "usd"),
+                        ("order", "market_cap_desc"),
+                        ("per_page", &CAP_PAGE_SIZE.to_string()),
+                        ("page", &page.to_string()),
+                    ],
+                    key,
+                )
+                .await?;
+            for coin in rows.into_iter().filter_map(coin_market) {
+                caps.entry(coin.symbol).or_insert(coin.market_cap);
+            }
+        }
+        let caps = Arc::new(caps);
+        *self.caps.lock().unwrap() = Some((Instant::now(), Arc::clone(&caps)));
+        Ok(caps)
     }
 
     /// What CoinGecko has for `ticker`: the best-ranked coin with exactly
@@ -865,6 +981,45 @@ pub async fn coin_markets(
     Ok(coins.as_ref().clone())
 }
 
+/// The crypto market as a whole, for the AI page's Quick Insights: the
+/// total market cap, its 24h change and 7-day line, and the altcoin index.
+#[tauri::command]
+pub async fn crypto_overview(
+    state: State<'_, CoinInfoState>,
+) -> Result<CryptoOverview, VenueError> {
+    let key = state.stored_key().await;
+    let overview = state.overview(key.as_deref().map(|k| k.as_str())).await?;
+    Ok(overview.as_ref().clone())
+}
+
+/// Market caps for a venue's base coins (e.g. "BTC", "1000PEPE": the size
+/// multiplier is dropped), for the Screener's Market column: each base the
+/// largest coins include, with its cap in USD; the rest are left out. The
+/// UI sends bases only; Rust checks each and builds the requests.
+#[tauri::command]
+pub async fn coin_market_caps(
+    state: State<'_, CoinInfoState>,
+    bases: Vec<String>,
+) -> Result<HashMap<String, f64>, VenueError> {
+    if bases.len() > MAX_CAP_BASES {
+        return Err(VenueError::InvalidRequest("too many markets".into()));
+    }
+    let key = state.stored_key().await;
+    let caps = state.caps(key.as_deref().map(|k| k.as_str())).await?;
+    Ok(caps_for(&caps, &bases))
+}
+
+/// Each base whose ticker has a cap, with it.
+fn caps_for(caps: &HashMap<String, f64>, bases: &[String]) -> HashMap<String, f64> {
+    bases
+        .iter()
+        .filter_map(|base| {
+            let cap = *caps.get(&ticker(base)?)?;
+            Some((base.clone(), cap))
+        })
+        .collect()
+}
+
 /// A coin's logo from CoinGecko, as SVG markup, for a market's base coin
 /// (e.g. "MOG", or "1000000MOG": the multiplier is dropped). `None` when
 /// CoinGecko has none. The last place a logo is looked for: the UI asks
@@ -1166,6 +1321,53 @@ mod tests {
                     .as_deref(),
                 Some("pepe")
             );
+        });
+    }
+
+    #[test]
+    fn market_caps_match_bases_by_ticker() {
+        let caps = HashMap::from([("PEPE".to_string(), 5e9), ("BTC".to_string(), 2e12)]);
+        let bases = ["1000PEPE", "BTC", "NOTACOIN", "bad base!"].map(String::from);
+        let found = caps_for(&caps, &bases);
+        assert_eq!(found.get("1000PEPE"), Some(&5e9));
+        assert_eq!(found.get("BTC"), Some(&2e12));
+        assert_eq!(found.len(), 2);
+    }
+
+    /// Against CoinGecko's keyless API: needs the network.
+    #[test]
+    #[ignore = "hits CoinGecko"]
+    fn reads_market_caps_from_coingecko() {
+        let state = CoinInfoState::new().unwrap();
+        tauri::async_runtime::block_on(async {
+            let caps = state.caps(None).await.unwrap();
+            println!("{} tickers", caps.len());
+            assert!(caps.len() > 400);
+            assert!(caps["BTC"] > caps["ETH"]);
+            assert!(caps.contains_key("PEPE"));
+        });
+    }
+
+    /// Against CoinGecko's keyless API: needs the network.
+    #[test]
+    #[ignore = "hits CoinGecko"]
+    fn reads_the_market_overview_from_coingecko() {
+        let state = CoinInfoState::new().unwrap();
+        tauri::async_runtime::block_on(async {
+            let o = state.overview(None).await.unwrap();
+            println!(
+                "cap {:?} change {:?} index {:?} of {} points {}",
+                o.market_cap,
+                o.market_cap_change_24h,
+                o.altcoin_index,
+                o.altcoins,
+                o.market_cap_curve.len()
+            );
+            assert!(o.market_cap.unwrap() > 5e11);
+            assert!(o.altcoin_index.is_some() && o.altcoins >= 60);
+            assert!(o.market_cap_curve.len() > 40);
+            let end = *o.market_cap_curve.last().unwrap();
+            assert!((end / o.market_cap.unwrap() - 1.0).abs() < 1e-9);
         });
     }
 

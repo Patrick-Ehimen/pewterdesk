@@ -11,6 +11,7 @@ mod bybit_key;
 mod chart_window;
 mod cloud;
 mod coin_info;
+mod coin_overview;
 mod daemon;
 mod econ_calendar;
 mod exchange_notices;
@@ -298,6 +299,8 @@ pub fn run() {
             coin_info::coin_info,
             coin_info::coin_logo,
             coin_info::coin_markets,
+            coin_info::crypto_overview,
+            coin_info::coin_market_caps,
             okx_liquidations::okx_liquidation_markets,
             okx_liquidations::okx_liquidations,
             traders::traders_leaderboard,

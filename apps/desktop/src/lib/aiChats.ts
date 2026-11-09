@@ -1,4 +1,4 @@
-import type { CandleInterval, MarketSummary, VenueId } from "@pewterdesk/core";
+import type { CandleInterval, MarketHistory, MarketSummary, VenueId } from "@pewterdesk/core";
 import type { AiChatRecord, AiChatSummary } from "../api/cloudClient";
 import type { AiChartMarks, AiProvider, AiSnapshotRow, AiSource, AiStep } from "../api/venueClient";
 
@@ -431,4 +431,48 @@ export function marketPulse(summaries: readonly MarketSummary[], top = 3): Marke
     gainers: changes.slice(0, top),
     losers: changes.slice(-top).reverse(),
   };
+}
+
+/** Hours of venue volume on the 24h volume card's line. */
+export const VOLUME_HOURS = 72;
+/** The line waits until the markets read carry this share of the day's volume. */
+const VOLUME_COVERAGE = 0.8;
+
+/**
+ * The venue's traded value hour by hour, oldest first, over the last
+ * `VOLUME_HOURS` closed hours: every market's hourly candles (size times
+ * close), summed by hour. Undefined until the histories read cover most of
+ * the day's volume, so a half-loaded venue doesn't draw a false shape.
+ */
+export function volumeLine(
+  histories: ReadonlyMap<string, MarketHistory>,
+  summaries: readonly MarketSummary[],
+  now = Date.now(),
+): number[] | undefined {
+  let total = 0;
+  let covered = 0;
+  for (const s of summaries) {
+    const v = Number(s.dayVolume);
+    if (!Number.isFinite(v) || v <= 0) continue;
+    total += v;
+    if (histories.get(s.market)?.interval === "1h") covered += v;
+  }
+  if (total <= 0 || covered / total < VOLUME_COVERAGE) return undefined;
+  const HOUR = 3_600_000;
+  // The last closed hour: the one forming now would dip at the end.
+  const end = Math.floor(now / HOUR) * HOUR - HOUR;
+  const start = end - (VOLUME_HOURS - 1) * HOUR;
+  const sums = new Array<number>(VOLUME_HOURS).fill(0);
+  for (const s of summaries) {
+    const h = histories.get(s.market);
+    if (h?.interval !== "1h") continue;
+    for (const c of h.candles) {
+      if (c.openTime < start || c.openTime > end) continue;
+      const value = Number(c.volume) * Number(c.close);
+      const at = Math.round((c.openTime - start) / HOUR);
+      if (Number.isFinite(value) && value > 0) sums[at] = (sums[at] ?? 0) + value;
+    }
+  }
+  // Too few hours with trades (a venue's history shorter than the window).
+  return sums.filter((v) => v > 0).length >= 12 ? sums : undefined;
 }

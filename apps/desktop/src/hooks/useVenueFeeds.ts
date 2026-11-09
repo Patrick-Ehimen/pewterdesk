@@ -21,6 +21,7 @@ import {
   type Article,
   type CalendarEvent,
   type CoinInfo,
+  type CryptoOverview,
   calendarClient,
   coinClient,
   type ExchangeNotice,
@@ -281,9 +282,18 @@ function usePolled<T>(
   everyMs = HISTORY_REFRESH_MS,
   /** A change of this reads again at once, keeping what's shown meanwhile. */
   nudge?: string,
+  /**
+   * A read that failed before any data arrived is tried again every
+   * `RETRY_MS` (and when the network comes back), not only on the next poll.
+   */
+  retryFailed = false,
 ): Feed<T> {
   const [feed, setFeed] = useState<Feed<T>>({ status: "idle" });
   const runRef = useRef<(() => Promise<unknown>) | undefined>(undefined);
+  const retry = useRetry(retryFailed && feed.status === "error");
+  useEffect(() => {
+    if (retry > 0) void runRef.current?.();
+  }, [retry]);
   // `load` is rebuilt every render; `key` is what identifies the data.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
   useEffect(() => {
@@ -548,6 +558,39 @@ export function useFearGreed(): Feed<FearGreedDay[]> {
     "fear-greed",
     () => sentimentClient.fearGreed(),
     FEAR_GREED_REFRESH_MS,
+    undefined,
+    true,
+  );
+}
+
+/** CoinGecko keeps it 10 minutes in Rust; read again on that beat. */
+const OVERVIEW_REFRESH_MS = 10 * 60_000;
+
+/** The crypto market as a whole (market cap, its week, the altcoin index). */
+export function useCryptoOverview(): Feed<CryptoOverview> {
+  return usePolled<CryptoOverview>(
+    "crypto-overview",
+    () => coinClient.overview(),
+    OVERVIEW_REFRESH_MS,
+    undefined,
+    true,
+  );
+}
+
+/**
+ * Market caps for `bases` (a venue's crypto markets' base coins), by base,
+ * while `bases` is set: CoinGecko's, kept 10 minutes in Rust.
+ */
+export function useMarketCaps(
+  venue: VenueId,
+  bases: readonly string[] | undefined,
+): Feed<Record<string, number>> {
+  return usePolled<Record<string, number>>(
+    bases && bases.length > 0 ? `caps:${venue}:${bases.join(",")}` : undefined,
+    () => coinClient.marketCaps(bases ?? []),
+    OVERVIEW_REFRESH_MS,
+    undefined,
+    true,
   );
 }
 

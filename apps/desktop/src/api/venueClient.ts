@@ -983,7 +983,31 @@ export const calendarClient = {
   events: () => call<CalendarEvent[]>("economic_calendar", {}),
 };
 
+/** The crypto market as a whole, from CoinGecko (`crypto_overview`). */
+export interface CryptoOverview {
+  /** Total market cap, USD. */
+  marketCap: number | null;
+  /** Its 24-hour change, a fraction (0.02 is +2%). */
+  marketCapChange24h: number | null;
+  /** The total market cap over the last 7 days, oldest first. */
+  marketCapCurve: number[];
+  /** 0-100: the share of the largest altcoins that beat Bitcoin over 30 days. */
+  altcoinIndex: number | null;
+  /** How many altcoins the index counted. */
+  altcoins: number;
+}
+
 export const coinClient = {
+  /**
+   * Market caps in USD for a venue's base coins (e.g. "1000PEPE"), from
+   * CoinGecko's largest coins: only the bases it found are in the answer.
+   */
+  marketCaps: (bases: readonly string[]) =>
+    call<Record<string, number>>("coin_market_caps", { bases }),
+
+  /** The market as a whole, for the AI page's Quick Insights. */
+  overview: () => call<CryptoOverview>("crypto_overview", {}),
+
   /** The overview for a market's base coin, or null if CoinGecko doesn't list it. */
   info: (base: string) => call<CoinInfo | null>("coin_info", { base }),
 

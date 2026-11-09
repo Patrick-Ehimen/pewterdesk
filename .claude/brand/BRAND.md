@@ -44,6 +44,13 @@ thing that matters, and green and red belong to the market.
   A top trader's picture (`components/traders/TraderAvatar.tsx`) takes one
   of the same hues from the trader's key, at `--pd-tag-l` / `--pd-tag-c`: a
   wash behind and the pattern in it. Identity only, never a figure or a state.
+  So do the AI page's starter questions (`SUGGESTION_HUES` in
+  `components/pages/AiPage.tsx`): each chip's icon a hue in turn, at
+  `--pd-tag-l` / `--pd-tag-c`. Labels only; the chip itself stays neutral.
+  The AI page's altcoin index bar (`.ai-alt-bar` in `styles/ai.css`) is a
+  scale of four seasons in colours of its own, after CMC's: orange for
+  Bitcoin's, through peach and lavender, to blue for the altcoins'. A scale,
+  not a state: never green or red, never P&L.
 
 ## Core palette
 

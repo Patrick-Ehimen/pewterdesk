@@ -215,7 +215,15 @@ discover it on their own. The reasoning behind the rules is in
   for a stock, ETF, commodity or forex market), and the Maps page's market
   heatmap (`coin_markets`: the largest coins of one of a fixed set of
   sectors - the UI names the sector, Rust maps it to CoinGecko's category
-  and builds the request, spaced and cached). Its optional demo API key
+  and builds the request, spaced and cached), and the AI page's market
+  overview (`crypto_overview`: `/global` and the top 100 of `/coins/markets`,
+  two fixed requests kept 10 minutes - the total market cap, its 24h change
+  and 7-day line, and an altcoin index, the share of the top altcoins,
+  stablecoins and wrapped or staked copies left out, that beat Bitcoin over
+  30 days; numbers only, `coin_overview.rs`), and the Screener's market
+  caps (`coin_market_caps`: the UI sends a venue's crypto base coins, Rust
+  checks each as a ticker and answers from CoinGecko's largest 500, two
+  fixed requests kept 10 minutes; numbers only). Its optional demo API key
   lives in the keychain (`coingecko:demo`) and is never returned. Coin links
   reach JS as labels and indexes and open only via `open_coin_link`, which
   opens a URL Rust itself fetched, filtered by `safe_url` (it goes through
@@ -1012,7 +1020,9 @@ oscillators by its published rules, each a vote, Strong sell to Strong buy;
 hourly in the table, any timeframe in the token details, 1D first; a
 reading, not a forecast) -
 kept to those that pass every filter (a column above, below or between
-values, or in a state), sorted by any column. Screens are saved on this
+values, or in a state), sorted by any column (the Market header sorts by market cap, largest
+first, then smallest: CoinGecko's, `coin_market_caps`, crypto markets only;
+also a column of its own). Screens are saved on this
 machine (`pd.screens`, the one on screen under `pd.screener.current`), and
 eleven presets come with it. Above the filters, a market sentiment card
 (`components/screener/MarketSentiment.tsx`, after Bybit's Key Metrics) shows
@@ -1180,7 +1190,12 @@ A page (`ai`; `components/pages/AiPage.tsx`, `hooks/useAiChats.ts`,
 `lib/aiChats.ts`), after CoinMarketCap's CMC AI: a chat with a market
 analyst, and Agentic Charts, the market on screen charted beside the
 analyst, who reads it and marks its levels (support, resistance, entry,
-targets, invalidation) on the chart. Claude, Gemini, a ChatGPT model or
+targets, invalidation) on the chart. Its home screen's Quick Insights
+(after CMC AI's) shows the total market cap with its week's line, the
+venue's 24h volume, the altcoin index and the Fear & Greed gauge
+(`coin_info.rs`'s overview, `fear_greed.rs`), then the venue's breadth,
+average funding and top mover, and the starter questions as chips with an
+icon each. Claude, Gemini, a ChatGPT model or
 Mistral answers (picked in the side panel for new chats; `ai_models`), through
 `ai_assistant.rs` and `ai_providers.rs`, with the trader's own key for that
 provider (set on the page; Gemini's and Mistral's have a free tier, the

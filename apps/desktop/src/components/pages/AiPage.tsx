@@ -15,6 +15,7 @@ import {
   t,
 } from "@pewterdesk/ui";
 import {
+  type CSSProperties,
   createContext,
   type FormEvent,
   type KeyboardEvent,
@@ -25,22 +26,42 @@ import {
   useRef,
   useState,
 } from "react";
+import type { IconType } from "react-icons";
 import {
+  LuActivity,
+  LuArrowDownToLine,
+  LuArrowLeftRight,
   LuArrowUp,
   LuBrain,
+  LuCalendarClock,
   LuChartCandlestick,
+  LuChartNoAxesColumnIncreasing,
   LuCircleAlert,
   LuClock,
+  LuCrosshair,
+  LuFlame,
+  LuGauge,
+  LuHistory,
   LuKeyRound,
+  LuLayers,
   LuLockKeyhole,
+  LuMessageCircle,
   LuMessageSquare,
+  LuMessagesSquare,
   LuNewspaper,
   LuPanelLeftClose,
   LuPanelLeftOpen,
   LuPencil,
+  LuPercent,
   LuPlus,
+  LuRocket,
+  LuShieldAlert,
+  LuShuffle,
   LuSparkles,
+  LuTelescope,
   LuTrash2,
+  LuTriangleAlert,
+  LuWaves,
   LuX,
 } from "react-icons/lu";
 import {
@@ -51,11 +72,18 @@ import {
   type AiModel,
   type AiProvider,
   aiClient,
+  type CryptoOverview,
 } from "../../api/venueClient";
 import { aiChatsStore, type ChatCloud, useAiChats } from "../../hooks/useAiChats";
 import { useCloudAuth } from "../../hooks/useJournal";
+import { useMarketHistories } from "../../hooks/useMapData";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
-import { useChartNews } from "../../hooks/useVenueFeeds";
+import {
+  type Feed,
+  useChartNews,
+  useCryptoOverview,
+  useFearGreed,
+} from "../../hooks/useVenueFeeds";
 import {
   type AiChat,
   type ChatMessage,
@@ -64,12 +92,15 @@ import {
   marksFor,
   snapshotOf,
   TITLE_MAX,
+  volumeLine,
 } from "../../lib/aiChats";
 import { venueBarSource } from "../../lib/barSource";
+import { bandOf, sideOf } from "../../lib/fearGreed";
 import { chartFx } from "../../lib/fxRates";
 import { AiAnswer, Thinking } from "../ai/AiAnswer";
 import { CloudGate } from "../plan/CloudGate";
 import { LoadingMark } from "../Splash";
+import { Gauge } from "../screener/MarketSentiment";
 
 const MODES: readonly ChatMode[] = ["chat", "chart"];
 const SIDES = ["open", "closed"] as const;
@@ -148,11 +179,48 @@ const SOURCE_KEYS = {
 /** The home screen's starter questions, by tab. */
 type SuggestionTab = "market" | "tokens" | "account";
 
-const SUGGESTION_TABS: Record<SuggestionTab, readonly MessageKey[]> = {
-  market: ["ai.suggest.today", "ai.suggest.narratives", "ai.suggest.events", "ai.suggest.levels"],
-  tokens: ["ai.suggest.rise", "ai.suggest.technicals", "ai.suggest.momentum", "ai.suggest.funding"],
-  account: ["ai.suggest.risk", "ai.suggest.review", "ai.suggest.liquidation"],
+/** A starter question and its icon. */
+interface Suggestion {
+  key: MessageKey;
+  icon: IconType;
+}
+
+const SUGGESTION_TABS: Record<SuggestionTab, readonly Suggestion[]> = {
+  market: [
+    { key: "ai.suggest.today", icon: LuActivity },
+    { key: "ai.suggest.altSeason", icon: LuShuffle },
+    { key: "ai.suggest.narratives", icon: LuMessagesSquare },
+    { key: "ai.suggest.momentum", icon: LuChartNoAxesColumnIncreasing },
+    { key: "ai.suggest.events", icon: LuCalendarClock },
+    { key: "ai.suggest.sentiment", icon: LuGauge },
+    { key: "ai.suggest.kols", icon: LuMessageCircle },
+    { key: "ai.suggest.liquidations", icon: LuFlame },
+    { key: "ai.suggest.openInterest", icon: LuLayers },
+  ],
+  tokens: [
+    { key: "ai.suggest.rise", icon: LuRocket },
+    { key: "ai.suggest.technicals", icon: LuChartCandlestick },
+    { key: "ai.suggest.levels", icon: LuCrosshair },
+    { key: "ai.suggest.whales", icon: LuWaves },
+    { key: "ai.suggest.coinNews", icon: LuNewspaper },
+    { key: "ai.suggest.outlook", icon: LuTelescope },
+    { key: "ai.suggest.funding", icon: LuPercent },
+    { key: "ai.suggest.oversold", icon: LuArrowDownToLine },
+    { key: "ai.suggest.compare", icon: LuArrowLeftRight },
+  ],
+  account: [
+    { key: "ai.suggest.risk", icon: LuShieldAlert },
+    { key: "ai.suggest.review", icon: LuHistory },
+    { key: "ai.suggest.liquidation", icon: LuTriangleAlert },
+  ],
 };
+
+/**
+ * The questions' icon hues, in turn: the tag palette (BRAND.md), which leaves
+ * out green, red and the warning orange, so an icon never reads as P&L.
+ * Labels only.
+ */
+const SUGGESTION_HUES = [235, 295, 205, 325, 265, 185, 355, 95] as const;
 
 const TAB_KEYS = {
   market: "ai.tab.market",
@@ -711,6 +779,7 @@ export function AiPage({
             controls={controls("chat")}
             accountAccess={accountAccess}
             summaries={summaries}
+            venue={venue}
             symbolOf={symbolOf}
             market={market}
             venueLabel={venueLabel}
@@ -913,6 +982,8 @@ interface Failure {
 }
 
 interface ChatViewProps {
+  /** The venue on screen, for the 24h volume card's hourly line. */
+  venue: VenueId;
   chat?: AiChat;
   pending: boolean;
   failure?: Failure;
@@ -946,6 +1017,7 @@ function ChatView({
   summaries,
   symbolOf,
   market,
+  venue,
   venueLabel,
   onAsk,
   onShowOnChart,
@@ -955,6 +1027,13 @@ function ChatView({
   // Closed once, the Agentic Charts banner stays closed on this machine.
   const [banner, setBanner] = useStoredChoice("pd.ai.banner", BANNER, "shown");
   const pulse = useMemo(() => marketPulse(summaries ?? []), [summaries]);
+  const { data: overview, failed: overviewFailed } = useKept("pd.ai.overview", useCryptoOverview());
+  // The venue's own prices; none yet while they load.
+  const venueLoading = summaries === undefined;
+  // Every market's hourly candles (shared with the Screener and Maps), read
+  // only while the home screen shows, for the volume card's line.
+  const histories = useMarketHistories(venue, !started);
+  const volumeHours = useMemo(() => volumeLine(histories, summaries ?? []), [histories, summaries]);
   const coin = market?.base ?? "BTC";
 
   if (!started) {
@@ -1000,7 +1079,20 @@ function ChatView({
           <section className="ai-insights" aria-labelledby="ai-insights-head">
             <h2 id="ai-insights-head">{t("ai.insights", { venue: venueLabel })}</h2>
             <div className="ai-cards">
+              <MarketCapCard overview={overview} failed={overviewFailed} />
               <InsightCard
+                loading={venueLoading}
+                label={t("ai.card.volume")}
+                value={pulse.volume === undefined ? "-" : `$${formatCompact(pulse.volume)}`}
+                note={t("ai.card.volumeNote")}
+                line={volumeHours}
+                lineTone={volumeTrend(volumeHours)}
+                lineLabel={t("ai.card.volumeLine")}
+              />
+              <AltcoinCard overview={overview} failed={overviewFailed} />
+              <FearGreedCard />
+              <InsightCard
+                loading={venueLoading}
                 label={t("ai.card.breadth")}
                 value={
                   pulse.breadth === undefined ? "-" : `${formatNumber(pulse.breadth * 100, 0)}%`
@@ -1009,11 +1101,7 @@ function ChatView({
                 meter={pulse.breadth}
               />
               <InsightCard
-                label={t("ai.card.volume")}
-                value={pulse.volume === undefined ? "-" : `$${formatCompact(pulse.volume)}`}
-                note={t("ai.card.volumeNote")}
-              />
-              <InsightCard
+                loading={venueLoading}
                 label={t("ai.card.funding")}
                 value={
                   pulse.funding === undefined ? "-" : `${formatSigned(pulse.funding * 100, 4)}%`
@@ -1022,6 +1110,7 @@ function ChatView({
                 tone={pulse.funding === undefined ? undefined : pulse.funding >= 0 ? "up" : "down"}
               />
               <InsightCard
+                loading={venueLoading}
                 label={t("ai.card.mover")}
                 value={pulse.gainers[0] ? symbolOf(pulse.gainers[0].market) : "-"}
                 note={
@@ -1078,19 +1167,232 @@ function ChatView({
   );
 }
 
+/** Where the altcoin index turns into a season, as blockchaincenter.net reads it. */
+const BTC_SEASON = 25;
+const ALT_SEASON = 75;
+
+/** A line through `values`, in a `w` by `h` box, for a card's sparkline. */
+function linePath(values: readonly number[], w: number, h: number): string {
+  if (values.length < 2) return "";
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const span = hi - lo || 1;
+  return values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * w;
+      const y = h - 2 - ((v - lo) / span) * (h - 4);
+      return `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+}
+
+/**
+ * A feed's data, or the last data it had on this machine while it loads or
+ * fails, so a card shows figures at once rather than waiting on the source.
+ * `failed`: the feed failed and there's nothing kept to show.
+ */
+function useKept<T>(key: string, feed: Feed<T>): { data?: T; failed: boolean } {
+  const live = feed.status === "live" || feed.status === "closed" ? feed.data : undefined;
+  const [kept] = useState<T | undefined>(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : undefined;
+    } catch {
+      return undefined;
+    }
+  });
+  useEffect(() => {
+    if (live === undefined) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(live));
+    } catch {
+      // Shown this session only.
+    }
+  }, [key, live]);
+  const data = live ?? kept;
+  return { data, failed: data === undefined && feed.status === "error" };
+}
+
+/** A card with no figures yet: placeholders while they load, or a note that they couldn't be read. */
+function CardEmpty({ failed }: { failed: boolean }) {
+  return failed ? (
+    <span className="ai-card-failed">{t("ai.card.unavailable")}</span>
+  ) : (
+    <span className="ai-card-skel" aria-hidden>
+      <span />
+      <span />
+    </span>
+  );
+}
+
+/** Green when the last 24 hours traded more than the 24 before them, red when less. */
+function volumeTrend(hours?: readonly number[]): "up" | "down" | undefined {
+  if (!hours || hours.length < 48) return undefined;
+  const sum = (from: number, to: number) => hours.slice(from, to).reduce((a, b) => a + b, 0);
+  const n = hours.length;
+  return sum(n - 24, n) >= sum(n - 48, n - 24) ? "up" : "down";
+}
+
+/** A card's small line chart; nothing for fewer than two points. */
+function Spark({
+  values,
+  tone,
+  label,
+}: {
+  values: readonly number[];
+  tone?: "up" | "down";
+  label: string;
+}) {
+  if (values.length < 2) return null;
+  return (
+    <svg
+      className="ai-spark"
+      viewBox="0 0 120 44"
+      preserveAspectRatio="none"
+      data-tone={tone}
+      role="img"
+      aria-label={label}
+    >
+      <path d={linePath(values, 120, 44)} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+/** The total crypto market cap, its 24h change, and its week as a line. */
+function MarketCapCard({ overview, failed }: { overview?: CryptoOverview; failed: boolean }) {
+  const cap = overview?.marketCap ?? undefined;
+  const change = overview?.marketCapChange24h ?? undefined;
+  const curve = overview?.marketCapCurve ?? [];
+  const first = curve[0];
+  const last = curve[curve.length - 1];
+  const lineTone =
+    first === undefined || last === undefined ? undefined : last >= first ? "up" : "down";
+  const tone = change === undefined ? undefined : change >= 0 ? "up" : "down";
+  if (cap === undefined)
+    return (
+      <div className="ai-card ai-card-cap">
+        <span className="ai-card-label">{t("ai.card.marketCap")}</span>
+        <CardEmpty failed={failed} />
+      </div>
+    );
+  return (
+    <div className="ai-card ai-card-cap">
+      <span className="ai-card-label">{t("ai.card.marketCap")}</span>
+      <div className="ai-card-split">
+        <div className="ai-card-figures">
+          <span className="ai-card-value">{`$${formatCompact(cap)}`}</span>
+          {change !== undefined && (
+            <span className="ai-card-change" data-tone={tone}>
+              <span aria-hidden>{tone === "up" ? "▲" : "▼"}</span>
+              {`${formatNumber(Math.abs(change) * 100, 2)}%`}
+            </span>
+          )}
+        </div>
+        <Spark values={curve} tone={lineTone} label={t("ai.card.marketCapLine")} />
+      </div>
+    </div>
+  );
+}
+
+/** The altcoin index: 0 is Bitcoin's season, 100 the altcoins'. */
+function AltcoinCard({ overview, failed }: { overview?: CryptoOverview; failed: boolean }) {
+  const value = overview?.altcoinIndex ?? undefined;
+  if (value === undefined)
+    return (
+      <div className="ai-card ai-card-alt">
+        <span className="ai-card-label">{t("ai.card.altcoin")}</span>
+        {/* Read, but too few altcoins to count: a dash, not a failure. */}
+        {overview ? <span className="ai-card-value">-</span> : <CardEmpty failed={failed} />}
+      </div>
+    );
+  return (
+    <div className="ai-card ai-card-alt">
+      <span className="ai-card-label">{t("ai.card.altcoin")}</span>
+      <span className="ai-card-value">
+        {value}
+        <span className="ai-card-of"> / 100</span>
+      </span>
+      <span className="ai-alt-bar" role="img" aria-label={t("ai.card.altcoinLabel", { value })}>
+        <span className="ai-alt-seg" data-on={value <= BTC_SEASON || undefined} />
+        <span className="ai-alt-seg" data-on={(value > BTC_SEASON && value <= 50) || undefined} />
+        <span className="ai-alt-seg" data-on={(value > 50 && value < ALT_SEASON) || undefined} />
+        <span className="ai-alt-seg" data-on={value >= ALT_SEASON || undefined} />
+        <span className="ai-alt-knob" style={{ left: `${value}%` }} />
+      </span>
+      <span className="ai-alt-ends">
+        <span>{t("ai.card.altBitcoin")}</span>
+        <span>{t("ai.card.altAlts")}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Today's crypto Fear & Greed Index on the Screener's gauge. */
+function FearGreedCard() {
+  const { data: days, failed } = useKept("pd.ai.fearGreed", useFearGreed());
+  const today = days?.[0];
+  const band = today ? bandOf(today.value) : undefined;
+  return (
+    <div className="ai-card ai-card-fg" data-side={band ? sideOf(band) : undefined}>
+      <span className="ai-card-label">{t("ai.card.fearGreed")}</span>
+      {today && band ? (
+        <div className="ai-fg">
+          <Gauge value={today.value} />
+          <span className="ai-fg-value pd-num">{today.value}</span>
+        </div>
+      ) : (
+        <CardEmpty failed={failed} />
+      )}
+      {band && <span className="ai-fg-band">{t(`screens.fg.${band}`)}</span>}
+    </div>
+  );
+}
+
 function InsightCard({
   label,
   value,
   note,
   tone,
   meter,
+  loading,
+  line,
+  lineTone,
+  lineLabel = "",
 }: {
   label: string;
   value: string;
   note: string;
   tone?: "up" | "down";
   meter?: number;
+  /** A line beside the figures, e.g. the hourly volume. */
+  line?: readonly number[];
+  lineTone?: "up" | "down";
+  lineLabel?: string;
+  /** Nothing to show yet: placeholders in place of the figures. */
+  loading?: boolean;
 }) {
+  if (loading)
+    return (
+      <div className="ai-card">
+        <span className="ai-card-label">{label}</span>
+        <CardEmpty failed={false} />
+      </div>
+    );
+  if (line && line.length > 1)
+    return (
+      <div className="ai-card">
+        <span className="ai-card-label">{label}</span>
+        <div className="ai-card-split">
+          <div className="ai-card-figures">
+            <span className="ai-card-value" data-tone={tone}>
+              {value}
+            </span>
+          </div>
+          <Spark values={line} tone={lineTone} label={lineLabel} />
+        </div>
+        <span className="ai-card-note">{note}</span>
+      </div>
+    );
   return (
     <div className="ai-card">
       <span className="ai-card-label">{label}</span>
@@ -1631,7 +1933,7 @@ function FailureRow({
   );
 }
 
-/** The starter questions, in tabs, as a list: Bybit TradeGPT's home, after its layout. */
+/** The starter questions, in tabs, as chips with an icon each (after CMC AI's Quick Insights). */
 function Suggestions({
   accountAccess,
   coin,
@@ -1664,12 +1966,18 @@ function Suggestions({
         ))}
       </div>
       <ul className="ai-suggest-list" role="tabpanel">
-        {SUGGESTION_TABS[shown].map((key) => {
+        {SUGGESTION_TABS[shown].map(({ key, icon: Icon }, i) => {
           const text = t(key, { coin });
+          const hue = SUGGESTION_HUES[i % SUGGESTION_HUES.length];
           return (
             <li key={key}>
-              <button type="button" disabled={disabled} onClick={() => onAsk(text)}>
-                <LuMessageSquare size={16} className="ai-suggest-icon" aria-hidden />
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onAsk(text)}
+                style={{ "--ai-chip-h": hue } as CSSProperties}
+              >
+                <Icon size={17} className="ai-suggest-icon" aria-hidden />
                 <span>{text}</span>
               </button>
             </li>

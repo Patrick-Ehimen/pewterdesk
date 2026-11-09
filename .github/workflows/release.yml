@@ -110,6 +110,12 @@ jobs:
             Portfolio from your account's picture; market alerts that keep firing with
             the app quit; new themes; and updates installed from inside the app.
 
+            Also new: a Top traders page (Hyperliquid's and OKX's leaderboards, each
+            trader's positions, history and habits, and the traders you follow, with
+            alerts when they open, add, cut or close); Quick Insights on the AI page
+            (total market cap, the altcoin index, Fear & Greed and the venue's volume)
+            with more starter questions; and the Screener sorts by market cap.
+
             Live trading is new: start with a small order.
 
             Requires macOS 13 (Ventura) or later, Windows 10 or later, or Linux with

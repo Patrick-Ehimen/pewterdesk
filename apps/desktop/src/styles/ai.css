@@ -428,14 +428,201 @@
 }
 
 /* Quick insights */
+.ai-insights {
+  container: ai-home / inline-size;
+}
 .ai-insights h2 {
   margin: 0 0 10px;
   font-size: 18px;
+  font-weight: 700;
 }
+/* Four cards across the top (market cap, volume, altcoin index, fear & greed),
+   the market's own three below them, each row filling the width. */
 .ai-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 10px;
+}
+.ai-cards > .ai-card {
+  grid-column: span 3;
+}
+.ai-cards > .ai-card:nth-child(n + 5) {
+  grid-column: span 4;
+}
+@container ai-home (max-width: 640px) {
+  .ai-cards > .ai-card,
+  .ai-cards > .ai-card:nth-child(n + 5) {
+    grid-column: span 6;
+  }
+  .ai-cards > .ai-card:first-child {
+    grid-column: span 12;
+  }
+}
+/* A card waiting on its figures: two soft bars where the value and note go. */
+.ai-card-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+.ai-card-skel span {
+  height: 18px;
+  width: 58%;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+  animation: ai-card-skel 1.4s ease-in-out infinite;
+}
+.ai-card-skel span + span {
+  height: 11px;
+  width: 38%;
+}
+@keyframes ai-card-skel {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-card-skel span {
+    animation: none;
+  }
+}
+.ai-card-failed {
+  padding-top: 4px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ai-card-split {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.ai-card-figures {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: none;
+}
+.ai-card-change {
+  font-family: var(--pd-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ai-card-change span {
+  margin-right: 4px;
+  font-size: 10px;
+}
+.ai-card-change[data-tone="up"] {
+  color: var(--pd-buy);
+}
+.ai-card-change[data-tone="down"] {
+  color: var(--pd-sell);
+}
+.ai-spark {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  overflow: visible;
+}
+.ai-spark path {
+  fill: none;
+  stroke: var(--pd-pewter);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+.ai-spark[data-tone="up"] path {
+  stroke: var(--pd-buy);
+}
+.ai-spark[data-tone="down"] path {
+  stroke: var(--pd-sell);
+}
+.ai-card-of {
+  color: var(--pd-pewter);
+  font-size: 14px;
+  font-weight: 500;
+}
+/* The altcoin index: four seasons from Bitcoin's (orange) to the altcoins'
+   (blue), after CMC's, each in its own colour (BRAND.md: a scale, not P&L),
+   the knob at the reading. */
+.ai-alt-bar {
+  --alt-1: oklch(0.72 0.15 55);
+  --alt-2: oklch(0.84 0.07 65);
+  --alt-3: oklch(0.82 0.07 285);
+  --alt-4: oklch(0.62 0.18 265);
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  height: 6px;
+  margin-top: 6px;
+}
+.ai-alt-seg {
+  border-radius: 3px;
+  background: var(--alt);
+}
+.ai-alt-seg:nth-child(1) {
+  --alt: var(--alt-1);
+}
+.ai-alt-seg:nth-child(2) {
+  --alt: var(--alt-2);
+}
+.ai-alt-seg:nth-child(3) {
+  --alt: var(--alt-3);
+}
+.ai-alt-seg:nth-child(4) {
+  --alt: var(--alt-4);
+}
+.ai-alt-knob {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--pd-surface);
+  border-radius: 50%;
+  background: var(--pd-text);
+  transform: translate(-50%, -50%);
+}
+.ai-alt-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--pd-pewter);
+  font-size: 11px;
+}
+/* Fear & Greed: the Screener's gauge, its number inside the arc. */
+.ai-card-fg {
+  --sentiment: var(--pd-pewter);
+  align-items: stretch;
+}
+.ai-card-fg[data-side="fear"] {
+  --sentiment: var(--pd-sell);
+}
+.ai-card-fg[data-side="neutral"] {
+  --sentiment: var(--pd-warning);
+}
+.ai-card-fg[data-side="greed"] {
+  --sentiment: var(--pd-buy);
+}
+.ai-fg {
+  position: relative;
+  align-self: center;
+  width: 108px;
+  margin-top: -4px;
+}
+.ai-fg-value {
+  position: absolute;
+  inset: auto 0 0;
+  color: var(--sentiment);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+.ai-fg-band {
+  color: var(--sentiment);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
 }
 .ai-card {
   display: flex;
@@ -1039,35 +1226,50 @@
   border-bottom-color: var(--pd-brass);
 }
 .ai-suggest-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   margin: 0;
-  padding: 0;
+  padding: 14px 0 0;
   list-style: none;
 }
-.ai-suggest-list li + li {
-  border-top: 1px solid var(--pd-border);
+.ai-suggest-list li {
+  max-width: 100%;
 }
+/* A question as a pill, its icon in a hue of the tag palette (labels only). */
 .ai-suggest-list button {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 6px;
-  border: 0;
-  background: none;
+  gap: 9px;
+  max-width: 100%;
+  padding: 9px 16px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  background: var(--pd-surface);
   color: var(--pd-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.ai-suggest-list button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ai-suggest-icon {
   flex: none;
-  color: var(--pd-pewter);
+  color: oklch(var(--pd-tag-l) var(--pd-tag-c) var(--ai-chip-h, 235));
 }
 .ai-suggest-list button:hover:not(:disabled) {
-  background: var(--pd-surface);
+  border-color: var(--pd-pewter-dim);
+  background: var(--pd-surface-raised);
 }
-.ai-suggest-list button:hover:not(:disabled) .ai-suggest-icon {
-  color: var(--pd-brass-text);
+.ai-suggest-list button:focus-visible {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: 2px;
 }
 .ai-suggest-list button:disabled {
   opacity: 0.5;

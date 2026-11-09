@@ -16,7 +16,7 @@ const TICKS = [15, 32.5, 50, 67.5, 85];
 
 const bandText = (band: FearGreedBand) => t(`screens.fg.${band}`);
 
-function Gauge({ value }: { value: number }) {
+export function Gauge({ value }: { value: number }) {
   const gradient = useId();
   const band = bandOf(value);
   const start = gaugePoint(0, CX, CY, R);

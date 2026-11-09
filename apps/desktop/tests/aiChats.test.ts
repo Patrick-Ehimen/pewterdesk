@@ -1,4 +1,4 @@
-import type { MarketSummary } from "@pewterdesk/core";
+import type { MarketHistory, MarketSummary } from "@pewterdesk/core";
 import { describe, expect, it } from "vitest";
 import {
   type AiChat,
@@ -16,6 +16,8 @@ import {
   sourceBase,
   TITLE_MAX,
   titleFrom,
+  VOLUME_HOURS,
+  volumeLine,
 } from "../src/lib/aiChats";
 import { answerOf, blocksOf, copyText, spansOf } from "../src/lib/aiText";
 
@@ -352,5 +354,45 @@ describe("a market's saved analysis", () => {
     expect(marksFor([old, listed], "bybit", "ETHUSDT", undefined).toRead).toBe("listed");
     expect(markedOf(newer)).toEqual(["bybit:ETHUSDT"]);
     expect(metaOf(open).marked).toEqual(["bybit:SOLUSDT"]);
+  });
+});
+
+describe("volumeLine", () => {
+  const HOUR = 3_600_000;
+  const now = 1_000 * HOUR + 30 * 60_000; // half past an hour
+  const summary = (market: string, dayVolume: number) =>
+    ({ market, dayVolume: String(dayVolume) }) as MarketSummary;
+  /** Hourly candles of `size` at `close`, the last `hours` of them, the forming one included. */
+  const history = (market: string, hours: number, size: number, close: number): MarketHistory => ({
+    market,
+    interval: "1h",
+    candles: Array.from({ length: hours }, (_, i) => ({
+      openTime: (1_000 - hours + 1 + i) * HOUR,
+      open: "0",
+      high: "0",
+      low: "0",
+      close: String(close),
+      volume: String(size),
+    })),
+  });
+
+  it("sums every market's traded value by hour, leaving out the forming hour", () => {
+    const histories = new Map([
+      ["A", history("A", 100, 2, 10)],
+      ["B", history("B", 100, 1, 5)],
+    ]);
+    const line = volumeLine(histories, [summary("A", 900), summary("B", 100)], now);
+    expect(line).toHaveLength(VOLUME_HOURS);
+    expect(line?.every((v) => v === 25)).toBe(true);
+  });
+
+  it("waits until the histories cover most of the day's volume", () => {
+    const histories = new Map([["B", history("B", 100, 1, 5)]]);
+    expect(volumeLine(histories, [summary("A", 900), summary("B", 100)], now)).toBeUndefined();
+  });
+
+  it("draws nothing from too short a history", () => {
+    const histories = new Map([["A", history("A", 6, 1, 1)]]);
+    expect(volumeLine(histories, [summary("A", 1)], now)).toBeUndefined();
   });
 });
