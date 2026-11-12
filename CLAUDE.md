@@ -997,7 +997,16 @@ top of "Your rules") and shows where the chosen account stands: Rust keeps
 both (`crates/engine/src/rules.rs`; `lib/tradingRules.ts` mirrors its `Rules` and
 `Status`), and `hooks/useTradingRules.ts` reads them on a timer, raises the
 notifications (a limit close, a lock, a cool-off, a revenge trade) and feeds
-the banner above the workspace. Rules are checked on any venue's orders,
+the banner above the workspace. Each rule has a "?" tip and, in the editor, a
+sentence spelling out what it comes to in the account's numbers
+(`components/rules/explain.tsx`, strings in `locales/rules/en.ts`). Max
+position is one market's position size (notional, what's held there
+included); max leverage is every position's together over equity. The editor
+says whether a save applies now or at 00:00 UTC, and marks each changed row
+with what's in force (`ruleChanges` in `lib/tradingRules.ts` mirrors Rust's
+`looser_than` to explain it; Rust decides), and the dashboard lists a waiting
+change with a way to keep the current rules. The ticket's refusals carry the
+figures and any waiting limit (`checkText`). Rules are checked on any venue's orders,
 from that venue's fills and closed trades (Hyperliquid's and Aster's are
 built from their fills); if they can't be read, an opening order is refused
 (they fail closed). The news blackout reads the economic calendar

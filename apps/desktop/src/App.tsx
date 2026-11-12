@@ -122,6 +122,7 @@ import {
   themeOptions,
   VIEW_KEYS,
 } from "./components/preferences";
+import { clockTime } from "./components/rules/parts";
 import { RulesBanner } from "./components/rules/RulesBanner";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
 import { SettingsPage, type SettingsSection } from "./components/settings/SettingsPage";
@@ -247,6 +248,7 @@ import {
   stepped as tabStepped,
   withPage,
 } from "./lib/tabs";
+import { checkText } from "./lib/tradingRules";
 import { flashTray } from "./lib/trayFlash";
 import { loadVenue, saveVenue, VENUE_IDS, VENUES } from "./lib/venues";
 import {
@@ -638,7 +640,11 @@ export function App() {
           const warnOnly = tradingRules.view?.rules.breach === "warn";
           return checks
             .filter((c) => !c.ok)
-            .map((c) => ({ rule: c.rule, message: blockText(c.rule), refuses: !warnOnly }));
+            .map((c) => ({
+              rule: c.rule,
+              message: checkText(c, tradingRules.view, blockText, clockTime),
+              refuses: !warnOnly,
+            }));
         }
       : undefined;
   // Each order function takes where in the app it was called from, which

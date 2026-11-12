@@ -204,6 +204,9 @@ export function TradingRulesPage({
             // Gone: back to the account on screen.
             setPicked(hereKey);
           }}
+          // Saving what's in force again isn't a loosening: it applies at
+          // once and drops the change that was waiting.
+          onKeep={() => onSave(view.account, view.name, view.on, view.rules)}
         />
       ) : (
         // Nothing set for this venue: no rules are shown, only the way to add them.

@@ -3119,3 +3119,175 @@ button.ncal-title:hover {
   align-items: center;
   gap: 6px;
 }
+
+/* ---- Trading rules: groups, "?" tips, the sentence under each rule, and
+   what saving does ---- */
+.rules-group + .rules-group {
+  border-top: 6px solid var(--pd-bg);
+}
+.rules-group-head {
+  padding: 16px 20px 10px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.rules-group-head h3 {
+  margin: 0;
+  color: var(--pd-text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.rules-group-head p {
+  margin: 4px 0 0;
+  color: var(--pd-pewter-dim);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.rules-editor .rules-edit-row {
+  align-items: flex-start;
+  padding: 12px 20px;
+}
+.rules-editor .rules-edit-row[data-changed] {
+  box-shadow: inset 2px 0 0 var(--pd-brass);
+}
+.rules-editor .rules-edit-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+}
+.rules-edit-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rules-edit-sub {
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.rules-edit-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.rules-edit-says {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.rules-in-force {
+  padding: 3px 8px;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: help;
+}
+/* The "?" beside a rule's name */
+.rules-help.pd-tip-trigger {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--pd-pewter-dim);
+  text-decoration: none;
+}
+.rules-help.pd-tip-trigger:hover,
+.rules-help.pd-tip-trigger:focus-visible {
+  color: var(--pd-brass-text);
+}
+.rules-rule-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* What saving does: now (stricter) or at 00:00 UTC (looser) */
+.rules-save-notice {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  margin: 0 20px 12px;
+  padding: 12px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--pd-border-strong);
+  border-left: 3px solid var(--pd-info);
+  border-radius: 8px;
+  background: var(--pd-bg);
+}
+.rules-save-notice[data-waits] {
+  border-left-color: var(--pd-warning);
+}
+.rules-save-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+.rules-save-notice-head svg {
+  flex: none;
+  color: var(--pd-info);
+}
+.rules-save-notice[data-waits] .rules-save-notice-head svg {
+  color: var(--pd-warning);
+}
+.rules-save-notice p {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.rules-save-notice .rules-link {
+  align-self: flex-start;
+  font-size: 12.5px;
+}
+.rules-pending {
+  margin: 0 0 4px;
+}
+.rules-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+}
+.rules-changes li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--pd-text);
+}
+.rules-changes li[data-looser]::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-right: -6px;
+  border-radius: 50%;
+  background: var(--pd-warning);
+}
+.rules-changes li > span:first-of-type {
+  flex: 1;
+}
+.rules-change-values {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rules-change-values s {
+  color: var(--pd-pewter-dim);
+}
+.rules-change-arrow {
+  color: var(--pd-pewter-dim);
+}

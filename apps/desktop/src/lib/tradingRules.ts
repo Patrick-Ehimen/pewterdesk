@@ -1,4 +1,5 @@
 import type { VenueId } from "@pewterdesk/core";
+import { formatNumber, t } from "@pewterdesk/ui";
 
 /**
  * The trader's own rules: a prop-firm challenge to hold the account to, the
@@ -252,6 +253,113 @@ export function hoursNow(
   return { open, minutes: undefined };
 }
 
+/** A minute of the day (0-1439) inside the hours' window, the day aside. */
+const inWindow = (hours: TradingRules["hours"], minute: number) => {
+  const from = minutesOf(hours.from);
+  const to = minutesOf(hours.to);
+  return from <= to ? minute >= from && minute < to : minute >= from || minute < to;
+};
+
+/** What one change to the rules is about, for the page to name it. */
+export type ChangeField =
+  | "start"
+  | "breach"
+  | "target"
+  | "days"
+  | "daily"
+  | "max"
+  | "tradeLoss"
+  | "position"
+  | "leverage"
+  | "tradesPerDay"
+  | "hours"
+  | "news"
+  | "coolOff"
+  | "revenge"
+  | "sizeCreep"
+  | "overtrading";
+
+export interface RuleChange {
+  field: ChangeField;
+  /** It lets through something the rules in force would refuse: it waits for 00:00 UTC. */
+  looser: boolean;
+}
+
+const BREACH_ORDER: Record<BreachAction, number> = { warn: 0, warnLock: 1, lock: 2 };
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/**
+ * What differs between the rules in force (`was`) and `next`, field by
+ * field, and whether each change loosens them. Mirrors Rust's
+ * `Rules::looser_than` to explain it; Rust decides. One looser change makes
+ * the whole save wait.
+ */
+export function ruleChanges(was: TradingRules, next: TradingRules): RuleChange[] {
+  const out: RuleChange[] = [];
+  const add = (field: ChangeField, changed: boolean, looser: boolean) => {
+    if (changed) out.push({ field, looser });
+  };
+  const c = next.challenge;
+  const o = was.challenge;
+  // A new preset or account size starts the rules over: that waits too.
+  add("start", next.preset !== was.preset || c.size !== o.size, true);
+  add("breach", next.breach !== was.breach, BREACH_ORDER[next.breach] < BREACH_ORDER[was.breach]);
+  add("target", c.targetPct !== o.targetPct, false);
+  add("days", c.minDays !== o.minDays || c.maxDays !== o.maxDays, false);
+  add(
+    "daily",
+    c.dailyPct !== o.dailyPct || c.dailyFrom !== o.dailyFrom,
+    c.dailyPct > o.dailyPct || c.dailyFrom !== o.dailyFrom,
+  );
+  add(
+    "max",
+    c.maxPct !== o.maxPct || c.maxKind !== o.maxKind,
+    c.maxPct > o.maxPct || c.maxKind !== o.maxKind,
+  );
+  add(
+    "tradeLoss",
+    !same(next.tradeLoss, was.tradeLoss),
+    next.tradeLoss.pct > was.tradeLoss.pct ||
+      (next.tradeLoss.mode === "warn" && was.tradeLoss.mode === "stop"),
+  );
+  add("position", next.position.usd !== was.position.usd, next.position.usd > was.position.usd);
+  add(
+    "leverage",
+    next.position.leverage !== was.position.leverage,
+    next.position.leverage > was.position.leverage,
+  );
+  add("tradesPerDay", next.tradesPerDay !== was.tradesPerDay, next.tradesPerDay > was.tradesPerDay);
+  let wider = next.hours.days === "everyDay" && was.hours.days === "weekdays";
+  for (let m = 0; m < 1440 && !wider; m++) {
+    if (inWindow(next.hours, m) && !inWindow(was.hours, m)) wider = true;
+  }
+  add("hours", !same(next.hours, was.hours), wider);
+  add(
+    "news",
+    !same(next.news, was.news),
+    was.news.on && (!next.news.on || next.news.minutes < was.news.minutes),
+  );
+  add(
+    "coolOff",
+    !same(next.coolOff, was.coolOff),
+    next.coolOff.losses > was.coolOff.losses || next.coolOff.minutes < was.coolOff.minutes,
+  );
+  const r = next.tilt.revenge;
+  const rw = was.tilt.revenge;
+  add(
+    "revenge",
+    !same(r, rw),
+    rw.on && (!r.on || r.minutes < rw.minutes || (r.mode === "warn" && rw.mode === "coolOff")),
+  );
+  add("sizeCreep", !same(next.tilt.sizeCreep, was.tilt.sizeCreep), false);
+  add("overtrading", !same(next.tilt.overtrading, was.tilt.overtrading), false);
+  return out;
+}
+
+const DAY_MS = 86_400_000;
+/** When a loosening saved at `now` applies: the next 00:00 UTC. */
+export const nextUtcMidnight = (now: number) => (Math.floor(now / DAY_MS) + 1) * DAY_MS;
+
 /** One trade of today's, for the dashboard's list. */
 export interface DayTrade {
   at: number;
@@ -361,3 +469,58 @@ export const newRules = (account: RulesAccount): RulesView => ({
   account,
   rules: DEFAULT_RULES,
 });
+
+const fmt = (v: number, digits = 2) => formatNumber(v, digits);
+
+/** A rule's limit as `rules` set it, for saying what a waiting change makes it. */
+const limitIn = (rule: string, rules: TradingRules): string | undefined => {
+  switch (rule) {
+    case "positionSize":
+      return `${fmt(rules.position.usd, 0)} USD`;
+    case "leverage":
+      return `${rules.position.leverage}×`;
+    case "tradeRisk":
+      return `${fmt(amounts(rules).tradeLoss)} USD`;
+    case "tradesPerDay":
+      return String(rules.tradesPerDay);
+    default:
+      return undefined;
+  }
+};
+
+/**
+ * Why a rule refuses (or warns about) the ticket's order, with its figures
+ * where Rust sent them, and the limit a waiting change will bring.
+ * `fallback` is the plain reason, for the rules that carry no figures.
+ */
+export function checkText(
+  check: RuleCheck,
+  view: RulesView | undefined,
+  fallback: (rule: string) => string,
+  when: (at: number) => string,
+): string {
+  const value = fmt(check.value, check.rule === "tradesPerDay" ? 0 : 2);
+  const limit = fmt(check.limit, check.rule === "tradesPerDay" ? 0 : 2);
+  let text: string;
+  switch (check.rule) {
+    case "positionSize":
+    case "leverage":
+    case "tradeRisk":
+    case "dailyLeft":
+    case "tradesPerDay":
+      text = t(`rules.check.${check.rule}`, { value, limit });
+      break;
+    case "needsStop":
+      text = t("rules.check.needsStop");
+      break;
+    default:
+      return fallback(check.rule);
+  }
+  const pending = view?.pending;
+  if (!pending?.on || !view) return text;
+  const now = limitIn(check.rule, view.rules);
+  const next = limitIn(check.rule, pending.rules);
+  return next !== undefined && next !== now
+    ? `${text} ${t("rules.check.pending", { limit: next, time: when(pending.at) })}`
+    : text;
+}

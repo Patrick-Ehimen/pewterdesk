@@ -1,5 +1,6 @@
 import type { Messages } from "./en";
 import { journalEn } from "./journal/en";
+import { rulesEn } from "./rules/en";
 import { tradersEn } from "./traders/en";
 
 // Simplified Chinese.
@@ -8,6 +9,8 @@ export const messages: Messages = {
   ...journalEn,
   // The Traders page (`traders/en.ts`).
   ...tradersEn,
+  // The Trading rules page's explanations (`rules/en.ts`).
+  ...rulesEn,
   "col.price": "价格",
   "col.size": "数量",
   "col.total": "累计",

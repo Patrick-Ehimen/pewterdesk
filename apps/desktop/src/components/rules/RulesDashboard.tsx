@@ -1,14 +1,23 @@
-import { dateFormat, formatNumber, formatSigned, t, trendClass } from "@pewterdesk/ui";
+import {
+  dateFormat,
+  formatNumber,
+  formatSigned,
+  type MessageKey,
+  t,
+  trendClass,
+} from "@pewterdesk/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { LuLock, LuShield, LuTrash2 } from "react-icons/lu";
+import { LuClock, LuLock, LuShield, LuTrash2 } from "react-icons/lu";
 import {
   amounts,
   hasTarget,
   hoursNow,
   type RulesStatus,
   type RulesView,
+  ruleChanges,
   WARN_AT,
 } from "../../lib/tradingRules";
+import { ChangeList, InfoTip } from "./explain";
 import { Badge, Bar, clockTime, money, span, type Tone, usedTone } from "./parts";
 import { MAX_KIND_NAME, PRESET_NAME } from "./RulesEditor";
 
@@ -19,6 +28,7 @@ const hour = (clock: string) => (clock.endsWith(":00") ? clock.slice(0, 2) : clo
 /** One of the trader's rules: where it stands, its limit, and a bar. */
 function RuleRow({
   title,
+  help,
   badge,
   value,
   limit,
@@ -26,6 +36,8 @@ function RuleRow({
   note,
 }: {
   title: string;
+  /** The "?" beside the name. */
+  help?: MessageKey;
   badge?: ReactNode;
   value: ReactNode;
   limit: ReactNode;
@@ -35,7 +47,10 @@ function RuleRow({
   return (
     <div className="rules-rule">
       <div className="rules-rule-head">
-        <strong>{title}</strong>
+        <strong className="rules-rule-title">
+          {title}
+          {help && <InfoTip label={title} help={help} />}
+        </strong>
         {badge}
       </div>
       <div className="rules-rule-values">
@@ -246,6 +261,8 @@ interface RulesDashboardProps {
   onEdit: () => void;
   /** Deletes these rules; rejects with why not. */
   onDelete: () => Promise<void>;
+  /** Saves the rules in force again, dropping a change that's waiting. */
+  onKeep?: () => Promise<void>;
 }
 
 /**
@@ -263,7 +280,9 @@ export function RulesDashboard({
   coinOf,
   onEdit,
   onDelete,
+  onKeep,
 }: RulesDashboardProps) {
+  const [keeping, setKeeping] = useState(false);
   // Deleting asks first, in a dialog.
   const [deleting, setDeleting] = useState<"asking" | "busy">();
   const [deleteFailed, setDeleteFailed] = useState<string>();
@@ -302,11 +321,13 @@ export function RulesDashboard({
   const lastRisk = status?.lastRisk ?? undefined;
   const riskShare = lastRisk === undefined ? undefined : lastRisk / (usd.tradeLoss || 1);
   const sizeShare = status?.position
-    ? Math.max(
-        status.position.notional / (rules.position.usd || 1),
-        status.position.leverage / (rules.position.leverage || 1),
-      )
+    ? status.position.notional / (rules.position.usd || 1)
     : undefined;
+  const leverageShare = status?.position
+    ? status.position.leverage / (rules.position.leverage || 1)
+    : undefined;
+  const pending = view.pending ?? undefined;
+  const pendingChanges = pending ? ruleChanges(rules, pending.rules) : [];
   const tradesLeft = status ? Math.max(rules.tradesPerDay - status.tradesToday, 0) : undefined;
   const hours = hoursNow(rules.hours, now);
   const cooling = status?.coolOffUntil != null;
@@ -314,11 +335,9 @@ export function RulesDashboard({
   const state =
     (deleteFailed ?? error)
       ? (deleteFailed ?? error)
-      : view.pending
-        ? t("rules.pendingAt", { time: clockTime(view.pending.at) })
-        : !view.on
-          ? t("rules.offNote")
-          : t("rules.footer");
+      : !view.on
+        ? t("rules.offNote")
+        : t("rules.footer");
 
   const maxLabel = `${t("rules.maxDrawdown")} · ${challenge.maxPct}% ${t(MAX_KIND_NAME[challenge.maxKind])}`;
   const staticFloor = challenge.size - usd.max;
@@ -390,8 +409,38 @@ export function RulesDashboard({
           </button>
         </header>
         <div className="rules-mine-list">
+          {pending && (
+            <div className="rules-save-notice rules-pending" data-waits>
+              <div className="rules-save-notice-head">
+                <LuClock size={16} aria-hidden />
+                <strong>{t("rules.pending.title", { time: clockTime(pending.at) })}</strong>
+              </div>
+              <p>{t("rules.pending.body")}</p>
+              <ChangeList
+                changes={pendingChanges}
+                was={rules}
+                next={pending.rules}
+                turnsOff={view.on && !pending.on}
+              />
+              {onKeep && (
+                <button
+                  type="button"
+                  className="rules-link"
+                  title={t("rules.pending.keepTip")}
+                  disabled={keeping}
+                  onClick={() => {
+                    setKeeping(true);
+                    void onKeep().finally(() => setKeeping(false));
+                  }}
+                >
+                  {t("rules.pending.keep")}
+                </button>
+              )}
+            </div>
+          )}
           <RuleRow
             title={t("rules.dailyLoss")}
+            help="rules.help.daily"
             badge={
               dayShare !== undefined && (
                 <Badge tone={usedTone(dayShare)}>{t("rules.used", { pct: pct(dayShare) })}</Badge>
@@ -415,6 +464,7 @@ export function RulesDashboard({
           />
           <RuleRow
             title={t("rules.tradeLoss")}
+            help="rules.help.tradeLoss"
             badge={
               status &&
               (riskShare === undefined ? (
@@ -443,23 +493,20 @@ export function RulesDashboard({
             )}
           />
           <RuleRow
-            title={t("rules.position")}
+            title={t("rules.dash.position")}
+            help="rules.help.position"
             badge={
               sizeShare !== undefined && (
                 <Badge tone={usedTone(sizeShare)}>
-                  {sizeShare >= 1 ? t("rules.over") : t("rules.ok")}
+                  {sizeShare > 1 ? t("rules.over") : t("rules.used", { pct: pct(sizeShare) })}
                 </Badge>
               )
             }
-            value={
-              status?.position
-                ? `${money(status.position.notional)} · ${formatNumber(status.position.leverage, 1)}×`
-                : none
-            }
-            limit={`${formatNumber(rules.position.usd, 0)} · ${rules.position.leverage}×`}
+            value={status?.position ? `${money(status.position.notional)} USD` : none}
+            limit={t("rules.dash.positionLimit", { amount: formatNumber(rules.position.usd, 0) })}
             bar={
               <Bar
-                label={t("rules.position")}
+                label={t("rules.dash.position")}
                 share={sizeShare}
                 tone={usedTone(sizeShare ?? 0)}
                 tick={WARN_AT}
@@ -467,7 +514,38 @@ export function RulesDashboard({
             }
           />
           <RuleRow
+            title={t("rules.dash.leverage")}
+            help="rules.help.leverage"
+            badge={
+              leverageShare !== undefined && (
+                <Badge tone={usedTone(leverageShare)}>
+                  {leverageShare > 1
+                    ? t("rules.over")
+                    : t("rules.used", { pct: pct(leverageShare) })}
+                </Badge>
+              )
+            }
+            value={
+              status?.position
+                ? t("rules.dash.leverageValue", {
+                    leverage: formatNumber(status.position.leverage, 2),
+                    exposure: money(status.position.leverage * status.equity),
+                  })
+                : none
+            }
+            limit={`${rules.position.leverage}×`}
+            bar={
+              <Bar
+                label={t("rules.dash.leverage")}
+                share={leverageShare}
+                tone={usedTone(leverageShare ?? 0)}
+                tick={WARN_AT}
+              />
+            }
+          />
+          <RuleRow
             title={t("rules.tradesPerDay")}
+            help="rules.help.tradesPerDay"
             badge={
               tradesLeft !== undefined && (
                 <Badge tone={tradesLeft === 0 ? "over" : tradesLeft <= 1 ? "warn" : "ok"}>
@@ -492,6 +570,7 @@ export function RulesDashboard({
           />
           <RuleRow
             title={t("rules.hours")}
+            help="rules.help.hours"
             badge={
               <Badge tone={hours.open ? "ok" : "muted"}>
                 {t(hours.open ? "rules.open" : "rules.closed")}
@@ -509,6 +588,7 @@ export function RulesDashboard({
           {rules.news.on && (
             <RuleRow
               title={t("rules.news")}
+              help="rules.help.news"
               badge={
                 status?.news?.active ? (
                   <Badge tone="warn">{t("rules.newsActive")}</Badge>
@@ -534,6 +614,7 @@ export function RulesDashboard({
           )}
           <RuleRow
             title={t("rules.coolOff")}
+            help="rules.help.coolOff"
             badge={
               cooling ? (
                 <Badge tone="warn">{t("rules.cooling")}</Badge>
