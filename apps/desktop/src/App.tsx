@@ -107,6 +107,7 @@ import { AlgoChartChips, AlgosPanel } from "./components/panels/AlgosPanel";
 import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
+import { MultiVenuePanel } from "./components/panels/MultiVenuePanel";
 import { NewsWirePanel } from "./components/panels/NewsWirePanel";
 import { PaperPanel } from "./components/panels/PaperPanel";
 import { PaperBanner } from "./components/paper/PaperBanner";
@@ -1695,6 +1696,52 @@ export function App() {
             onResume={algoBook.resume}
             onStop={algoBook.stop}
             onHalt={algoBook.halt}
+          />
+        );
+      case "multi":
+        // One coin on several venues: an ordinary order to each venue's own
+        // account, through place_order and its gate. A paper venue, or any
+        // while a replay runs, is refused here as well as left out there.
+        return (
+          <MultiVenuePanel
+            venues={venueChips.map((chip) => chip.id)}
+            accounts={accounts}
+            canTrade={(a) => canTrade(a, liveUids)}
+            isPaper={(v) => isPaperMode(v) || replayOn}
+            coin={selected?.base}
+            maxSlippageBps={(v) => slippageBps(VENUES[v].maxSlippage)}
+            checkRules={(leg) =>
+              venueClient
+                .checkTradingRules(leg.venue, leg.account.id, leg.request)
+                .then((checks) => checks.filter((c) => !c.ok))
+            }
+            ruleText={(c) => checkText(c, undefined, blockText, clockTime)}
+            place={async (leg) => {
+              stillLive(leg.venue);
+              if (!canTrade(leg.account, liveTradingUids())) throw new Error(t("ticket.liveOff"));
+              await venueClient.placeOrder(leg.venue, leg.account.id, leg.request, "multi-venue");
+              if (leg.venue === venue) tradingRules.refresh();
+              if (!leg.after) return "placed";
+              // Aster takes no exits with an order: they go on the position it opened.
+              const set = (price?: string) =>
+                price ? { action: "set" as const, price } : { action: "keep" as const };
+              try {
+                await venueClient.setProtection(
+                  leg.venue,
+                  leg.account.id,
+                  leg.market.id,
+                  {
+                    takeProfit: set(leg.after.takeProfit),
+                    stopLoss: set(leg.after.stopLoss),
+                    trailingStop: { action: "keep" },
+                  },
+                  "multi-venue",
+                );
+                return "placed";
+              } catch (e) {
+                return { protectFailed: e instanceof Error ? e.message : String(e) };
+              }
+            }}
           />
         );
       case "cli":

@@ -1098,6 +1098,30 @@ screen also show as chips over the Trade chart. `useAlgos` raises their
 notifications through `notifyEvent` (finished, stopped, failed, paused on
 its own).
 
+## Multi-venue ticket
+
+A panel kind added from the layout editor's palette (`multi`;
+`components/panels/MultiVenuePanel.tsx`, `lib/multiVenue.ts`), after
+Tealstreet's: one coin, and an order on each venue ticked among the
+header's venues, to that venue's active account. The coin is matched by
+name whatever each venue calls it (`coinOf`: Hyperliquid's `kPEPE`,
+Bybit's and Binance's `1000PEPE`), and a venue that doesn't list it, has no
+account, can't trade (live trading off) or is in paper mode (or while a
+replay runs) is left out and says why. Each order is sized against its own
+account (`planLeg`): with a stop, so it loses the same share of that
+account's equity at the stop; without one, a share of its available
+margin; the stop and target a % from that venue's own price, limit orders
+a % inside it. Each leg's rules are asked as it changes
+(`check_trading_rules`). Nothing goes until a review is confirmed; then
+each leg is an ordinary `place_order` (origin `multi-venue`), one after
+another, through that account's switch, rules and log, and one refused
+doesn't stop or undo the rest. Aster takes no exits with an order, so its
+market leg's SL / TP go on the position afterwards
+(`set_position_protection`, the whole position), and a limit leg there goes
+without. It adds no trading command, and never trades a paper or replay
+account. Its strings (`locales/multi/en.ts`) are English in every language
+until translated.
+
 ## Calendar panel
 
 Another panel kind added from the layout editor's palette (`calendar`;

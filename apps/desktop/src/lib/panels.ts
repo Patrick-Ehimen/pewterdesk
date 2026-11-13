@@ -11,6 +11,7 @@ export type PanelKind =
   | "calendar"
   | "wire"
   | "algos"
+  | "multi"
   | "paper";
 
 export interface PanelSpec {
@@ -33,6 +34,7 @@ export const PANELS: Record<PanelKind, PanelSpec> = {
   calendar: { titleKey: "panel.calendar", w: 8, h: 12, minW: 5, minH: 5 },
   wire: { titleKey: "panel.wire", w: 7, h: 14, minW: 5, minH: 6 },
   algos: { titleKey: "panel.algos", w: 9, h: 12, minW: 6, minH: 6 },
+  multi: { titleKey: "panel.multi", w: 14, h: 12, minW: 9, minH: 8 },
   // Added when paper mode is first turned on (or from the palette).
   paper: { titleKey: "panel.paper", w: 9, h: 16, minW: 6, minH: 8 },
 };

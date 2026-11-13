@@ -1,0 +1,166 @@
+/* The multi-venue ticket: one coin's order on each venue ticked */
+.mv {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  font-size: 13px;
+}
+.mv-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.mv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mv-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.mv .rules-field {
+  width: 92px;
+  height: 32px;
+}
+.mv-field .rules-field input {
+  font-family: var(--pd-font-mono);
+}
+.mv-hint {
+  margin: 0;
+  padding: 6px 14px;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.mv-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.mv-row {
+  display: grid;
+  grid-template-columns:
+    minmax(150px, 1.6fr) minmax(90px, 1fr) repeat(5, minmax(76px, 1fr))
+    minmax(120px, 1.2fr);
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 860px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.mv-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 6px;
+  background: var(--pd-surface);
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mv-venue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.mv-venue > input[type="checkbox"] {
+  accent-color: var(--pd-brass);
+}
+.mv-venue > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.mv-venue small,
+.mv-cell small {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.mv-cell {
+  color: var(--pd-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mv-exits {
+  color: var(--pd-pewter);
+}
+.mv-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-left: 26px;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.mv-note[data-tone="warn"],
+.mv-row[data-outcome="failed"] .mv-note {
+  color: var(--pd-warning);
+}
+.mv-row[data-outcome="placed"] .mv-note {
+  color: var(--pd-text);
+}
+.mv-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--pd-border);
+}
+.mv-total {
+  flex: 1;
+  color: var(--pd-pewter);
+}
+.mv-foot .rules-primary[data-side="buy"] {
+  background: var(--pd-buy);
+  border-color: var(--pd-buy);
+  color: var(--pd-on-buy);
+}
+.mv-foot .rules-primary[data-side="sell"] {
+  background: var(--pd-sell);
+  border-color: var(--pd-sell);
+  color: var(--pd-on-sell);
+}
+.mv-review {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 14px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border-strong);
+  border-left: 3px solid var(--pd-brass);
+  border-radius: 8px;
+  background: var(--pd-bg);
+}
+.mv-review p {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.mv-review ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.mv-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mv-row[data-off] .mv-cell {
+  opacity: 0.45;
+}

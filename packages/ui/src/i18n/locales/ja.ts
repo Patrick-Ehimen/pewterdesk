@@ -1,5 +1,6 @@
 import type { Messages } from "./en";
 import { journalEn } from "./journal/en";
+import { multiEn } from "./multi/en";
 import { rulesEn } from "./rules/en";
 import { tradersEn } from "./traders/en";
 
@@ -11,6 +12,8 @@ export const messages: Messages = {
   ...tradersEn,
   // The Trading rules page's explanations (`rules/en.ts`).
   ...rulesEn,
+  // The multi-venue ticket (`multi/en.ts`).
+  ...multiEn,
   "col.price": "価格",
   "col.size": "数量",
   "col.total": "累計",

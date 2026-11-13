@@ -10,6 +10,7 @@ import "./styles/watchlist.css";
 import "./styles/plan.css";
 import "./styles/traders.css";
 import "./styles/settings.css";
+import "./styles/multiVenue.css";
 import "./styles/tray.css";
 import "./styles/float.css";
 import "./styles/wallet.css";
