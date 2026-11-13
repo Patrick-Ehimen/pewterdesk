@@ -802,6 +802,7 @@ mod tests {
             Origin::Float,
             Origin::Multichart,
             Origin::Chart,
+            Origin::MultiVenue,
             Origin::Activity,
             Origin::Drawer,
             Origin::App,

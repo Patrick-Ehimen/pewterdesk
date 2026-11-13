@@ -857,6 +857,9 @@ pub enum Origin {
     Multichart,
     /// The Trade page's price chart: a dragged TP / SL line.
     Chart,
+    /// The multi-venue ticket: one order per venue ticked, each to that
+    /// venue's own account, through the same gate.
+    MultiVenue,
     /// The account panels: open orders and positions.
     Activity,
     /// The position drawer.
@@ -884,6 +887,7 @@ impl Origin {
             Self::Float => "float",
             Self::Multichart => "multichart",
             Self::Chart => "chart",
+            Self::MultiVenue => "multi-venue",
             Self::Activity => "activity",
             Self::Drawer => "drawer",
             Self::App => "app",
