@@ -43,6 +43,9 @@ export const STATS_BAR_ID = "stats:bar";
 export const STATS_BAR_ROWS = 2;
 export const isStatsBar = (id: string) => id === STATS_BAR_ID;
 
+/** The Multi-venue layout's Account panel: it opens on every venue's accounts. */
+export const ALL_VENUES_ACCOUNT = "account:all";
+
 const bar = (w: number): Placement => ({ i: STATS_BAR_ID, x: 0, y: 0, w, h: STATS_BAR_ROWS });
 
 /** Built-in layouts, after the design's presets. Read-only; "Save as…" copies. */
@@ -99,6 +102,20 @@ export const PRESETS: readonly SavedLayout[] = [
       place("positions", 0, 17, 11, 7),
       place("calendar", 11, 17, 8, 7),
       place("account", 19, 17, 5, 7),
+    ],
+  },
+  {
+    // Trading one coin on several venues: the chart over the multi-venue
+    // ticket, every connected account down the right (the Account panel on
+    // its All venues view), and the positions in a row of their own below,
+    // where the workspace scrolls to them.
+    name: "Multi-venue",
+    layout: [
+      bar(17),
+      place("markets", 0, 2, 17, 11),
+      place("multi", 0, 13, 17, 11),
+      { i: ALL_VENUES_ACCOUNT, x: 17, y: 0, w: 7, h: 24 },
+      place("positions", 0, 24, 24, 10),
     ],
   },
 ];

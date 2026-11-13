@@ -40,9 +40,15 @@ function read(): Views {
   return views;
 }
 
-/** The view panel `id` shows: what was picked for it, else the venue's (all for a former Balances panel). */
+/** The Multi-venue layout's Account panel (`ALL_VENUES_ACCOUNT` in `workspace.ts`). */
+const ALL_VENUES = "account:all";
+
+/**
+ * The view panel `id` shows: what was picked for it, else the venue's (all
+ * for a former Balances panel, and for the Multi-venue layout's).
+ */
 export function accountViewOf(id: string, saved: Views = read()): AccountView {
-  return saved[id] ?? (id.startsWith(LEGACY) ? "all" : "venue");
+  return saved[id] ?? (id.startsWith(LEGACY) || id === ALL_VENUES ? "all" : "venue");
 }
 
 export function setAccountView(id: string, view: AccountView) {

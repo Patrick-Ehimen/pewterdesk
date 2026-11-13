@@ -4,6 +4,9 @@
 // it's translated.
 export const multiEn = {
   "panel.multi": "Multi-venue ticket",
+  "preset.Multi-venue": "Multi-venue",
+  "preset.Multi-venue.desc":
+    "One coin on several venues: the chart over the multi-venue ticket, every account down the right, positions below.",
 
   "multi.coin": "Coin",
   "multi.coinHint":

@@ -1120,7 +1120,10 @@ market leg's SL / TP go on the position afterwards
 (`set_position_protection`, the whole position), and a limit leg there goes
 without. It adds no trading command, and never trades a paper or replay
 account. Its strings (`locales/multi/en.ts`) are English in every language
-until translated.
+until translated. The Multi-venue preset (`lib/workspace.ts`) lays it under
+the chart, with the Account panel down the right on its All venues view
+(`ALL_VENUES_ACCOUNT`, which `accountViewOf` opens there) and the positions
+in a row below.
 
 ## Calendar panel
 
