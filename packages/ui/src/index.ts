@@ -216,6 +216,11 @@ export {
   FundingHeatmap,
   type HeatmapRow,
 } from "./components/trading/FundingHeatmap";
+export {
+  type ChartLevel,
+  type ChartPin,
+  LevelsChart,
+} from "./components/trading/LevelsChart";
 export { ListedBy } from "./components/trading/ListedBy";
 export { MarketMovement, type MovementVenue } from "./components/trading/MarketMovement";
 export { MarketPicker } from "./components/trading/MarketPicker";

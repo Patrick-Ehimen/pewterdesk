@@ -44,6 +44,10 @@ thing that matters, and green and red belong to the market.
   A top trader's picture (`components/traders/TraderAvatar.tsx`) takes one
   of the same hues from the trader's key, at `--pd-tag-l` / `--pd-tag-c`: a
   wash behind and the pattern in it. Identity only, never a figure or a state.
+  So do an idea's key levels on the Ideas page (`levelColor` in
+  `components/ideas/parts.tsx`): each level a hue of the same set, in two
+  shades, at `--pd-tag-l` / `--pd-tag-c`, no two alike - its line on the
+  chart and its swatch. Identity only: the name says what the level is.
   So do the AI page's starter questions (`SUGGESTION_HUES` in
   `components/pages/AiPage.tsx`): each chip's icon a hue in turn, at
   `--pd-tag-l` / `--pd-tag-c`. Labels only; the chip itself stays neutral.

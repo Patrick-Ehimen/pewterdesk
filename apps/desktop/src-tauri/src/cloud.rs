@@ -446,6 +446,9 @@ pub enum Collection {
     Playbooks,
     JournalDays,
     TradeNotes,
+    /// The Ideas page: a coin watched, the trader's thesis and key levels,
+    /// thoughts as it plays out. Kept apart from the journal and trades.
+    Ideas,
 }
 
 impl Collection {
@@ -455,6 +458,7 @@ impl Collection {
             Self::Playbooks => "playbooks",
             Self::JournalDays => "journal_days",
             Self::TradeNotes => "trade_notes",
+            Self::Ideas => "ideas",
         }
     }
 
@@ -466,11 +470,12 @@ impl Collection {
             Self::Playbooks => "id",
             Self::JournalDays => "user_id,account_key,day",
             Self::TradeNotes => "user_id,account_key,trade_key",
+            Self::Ideas => "id",
         }
     }
 
     fn has_account(self) -> bool {
-        !matches!(self, Self::Playbooks)
+        !matches!(self, Self::Playbooks | Self::Ideas)
     }
 
     fn has_day(self) -> bool {
@@ -571,10 +576,12 @@ fn row(collection: Collection, record: &CloudRecord) -> Result<Value, CloudError
     let mut row = serde_json::Map::new();
     match (&record.id, collection) {
         (Some(id), _) if !is_uuid(id) => return Err(CloudError::Invalid("id")),
-        (Some(id), Collection::Playbooks) => {
+        (Some(id), Collection::Playbooks | Collection::Ideas) => {
             row.insert("id".into(), Value::String(id.clone()));
         }
-        (None, Collection::Playbooks) => return Err(CloudError::Invalid("id")),
+        (None, Collection::Playbooks | Collection::Ideas) => {
+            return Err(CloudError::Invalid("id"));
+        }
         _ => {}
     }
     if collection.has_account() {
@@ -1284,7 +1291,14 @@ mod tests {
             },
             Collection::JournalDays
         ));
-        // Playbooks have no account or day.
+        // Playbooks and ideas have no account or day.
+        assert!(bad(
+            CloudQuery {
+                account_key: Some("bybit:1".into()),
+                ..Default::default()
+            },
+            Collection::Ideas
+        ));
         assert!(bad(
             CloudQuery {
                 account_key: Some("bybit:1".into()),
@@ -1323,6 +1337,11 @@ mod tests {
         let body = row(Collection::Playbooks, &record).unwrap();
         let keys: Vec<_> = body.as_object().unwrap().keys().cloned().collect();
         assert_eq!(keys, ["data", "id"]);
+
+        // An idea is an id and its data: no account, day or trade.
+        let body = row(Collection::Ideas, &record).unwrap();
+        let keys: Vec<_> = body.as_object().unwrap().keys().cloned().collect();
+        assert_eq!(keys, ["data", "id"]);
     }
 
     #[test]
@@ -1337,6 +1356,7 @@ mod tests {
             row(Collection::Playbooks, &base).is_err(),
             "a playbook needs an id"
         );
+        assert!(row(Collection::Ideas, &base).is_err(), "an idea needs an id");
         let mut not_object = base.clone();
         not_object.data = serde_json::json!([1, 2]);
         assert!(row(Collection::JournalDays, &not_object).is_err());

@@ -31,6 +31,7 @@ import {
   LuClock,
   LuLayoutDashboard,
   LuLayoutGrid,
+  LuLightbulb,
   LuListFilter,
   LuMap,
   LuNewspaper,
@@ -74,6 +75,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   ai: "nav.ai",
   plan: "nav.plan",
   traders: "nav.traders",
+  ideas: "nav.ideas",
   settings: "settings.title",
 };
 
@@ -89,6 +91,7 @@ const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = 
   ai: { icon: <LuSparkles size={17} />, tone: "info" },
   plan: { icon: <LuNotebookPen size={17} />, tone: "brass" },
   traders: { icon: <LuTrophy size={17} />, tone: "info" },
+  ideas: { icon: <LuLightbulb size={17} />, tone: "brass" },
   settings: { icon: <LuSettings size={17} />, tone: "plain" },
 };
 

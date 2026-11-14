@@ -1052,7 +1052,7 @@ function Detail({
 }
 
 /** Screenshots on the trade: pasted, dropped or picked; stored in the cloud, shown from it. */
-function Attachments({
+export function Attachments({
   paths,
   onChange,
 }: {

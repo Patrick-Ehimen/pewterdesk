@@ -90,6 +90,7 @@ import { FeedView } from "./components/FeedView";
 import { AppLogo } from "./components/header/AppLogo";
 import { HeaderActions } from "./components/header/HeaderActions";
 import { VenueSwitcher } from "./components/header/VenueSwitcher";
+import { IdeasPage } from "./components/ideas/IdeasPage";
 import { KeepAlive } from "./components/KeepAlive";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
@@ -2073,6 +2074,17 @@ export function App() {
                   }
                 : undefined
             }
+          />
+        ) : page === "ideas" ? (
+          // Coins being watched, with a thesis and levels: kept in the cloud, places nothing.
+          <IdeasPage
+            venues={venueChips}
+            venue={venue}
+            market={selected}
+            onOpenTrade={(v, id) => {
+              showMarket(v, id);
+              setPage("trade");
+            }}
           />
         ) : page === "plan" ? (
           <PlanPage

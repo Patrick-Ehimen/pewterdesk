@@ -1,0 +1,958 @@
+/* The Ideas page: coins being watched, their thesis, levels and thoughts. */
+.page.ideas {
+  overflow: hidden;
+  gap: 8px;
+}
+.ideas-bar {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 2px 4px;
+}
+.ideas-bar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.ideas-tabs {
+  display: flex;
+  gap: 2px;
+}
+.ideas-tabs button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  cursor: pointer;
+}
+.ideas-tabs button[aria-current="page"] {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}
+.ideas-count {
+  margin-left: 6px;
+  color: var(--pd-pewter-dim);
+}
+.ideas-private {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.ideas-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 210px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  background: var(--pd-bg);
+  color: var(--pd-pewter-dim);
+}
+.ideas-search:focus-within {
+  border-color: var(--pd-brass);
+}
+/* The box shows the focus; the field inside leaves the ring to it. */
+.ideas-search input:focus-visible,
+.ideas-add input:focus-visible {
+  box-shadow: none;
+}
+.ideas-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  color: var(--pd-text);
+  font: inherit;
+}
+.ideas-new,
+.ideas-first .rules-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ideas-error {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--pd-warning);
+  font-size: 12.5px;
+}
+.ideas-empty {
+  margin: auto;
+  color: var(--pd-pewter);
+  text-align: center;
+}
+.ideas-first {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 440px;
+}
+.ideas-first h2 {
+  margin: 0;
+  color: var(--pd-text);
+  font-size: 16px;
+}
+.ideas-first p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ideas-hint {
+  margin: 0;
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+}
+.ideas-pad {
+  padding: 12px;
+}
+
+/* Three columns: the list, the idea, its levels and status */
+.ideas-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 320px minmax(0, 1fr) 320px;
+  gap: 8px;
+  min-height: 0;
+}
+.ideas-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-surface);
+}
+.ideas-list {
+  gap: 6px;
+  padding: 0 8px 8px;
+  overflow-y: auto;
+}
+.ideas-list-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 4px 2px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ideas-card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ideas-card:hover {
+  border-color: var(--pd-border-strong);
+}
+.ideas-card[aria-pressed="true"] {
+  border-color: var(--pd-brass);
+  box-shadow: inset 0 0 0 1px var(--pd-brass);
+}
+.ideas-card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ideas-coin {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 600;
+}
+.ideas-coin-lg {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
+.ideas-card-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.ideas-card-name small {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.ideas-card-thesis {
+  overflow: hidden;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ideas-card-foot {
+  justify-content: space-between;
+  font-size: 12px;
+}
+.ideas-card-foot em {
+  font-style: normal;
+  font-size: 11.5px;
+}
+.ideas-standing {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  text-align: right;
+}
+
+/* Bias: arrows take the market colours (a direction), a range stays pewter */
+.ideas-bias {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.ideas-bias svg {
+  fill: currentColor;
+}
+.ideas-bias .flip {
+  transform: rotate(180deg);
+}
+.ideas-bias[data-bias="bullish"] {
+  border-color: color-mix(in srgb, var(--pd-buy) 40%, transparent);
+  color: var(--pd-buy);
+}
+.ideas-bias[data-bias="bearish"] {
+  border-color: color-mix(in srgb, var(--pd-sell) 40%, transparent);
+  color: var(--pd-sell);
+}
+.ideas-conv {
+  display: inline-flex;
+  flex: none;
+  gap: 3px;
+}
+.ideas-conv i,
+.ideas-conv button {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--pd-border-strong);
+}
+.ideas-conv[data-edit] {
+  gap: 5px;
+  height: 32px;
+  align-items: center;
+}
+.ideas-conv[data-edit] button {
+  width: 18px;
+  height: 10px;
+  cursor: pointer;
+}
+.ideas-conv [data-on] {
+  background: var(--pd-brass);
+}
+
+/* The idea */
+.ideas-detail-head {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.ideas-detail-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ideas-detail-title h2 {
+  margin: 0;
+  font-size: 17px;
+  white-space: nowrap;
+}
+.ideas-detail-title h2 small {
+  color: var(--pd-pewter-dim);
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: capitalize;
+}
+.ideas-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.ideas-now {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+.ideas-now b {
+  font-size: 17px;
+  font-weight: 500;
+}
+div.ideas-now small {
+  font-size: 11.5px;
+}
+.ideas-chart-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 4px;
+}
+.ideas-chart {
+  position: relative;
+  flex: none;
+  padding: 0 8px 0 12px;
+}
+.pd-levels-chart {
+  height: 320px;
+}
+.pd-levels-chart[data-picking] {
+  cursor: crosshair;
+}
+.ideas-chart-note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--pd-pewter-dim);
+  font-size: 12.5px;
+  pointer-events: none;
+}
+.ideas-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ideas-sec {
+  padding: 12px 16px;
+  border-top: 1px solid var(--pd-border);
+}
+.ideas-sec h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ideas-sec h3 > :last-child {
+  margin-left: auto;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.ideas-thesis {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.ideas-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.ideas-box {
+  padding: 8px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.ideas-box b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--pd-text);
+  font-weight: 500;
+}
+.ideas-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-pewter-dim);
+}
+.ideas-add:focus-within {
+  border-color: var(--pd-brass);
+}
+.ideas-add input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  color: var(--pd-text);
+  font: inherit;
+}
+.ideas-add .rules-button {
+  padding: 5px 12px;
+}
+.ideas-thoughts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.ideas-thoughts li {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 8px;
+}
+.ideas-thoughts p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+ol.ideas-thoughts small {
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+}
+.ideas-pin {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--pd-brass);
+  border-radius: 999px;
+  color: var(--pd-brass-text);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* Levels, the read, and the idea's status */
+.ideas-side {
+  overflow-y: auto;
+}
+.ideas-side-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 14px 6px;
+}
+.ideas-side-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.ideas-levels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ideas-levels li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 58px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-top: 1px solid var(--pd-border);
+  font-size: 12.5px;
+}
+.ideas-levels b {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ideas-unnamed {
+  color: var(--pd-pewter-dim);
+  font-style: italic;
+}
+.ideas-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+.ideas-dist {
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+  text-align: right;
+}
+.ideas-read {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--pd-border);
+  font-size: 12.5px;
+}
+.ideas-read dt {
+  color: var(--pd-pewter-dim);
+}
+.ideas-read dd {
+  margin: 0;
+}
+.ideas-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 14px 12px;
+}
+.ideas-actions .rules-button,
+.ideas-side-foot .rules-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+}
+.ideas-side-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 10px 14px;
+  border-top: 1px solid var(--pd-border);
+}
+.ideas-delete {
+  margin-left: auto;
+}
+.ideas-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  font-size: 12.5px;
+}
+.ideas-confirm p {
+  margin: 0;
+  color: var(--pd-pewter);
+}
+.ideas-confirm div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* New / edit idea */
+.ideas-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--pd-bg) 70%, transparent);
+}
+.ideas-modal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(1120px, calc(100vw - 48px));
+  height: min(780px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  background: var(--pd-surface);
+  box-shadow: 0 30px 80px -20px color-mix(in srgb, var(--pd-bg) 85%, transparent);
+}
+.ideas-modal-head,
+.ideas-modal-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+}
+.ideas-modal-head {
+  border-bottom: 1px solid var(--pd-border);
+}
+.ideas-modal-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+.ideas-modal-foot {
+  border-top: 1px solid var(--pd-border);
+}
+.ideas-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 460px;
+  min-height: 0;
+}
+.ideas-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  border-right: 1px solid var(--pd-border);
+}
+.ideas-f {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ideas-label {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ideas-label em,
+.ideas-label-row em {
+  color: var(--pd-pewter-dim);
+  font-style: normal;
+}
+.ideas-label-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ideas-row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ideas-row3 {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.ideas-market {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 6px;
+}
+.ideas-pick {
+  display: flex;
+  gap: 6px;
+}
+.ideas-pick > button[type] {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  height: 36px;
+  align-items: center;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  cursor: pointer;
+}
+.ideas-pick > button[data-on] {
+  border-color: var(--pd-brass);
+  background: color-mix(in srgb, var(--pd-brass) 8%, var(--pd-bg));
+}
+.ideas-pick .ideas-bias {
+  border: 0;
+  font-size: 12.5px;
+}
+.ideas-ta {
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.ideas-ta:focus {
+  border-color: var(--pd-brass);
+  outline: none;
+}
+.ideas-offers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: -6px;
+}
+.ideas-offer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 45%, transparent);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ideas-hint + .ideas-f,
+.ideas-offers + .ideas-f {
+  margin-top: 0;
+}
+.ideas-form > .ideas-hint {
+  margin-top: -6px;
+}
+.ideas-lvrow {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 120px 54px 26px;
+  align-items: center;
+  gap: 8px;
+}
+.ideas-lvrow .rules-field {
+  width: auto;
+  height: 32px;
+}
+.ideas-ghost {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.ideas-ghost:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ideas-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  min-height: 0;
+}
+.ideas-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ideas-preview .ideas-chart {
+  padding: 0;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ideas-preview-chart {
+  height: 340px;
+}
+.ideas-preview-empty {
+  position: static;
+  height: 340px;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 8px;
+}
+.ideas-calc {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.ideas-calc div {
+  padding: 8px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+}
+.ideas-calc span {
+  display: block;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.ideas-calc b {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* The market field fills its column instead of running into the bias */
+.ideas-market > * {
+  min-width: 0;
+}
+.ideas-market .pd-market-search-field {
+  width: 100%;
+  height: 36px;
+}
+.ideas-venue-logo {
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+.ideas-detail-title .ideas-venue-logo {
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+}
+
+/* While the candles load: the logo, breathing */
+.ideas-chart-logo {
+  width: 44px;
+  height: 44px;
+  animation: ideas-breathe 1.6s ease-in-out infinite;
+}
+@keyframes ideas-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ideas-chart-logo {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* Reward to risk: the three picks, and the ratio with its bar */
+.ideas-rr-pick {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ideas-rr {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ideas-rr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 12px;
+  color: var(--pd-pewter);
+}
+.ideas-rr-head b {
+  color: var(--pd-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+.ideas-rr-bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  gap: 2px;
+}
+.ideas-rr-reward {
+  background: var(--pd-info);
+}
+.ideas-rr-risk {
+  background: var(--pd-warning);
+}
+.ideas-pad-x {
+  padding: 0 14px 12px;
+}
+.ideas-warn {
+  color: var(--pd-warning);
+}
+
+/* Scenarios: what happens, its odds, and a bar of them */
+.ideas-scrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.4fr) 26px;
+  align-items: center;
+  gap: 8px;
+}
+.ideas-scrow .rules-field {
+  width: auto;
+  height: 32px;
+}
+.ideas-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 14px 12px;
+  list-style: none;
+}
+.ideas-scenarios li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  padding: 8px 10px 10px;
+  overflow: hidden;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  font-size: 12.5px;
+}
+.ideas-scenarios b {
+  font-weight: 500;
+}
+.ideas-scenarios li > span {
+  color: var(--pd-pewter);
+}
+.ideas-scenarios p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ideas-odds {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--pd-brass);
+}

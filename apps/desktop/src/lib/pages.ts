@@ -11,6 +11,7 @@ export const PAGES = [
   "ai",
   "plan",
   "traders",
+  "ideas",
   "settings",
 ] as const;
 export type Page = (typeof PAGES)[number];

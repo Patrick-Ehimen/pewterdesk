@@ -596,6 +596,7 @@ discover it on their own. The reasoning behind the rules is in
   https only; no redirects followed, size caps). Not a venue and not on the
   signing surface: nothing in it reaches the router, an account or a key. It
   holds what the trader writes (plan, playbooks, journal days, trade notes,
+  the Ideas page's ideas - `ideas`, an id and its data, like a playbook -
   PNG or JPEG screenshots), PewterDesk AI's chats (`ai_chats`: each one's
   summary, messages, cited sources and the provider's transcript - which,
   with account access on, holds what the analyst read of the account; their
@@ -1280,6 +1281,38 @@ new chats last only while the app runs, and go up on sign-in. The chat open
 in each view is kept on this machine (`pd.ai.open`); a chat that can't be
 saved says so in the side panel. It places nothing: an answer can at most open its marks on
 the chart, or the market on the Trade page.
+
+## Ideas
+
+A page (`ideas`; `components/ideas/`, `lib/ideas.ts`, `hooks/useIdeas.ts`,
+after the mockups in `design/screens/97-100`): coins the trader is watching
+and what they think each will do - a bias (bullish, bearish, range), a
+thesis, what would make it wrong, catalysts, tags, timeframe and
+conviction, and its key levels - each a price and the trader's own name for
+it ("Support", "Supply zone"; no preset kinds) in a colour of its own, no
+two alike (`nextColor`, `distinctColors`: the tag palette's hues in two
+shades, `levelColor` in `components/ideas/parts.tsx`) - with thoughts
+written as it plays out (each with the price then, pinned to the chart by
+its number) and screenshots. The chart is TradingView's Lightweight Charts
+(`LevelsChart` in `packages/ui`: no grid, the market's name faint behind
+the candles, the logo while they load), each level a price line in its
+colour, labelled with its name; in the new / edit idea dialog
+(`IdeaEditor.tsx`) levels are typed, taken from prices the thesis names
+(`pricesIn`), or dropped by clicking the preview chart, and show on it as
+they're added. The list sorts by how close each idea is to one of its
+levels (`nearest`, `byCloseness`). Reward to risk is read between three
+levels the trader picks (`risk`: an entry - a level or the price now - a
+stop and a target; `rewardRisk`, undefined until the target and stop sit
+either side of the entry), shown as a ratio and a bar; scenarios are the
+trader's own (what happens, odds, a line; `oddsTotal` says when they don't
+come to 100%). An idea moves
+between Watching, Played out, Wrong and Archive by the trader's hand. Kept in
+PewterDesk Cloud (`ideas`, behind the Plan page's sign-in; screenshots in the
+`journal` bucket, as the journal's are, through `Attachments`), apart from
+the journal and trades: an idea names a market, never an account. It reads
+prices and places nothing. Its strings (`locales/ideas/en.ts`) are English
+in every language until translated. Not built yet: alerts on its levels,
+the track record (`99`) and its levels on the Trade chart (`100`).
 
 ## Plan & journal
 

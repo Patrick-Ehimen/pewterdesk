@@ -1,4 +1,5 @@
 import type { Messages } from "./en";
+import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
 import { multiEn } from "./multi/en";
 import { rulesEn } from "./rules/en";
@@ -14,6 +15,8 @@ export const messages: Messages = {
   ...rulesEn,
   // The multi-venue ticket (`multi/en.ts`).
   ...multiEn,
+  // The Ideas page (`ideas/en.ts`).
+  ...ideasEn,
   "col.price": "价格",
   "col.size": "数量",
   "col.total": "累计",

@@ -9,6 +9,7 @@ import {
   LuChartCandlestick,
   LuLandmark,
   LuLayoutGrid,
+  LuLightbulb,
   LuListFilter,
   LuNewspaper,
   LuNotebookPen,
@@ -69,6 +70,7 @@ const PAGE_ICONS = {
   ai: LuSparkles,
   plan: LuNotebookPen,
   traders: LuTrophy,
+  ideas: LuLightbulb,
   bots: LuBot,
   settings: LuSettings,
 } as const;
