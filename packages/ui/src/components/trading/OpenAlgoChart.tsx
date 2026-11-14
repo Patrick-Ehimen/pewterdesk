@@ -185,6 +185,7 @@ const DRAWINGS_PREFIX = "pd.drawings:";
 /** Where the Trade chart kept them before every chart shared them. */
 const OLD_DRAWINGS_PREFIX = `oac-widget:${STORAGE_NAME}:drawings:`;
 
+/** `document` null: the market has no drawings left. */
 type DrawingsListener = (key: string, document: unknown) => void;
 const drawingsListeners = new Set<DrawingsListener>();
 let sharedStore: DrawingDocumentStore | undefined;
@@ -224,9 +225,19 @@ function drawingStore(): DrawingDocumentStore {
       for (const listener of drawingsListeners) listener(key, document);
       return landed;
     },
+    // The library removes a market's entry, rather than saving an empty
+    // one, when its last drawing goes: the other charts are told too, or
+    // they'd keep showing it until the next change.
     remove(key) {
       text.delete(key);
       backing.remove(key);
+      try {
+        // The copy under the old name would otherwise come back on the next start.
+        store.removeItem(OLD_DRAWINGS_PREFIX + key);
+      } catch {
+        // Storage unavailable: nothing more to clear.
+      }
+      for (const listener of drawingsListeners) listener(key, null);
     },
   };
   return sharedStore;
@@ -1134,7 +1145,13 @@ export function OpenAlgoChart({
       const drawings = made.instrumentDrawings;
       if (!drawings || drawings.key() !== key) return;
       const instrument = { symbol: made.symbol(), exchange: made.exchange() };
-      if (JSON.stringify(drawings.document(instrument)) === JSON.stringify(document)) return;
+      const shown = drawings.document(instrument);
+      if (document === null) {
+        // Every drawing on that market was deleted: clear them here too.
+        if (shown) drawings.setDocument(instrument, { ...shown, drawings: [], groups: [] });
+        return;
+      }
+      if (JSON.stringify(shown) === JSON.stringify(document)) return;
       drawings.setDocument(instrument, document);
     };
     drawingsListeners.add(otherDrawings);
