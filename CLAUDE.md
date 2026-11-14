@@ -1058,6 +1058,13 @@ reads them); no new source. A row opens the market on the Trade page, its
 star stars it, and what passes can be saved as a watchlist. It places
 nothing.
 
+The Screener and Multi-chart pages, once opened, stay mounted for the rest
+of the session while another page is on screen (`components/KeepAlive.tsx`,
+`keptPages` in `App.tsx`): hidden, not rebuilt, so coming back finds their
+charts, filters, selection and scroll as they were left. Their feeds keep
+running while hidden. The Multi-chart page takes its 1-9 / Esc keys only
+while it's on screen (`active`).
+
 ## Command palette
 
 Cmd+K (Ctrl+K off macOS) or the header's search button opens it

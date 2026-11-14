@@ -464,6 +464,8 @@ export function Cell({
 }
 
 interface MultiChartPageProps {
+  /** Whether it's on screen: kept mounted behind another page, it takes no keys. */
+  active?: boolean;
   /** The venue on screen: what new charts start on, and whose account this is. */
   venue: VenueId;
   /** The venues in the terminal; a chart can be on any of them. */
@@ -489,6 +491,7 @@ interface MultiChartPageProps {
  * interval, the market or the crosshair can be made to move together.
  */
 export function MultiChartPage({
+  active = true,
   venue,
   venues,
   account,
@@ -544,6 +547,7 @@ export function MultiChartPage({
   // 1 to 9 give that chart the page (again to give it back); Esc restores the grid.
   const shownCount = Math.min(state.cells.length, GRID[state.layout].charts);
   useEffect(() => {
+    if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       const key = plainKey(e, isTyping(e.target));
       if (key === undefined || e.shiftKey) return;
@@ -556,7 +560,7 @@ export function MultiChartPage({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [shownCount]);
+  }, [shownCount, active]);
   // The charts' crosshairs and dates, moved together by the chart library:
   // each chart is marked at the same moment, whatever its timeframe.
   const link = useMemo(createChartLink, []);

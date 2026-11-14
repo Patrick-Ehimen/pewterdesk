@@ -90,6 +90,7 @@ import { FeedView } from "./components/FeedView";
 import { AppLogo } from "./components/header/AppLogo";
 import { HeaderActions } from "./components/header/HeaderActions";
 import { VenueSwitcher } from "./components/header/VenueSwitcher";
+import { KeepAlive } from "./components/KeepAlive";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
@@ -875,6 +876,13 @@ export function App() {
   useEffect(() => saveTabs(tabs), [tabs]);
   const page = activePage(tabs);
   const setPage = useCallback((next: Page) => setTabs((now) => withPage(now, next)), []);
+  // The Multi-chart and Screener pages, once opened, stay mounted while
+  // another is on screen (`KeepAlive`), so coming back finds them as left.
+  const [keptPages, setKeptPages] = useState<ReadonlySet<Page>>(() => new Set());
+  useEffect(() => {
+    if (page !== "charts" && page !== "screener") return;
+    setKeptPages((was) => (was.has(page) ? was : new Set([...was, page])));
+  }, [page]);
   // The pages opened this session, for stepping back and forward. However
   // a page was opened (the menu, the palette, a shortcut), it lands here.
   const [history, setHistory] = useState(() => startHistory(page));
@@ -2152,29 +2160,9 @@ export function App() {
               setPage("trade");
             }}
           />
-        ) : page === "charts" ? (
-          <MultiChartPage
-            venue={venue}
-            venues={venueChips}
-            account={accountData}
-            onTrade={(v, id) => {
-              showMarket(v, id);
-              setPage("trade");
-            }}
-            onProtect={from("multichart").protect}
-            onOrder={marketOrder && ((m, side, size) => marketOrder(m, side, size, "multichart"))}
-            tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
-          />
-        ) : page === "screener" ? (
-          <ScreenerPage
-            venue={venue}
-            venues={venueChips}
-            onTrade={(v, id) => {
-              showMarket(v, id);
-              setPage("trade");
-            }}
-          />
-        ) : page === "maps" ? (
+        ) : page === "charts" ||
+          page === "screener" ? // Kept mounted below, so they're as they were left.
+        null : page === "maps" ? (
           <MapsPage
             venue={venue}
             venueLabel={venueInfo.label}
@@ -2358,6 +2346,37 @@ export function App() {
               )}
             </div>
           </>
+        )}
+        {/* The Multi-chart and Screener pages stay mounted once opened: leaving
+            one and coming back finds its charts, filters and scroll as they were. */}
+        {(page === "charts" || keptPages.has("charts")) && (
+          <KeepAlive shown={page === "charts"}>
+            <MultiChartPage
+              active={page === "charts"}
+              venue={venue}
+              venues={venueChips}
+              account={accountData}
+              onTrade={(v, id) => {
+                showMarket(v, id);
+                setPage("trade");
+              }}
+              onProtect={from("multichart").protect}
+              onOrder={marketOrder && ((m, side, size) => marketOrder(m, side, size, "multichart"))}
+              tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
+            />
+          </KeepAlive>
+        )}
+        {(page === "screener" || keptPages.has("screener")) && (
+          <KeepAlive shown={page === "screener"}>
+            <ScreenerPage
+              venue={venue}
+              venues={venueChips}
+              onTrade={(v, id) => {
+                showMarket(v, id);
+                setPage("trade");
+              }}
+            />
+          </KeepAlive>
         )}
 
         <ConnectWalletDialog
