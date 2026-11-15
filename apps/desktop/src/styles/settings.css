@@ -374,3 +374,28 @@
 .settings-help[data-warn] {
   color: var(--pd-warning);
 }
+
+/* Notification sounds: a picker and a play button per kind, and the volume */
+.settings-notify-sound {
+  white-space: nowrap;
+}
+.settings-notify-sound > * {
+  vertical-align: middle;
+}
+.settings-notify-sound .pd-icon-button {
+  margin-left: 4px;
+}
+.settings-volume {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-volume input[type="range"] {
+  width: 180px;
+  accent-color: var(--pd-brass);
+}
+.settings-volume-value {
+  min-width: 38px;
+  color: var(--pd-pewter);
+  text-align: right;
+}

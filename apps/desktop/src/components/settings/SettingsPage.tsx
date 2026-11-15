@@ -3,12 +3,13 @@ import {
   type Locale,
   type MessageKey,
   type RowMode,
+  Select,
   Switch,
   shortAddress,
   t,
 } from "@pewterdesk/ui";
 import { type FormEvent, Fragment, useEffect, useState, useSyncExternalStore } from "react";
-import { LuArrowLeft, LuKeyRound } from "react-icons/lu";
+import { LuArrowLeft, LuKeyRound, LuPlay } from "react-icons/lu";
 import { type DaemonState, daemonClient, type PairTicket } from "../../api/daemonClient";
 import { coinClient, type WireSource, wireClient } from "../../api/venueClient";
 import type { MarketColors, Theme } from "../../hooks/useAppearance";
@@ -29,6 +30,7 @@ import {
   setNoteSettings,
   subscribeNotes,
 } from "../../lib/notifications";
+import { playSound, SOUNDS, setSoundVolume, soundVolume } from "../../lib/sound";
 import type { SavedLayout } from "../../lib/workspace";
 import { LayoutGallery } from "../layout/LayoutGallery";
 import {
@@ -328,6 +330,9 @@ function NotificationsSection({ onTestNotification }: SettingsPageProps) {
           label={t("settings.dnd")}
         />
       </SettingRow>
+      <SettingRow title={t("settings.volume")} help={t("settings.volumeHelp")}>
+        <VolumeSlider />
+      </SettingRow>
       <GroupLabel>{t("settings.notifyTypes")}</GroupLabel>
       <p className="settings-help">{t("settings.notifyTypesHelp")}</p>
       <table className="settings-notify">
@@ -341,6 +346,9 @@ function NotificationsSection({ onTestNotification }: SettingsPageProps) {
                 {t(`settings.notifyChannel.${c}`)}
               </th>
             ))}
+            <th scope="col" className="settings-notify-head">
+              {t("settings.notifySound")}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -364,6 +372,29 @@ function NotificationsSection({ onTestNotification }: SettingsPageProps) {
                   />
                 </td>
               ))}
+              <td className="settings-notify-cell settings-notify-sound">
+                <Select
+                  label={`${t(`notes.type.${type}`)}: ${t("settings.notifySound")}`}
+                  value={settings.sounds[type]}
+                  options={SOUNDS.map((id) => ({ value: id, label: t(`sound.${id}`) }))}
+                  onChange={(sound) => {
+                    setNoteSettings({ ...settings, sounds: { ...settings.sounds, [type]: sound } });
+                    playSound(sound, true);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="pd-icon-button"
+                  disabled={settings.sounds[type] === "none"}
+                  aria-label={t("settings.soundPlay", {
+                    sound: t(`sound.${settings.sounds[type]}`),
+                  })}
+                  title={t("settings.soundPlay", { sound: t(`sound.${settings.sounds[type]}`) })}
+                  onClick={() => playSound(settings.sounds[type], true)}
+                >
+                  <LuPlay size={13} aria-hidden />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -377,6 +408,41 @@ function NotificationsSection({ onTestNotification }: SettingsPageProps) {
         </button>
       </SettingRow>
     </>
+  );
+}
+
+/** How loud every sound is, 0 to 100, with a sound to hear it by. */
+function VolumeSlider() {
+  const [volume, setVolume] = useState(soundVolume);
+  return (
+    <span className="settings-volume">
+      <input
+        type="range"
+        min={0}
+        max={100}
+        step={5}
+        value={volume}
+        aria-label={t("settings.volume")}
+        onChange={(e) => {
+          const next = Number(e.target.value);
+          setVolume(next);
+          setSoundVolume(next);
+        }}
+        // Heard once the slider is let go, not on every step.
+        onPointerUp={() => playSound("chime", true)}
+        onKeyUp={() => playSound("chime", true)}
+      />
+      <span className="pd-num settings-volume-value">{volume}%</span>
+      <button
+        type="button"
+        className="pd-icon-button"
+        aria-label={t("settings.volumeTest")}
+        title={t("settings.volumeTest")}
+        onClick={() => playSound("chime", true)}
+      >
+        <LuPlay size={13} aria-hidden />
+      </button>
+    </span>
   );
 }
 

@@ -51,7 +51,7 @@ function checkAgreements() {
     const alerts = state.listAlerts[a.list];
     if (!list || !alerts) continue;
     notifyEventOf({
-      type: "alert",
+      type: "trader",
       title: t("traders.agree.noteTitle", {
         list: list.id === FOLLOWING ? t("traders.list.following") : list.name,
       }),
@@ -127,7 +127,7 @@ function notify(move: TraderMove) {
   const to = alertsFor(currentTraders(), traderKey(move.source, move.id)).to;
   if (to.length === 0) return;
   notifyEventOf({
-    type: "alert",
+    type: "trader",
     title: t("traders.note.title", { name: traderName(move.source, move.id) }),
     body: moveText(move),
     tone: "neutral",

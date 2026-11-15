@@ -8,10 +8,24 @@
 
 import { type ToastTone, toast } from "@pewterdesk/ui";
 import { desktopNotify } from "./notify";
-import { playSound, type SoundKind } from "./sound";
+import { FIXED_SOUNDS, playSound, SOUNDS, type SoundId, type SoundKind } from "./sound";
 
-/** What a notification is about; each has its own settings. */
-export const NOTE_TYPES = ["order", "fill", "position", "alert", "risk"] as const;
+/**
+ * What a notification is about; each has its own settings and sound. Alerts
+ * are split by where they come from, so each can sound different: the
+ * trader's own market alerts, followed traders, the scans and watches, and
+ * the Ideas page's levels.
+ */
+export const NOTE_TYPES = [
+  "order",
+  "fill",
+  "position",
+  "alert",
+  "trader",
+  "scan",
+  "idea",
+  "risk",
+] as const;
 export type NoteType = (typeof NOTE_TYPES)[number];
 
 /** Where a notification can be delivered. */
@@ -37,6 +51,8 @@ export interface NoteSettings {
   /** Do not disturb: everything is still recorded, but only liquidation risk is delivered. */
   dnd: boolean;
   types: Record<NoteType, Record<NoteChannel, boolean>>;
+  /** The sound each type plays, when its sound is on. */
+  sounds: Record<NoteType, SoundId>;
 }
 
 export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
@@ -46,7 +62,20 @@ export const DEFAULT_NOTE_SETTINGS: NoteSettings = {
     fill: { toast: true, desktop: true, sound: true },
     position: { toast: true, desktop: true, sound: true },
     alert: { toast: true, desktop: true, sound: true },
+    trader: { toast: true, desktop: true, sound: true },
+    scan: { toast: true, desktop: true, sound: true },
+    idea: { toast: true, desktop: true, sound: true },
     risk: { toast: true, desktop: true, sound: true },
+  },
+  sounds: {
+    order: "order",
+    fill: "fill",
+    position: "fill",
+    alert: "alert",
+    trader: "marimba",
+    scan: "pulse",
+    idea: "chime",
+    risk: "siren",
   },
 };
 
@@ -69,6 +98,7 @@ function storage(): Store | undefined {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isType = (v: unknown): v is NoteType => NOTE_TYPES.some((t) => t === v);
+const isSplitAlert = (type: NoteType) => type === "trader" || type === "scan" || type === "idea";
 const isTone = (v: unknown): v is ToastTone =>
   v === "neutral" || v === "buy" || v === "sell" || v === "warn";
 
@@ -108,7 +138,8 @@ export function loadNoteSettings(store: Store | undefined = storage()): NoteSett
     const savedTypes = isRecord(saved.types) ? saved.types : {};
     const types = { ...defaults.types };
     for (const type of NOTE_TYPES) {
-      const row = savedTypes[type];
+      // The kinds split out of "alert" start as alerts were set.
+      const row = savedTypes[type] ?? (isSplitAlert(type) ? savedTypes.alert : undefined);
       if (!isRecord(row)) continue;
       const next = { ...types[type] };
       for (const channel of NOTE_CHANNELS) {
@@ -116,7 +147,13 @@ export function loadNoteSettings(store: Store | undefined = storage()): NoteSett
       }
       types[type] = next;
     }
-    return { dnd: saved.dnd === true, types };
+    const savedSounds = isRecord(saved.sounds) ? saved.sounds : {};
+    const sounds = { ...defaults.sounds };
+    for (const type of NOTE_TYPES) {
+      const sound = SOUNDS.find((id) => id === savedSounds[type]);
+      if (sound) sounds[type] = sound;
+    }
+    return { dnd: saved.dnd === true, types, sounds };
   } catch {
     return defaults;
   }
@@ -251,5 +288,18 @@ export function notifyEvent(input: NoteInput): void {
   if (channels.includes("desktop") && !input.noDesktop) {
     void desktopNotify(input.title, input.body);
   }
-  if (channels.includes("sound") && input.sound) playSound(input.sound);
+  if (channels.includes("sound") && input.sound) playSound(soundFor(settings, input));
+}
+
+/**
+ * The sound a notification plays: a refusal, a cancel or a save keeps its
+ * own, so it's heard for what it is; anything else plays its type's sound
+ * as set in Settings.
+ */
+export function soundFor(
+  current: NoteSettings,
+  input: Pick<NoteInput, "type" | "sound">,
+): SoundId | SoundKind {
+  if (input.sound && FIXED_SOUNDS.includes(input.sound)) return input.sound;
+  return current.sounds[input.type];
 }

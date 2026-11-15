@@ -1,6 +1,7 @@
 // Source strings. Other locales are typed against these keys. Placeholders
 // look like {name}; keep them, in whatever position the grammar needs.
 
+import { alertsEn } from "./alerts/en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
 import { multiEn } from "./multi/en";
@@ -18,6 +19,8 @@ export const en = {
   ...multiEn,
   // The Ideas page (`ideas/en.ts`).
   ...ideasEn,
+  // Notifications' newer kinds and their sounds (`alerts/en.ts`).
+  ...alertsEn,
   // Column headers
   "col.price": "Price",
   "col.size": "Size",

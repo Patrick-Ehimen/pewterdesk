@@ -7,13 +7,33 @@ import type { ToastTone } from "../../lib/toasts";
 import { IconButton } from "./IconButton";
 
 /** What a notification is about; the centre filters by it. */
-export type CentreNoteType = "order" | "fill" | "position" | "alert" | "risk";
-const TYPES: readonly CentreNoteType[] = ["order", "fill", "position", "alert", "risk"];
+export type CentreNoteType =
+  | "order"
+  | "fill"
+  | "position"
+  | "alert"
+  | "trader"
+  | "scan"
+  | "idea"
+  | "risk";
+const TYPES: readonly CentreNoteType[] = [
+  "order",
+  "fill",
+  "position",
+  "alert",
+  "trader",
+  "scan",
+  "idea",
+  "risk",
+];
 const TYPE_LABEL: Record<CentreNoteType, MessageKey> = {
   order: "notes.type.order",
   fill: "notes.type.fill",
   position: "notes.type.position",
   alert: "notes.type.alert",
+  trader: "notes.type.trader",
+  scan: "notes.type.scan",
+  idea: "notes.type.idea",
   risk: "notes.type.risk",
 };
 
@@ -218,6 +238,8 @@ export function NotificationCentre({
             >
               {(["all", ...TYPES] as const).map((f) => {
                 const count = f === "all" ? notes.length : notes.filter((n) => n.type === f).length;
+                // A kind with nothing in it has no chip, unless it's the one picked.
+                if (f !== "all" && count === 0 && f !== filter) return null;
                 return (
                   // biome-ignore lint/a11y/useSemanticElements: chip-style radio, like the app's others
                   <button

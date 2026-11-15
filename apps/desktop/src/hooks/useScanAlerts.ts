@@ -104,7 +104,7 @@ export function useScanAlerts(markets: readonly Market[]) {
           if (enteredState(stood.current.get(ruleKey), now)) {
             const symbol = names.current.find((m) => m.id === market)?.symbol ?? market;
             notifyEvent({
-              type: "alert",
+              type: "scan",
               title: t("mapx.alert.fired", { symbol, rule: t(`mapx.alert.rule.${rule}`) }),
               venue,
               market,

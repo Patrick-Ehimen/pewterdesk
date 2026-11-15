@@ -6,6 +6,7 @@ import {
   loadNoteSettings,
   loadNotes,
   MAX_NOTES,
+  soundFor,
   withNote,
 } from "../src/lib/notifications";
 
@@ -87,5 +88,32 @@ describe("notifications", () => {
     });
     expect(loadNotes(s).map((n) => n.id)).toEqual(["1"]);
     expect(loadNotes(store({ "pd.notifications.log": "not json" }))).toEqual([]);
+  });
+});
+
+describe("notification sounds", () => {
+  it("gives each kind its own sound, and keeps one picked", () => {
+    const saved = store({
+      "pd.notifications.settings": JSON.stringify({
+        types: { alert: { toast: true, desktop: false, sound: false } },
+        sounds: { idea: "bell", trader: "not-a-sound" },
+      }),
+    });
+    const settings = loadNoteSettings(saved);
+    expect(settings.sounds.idea).toBe("bell");
+    expect(settings.sounds.trader).toBe(DEFAULT_NOTE_SETTINGS.sounds.trader);
+    // The kinds split out of alerts start as alerts were set.
+    expect(settings.types.trader).toEqual({ toast: true, desktop: false, sound: false });
+    expect(settings.types.idea.sound).toBe(false);
+  });
+
+  it("plays the kind's sound, but a refusal, cancel or save as itself", () => {
+    const s = {
+      ...DEFAULT_NOTE_SETTINGS,
+      sounds: { ...DEFAULT_NOTE_SETTINGS.sounds, order: "bell" as const },
+    };
+    expect(soundFor(s, { type: "order", sound: "order" })).toBe("bell");
+    expect(soundFor(s, { type: "order", sound: "error" })).toBe("error");
+    expect(soundFor(s, { type: "idea", sound: "alert" })).toBe(s.sounds.idea);
   });
 });

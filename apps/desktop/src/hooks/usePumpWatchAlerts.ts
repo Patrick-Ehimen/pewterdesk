@@ -44,7 +44,7 @@ export function usePumpWatchAlerts(venue: VenueId) {
       if (now - (sent.current.get(sentKey) ?? 0) < QUIET_MS) continue;
       sent.current.set(sentKey, now);
       notifyEvent({
-        type: "alert",
+        type: "scan",
         title: t("mapx.watch.alert", {
           symbol: row.market.symbol,
           state: t(`mapx.watch.state.${row.read.state}`),

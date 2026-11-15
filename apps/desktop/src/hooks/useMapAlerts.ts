@@ -76,7 +76,7 @@ export function useMapAlertWatch(venue: VenueId, markets: readonly Market[]) {
       sent.current.set(key, now);
       const symbol = symbolOf.get(market) ?? market;
       notifyEvent({
-        type: "alert",
+        type: "scan",
         title: t(`mapx.alert.${kind}`, { symbol, frame }),
         body: body(),
         tone:

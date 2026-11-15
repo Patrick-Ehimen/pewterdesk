@@ -1,3 +1,4 @@
+import { alertsEn } from "./alerts/en";
 import type { Messages } from "./en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
@@ -17,6 +18,8 @@ export const messages: Messages = {
   ...multiEn,
   // The Ideas page (`ideas/en.ts`).
   ...ideasEn,
+  // Notifications' newer kinds and their sounds (`alerts/en.ts`).
+  ...alertsEn,
   "col.price": "Цена",
   "col.size": "Объём",
   "col.total": "Всего",
