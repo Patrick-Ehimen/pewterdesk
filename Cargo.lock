@@ -3336,6 +3336,7 @@ dependencies = [
  "pewterdesk-core",
  "pewterdesk-sim",
  "pewterdesk-store",
+ "pewterdesk-strategy",
  "rust_decimal",
  "serde",
  "serde_json",

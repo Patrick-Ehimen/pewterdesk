@@ -42,6 +42,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::algo::Algos;
+use crate::bot::Bots;
 use crate::live::{self, LiveTrading};
 use crate::owner::Owners;
 use crate::rules::{self, now_ms, TradingRules};
@@ -139,6 +140,7 @@ pub struct Engine {
     algos: Algos,
     /// The accounts this engine has taken: one engine per account.
     owners: Owners,
+    bots: Bots,
 }
 
 /// A value as the log keeps it.
@@ -157,6 +159,7 @@ impl Engine {
             rules: TradingRules::load(config_dir.map(|dir| dir.join(rules::FILE))),
             log,
             algos: Algos::default(),
+            bots: Bots::default(),
             owners: Owners::default(),
         }
     }
@@ -170,6 +173,11 @@ impl Engine {
     }
 
     /// The accounts this engine holds.
+    /// The bots this engine runs.
+    pub fn bots(&self) -> &Bots {
+        &self.bots
+    }
+
     pub fn owners(&self) -> &Owners {
         &self.owners
     }
@@ -808,6 +816,7 @@ mod tests {
             Origin::App,
             Origin::Algo,
             Origin::Engine,
+            Origin::Bot,
         ] {
             assert_eq!(serde_json::to_value(origin).unwrap(), origin.as_str());
         }
