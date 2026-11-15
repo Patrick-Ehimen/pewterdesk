@@ -158,8 +158,8 @@ rust-live: ## Run the read-only venue mainnet and top traders tests (needs the n
 	$(CARGO) test -p pewterdesk-traders -- --ignored --test-threads=1
 
 .PHONY: rust-bindings
-rust-bindings: ## Regenerate packages/core/src/generated from crates/core and protocol
-	$(CARGO) test -p pewterdesk-core -p pewterdesk-protocol
+rust-bindings: ## Regenerate packages/core/src/generated from crates/core, protocol and strategy
+	$(CARGO) test -p pewterdesk-core -p pewterdesk-protocol -p pewterdesk-strategy
 
 ##@ Packaging
 

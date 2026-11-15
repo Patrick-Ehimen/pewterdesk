@@ -3498,6 +3498,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pewterdesk-strategy"
+version = "0.0.0"
+dependencies = [
+ "pewterdesk-core",
+ "serde",
+ "serde_json",
+ "ts-rs",
+]
+
+[[package]]
 name = "pewterdesk-traders"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,18 @@
+[package]
+name = "pewterdesk-strategy"
+version = "0.0.0"
+description = "Bots' strategies (grid, DCA, EMA trend, custom rules) as pure functions of candles to intents, and the backtester that runs them"
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+# Security-relevant (docs/bots/safety.md, rule 8): a strategy sees candles
+# and its own position, and returns intents - no network, no file system,
+# no key, no adapter. This crate has no I/O at all.
+[dependencies]
+pewterdesk-core = { path = "../core" }
+serde = { version = "1.0.229", features = ["derive"] }
+ts-rs = "12.0.1"
+
+[dev-dependencies]
+serde_json = "1.0.151"
