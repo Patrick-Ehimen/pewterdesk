@@ -8,6 +8,7 @@
 //! venue key: the daemon signs, with the trade-only keys the app stored,
 //! through the same gate as the app.
 
+mod bot;
 mod client;
 mod daemon;
 mod show;
@@ -54,10 +55,14 @@ Reading:
   pd markets [venue]   pd price <coin>   pd book <coin>
   pd positions         pd orders         pd balance
 
+Bots (paper first, live after its paper run):
+  pd bot new grid|dca|ema <coin> ...   pd bot list | show <id> | backtest <id> [--since 90d]
+  pd bot paper <id> | live <id> | pause | resume | stop <id> [--flatten] | delete <id>
+
 Algos and safety:
   pd algo list|history|pause <id>|resume <id>|stop <id> [--market]
-  pd tail                    algo updates as they happen
-  pd halt                    stop every algo, and cancel what they placed
+  pd tail                    algo and bot updates as they happen
+  pd halt                    stop every algo and bot, and cancel what they placed
   pd flatten [market|all]    close positions at market, reduce-only
 
 Options: --venue <v>  --account <a>  --json  --yes  --dry-run";
@@ -543,14 +548,22 @@ async fn with_daemon(paths: &Paths, opts: &Opts, words: &[&str]) -> Out {
                 match event {
                     Event::Algo(view) => println!("{}", show::algo(&view)),
                     Event::Halted(Halted { stopped }) => {
-                        println!("halted: {stopped} algo(s) stopped")
+                        println!("halted: {stopped} algo(s) and bot(s) stopped")
                     }
+                    Event::Bot(view) => println!(
+                        "bot {} {:?} {:?}{}  P&L today {:+.2}",
+                        view.id,
+                        view.mode,
+                        view.status,
+                        view.reason.map(|r| format!(" ({r})")).unwrap_or_default(),
+                        view.pnl_today
+                    ),
                 }
             }
             Ok(())
         }
         ["halt"] => {
-            eprintln!("This stops every algo the daemon runs and cancels the orders they placed.");
+            eprintln!("This stops every algo and bot the daemon runs and cancels the orders they placed.");
             if opts.dry_run || !confirmed(opts) {
                 return Ok(());
             }
@@ -558,6 +571,15 @@ async fn with_daemon(paths: &Paths, opts: &Opts, words: &[&str]) -> Out {
             println!("{} algo(s) stopped", halted.stopped);
             Ok(())
         }
+        ["bot", rest @ ..] => bot::run(
+            &client,
+            rest,
+            || target(paths, opts).map_err(|Fail(m)| m),
+            opts.json,
+            || !opts.dry_run && confirmed(opts),
+        )
+        .await
+        .map_err(Fail),
         ["flatten", rest @ ..] => flatten(paths, opts, &client, rest.first().copied()).await,
         ["algo", line @ ..] => trade(paths, opts, &client, &line.join(" ")).await,
         _ => trade(paths, opts, &client, &words.join(" ")).await,

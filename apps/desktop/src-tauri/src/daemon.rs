@@ -151,7 +151,7 @@ impl DaemonLink {
         let paths = self.paths.as_ref()?;
         let link = Arc::new(Link::websocket(paths, client(), token().await).await.ok()?);
         if link.paired {
-            // Algo updates from pdd's engine, as the app's own would come.
+            // Algo and bot updates from pdd's engine, as the app's own would come.
             let mut events = link.events();
             if link.call::<()>(Call::Subscribe).await.is_ok() {
                 let app = app.clone();
@@ -160,6 +160,9 @@ impl DaemonLink {
                         match event {
                             Event::Algo(view) => {
                                 let _ = app.emit("algo", *view);
+                            }
+                            Event::Bot(view) => {
+                                let _ = app.emit("bot", *view);
                             }
                             Event::Halted(_) => {}
                         }

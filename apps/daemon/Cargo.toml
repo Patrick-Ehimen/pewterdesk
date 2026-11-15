@@ -19,6 +19,7 @@ hex = "0.4.3"
 pewterdesk-calendar = { path = "../../crates/calendar" }
 pewterdesk-core = { path = "../../crates/core" }
 pewterdesk-engine = { path = "../../crates/engine" }
+pewterdesk-strategy = { path = "../../crates/strategy" }
 pewterdesk-exchange-aster = { path = "../../crates/exchange-aster" }
 pewterdesk-exchange-binance = { path = "../../crates/exchange-binance" }
 pewterdesk-exchange-blofin = { path = "../../crates/exchange-blofin" }

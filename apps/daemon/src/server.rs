@@ -328,7 +328,7 @@ async fn dispatch(d: &Daemon, session: &mut Session, call: Call) -> Result<Value
         Call::AlgoResume { id } => answer(engine.algos().resume(&id)),
         Call::AlgoStop { id, mode } => answer(engine.algos().stop(&id, mode)),
         Call::Halt => {
-            let stopped = engine.algos().halt();
+            let stopped = engine.algos().halt() + engine.bots().halt();
             eprintln!("pdd: halt: {stopped} algo(s) stopped");
             let halted = Halted { stopped };
             let _ = d.events.send(Event::Halted(halted));
@@ -352,6 +352,20 @@ async fn dispatch(d: &Daemon, session: &mut Session, call: Call) -> Result<Value
                 .await,
             )
         }
+        Call::BotCreate { spec } => answer(engine.bots().create(*spec).await),
+        Call::BotList => ok(engine.bots().list()),
+        Call::BotGet { id } => answer(engine.bots().get(&id)),
+        Call::BotStart { id } => answer(engine.bots().start(&id).await),
+        Call::BotLive { id } => answer(engine.bots().go_live(&id).await),
+        Call::BotPause { id } => answer(engine.bots().pause(&id)),
+        Call::BotResume { id } => answer(engine.bots().resume(&id)),
+        Call::BotStop { id, flatten } => answer(engine.bots().stop(&id, flatten)),
+        Call::BotDelete { id } => answer(engine.bots().delete(&id)),
+        Call::BotBacktest {
+            spec,
+            since,
+            hold_out_days,
+        } => answer(engine.bots().backtest(&spec, since, hold_out_days).await),
         Call::Subscribe => {
             session.subscribed = true;
             ok(())
@@ -627,6 +641,7 @@ mod tests {
             pairing: Pairing::new(Arc::clone(&clients), ask),
             clients,
             alerts: Arc::new(crate::alerts::Alerts::load(dir.join("alerts.json"))),
+            recorder: None,
             started_at: 0,
         });
         let socket = dir.join("s");
