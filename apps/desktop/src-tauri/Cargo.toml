@@ -41,6 +41,7 @@ pewterdesk-calendar = { path = "../../../crates/calendar" }
 pewterdesk-traders = { path = "../../../crates/traders" }
 pewterdesk-core = { path = "../../../crates/core" }
 pewterdesk-engine = { path = "../../../crates/engine" }
+pewterdesk-strategy = { path = "../../../crates/strategy" }
 pewterdesk-keychain = { path = "../../../crates/keychain" }
 pewterdesk-link = { path = "../../../crates/link" }
 pewterdesk-protocol = { path = "../../../crates/protocol" }

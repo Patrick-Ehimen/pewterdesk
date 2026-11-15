@@ -4,6 +4,7 @@ mod about;
 mod ai_assistant;
 mod ai_providers;
 mod algos;
+mod bots;
 mod binance_key;
 mod blofin_key;
 mod browser_connect;
@@ -124,6 +125,12 @@ pub fn run() {
                 engine = engine.with_locks(dir.join(pewterdesk_engine::owner::LOCK_DIR));
             }
             app.manage(engine);
+            // Closed candles kept for bots' backtests and paper runs.
+            if let Some(recorder) = data.as_ref().and_then(|dir| {
+                pewterdesk_engine::Recorder::open(&dir.join("candles.sqlite3")).ok()
+            }) {
+                app.manage(std::sync::Arc::new(recorder));
+            }
             // Before anything at start reads the keychain, the page may have
             // a note to show about the password prompt macOS is about to give.
             app.manage(keychain_notice::KeychainNotice::new(config));
@@ -291,6 +298,15 @@ pub fn run() {
             algos::resume_algo,
             algos::stop_algo,
             algos::halt_algos,
+            bots::bots,
+            bots::bot_create,
+            bots::bot_backtest,
+            bots::bot_start,
+            bots::bot_go_live,
+            bots::bot_pause,
+            bots::bot_resume,
+            bots::bot_stop,
+            bots::bot_delete,
             daemon::daemon_state,
             daemon::sync_daemon_alerts,
             daemon::set_always_on,
