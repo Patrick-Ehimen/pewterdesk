@@ -311,6 +311,15 @@ impl Engine {
         let decision = async {
             self.owners.claim(venue, account)?;
             let trading = trading_account(venue, account, &self.live)?;
+            // An account whose rules bar bots takes no new position from
+            // one, even a bot that went live before the rule was set; it
+            // can still reduce what it holds.
+            if by.origin == Origin::Bot
+                && !request.reduce_only
+                && self.rules.bots_barred(venue, account)
+            {
+                return Err(VenueError::Blocked("noBots".into()));
+            }
             // The trader's own rules, before anything is signed.
             self.rules
                 .guard_order(venues, calendar, venue, account, request)
@@ -412,6 +421,11 @@ impl Engine {
         let decision = async {
             self.owners.claim(venue, account)?;
             let trading = trading_account(venue, account, &self.live)?;
+            // Bots place and cancel, never amend: where they're barred, one
+            // can't grow an order this way either.
+            if by.origin == Origin::Bot && self.rules.bots_barred(venue, account) {
+                return Err(VenueError::Blocked("noBots".into()));
+            }
             self.rules
                 .guard_amend(venues, venue, account, order_id, amend)
                 .await?;

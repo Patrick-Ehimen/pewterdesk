@@ -95,10 +95,15 @@ fn book(bid: &str, ask: &str) -> OrderBook {
 }
 
 fn host_with(log: EventLog) -> Arc<TestHost> {
+    host_in(None, log)
+}
+
+/// A host whose engine keeps its gate files (rules, the live switch) in `dir`.
+fn host_in(dir: Option<&std::path::Path>, log: EventLog) -> Arc<TestHost> {
     let sim = Arc::new(SimVenue::new(VenueId::Bybit, vec![market()]));
     sim.push_book(book("100", "100.1"));
     let host = Arc::new(TestHost {
-        engine: Engine::load(None, Some(log)),
+        engine: Engine::load(dir, Some(log)),
         sim,
         bots: Mutex::new(Vec::new()),
     });
@@ -386,4 +391,66 @@ async fn a_live_grid_trades_through_the_router() {
         .orders()
         .iter()
         .all(|o| o.status != pewterdesk_core::OrderStatus::Open));
+}
+
+/// An account whose rules bar bots takes no new position from one, even a
+/// bot that went live before the rule was set: the router refuses it. The
+/// ticket isn't touched by it, and a bot may still reduce.
+#[tokio::test]
+async fn the_router_refuses_a_bots_opening_order_where_bots_are_barred() {
+    use pewterdesk_core::{OrderKind, OrderRequest, Origin, Side};
+    use pewterdesk_engine::rules::{Account, Rules};
+    let dir = std::env::temp_dir().join(format!("pewterdesk-bots-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let host = host_in(Some(&dir), EventLog::open_in_memory().unwrap());
+    let rules = Rules {
+        no_bots: true,
+        ..Rules::default()
+    };
+    host.engine
+        .rules()
+        .set(
+            Account {
+                venue: VenueId::Bybit,
+                id: "demo:1".into(),
+            },
+            "",
+            true,
+            rules,
+        )
+        .unwrap();
+    let order = |reduce_only| OrderRequest {
+        market: "BTCUSDT".into(),
+        side: Side::Buy,
+        size: d("0.01"),
+        reduce_only,
+        collateral: None,
+        client_id: None,
+        take_profit: None,
+        stop_loss: None,
+        kind: OrderKind::Limit {
+            price: d("90"),
+            time_in_force: None,
+        },
+    };
+    let place = |origin, reduce_only| {
+        let host = Arc::clone(&host);
+        async move {
+            host.engine
+                .place_order(
+                    host.as_ref(),
+                    &NoCalendar,
+                    origin,
+                    VenueId::Bybit,
+                    "demo:1",
+                    &order(reduce_only),
+                )
+                .await
+        }
+    };
+    let barred = Err(VenueError::Blocked("noBots".into()));
+    assert_eq!(place(Origin::Bot, false).await.map(|o| o.id), barred);
+    assert_ne!(place(Origin::Bot, true).await.map(|o| o.id), barred);
+    assert_ne!(place(Origin::Ticket, false).await.map(|o| o.id), barred);
+    let _ = std::fs::remove_dir_all(&dir);
 }
