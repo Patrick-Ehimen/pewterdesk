@@ -121,12 +121,15 @@ export function Tickers({
               </>
             }
           >
-            {() => (
+            {(close) => (
               <TickerPanel
                 venue={venue}
                 market={market}
                 summary={summary}
-                onOpen={() => onOpen(market)}
+                onOpen={() => {
+                  close();
+                  onOpen(market);
+                }}
               />
             )}
           </BarPopover>

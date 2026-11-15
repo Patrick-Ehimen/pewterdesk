@@ -127,7 +127,7 @@ export function WatchlistBar({
         </>
       }
     >
-      {() => (
+      {(close) => (
         <div className="bar-watch">
           <p className="conn-title">{t("tab.watchlist")}</p>
           <div className="bar-watch-tabs" role="tablist" aria-label={t("tab.watchlist")}>
@@ -150,7 +150,10 @@ export function WatchlistBar({
             venue={active}
             current={venue}
             currentMarkets={markets}
-            onOpenMarket={onOpenMarket}
+            onOpenMarket={(v, id) => {
+              close();
+              onOpenMarket(v, id);
+            }}
           />
         </div>
       )}

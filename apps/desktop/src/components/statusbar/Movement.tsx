@@ -91,7 +91,15 @@ export function Movement(props: {
         </>
       }
     >
-      {() => <MovementPanel {...props} />}
+      {(close) => (
+        <MovementPanel
+          {...props}
+          onOpenMarket={(v, id) => {
+            close();
+            props.onOpenMarket(v, id);
+          }}
+        />
+      )}
     </BarPopover>
   );
 }

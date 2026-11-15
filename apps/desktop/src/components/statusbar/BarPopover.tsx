@@ -9,7 +9,9 @@ const GAP = 8;
  * click outside. The panel is rendered at the page's top level and placed
  * against the window, so the bar's scrolling and edge fade can't clip it,
  * and it follows its button when the bar slides.
- * `children` renders only while open, so whatever it loads only loads then.
+ * `children` renders only while open, so whatever it loads only loads then;
+ * it's handed `close`, for a panel whose action takes the trader elsewhere
+ * (opening a market), so the panel doesn't stay over what it opened.
  */
 export function BarPopover({
   label,
@@ -23,7 +25,7 @@ export function BarPopover({
   button: ReactNode;
   className?: string;
   align?: "left" | "right";
-  children: () => ReactNode;
+  children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<{ left: number; bottom: number }>();
@@ -32,6 +34,7 @@ export function BarPopover({
   const popRef = useRef<HTMLDivElement>(null);
 
   // Above the button, lined up with its left or right edge, kept on screen.
+  const close = useCallback(() => setOpen(false), []);
   const placeIt = useCallback(() => {
     const b = buttonRef.current?.getBoundingClientRect();
     const width = popRef.current?.offsetWidth ?? 0;
@@ -49,7 +52,6 @@ export function BarPopover({
 
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;
       if (!wrapRef.current?.contains(target) && !popRef.current?.contains(target)) close();
@@ -73,7 +75,7 @@ export function BarPopover({
       document.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", placeIt);
     };
-  }, [open, placeIt]);
+  }, [open, placeIt, close]);
   return (
     <div ref={wrapRef} className="app-bar-item">
       <button
@@ -101,7 +103,7 @@ export function BarPopover({
             data-placed={place !== undefined || undefined}
             style={{ left: place?.left ?? 0, bottom: place?.bottom ?? 0 }}
           >
-            {children()}
+            {children(close)}
           </div>,
           document.body,
         )}
