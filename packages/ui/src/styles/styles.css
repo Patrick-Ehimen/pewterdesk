@@ -4464,6 +4464,11 @@ fieldset.pd-alerts-chips {
   box-shadow: 0 12px 28px -8px color-mix(in srgb, var(--pd-bg) 85%, transparent);
   outline: none;
 }
+/* Opening above the trigger, near the foot of a view (the Trade chart's idea chip) */
+.pd-select[data-placement="above"] .pd-select-list {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
 .pd-select-option {
   display: flex;
   align-items: center;

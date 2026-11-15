@@ -344,7 +344,8 @@ div.ideas-now small {
   padding: 0 8px 0 12px;
 }
 .pd-levels-chart {
-  height: 320px;
+  /* Grows with the window: most of what's left above the thesis */
+  height: clamp(360px, 52vh, 680px);
 }
 .pd-levels-chart[data-picking] {
   cursor: crosshair;
@@ -359,10 +360,13 @@ div.ideas-now small {
   font-size: 12.5px;
   pointer-events: none;
 }
-.ideas-detail-scroll {
-  flex: 1;
-  min-height: 0;
+/* The whole idea scrolls as one, the chart at the top: a big chart and
+   room for the thesis and thoughts under it */
+.ideas-detail {
   overflow-y: auto;
+}
+.ideas-detail-scroll {
+  flex: none;
 }
 .ideas-sec {
   padding: 12px 16px;
@@ -393,7 +397,8 @@ div.ideas-now small {
 }
 .ideas-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Each box half the width whatever's written in it */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 10px;
 }
@@ -496,7 +501,7 @@ ol.ideas-thoughts small {
 }
 .ideas-levels li {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto 58px;
+  grid-template-columns: 10px minmax(0, 1fr) auto 58px 24px;
   align-items: center;
   gap: 8px;
   padding: 7px 14px;
@@ -737,7 +742,7 @@ ol.ideas-thoughts small {
 }
 .ideas-lvrow {
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) 120px 54px 26px;
+  grid-template-columns: 10px minmax(0, 1fr) 120px 54px 26px 26px;
   align-items: center;
   gap: 8px;
 }
@@ -955,4 +960,634 @@ ol.ideas-thoughts small {
   left: 0;
   height: 2px;
   background: var(--pd-brass);
+}
+
+/* A level's alert bell: brass while it's on */
+.ideas-bell[aria-pressed="true"] {
+  color: var(--pd-brass-text);
+}
+.ideas-bell[aria-pressed="false"] {
+  color: var(--pd-pewter-dim);
+}
+
+/* A token's logo where a letter was */
+.ideas-token {
+  flex: none;
+}
+
+/* Over the Trade chart: the idea drawn on it, and what to do with it */
+.idea-chip {
+  position: absolute;
+  bottom: 34px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 100px);
+  padding: 3px 4px 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 45%, transparent);
+  border-radius: 999px;
+  background: var(--pd-surface);
+  color: var(--pd-text);
+  font-size: 12px;
+}
+.idea-chip-icon {
+  flex: none;
+  color: var(--pd-brass-text);
+}
+.idea-chip-title {
+  overflow: hidden;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.idea-chip-count {
+  color: var(--pd-pewter-dim);
+  white-space: nowrap;
+}
+.idea-chip .pd-icon-button[aria-pressed="true"] {
+  color: var(--pd-brass-text);
+}
+
+/* The track record */
+.ideas-record {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 8px;
+  min-height: 0;
+}
+.ideas-record-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+}
+.ideas-record-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 0 2px;
+}
+.ideas-record-bar h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.ideas-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.ideas-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-surface);
+}
+div.ideas-kpi span {
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
+.ideas-kpi b {
+  font-size: 22px;
+  font-weight: 600;
+}
+.ideas-kpi .ideas-kpi-accent {
+  color: var(--pd-info);
+}
+div.ideas-kpi small {
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+}
+.ideas-record-table {
+  flex: 1;
+  overflow: auto;
+}
+.ideas-record-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.ideas-record-table th {
+  position: sticky;
+  top: 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  background: var(--pd-surface);
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ideas-record-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--pd-border);
+  white-space: nowrap;
+}
+.ideas-record-table .n {
+  text-align: right;
+}
+.ideas-record-table tbody tr {
+  cursor: pointer;
+}
+.ideas-record-table tbody tr:hover,
+.ideas-record-table tbody tr:focus-visible {
+  background: var(--pd-surface-raised);
+}
+.ideas-record-idea {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ideas-record-idea b {
+  font-weight: 500;
+}
+span.ideas-record-idea small {
+  color: var(--pd-pewter-dim);
+}
+.ideas-record-thesis {
+  overflow: hidden;
+  max-width: 260px;
+  color: var(--pd-pewter);
+  text-overflow: ellipsis;
+}
+.ideas-outcome {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 11.5px;
+}
+.ideas-outcome[data-status="playedOut"] {
+  border-color: color-mix(in srgb, var(--pd-info) 45%, transparent);
+  color: var(--pd-info);
+}
+.ideas-outcome[data-status="wrong"] {
+  border-color: color-mix(in srgb, var(--pd-warning) 45%, transparent);
+  color: var(--pd-warning);
+}
+.ideas-record-side {
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+.ideas-record-sub {
+  margin: 10px 14px 6px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ideas-rate {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px;
+  font-size: 12.5px;
+}
+.ideas-rate-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+}
+.ideas-rate-track i {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--pd-info) 65%, transparent);
+}
+.ideas-rate b {
+  font-weight: 500;
+  text-align: right;
+}
+div.ideas-rate small {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.ideas-cal {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: end;
+  gap: 8px;
+  height: 120px;
+  padding: 6px 18px 0;
+}
+.ideas-cal div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+}
+.ideas-cal i {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: color-mix(in srgb, var(--pd-brass) 55%, transparent);
+}
+.ideas-cal em {
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-style: normal;
+}
+div.ideas-cal span {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+.ideas-cal-hint {
+  margin: 6px 14px 0;
+  text-align: center;
+}
+.ideas-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 0;
+}
+.ideas-finding {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* The Ideas panel, beside the trade */
+.ideas-panel-kind {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 12.5px;
+}
+.ideas-pk-head {
+  padding: 10px 12px 6px;
+}
+.ideas-pk-head h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.ideas-pk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+.ideas-pk-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.ideas-pk-picks > button[type] {
+  padding: 3px 9px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: none;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.ideas-pk-picks button[aria-pressed="true"] {
+  border-color: var(--pd-brass);
+  color: var(--pd-text);
+}
+.ideas-pk-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pd-pewter);
+}
+.ideas-pk-thesis {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.ideas-pk-levels li {
+  padding-inline: 0;
+}
+.ideas-pk-rr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ideas-pk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ideas-pk-actions .rules-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.ideas-pk-note {
+  padding: 8px 10px;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 6px;
+}
+.ideas-pk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ideas-pk-list button[type] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 6px;
+  background: var(--pd-bg);
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ideas-pk-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+span.ideas-pk-name small {
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+}
+
+/* The chip's idea picker sits flat in it: no box of its own, so opening it
+   changes nothing around it */
+.idea-chip-select .pd-select-trigger {
+  height: 26px;
+  max-width: 280px;
+  padding: 0 8px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+}
+.idea-chip-select .pd-select-trigger[aria-expanded="true"],
+.idea-chip-select .pd-select-trigger:hover {
+  border-color: var(--pd-border-strong);
+}
+.idea-chip-select .pd-select-trigger > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* What the trader writes wraps, however long a word: it never runs out of its box */
+.ideas-thesis,
+.ideas-box,
+.ideas-thoughts p,
+.ideas-card-thesis,
+.ideas-pk-thesis,
+.ideas-scenarios p,
+.ideas-scenarios b,
+.ideas-levels b {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ideas-box,
+.ideas-thoughts li > div {
+  min-width: 0;
+}
+
+/* What would make it wrong, and its catalysts: paragraphs under the thesis */
+/* Side by side, half the width each whatever's written in them */
+.ideas-paras {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 12px;
+}
+.ideas-para {
+  min-width: 0;
+}
+.ideas-para h4 {
+  margin: 0 0 4px;
+  color: var(--pd-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.ideas-para p {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+/* Loading: the logo, breathing, with a word under it */
+.ideas-loading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--pd-pewter-dim);
+  font-size: 12.5px;
+}
+.ideas-loading .ideas-chart-logo {
+  width: 52px;
+  height: 52px;
+}
+
+/* An empty list: the card that says what goes there, and how Ideas work */
+.ideas-empty-pane {
+  display: flex;
+  grid-column: 2 / -1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  min-height: 0;
+  padding: 24px;
+  overflow-y: auto;
+  border: 1px dashed var(--pd-border-strong);
+  border-radius: 8px;
+}
+.ideas-empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  max-width: 460px;
+  text-align: center;
+}
+.ideas-empty-card h3,
+.ideas-guide h3,
+.ideas-record-empty-text h3 {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.ideas-empty-card p,
+.ideas-record-empty-text p {
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.ideas-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 40%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--pd-brass) 10%, transparent);
+  color: var(--pd-brass-text);
+}
+.ideas-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ideas-empty-actions .rules-button,
+.ideas-record-empty-text .rules-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ideas-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(640px, 100%);
+  padding: 20px 24px;
+  border: 1px solid var(--pd-border);
+  border-radius: 10px;
+  background: var(--pd-surface);
+}
+.ideas-guide-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.ideas-guide-lead {
+  margin: 0 0 8px;
+  color: var(--pd-pewter-dim);
+  font-size: 12.5px;
+  text-align: center;
+}
+.ideas-guide ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ideas-guide li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-bg);
+}
+.ideas-guide-step {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-brass-text);
+}
+.ideas-guide li b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ideas-guide li p {
+  margin: 4px 0 0;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* The track record with nothing graded: faint rows of what it will hold */
+.ideas-record-empty {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+}
+.ideas-ghost-rows {
+  display: flex;
+  flex-direction: column;
+}
+.ideas-ghost-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.ideas-ghost-row i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--pd-surface-raised);
+}
+.ideas-ghost-row .ideas-ghost-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+}
+.ideas-record-empty-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px;
+  text-align: center;
+}
+.ideas-record-fills {
+  margin: 0 14px 4px;
+}
+
+/* The first visit, no ideas at all: the same card and guide, on the whole page */
+.ideas-first-pane {
+  flex: 1;
+  grid-column: auto;
 }

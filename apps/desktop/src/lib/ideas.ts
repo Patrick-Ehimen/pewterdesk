@@ -31,6 +31,8 @@ export interface IdeaLevel {
   price: number;
   /** Its colour, 0 to `LEVEL_COLORS` - 1; no two levels of an idea share one. */
   color: number;
+  /** Notify when the price reaches it (on until switched off). */
+  alert: boolean;
 }
 
 /** A thought written as the idea plays out, with the price then. */
@@ -89,6 +91,9 @@ export interface Idea {
   /** When it was written, and the price then. */
   notedAt: number;
   notedPrice?: number;
+  /** When it left Watching (played out, wrong or archived), and the price then. */
+  resolvedAt?: number;
+  resolvedPrice?: number;
 }
 
 export const MAX_TEXT = 4000;
@@ -183,6 +188,7 @@ export function restoreIdea(id: string, raw: unknown): Idea | undefined {
               ).trim(),
               price,
               color: color !== undefined && Number.isInteger(color) ? color : -1,
+              alert: l.alert !== false,
             },
           ];
         })
@@ -202,6 +208,8 @@ export function restoreIdea(id: string, raw: unknown): Idea | undefined {
       .slice(0, MAX_SHOTS),
     notedAt: num(r.notedAt) ?? Date.now(),
     notedPrice: num(r.notedPrice),
+    resolvedAt: num(r.resolvedAt),
+    resolvedPrice: num(r.resolvedPrice),
     risk: {},
     scenarios: list(r.scenarios)
       .flatMap((raw): IdeaScenario[] => {
@@ -332,4 +340,31 @@ export function pricesIn(thesis: string): number[] {
   const found = thesis.match(/\d[\d,]*\.\d+|\d{2,}(?:,\d{3})+|\d{3,}/g) ?? [];
   const prices = found.map((s) => Number(s.replace(/,/g, ""))).filter((n) => n > 0);
   return [...new Set(prices)].slice(0, 6);
+}
+
+/** Whether the price went through `level` between two reads, and which way. */
+export function crossed(before: number, now: number, level: number): "up" | "down" | undefined {
+  if (before < level && now >= level) return "up";
+  if (before > level && now <= level) return "down";
+  return undefined;
+}
+
+/** How long a level that alerted stays quiet, so price chopping across it doesn't ring on every tick. */
+export const LEVEL_QUIET_MS = 30 * 60_000;
+
+/**
+ * `idea` moved to `status`: leaving Watching notes when and at what price
+ * (the track record reads them); coming back to it clears them.
+ */
+export function withStatus(idea: Idea, status: IdeaStatus, price: number | undefined): Idea {
+  if (status === "watching") {
+    const { resolvedAt: _at, resolvedPrice: _price, ...rest } = idea;
+    return { ...rest, status };
+  }
+  return {
+    ...idea,
+    status,
+    resolvedAt: idea.status === "watching" ? Date.now() : (idea.resolvedAt ?? Date.now()),
+    resolvedPrice: idea.status === "watching" ? price : (idea.resolvedPrice ?? price),
+  };
 }

@@ -33,6 +33,7 @@ import {
   Conviction,
   IDEA_INTERVALS,
   IdeaChart,
+  LevelBell,
   levelColor,
   price as priceText,
   RiskBar,
@@ -91,6 +92,7 @@ export function IdeaEditor({
       name: "",
       price: Number(price.toPrecision(8)),
       color: nextColor(draft.levels),
+      alert: true,
     };
     set({ levels: [...draft.levels, level] });
     setNaming(level.id);
@@ -267,6 +269,11 @@ export function IdeaEditor({
                   <span className="ideas-dist pd-num">
                     {live ? signedPct(distance(live, l.price)) : "–"}
                   </span>
+                  <LevelBell
+                    on={l.alert}
+                    name={l.name || t("ideas.unnamed")}
+                    onChange={(alert) => setLevel(l.id, { alert })}
+                  />
                   <button
                     type="button"
                     className="pd-icon-button"

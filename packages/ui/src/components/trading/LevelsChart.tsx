@@ -35,6 +35,68 @@ export interface ChartPin {
 
 const time = (ms: number) => Math.floor(ms / 1000) as UTCTimestamp;
 
+/** Candles from the oldest one held at which older ones are asked for. */
+const OLDER_AT = 20;
+
+/**
+ * Each chart's view, by `viewKey` (market and interval): how many candles
+ * it shows and how far its right edge is from the latest. Kept from the
+ * latest candle rather than by date, so coming back finds the same zoom on
+ * today's candles. Kept on this machine, between sessions too.
+ */
+interface View {
+  span: number;
+  fromEnd: number;
+}
+const VIEWS_KEY = "pd.levelsChart.views";
+const MAX_VIEWS = 60;
+let views: Map<string, View> | undefined;
+
+function savedViews(): Map<string, View> {
+  if (views) return views;
+  views = new Map();
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(VIEWS_KEY) ?? "[]");
+    if (Array.isArray(raw)) {
+      for (const entry of raw) {
+        const [key, view] = Array.isArray(entry) ? entry : [];
+        if (
+          typeof key === "string" &&
+          typeof view?.span === "number" &&
+          typeof view?.fromEnd === "number" &&
+          view.span > 1
+        ) {
+          views.set(key, { span: view.span, fromEnd: view.fromEnd });
+        }
+      }
+    }
+  } catch {
+    // Unreadable or no storage: views start fitted.
+  }
+  return views;
+}
+
+let writing: ReturnType<typeof setTimeout> | undefined;
+function keepView(key: string, view: View) {
+  const all = savedViews();
+  all.delete(key);
+  all.set(key, view);
+  while (all.size > MAX_VIEWS) {
+    const oldest = all.keys().next().value;
+    if (oldest === undefined) break;
+    all.delete(oldest);
+  }
+  // Written once the view settles, not on every frame of a drag.
+  clearTimeout(writing);
+  writing = setTimeout(() => {
+    try {
+      localStorage.setItem(VIEWS_KEY, JSON.stringify([...all]));
+    } catch {
+      // Storage full or off: kept for this session.
+    }
+  }, 400);
+}
+
 /**
  * Candles with the trader's levels drawn across them as price lines, and
  * their notes pinned to the candles they were written on. It only draws:
@@ -49,6 +111,7 @@ export function LevelsChart({
   viewKey,
   /** Written large and faint behind the candles, as TradingView does: the market. */
   watermark,
+  onNeedOlder,
   className,
 }: {
   candles: readonly Candle[];
@@ -57,6 +120,8 @@ export function LevelsChart({
   onPick?: (price: number) => void;
   viewKey?: string;
   watermark?: string;
+  /** Asked for older candles when the view nears the oldest one held (scrolled or zoomed back). */
+  onNeedOlder?: () => void;
   className?: string;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -66,8 +131,12 @@ export function LevelsChart({
   const lines = useRef<IPriceLine[]>([]);
   const markRef = useRef<ITextWatermarkPluginApi<Time>>(null);
   const fitted = useRef<string | undefined>(undefined);
+  const viewKeyRef = useRef(viewKey);
+  viewKeyRef.current = viewKey;
   const pick = useRef(onPick);
   pick.current = onPick;
+  const older = useRef(onNeedOlder);
+  older.current = onNeedOlder;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -92,6 +161,18 @@ export function LevelsChart({
     markersRef.current = createSeriesMarkers(series, []);
     const pane = chart.panes()[0];
     if (pane) markRef.current = createTextWatermark(pane, { lines: [] });
+    // Near the oldest candle: the next page is asked for. The caller fetches
+    // one page at a time and stops when the venue has no more.
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (!range) return;
+      if (range.from < OLDER_AT) older.current?.();
+      // Once this market's view is placed, where the trader takes it is kept.
+      const key = viewKeyRef.current;
+      const count = series.data().length;
+      if (key && fitted.current === key && count > 0) {
+        keepView(key, { span: range.to - range.from, fromEnd: count - 1 - range.to });
+      }
+    });
     chart.subscribeClick((param) => {
       if (!param.point || !pick.current) return;
       const price = series.coordinateToPrice(param.point.y);
@@ -121,8 +202,16 @@ export function LevelsChart({
       })),
     );
     if (candles.length > 0 && fitted.current !== viewKey) {
+      // The view the trader left this market and interval at, else all of it.
+      const kept = viewKey ? savedViews().get(viewKey) : undefined;
+      const scale = chartRef.current?.timeScale();
+      if (kept && scale) {
+        const to = candles.length - 1 - kept.fromEnd;
+        scale.setVisibleLogicalRange({ from: to - kept.span, to });
+      } else {
+        scale?.fitContent();
+      }
       fitted.current = viewKey;
-      chartRef.current?.timeScale().fitContent();
     }
   }, [candles, viewKey]);
 

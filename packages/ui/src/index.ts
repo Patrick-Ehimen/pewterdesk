@@ -248,7 +248,11 @@ export {
   type RowMode,
   usePriceTrend,
 } from "./components/trading/OrderBookView";
-export { OrderTicket, type TicketRuleNote } from "./components/trading/OrderTicket";
+export {
+  OrderTicket,
+  type TicketPreset,
+  type TicketRuleNote,
+} from "./components/trading/OrderTicket";
 export { type CardPosition, PnlCard } from "./components/trading/PnlCard";
 export {
   PnlShareDialog,

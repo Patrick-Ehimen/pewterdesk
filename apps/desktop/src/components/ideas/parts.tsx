@@ -1,15 +1,26 @@
 import type { CandleInterval, Decimal, VenueId } from "@pewterdesk/core";
+import type { ChartAnalysis } from "@pewterdesk/ui";
 import {
   type ChartLevel,
   type ChartPin,
   decimalsOf,
   formatNumber,
   LevelsChart,
+  onTick,
+  type TicketPreset,
+  TokenIcon,
   t,
 } from "@pewterdesk/ui";
-import { LuMinus, LuTriangle } from "react-icons/lu";
+import { LuBellOff, LuBellRing, LuMinus, LuTriangle } from "react-icons/lu";
 import { useCandles } from "../../hooks/useVenueFeeds";
-import { type Bias, type IdeaLevel, LEVEL_COLORS } from "../../lib/ideas";
+import {
+  type Bias,
+  ENTRY_NOW,
+  type Idea,
+  type IdeaLevel,
+  LEVEL_COLORS,
+  rewardRisk,
+} from "../../lib/ideas";
 import { LogoMark } from "../header/AppLogo";
 
 /**
@@ -146,7 +157,7 @@ export function IdeaChart({
   onPick?: (price: number) => void;
   className?: string;
 }) {
-  const { feed } = useCandles(venue, market, interval);
+  const { feed, loadOlder } = useCandles(venue, market, interval);
   const candles = feed.status === "live" || feed.status === "closed" ? feed.data : [];
   return (
     <div className="ideas-chart">
@@ -157,6 +168,7 @@ export function IdeaChart({
         onPick={onPick}
         viewKey={`${venue}:${market}:${interval}`}
         watermark={symbol}
+        onNeedOlder={loadOlder}
         className={className}
       />
       {candles.length === 0 &&
@@ -195,4 +207,121 @@ export function RiskBar({ rr }: { rr: { ratio: number; reward: number; risk: num
       </div>
     </div>
   );
+}
+
+/**
+ * A watched market's logo, as the rest of the app shows it (`TokenIcon`,
+ * the venue's, then the bundled ones, then CoinGecko's), from what an idea
+ * keeps: its venue, market id and symbol.
+ */
+export function IdeaToken({
+  venue,
+  market,
+  symbol,
+  size = 26,
+}: {
+  venue: VenueId;
+  market: string;
+  symbol: string;
+  size?: number;
+}) {
+  const base = symbol.split(/[-/:]/)[0] || market;
+  return (
+    <TokenIcon
+      size={size}
+      className="ideas-token"
+      market={{
+        venue,
+        id: market,
+        symbol,
+        base,
+        quote: "",
+        tickSize: "0",
+        sizeStep: "0",
+        minSize: "0",
+        maxLeverage: 1,
+      }}
+    />
+  );
+}
+
+/** A level's alert: a bell, lit while price reaching the level notifies. */
+export function LevelBell({
+  on,
+  name,
+  onChange,
+}: {
+  on: boolean;
+  name: string;
+  onChange: (on: boolean) => void;
+}) {
+  const label = t(on ? "ideas.alert.on" : "ideas.alert.off", { name });
+  return (
+    <button
+      type="button"
+      className="pd-icon-button ideas-bell"
+      aria-pressed={on}
+      aria-label={label}
+      title={label}
+      onClick={() => onChange(!on)}
+    >
+      {on ? <LuBellRing size={13} aria-hidden /> : <LuBellOff size={13} aria-hidden />}
+    </button>
+  );
+}
+
+/**
+ * An idea's levels as the Trade chart's analysis: each in its own colour
+ * with its name, and the reward-to-risk picks as an entry, a stop and a
+ * target, so the chart draws the trade's long or short box between them.
+ * An entry at the price now isn't a level, so it's added at `priceNow` (the
+ * price when the idea is drawn), or every such idea would go without a box.
+ */
+export function ideaAnalysis(idea: Idea, priceNow?: number): ChartAnalysis {
+  const levels: ChartAnalysis["levels"][number][] = idea.levels.map((l) => ({
+    price: l.price,
+    label: l.name,
+    color: levelColor(l.color),
+    kind:
+      l.id === idea.risk.entry
+        ? "entry"
+        : l.id === idea.risk.stop
+          ? "invalidation"
+          : l.id === idea.risk.target
+            ? "target"
+            : "support",
+  }));
+  if (idea.risk.entry === ENTRY_NOW && priceNow && priceNow > 0) {
+    levels.push({ price: priceNow, label: t("ideas.rr.now"), kind: "entry" });
+  }
+  return { levels };
+}
+
+/**
+ * The ticket filled from an idea's reward-to-risk picks: the side from where
+ * the target sits, a limit at the entry level (or a market order from the
+ * price now), the stop and target on the market's tick. Undefined until
+ * the picks make a trade. Only fills: the trader still sends it.
+ */
+export function ideaPreset(
+  idea: Idea,
+  key: number,
+  price: number | undefined,
+  tick: Decimal | undefined,
+): TicketPreset | undefined {
+  if (!rewardRisk(idea, price)) return undefined;
+  const at = (id?: string) => idea.levels.find((l) => l.id === id)?.price;
+  const entry = idea.risk.entry === ENTRY_NOW ? price : at(idea.risk.entry);
+  const stop = at(idea.risk.stop);
+  const target = at(idea.risk.target);
+  if (entry === undefined || stop === undefined || target === undefined) return undefined;
+  const text = (v: number) => (tick ? onTick(v, tick) : String(v));
+  return {
+    key,
+    market: idea.market,
+    side: target > entry ? "buy" : "sell",
+    price: idea.risk.entry === ENTRY_NOW ? undefined : text(entry),
+    stopLoss: text(stop),
+    takeProfit: text(target),
+  };
 }

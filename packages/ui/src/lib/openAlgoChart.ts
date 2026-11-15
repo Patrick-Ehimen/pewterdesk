@@ -383,6 +383,8 @@ export interface AnalysisLevel {
   price: number;
   kind: AnalysisKind;
   label: string;
+  /** Its own colour, over the kind's (an idea's level, which has one of its own). */
+  color?: string;
 }
 
 /** A supply or demand zone: a price band from the candle it formed at. Times in ms. */
@@ -632,13 +634,14 @@ export function analysisDrawings(
   }
   const from = view.last - LEVEL_BARS_BACK * view.bar;
   const colorOf = (level: AnalysisLevel) =>
-    level.kind === "support" || level.kind === "target"
+    level.color ??
+    (level.kind === "support" || level.kind === "target"
       ? colors.buy
       : level.kind === "resistance"
         ? colors.sell
         : level.kind === "invalidation"
           ? colors.warning
-          : colors.muted;
+          : colors.muted);
   // The trade, as a trader would draw it: a position box from the latest
   // candle, profit to the furthest target, loss to the stop, with its
   // percentages and risk/reward (not the tool's sizing example).

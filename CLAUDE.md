@@ -1311,8 +1311,27 @@ PewterDesk Cloud (`ideas`, behind the Plan page's sign-in; screenshots in the
 `journal` bucket, as the journal's are, through `Attachments`), apart from
 the journal and trades: an idea names a market, never an account. It reads
 prices and places nothing. Its strings (`locales/ideas/en.ts`) are English
-in every language until translated. Not built yet: alerts on its levels,
-the track record (`99`) and its levels on the Trade chart (`100`).
+in every language until translated. The ideas are one store for the session
+(`hooks/useIdeas.ts`), so the rest of the app sees them too: each market's
+logo where a letter was (`IdeaToken`, over `TokenIcon`); each level's bell
+(`alert`, on by default) rings through `notifyEvent` as an `idea`
+notification when price goes through it (`hooks/useIdeaAlerts.ts`,
+`crossed`; a level that rang stays quiet 30 minutes; only while the app
+runs); the watched idea on the market on screen is drawn on the Trade chart
+through `analysis` (`ideaAnalysis`: each level in its own colour - a
+`color` on `AnalysisLevel` - and the reward-to-risk picks as the chart's
+trade box), with a chip over the chart (`IdeaChartChip.tsx`: which idea,
+show / hide, open, fill the ticket); the Ideas panel (`ideas`,
+`components/panels/IdeasPanel.tsx`) shows the market on screen's ideas, or
+the others being watched. Filling the ticket (`ideaPreset`, `preset` on
+`OrderTicket`) only sets its side, price, stop and target from the
+reward-to-risk picks: the trader still sends it, through the same switch
+and rules. The Track record tab (`TrackRecord.tsx`, `lib/ideaStats.ts`,
+after `99`) grades the ideas closed in a period by the trader's own verdict
+(Played out, Wrong; archived is "let go"), with the move in each idea's
+direction from noted to closed (`resolvedAt` / `resolvedPrice`, set by
+`withStatus`), how long they took, and the hit rate by bias, timeframe and
+conviction, with findings.
 
 ## Plan & journal
 
@@ -1413,7 +1432,11 @@ alert, a liquidation warning) goes through `notifyEvent` in
 `apps/desktop/src/lib/notifications.ts`, not a bare `toast()`. It records the
 event in the notification centre and delivers it where Settings >
 Notifications says (toast, desktop, sound; do not disturb holds back all but
-liquidation risk). An alert set to show in the menu bar takes the tray
+liquidation risk). Each kind (orders, fills, positions, alerts, followed
+traders, scans & watches, ideas, liquidation risk) has its own sound, picked
+in Settings from `SOUNDS` in `lib/sound.ts` (made on the spot, no files),
+with a volume for all of them (`pd.sound.volume`); a refusal, a cancel or a
+save keeps its own sound whatever its kind's is (`soundFor`). An alert set to show in the menu bar takes the tray
 item's title for 20 seconds (`lib/trayFlash.ts`). Market alerts live in `packages/ui/src/lib/alerts.ts` and
 `hooks/useAlerts.ts`; they are checked in the app while it runs. With
 Settings > Advanced > Always on, `pdd` takes over the market-data ones once

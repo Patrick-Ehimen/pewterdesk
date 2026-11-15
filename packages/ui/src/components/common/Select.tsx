@@ -22,6 +22,8 @@ interface SelectProps<V extends string> {
    * label stays as the tooltip and for screen readers.
    */
   iconOnly?: boolean;
+  /** Where the list opens: under the trigger (the default), or above it near the foot of a view. */
+  placement?: "below" | "above";
 }
 
 /** An option's face: its icon and label, or the icon alone. */
@@ -50,6 +52,7 @@ export function Select<V extends string>({
   id,
   className,
   iconOnly,
+  placement = "below",
 }: SelectProps<V>) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -137,7 +140,11 @@ export function Select<V extends string>({
   };
 
   return (
-    <div ref={rootRef} className={`pd-select ${className ?? ""}`}>
+    <div
+      ref={rootRef}
+      className={`pd-select ${className ?? ""}`}
+      data-placement={placement === "above" ? "above" : undefined}
+    >
       <button
         ref={buttonRef}
         id={id}

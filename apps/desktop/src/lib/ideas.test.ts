@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   byCloseness,
+  crossed,
   distinctColors,
   ENTRY_NOW,
   type Idea,
@@ -20,6 +21,7 @@ const level = (price: number, color: number, name = ""): IdeaLevel => ({
   name,
   price,
   color,
+  alert: true,
 });
 
 const idea = (over: Partial<Idea> = {}): Idea => ({
@@ -44,7 +46,7 @@ describe("restoreIdea", () => {
     });
     expect(back).toMatchObject({ venue: "bybit", bias: "bullish", conviction: 5 });
     expect(back?.levels).toEqual([
-      { id: expect.any(String), name: "Supply", price: 200, color: 3 },
+      { id: expect.any(String), name: "Supply", price: 200, color: 3, alert: true },
     ]);
     expect(back?.thoughts.map((t) => t.text)).toEqual(["held"]);
     expect(back?.shots).toEqual(["u/a.png"]);
@@ -164,5 +166,15 @@ describe("scenarios", () => {
       ["Fake-out", 100],
     ]);
     expect(oddsTotal(back?.scenarios ?? [])).toBe(155);
+  });
+});
+
+describe("crossed", () => {
+  it("says when the price went through a level, and which way", () => {
+    expect(crossed(99, 101, 100)).toBe("up");
+    expect(crossed(101, 100, 100)).toBe("down");
+    expect(crossed(98, 99, 100)).toBeUndefined();
+    // Sitting on it isn't crossing it again.
+    expect(crossed(100, 100.5, 100)).toBeUndefined();
   });
 });

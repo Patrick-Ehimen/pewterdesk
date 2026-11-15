@@ -1,7 +1,7 @@
 import { venueLogos } from "@pewterdesk/assets";
 import type { CandleInterval, Market, VenueId } from "@pewterdesk/core";
 import { dateFormat, t } from "@pewterdesk/ui";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LuArchive,
   LuChartCandlestick,
@@ -14,9 +14,10 @@ import {
   LuTrash2,
   LuX,
 } from "react-icons/lu";
+import { useIdeaPrices } from "../../hooks/useIdeaPrices";
 import { useIdeas } from "../../hooks/useIdeas";
 import { useCloudAuth } from "../../hooks/useJournal";
-import { useMarketSummaries } from "../../hooks/useVenueFeeds";
+import type { RecordPeriod } from "../../lib/ideaStats";
 import {
   BIASES,
   type Bias,
@@ -33,39 +34,27 @@ import {
   oddsTotal,
   rewardRisk,
   STATUSES,
+  withStatus,
 } from "../../lib/ideas";
 import { VENUES } from "../../lib/venues";
 import { CloudGate } from "../plan/CloudGate";
 import { Attachments } from "../plan/TradeDetail";
 import { Segmented } from "../rules/parts";
 import { IdeaEditor } from "./IdeaEditor";
+import { IdeasEmptyList, IdeasGuide, IdeasLoading } from "./IdeasEmpty";
 import {
   BiasPill,
   Conviction,
   IDEA_INTERVALS,
   IdeaChart,
+  IdeaToken,
+  LevelBell,
   levelColor,
   price as priceText,
   RiskBar,
   signedPct,
 } from "./parts";
-
-/** Each venue's prices, read only for the venues the ideas are on. */
-function usePrices(used: ReadonlySet<VenueId>) {
-  const feeds = {
-    hyperliquid: useMarketSummaries("hyperliquid", used.has("hyperliquid")),
-    aster: useMarketSummaries("aster", used.has("aster")),
-    bybit: useMarketSummaries("bybit", used.has("bybit")),
-    binance: useMarketSummaries("binance", used.has("binance")),
-    blofin: useMarketSummaries("blofin", used.has("blofin")),
-  };
-  return (idea: Pick<Idea, "venue" | "market">): number | undefined => {
-    const feed = feeds[idea.venue];
-    if (feed.status !== "live" && feed.status !== "closed") return undefined;
-    const mark = Number(feed.data.find((s) => s.market === idea.market)?.markPrice);
-    return mark > 0 ? mark : undefined;
-  };
-}
+import { TrackRecord } from "./TrackRecord";
 
 const day = dateFormat({ month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
@@ -84,6 +73,8 @@ interface IdeasPageProps {
   venue: VenueId;
   market?: Market;
   onOpenTrade: (venue: VenueId, market: string) => void;
+  /** An idea to open on, asked for elsewhere (the Trade chart's chip, the Ideas panel). */
+  focus?: { id: string; key: number };
 }
 
 /**
@@ -92,18 +83,30 @@ interface IdeasPageProps {
  * as it plays out. Kept in PewterDesk Cloud, apart from the journal and
  * trades; it reads prices and places nothing.
  */
-export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps) {
+export function IdeasPage({ venues, venue, market, onOpenTrade, focus }: IdeasPageProps) {
   const cloud = useCloudAuth(true);
   const signedIn = cloud.auth.state === "signedIn";
   const { ideas, load, saveError, save, remove } = useIdeas(signedIn, cloud.lost);
-  const [tab, setTab] = useState<IdeaStatus>("watching");
+  // A list of ideas by where they stand, or the track record.
+  const [tab, setTab] = useState<IdeaStatus | "record">("watching");
+  const [period, setPeriod] = useState<RecordPeriod>("90d");
   const [bias, setBias] = useState<Bias | "all">("all");
   const [search, setSearch] = useState("");
   const [picked, setPicked] = useState<string>();
   const [editing, setEditing] = useState<{ idea: Idea; isNew: boolean }>();
   const used = useMemo(() => new Set(ideas.map((i) => i.venue)), [ideas]);
-  const priceOf = usePrices(used);
+  const priceOf = useIdeaPrices(used);
   const now = Date.now();
+  const open = (idea: Idea) => {
+    setPicked(idea.id);
+    setTab(idea.status);
+  };
+  // Asked to open on one: its list, and it picked.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per request
+  useEffect(() => {
+    const idea = focus && ideas.find((i) => i.id === focus.id);
+    if (idea) open(idea);
+  }, [focus?.key, ideas.length]);
 
   const counts = Object.fromEntries(
     STATUSES.map((s) => [s, ideas.filter((i) => i.status === s).length]),
@@ -115,6 +118,8 @@ export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps
     priceOf,
   );
   const current = shown.find((i) => i.id === picked) ?? shown[0];
+  // The list is empty only because of the bias filter or the search.
+  const filtered = tab !== "record" && shown.length === 0 && counts[tab] > 0;
 
   const startNew = () =>
     setEditing({
@@ -146,6 +151,13 @@ export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps
               <span className="ideas-count">{counts[s]}</span>
             </button>
           ))}
+          <button
+            type="button"
+            aria-current={tab === "record" ? "page" : undefined}
+            onClick={() => setTab("record")}
+          >
+            {t("ideas.tab.record")}
+          </button>
         </nav>
         <div style={{ flex: 1 }} />
         <span className="ideas-private">
@@ -178,18 +190,27 @@ export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps
       {saveError && <p className="ideas-error">{t("ideas.saveFailed", { error: saveError })}</p>}
 
       {load.state === "loading" ? (
-        <p className="ideas-empty">{t("ideas.loading")}</p>
+        <IdeasLoading label={t("ideas.loading")} />
       ) : load.state === "error" ? (
         <p className="ideas-empty ideas-error">{load.error}</p>
       ) : ideas.length === 0 ? (
-        <div className="ideas-empty ideas-first">
-          <h2>{t("ideas.empty.title")}</h2>
-          <p>{t("ideas.empty.body")}</p>
-          <button type="button" className="rules-button rules-primary" onClick={startNew}>
-            <LuPlus size={14} aria-hidden />
-            {t("ideas.new")}
-          </button>
+        <div className="ideas-empty-pane ideas-first-pane">
+          <IdeasEmptyList
+            status="watching"
+            watching={0}
+            onWatching={() => setTab("watching")}
+            onNew={startNew}
+          />
+          <IdeasGuide />
         </div>
+      ) : tab === "record" ? (
+        <TrackRecord
+          ideas={ideas}
+          period={period}
+          onPeriod={setPeriod}
+          onOpen={open}
+          onWatching={() => setTab("watching")}
+        />
       ) : (
         <div className="ideas-grid">
           <section className="ideas-panel ideas-list" aria-label={t(`ideas.tab.${tab}`)}>
@@ -197,7 +218,11 @@ export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps
               <span>{t("ideas.sorted")}</span>
               <span>{shown.length}</span>
             </div>
-            {shown.length === 0 && <p className="ideas-hint ideas-pad">{t("ideas.empty.none")}</p>}
+            {shown.length === 0 && (
+              <p className="ideas-hint ideas-pad">
+                {t(filtered ? "ideas.empty.filtered" : "ideas.empty.none")}
+              </p>
+            )}
             {shown.map((idea) => (
               <IdeaCard
                 key={idea.id}
@@ -220,7 +245,34 @@ export function IdeasPage({ venues, venue, market, onOpenTrade }: IdeasPageProps
               onOpenTrade={() => onOpenTrade(current.venue, current.market)}
             />
           ) : (
-            <p className="ideas-empty">{t("ideas.pick")}</p>
+            <div className="ideas-empty-pane">
+              {filtered ? (
+                <div className="ideas-empty-card">
+                  <h3>{t("ideas.empty.filteredTitle")}</h3>
+                  <p>{t("ideas.empty.filteredBody")}</p>
+                  <div className="ideas-empty-actions">
+                    <button
+                      type="button"
+                      className="rules-button"
+                      onClick={() => {
+                        setBias("all");
+                        setSearch("");
+                      }}
+                    >
+                      {t("ideas.empty.clearFilters")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <IdeasEmptyList
+                  status={tab}
+                  watching={counts.watching}
+                  onWatching={() => setTab("watching")}
+                  onNew={startNew}
+                />
+              )}
+              <IdeasGuide />
+            </div>
           )}
         </div>
       )}
@@ -262,7 +314,7 @@ function IdeaCard({
   return (
     <button type="button" className="ideas-card" aria-pressed={selected} onClick={onPick}>
       <span className="ideas-card-row">
-        <span className="ideas-coin">{idea.symbol.slice(0, 1)}</span>
+        <IdeaToken venue={idea.venue} market={idea.market} symbol={idea.symbol} />
         <span className="ideas-card-name">
           <b>{idea.symbol}</b>
           <small>
@@ -339,13 +391,13 @@ function IdeaDetail({
     onChange({ ...idea, thoughts: [...idea.thoughts, next].slice(-MAX_THOUGHTS) }, true);
     setThought("");
   };
-  const setStatus = (status: IdeaStatus) => onChange({ ...idea, status }, true);
+  const setStatus = (status: IdeaStatus) => onChange(withStatus(idea, status, price), true);
 
   return (
     <>
       <section className="ideas-panel ideas-detail">
         <header className="ideas-detail-head">
-          <span className="ideas-coin ideas-coin-lg">{idea.symbol.slice(0, 1)}</span>
+          <IdeaToken venue={idea.venue} market={idea.market} symbol={idea.symbol} size={34} />
           <div className="ideas-detail-title">
             <h2>
               {idea.symbol}{" "}
@@ -407,17 +459,17 @@ function IdeaDetail({
             </h3>
             {idea.thesis ? <p className="ideas-thesis">{idea.thesis}</p> : null}
             {(idea.wrongIf || idea.catalysts) && (
-              <div className="ideas-cols">
+              <div className="ideas-paras">
                 {idea.wrongIf && (
-                  <div className="ideas-box">
-                    <b>{t("ideas.wrongIf")}</b>
-                    {idea.wrongIf}
+                  <div className="ideas-para">
+                    <h4>{t("ideas.wrongIf")}</h4>
+                    <p>{idea.wrongIf}</p>
                   </div>
                 )}
                 {idea.catalysts && (
-                  <div className="ideas-box">
-                    <b>{t("ideas.catalysts")}</b>
-                    {idea.catalysts}
+                  <div className="ideas-para">
+                    <h4>{t("ideas.catalysts")}</h4>
+                    <p>{idea.catalysts}</p>
                   </div>
                 )}
               </div>
@@ -510,6 +562,19 @@ function IdeaDetail({
               <span className="pd-num ideas-dist">
                 {price ? signedPct(distance(price, l.price)) : "–"}
               </span>
+              <LevelBell
+                on={l.alert}
+                name={l.name || t("ideas.unnamed")}
+                onChange={(alert) =>
+                  onChange(
+                    {
+                      ...idea,
+                      levels: idea.levels.map((x) => (x.id === l.id ? { ...x, alert } : x)),
+                    },
+                    true,
+                  )
+                }
+              />
             </li>
           ))}
         </ul>

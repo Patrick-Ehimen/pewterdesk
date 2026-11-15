@@ -60,6 +60,7 @@ import {
   type SymbolFor,
   TableSkeleton,
   Tabs,
+  type TicketPreset,
   type TicketRuleNote,
   Toasts,
   TokenIcon,
@@ -75,6 +76,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -90,7 +92,9 @@ import { FeedView } from "./components/FeedView";
 import { AppLogo } from "./components/header/AppLogo";
 import { HeaderActions } from "./components/header/HeaderActions";
 import { VenueSwitcher } from "./components/header/VenueSwitcher";
+import { IdeaChartChip } from "./components/ideas/IdeaChartChip";
 import { IdeasPage } from "./components/ideas/IdeasPage";
+import { ideaAnalysis, ideaPreset } from "./components/ideas/parts";
 import { KeepAlive } from "./components/KeepAlive";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
@@ -108,6 +112,7 @@ import { AccountPanel, AccountViewSwitch } from "./components/panels/AccountPane
 import { AlgoChartChips, AlgosPanel } from "./components/panels/AlgosPanel";
 import { CalendarPanel } from "./components/panels/CalendarPanel";
 import { CliPanel } from "./components/panels/CliPanel";
+import { IdeasPanel } from "./components/panels/IdeasPanel";
 import { MarketsPanel } from "./components/panels/MarketsPanel";
 import { MultiVenuePanel } from "./components/panels/MultiVenuePanel";
 import { NewsWirePanel } from "./components/panels/NewsWirePanel";
@@ -143,6 +148,9 @@ import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useClosedLeverage } from "./hooks/useClosedLeverage";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
+import { useIdeaAlerts } from "./hooks/useIdeaAlerts";
+import { useIdeas } from "./hooks/useIdeas";
+import { useCloudAuth } from "./hooks/useJournal";
 import { useMapAlertWatch } from "./hooks/useMapAlerts";
 import { useOiRecorder } from "./hooks/useMapData";
 import { usePaper } from "./hooks/usePaper";
@@ -1078,6 +1086,8 @@ export function App() {
   });
   const paper = replayOn ? replay.paper : venuePaper;
   const statsData = stats.status === "live" || stats.status === "closed" ? stats.data : undefined;
+  /** The mark on screen, for an idea's "price now" entry. */
+  const ideaMark = Number(statsData?.markPrice) || undefined;
   // The bottom bar's status, from what's actually arriving: offline when the
   // network or a feed goes, connecting while the venue has gone quiet.
   const connection = useConnection(
@@ -1100,6 +1110,47 @@ export function App() {
     market: string;
     analysis: ChartAnalysis;
   }>();
+  // The Ideas page's ideas, for the whole app: the level alerts all session,
+  // the market on screen's ideas drawn on the Trade chart, and the ticket
+  // filled from one. Read from PewterDesk Cloud once signed in; they place nothing.
+  const ideasCloud = useCloudAuth(true);
+  const { ideas } = useIdeas(ideasCloud.auth.state === "signedIn", ideasCloud.lost);
+  useIdeaAlerts(ideas);
+  const ideasHere = useMemo(
+    () =>
+      selected
+        ? ideas.filter(
+            (i) => i.status === "watching" && i.venue === venue && i.market === selected.id,
+          )
+        : [],
+    [ideas, venue, selected],
+  );
+  const [ideaPick, setIdeaPick] = useState<string>();
+  const [ideaShown, setIdeaShown] = useState(true);
+  const ideaOnChart = ideasHere.find((i) => i.id === ideaPick) ?? ideasHere[0];
+  // Built once per idea: the chart redraws its levels whenever it's handed a
+  // new one, so a fresh object on every render (every price tick) would
+  // redraw them, and rebuild the chip under the pointer, without end.
+  // An entry at the price now takes the price when the idea is drawn (and
+  // once more when the first price arrives), not every tick.
+  const ideaMarkNow = useRef<number | undefined>(undefined);
+  ideaMarkNow.current = ideaMark;
+  const hasIdeaMark = ideaMark !== undefined;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the price is read, not followed
+  const ideaLevels = useMemo(
+    () =>
+      ideaOnChart && ideaShown
+        ? {
+            market: ideaOnChart.market,
+            analysis: ideaAnalysis(ideaOnChart, ideaMarkNow.current),
+          }
+        : undefined,
+    [ideaOnChart, ideaShown, hasIdeaMark],
+  );
+  // Fills the ticket from an idea, once per press (`key`); the trader still sends it.
+  const [ticketPreset, setTicketPreset] = useState<TicketPreset>();
+  // The idea the Ideas page opens on, when another place asks for one.
+  const [ideaFocus, setIdeaFocus] = useState<{ id: string; key: number }>();
   // The account's positions as a line: when one closes or shrinks, the closed
   // trades are read again at once rather than at the next poll.
   const positionsKey =
@@ -1572,8 +1623,11 @@ export function App() {
           <MarketsPanel
             onDrawingAlert={alertFromDrawing}
             onReplay={onReplay}
-            levels={chartLevels?.venue === venue ? chartLevels : undefined}
-            onClearLevels={() => setChartLevels(undefined)}
+            // The Maps card's levels when it sent some; else the idea on this market's.
+            levels={chartLevels?.venue === venue ? chartLevels : ideaLevels}
+            onClearLevels={() =>
+              chartLevels?.venue === venue ? setChartLevels(undefined) : setIdeaShown(false)
+            }
             venue={venue}
             venueName={venueInfo.label}
             markets={markets}
@@ -1591,7 +1645,33 @@ export function App() {
             alerts={alerts}
             onProtect={from("chart").protect}
             showChart={chartRequest}
-            chartOverlay={<AlgoChartChips algos={algoBook.algos} market={selected} />}
+            chartOverlay={
+              <>
+                <AlgoChartChips algos={algoBook.algos} market={selected} />
+                {ideaOnChart && (
+                  <IdeaChartChip
+                    ideas={ideasHere}
+                    current={ideaOnChart}
+                    shown={ideaShown}
+                    canFill={ideaPreset(ideaOnChart, 0, ideaMark, selected?.tickSize) !== undefined}
+                    onPick={(id) => {
+                      setIdeaPick(id);
+                      setIdeaShown(true);
+                    }}
+                    onShown={setIdeaShown}
+                    onFill={() =>
+                      setTicketPreset(
+                        ideaPreset(ideaOnChart, Date.now(), ideaMark, selected?.tickSize),
+                      )
+                    }
+                    onOpen={() => {
+                      setIdeaFocus({ id: ideaOnChart.id, key: Date.now() });
+                      goTo("ideas");
+                    }}
+                  />
+                )}
+              </>
+            }
           />
         );
       case "orderBook":
@@ -1705,6 +1785,33 @@ export function App() {
             onResume={algoBook.resume}
             onStop={algoBook.stop}
             onHalt={algoBook.halt}
+          />
+        );
+      case "ideas":
+        // The Ideas page beside the trade: reads ideas and prices, places nothing.
+        return (
+          <IdeasPanel
+            ideas={ideas}
+            market={selected}
+            current={ideaOnChart}
+            price={ideaMark}
+            canFill={
+              ideaOnChart !== undefined &&
+              ideaPreset(ideaOnChart, 0, ideaMark, selected?.tickSize) !== undefined
+            }
+            onPick={(id) => {
+              setIdeaPick(id);
+              setIdeaShown(true);
+            }}
+            onFill={() =>
+              ideaOnChart &&
+              setTicketPreset(ideaPreset(ideaOnChart, Date.now(), ideaMark, selected?.tickSize))
+            }
+            onOpen={(idea) => {
+              setIdeaFocus({ id: idea.id, key: Date.now() });
+              goTo("ideas");
+            }}
+            onShowMarket={(idea) => showMarket(idea.venue, idea.market)}
           />
         );
       case "multi":
@@ -1827,6 +1934,7 @@ export function App() {
                     : undefined
               }
               checkRules={checkRules}
+              preset={ticketPreset}
             />
           </div>
         );
@@ -2078,6 +2186,7 @@ export function App() {
         ) : page === "ideas" ? (
           // Coins being watched, with a thesis and levels: kept in the cloud, places nothing.
           <IdeasPage
+            focus={ideaFocus}
             venues={venueChips}
             venue={venue}
             market={selected}

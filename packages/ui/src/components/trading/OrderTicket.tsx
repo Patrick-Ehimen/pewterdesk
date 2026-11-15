@@ -122,6 +122,24 @@ interface OrderTicketProps {
    * checked (which also refuses). Unset where no rules apply.
    */
   checkRules?: (request: OrderRequest) => Promise<TicketRuleNote[]>;
+  /**
+   * Fields to fill the ticket with, from somewhere else in the app (an
+   * idea's entry, stop and target): taken once per `key`, while `market` is
+   * the one on the ticket. It only fills: nothing is sent until the trader
+   * sends it, through the same checks as anything typed.
+   */
+  preset?: TicketPreset;
+}
+
+export interface TicketPreset {
+  key: number;
+  /** `Market::id` it's for. */
+  market: string;
+  side: TicketSide;
+  /** A limit price; unset for a market order. */
+  price?: string;
+  stopLoss?: string;
+  takeProfit?: string;
 }
 
 /**
@@ -150,6 +168,7 @@ export function OrderTicket({
   confirmSkipUnder,
   onConfirmSkipUnder,
   checkRules,
+  preset,
 }: OrderTicketProps) {
   const [confirming, setConfirming] = useState<OrderRequest>();
   const [editing, setEditing] = useState<"leverage" | "margin">();
@@ -190,6 +209,27 @@ export function OrderTicket({
     }
     setTypedFor(marketKey);
   }, [marketKey]);
+
+  // A fill from elsewhere, once, when its market is the one on the ticket
+  // (after the reset above, so a market switched to for it keeps it).
+  const presetTaken = useRef<number | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: applied on a new fill or market only
+  useEffect(() => {
+    if (!preset || presetTaken.current === preset.key || preset.market !== market?.id) return;
+    presetTaken.current = preset.key;
+    setSide(preset.side);
+    if (preset.price) {
+      setType("limit");
+      setLimitPrice(preset.price);
+    } else {
+      setType("market");
+    }
+    if (preset.stopLoss || preset.takeProfit) {
+      setTpsl(true);
+      setSl(preset.stopLoss ?? "");
+      setTp(preset.takeProfit ?? "");
+    }
+  }, [preset?.key, market?.id]);
 
   // The Pro menu closes on a click elsewhere.
   useEffect(() => {
