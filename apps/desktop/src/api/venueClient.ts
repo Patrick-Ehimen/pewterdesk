@@ -87,6 +87,9 @@ const BLOCK_TEXT: Record<string, MessageKey> = {
   unrecorded: "rules.block.unrecorded",
   // Not a rule: the daemon (pdd) trades this account; one engine per account.
   "another-engine": "rules.block.anotherEngine",
+  // Bots: the account's rules bar them, or a bot's paper run isn't over.
+  noBots: "rules.block.noBots",
+  paperFirst: "rules.block.paperFirst",
 };
 
 /** What a trading rule's code means, in words. */

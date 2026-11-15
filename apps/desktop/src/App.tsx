@@ -101,6 +101,7 @@ import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { AiPage } from "./components/pages/AiPage";
+import { BotsPage } from "./components/pages/BotsPage";
 import { MapsPage } from "./components/pages/MapsPage";
 import { MultiChartPage } from "./components/pages/MultiChartPage";
 import { NewsPage } from "./components/pages/NewsPage";
@@ -145,6 +146,7 @@ import { ConnectWalletDialog } from "./components/wallet/ConnectWalletDialog";
 import { useAlerts } from "./hooks/useAlerts";
 import { useAlgos } from "./hooks/useAlgos";
 import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
+import { useBotNotices } from "./hooks/useBotNotices";
 import { useClosedLeverage } from "./hooks/useClosedLeverage";
 import { useConnection } from "./hooks/useConnection";
 import { useFeedAge } from "./hooks/useFeedAge";
@@ -1462,6 +1464,8 @@ export function App() {
   // Algo orders: the engine runs them; this keeps them on screen and says
   // when one ends, or stops or pauses on its own.
   const algoBook = useAlgos(symbolFor);
+  // Bots: says when one stops on its own (a limit, its strategy, a failure).
+  useBotNotices(symbolFor);
   /** Who a new algo trades for: the live (or demo) account on screen, never paper. */
   const algoTarget: AlgoTarget | undefined =
     route === "live" && trading
@@ -2181,6 +2185,24 @@ export function App() {
                     })),
                   }
                 : undefined
+            }
+          />
+        ) : page === "bots" ? (
+          <BotsPage
+            venue={venue}
+            account={address}
+            venueLabel={(v) => VENUES[v].label}
+            markets={marketList}
+            priceOf={(m) => {
+              const summaries =
+                barSummaries.status === "live" || barSummaries.status === "closed"
+                  ? barSummaries.data
+                  : [];
+              const mark = Number(summaries.find((s) => s.market === m)?.markPrice);
+              return mark > 0 ? mark : undefined;
+            }}
+            marketLabel={(v, m) =>
+              (v === venue ? marketList.find((x) => x.id === m)?.symbol : undefined) ?? m
             }
           />
         ) : page === "ideas" ? (

@@ -62,6 +62,8 @@ export interface TradingRules {
     sizeCreep: { on: boolean; factor: number };
     overtrading: { on: boolean; factor: number };
   };
+  /** No bots on this account, live (a prop firm's that bans them); paper bots still run. */
+  noBots: boolean;
 }
 
 type Terms = Omit<Challenge, "size">;
@@ -127,6 +129,7 @@ export const DEFAULT_RULES: TradingRules = {
     sizeCreep: { on: true, factor: 1.5 },
     overtrading: { on: true, factor: 1.5 },
   },
+  noBots: false,
 };
 
 /** `rules` started over from `preset`: its terms, the same account size and limits. */
@@ -206,6 +209,7 @@ export function restoreRules(saved: unknown): TradingRules {
         factor: amount(overtrading.factor, d.tilt.overtrading.factor, 100),
       },
     },
+    noBots: flag(s.noBots, d.noBots),
   };
 }
 
@@ -277,7 +281,8 @@ export type ChangeField =
   | "coolOff"
   | "revenge"
   | "sizeCreep"
-  | "overtrading";
+  | "overtrading"
+  | "noBots";
 
 export interface RuleChange {
   field: ChangeField;
@@ -353,6 +358,7 @@ export function ruleChanges(was: TradingRules, next: TradingRules): RuleChange[]
   );
   add("sizeCreep", !same(next.tilt.sizeCreep, was.tilt.sizeCreep), false);
   add("overtrading", !same(next.tilt.overtrading, was.tilt.overtrading), false);
+  add("noBots", next.noBots !== was.noBots, was.noBots && !next.noBots);
   return out;
 }
 

@@ -1,4 +1,5 @@
 import { alertsEn } from "./alerts/en";
+import { botsEn } from "./bots/en";
 import type { Messages } from "./en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
@@ -20,6 +21,8 @@ export const messages: Messages = {
   ...ideasEn,
   // Notifications' newer kinds and their sounds (`alerts/en.ts`).
   ...alertsEn,
+  // The Bots page (`bots/en.ts`).
+  ...botsEn,
   "col.price": "Precio",
   "col.size": "Tamaño",
   "col.total": "Total",

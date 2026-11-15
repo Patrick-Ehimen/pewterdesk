@@ -30,6 +30,7 @@ const FIELD_LABEL: Record<ChangeField, MessageKey> = {
   revenge: "rules.revenge",
   sizeCreep: "rules.sizeCreepShort",
   overtrading: "rules.overtrading",
+  noBots: "rules.noBots",
 };
 export const fieldLabel = (field: ChangeField) => t(FIELD_LABEL[field]);
 
@@ -84,6 +85,8 @@ export function fieldValue(field: ChangeField, rules: TradingRules): string {
       return rules.tilt.sizeCreep.on ? `${rules.tilt.sizeCreep.factor}×` : off();
     case "overtrading":
       return rules.tilt.overtrading.on ? `${rules.tilt.overtrading.factor}×` : off();
+    case "noBots":
+      return rules.noBots ? t("bots.rule.barred") : off();
   }
 }
 

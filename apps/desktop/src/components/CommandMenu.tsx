@@ -26,6 +26,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import {
   LuArrowRight,
   LuBell,
+  LuBot,
   LuChartCandlestick,
   LuChartPie,
   LuClock,
@@ -76,6 +77,7 @@ const PAGE_LABEL: Record<Page, MessageKey> = {
   plan: "nav.plan",
   traders: "nav.traders",
   ideas: "nav.ideas",
+  bots: "nav.bots",
   settings: "settings.title",
 };
 
@@ -92,6 +94,7 @@ const PAGE_ICON: Record<Page, { icon: ReactNode; tone: PaletteItem["tone"] }> = 
   plan: { icon: <LuNotebookPen size={17} />, tone: "brass" },
   traders: { icon: <LuTrophy size={17} />, tone: "info" },
   ideas: { icon: <LuLightbulb size={17} />, tone: "brass" },
+  bots: { icon: <LuBot size={17} />, tone: "info" },
   settings: { icon: <LuSettings size={17} />, tone: "plain" },
 };
 

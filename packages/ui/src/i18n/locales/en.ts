@@ -2,6 +2,7 @@
 // look like {name}; keep them, in whatever position the grammar needs.
 
 import { alertsEn } from "./alerts/en";
+import { botsEn } from "./bots/en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
 import { multiEn } from "./multi/en";
@@ -21,6 +22,8 @@ export const en = {
   ...ideasEn,
   // Notifications' newer kinds and their sounds (`alerts/en.ts`).
   ...alertsEn,
+  // The Bots page (`bots/en.ts`).
+  ...botsEn,
   // Column headers
   "col.price": "Price",
   "col.size": "Size",

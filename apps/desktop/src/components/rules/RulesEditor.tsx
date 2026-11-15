@@ -561,6 +561,18 @@ export function RulesEditor({
               />
             </Row>
             <Row
+              label={t("rules.noBots")}
+              help="rules.help.noBots"
+              inForce={inForce("noBots")}
+              says={t(draft.noBots ? "rules.says.noBots.on" : "rules.says.noBots.off")}
+            >
+              <Switch
+                label={t("rules.noBots")}
+                checked={draft.noBots}
+                onChange={(noBots) => set({ noBots })}
+              />
+            </Row>
+            <Row
               label={t("rules.coolOffShort")}
               help="rules.help.coolOff"
               inForce={inForce("coolOff")}
