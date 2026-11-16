@@ -807,6 +807,13 @@ export const messages: Messages = {
   // Pages and navigation
 
   "nav.menu": "Разделы",
+  "nav.jump": "Перейти к разделу…",
+  "nav.group.trade": "Торговля",
+  "nav.group.research": "Анализ",
+  "nav.group.prepare": "Подготовка",
+  "nav.here": "Вы здесь",
+  "nav.open": "Открыть",
+  "nav.noMatch": "Нет разделов по запросу «{query}».",
 
   "nav.trade": "Торговля",
 

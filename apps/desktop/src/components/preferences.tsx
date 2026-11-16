@@ -22,7 +22,7 @@ import {
 } from "react-icons/lu";
 import { type MarketColors, THEMES, type Theme } from "../hooks/useAppearance";
 import { LANGUAGES } from "../lib/language";
-import { MENU_PAGES, type Page } from "../lib/pages";
+import type { Page } from "../lib/pages";
 import { ThemeSwatch } from "./header/ThemeSwatch";
 
 /** Each language in its own name, then in the current interface language. */
@@ -77,22 +77,12 @@ const PAGE_ICONS = {
   settings: LuSettings,
 } as const;
 
+/** A page's icon. */
+export function PageIcon({ page, size = 16 }: { page: Page; size?: number }) {
+  const Icon = PAGE_ICONS[page];
+  return <Icon size={size} aria-hidden />;
+}
+
 /** A page's name in the interface language. */
 export const pageLabel = (page: Page) =>
   page === "settings" ? t("settings.title") : t(`nav.${page}`);
-
-/** The header's page menu: each page with an icon and a line about it. */
-export const pageOptions = (): readonly MenuOption<Page>[] =>
-  MENU_PAGES.map((page) => {
-    const Icon = PAGE_ICONS[page];
-    return {
-      value: page,
-      label: pageLabel(page),
-      description: t(`nav.${page}Desc`),
-      icon: (
-        <span className="pd-menu-icon">
-          <Icon size={17} aria-hidden />
-        </span>
-      ),
-    };
-  });

@@ -814,6 +814,13 @@ export const messages: Messages = {
   // Pages and navigation
 
   "nav.menu": "Pages",
+  "nav.jump": "Aller à une page…",
+  "nav.group.trade": "Trader",
+  "nav.group.research": "Analyser",
+  "nav.group.prepare": "Préparer",
+  "nav.here": "Vous êtes ici",
+  "nav.open": "Ouvrir",
+  "nav.noMatch": "Aucune page ne correspond à « {query} ».",
 
   "nav.trade": "Trading",
 

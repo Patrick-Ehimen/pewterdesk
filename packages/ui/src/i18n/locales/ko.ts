@@ -797,6 +797,13 @@ export const messages: Messages = {
   // Pages and navigation
 
   "nav.menu": "페이지",
+  "nav.jump": "페이지로 이동…",
+  "nav.group.trade": "거래",
+  "nav.group.research": "리서치",
+  "nav.group.prepare": "준비",
+  "nav.here": "현재 페이지",
+  "nav.open": "열기",
+  "nav.noMatch": "“{query}”와 일치하는 페이지가 없습니다.",
 
   "nav.trade": "거래",
 

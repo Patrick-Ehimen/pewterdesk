@@ -784,6 +784,13 @@ export const messages: Messages = {
   // Pages and navigation
 
   "nav.menu": "页面",
+  "nav.jump": "跳转到页面…",
+  "nav.group.trade": "交易",
+  "nav.group.research": "研究",
+  "nav.group.prepare": "准备",
+  "nav.here": "当前页面",
+  "nav.open": "打开",
+  "nav.noMatch": "没有与“{query}”匹配的页面。",
 
   "nav.trade": "交易",
 

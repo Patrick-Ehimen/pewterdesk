@@ -815,6 +815,13 @@ export const en = {
 
   // Pages and navigation
   "nav.menu": "Pages",
+  "nav.jump": "Jump to a page…",
+  "nav.group.trade": "Trade",
+  "nav.group.research": "Research",
+  "nav.group.prepare": "Prepare",
+  "nav.here": "You're here",
+  "nav.open": "Open",
+  "nav.noMatch": "No page matches “{query}”.",
   "nav.trade": "Trade",
   "nav.tradeDesc": "Markets, order book and positions",
   "nav.portfolio": "Portfolio",

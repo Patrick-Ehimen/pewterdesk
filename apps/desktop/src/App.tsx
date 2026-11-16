@@ -42,7 +42,6 @@ import {
   NotificationCentre,
   OpenOrdersPanel,
   OpenOrdersTable,
-  OptionsMenu,
   OrderBookSkeleton,
   OrderBookView,
   OrderTicket,
@@ -101,6 +100,7 @@ import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
 import { Onboarding } from "./components/onboarding/Onboarding";
+import { PageLauncher } from "./components/PageLauncher";
 import { AiPage } from "./components/pages/AiPage";
 import { BotsPage } from "./components/pages/BotsPage";
 import { MapsPage } from "./components/pages/MapsPage";
@@ -125,13 +125,7 @@ import { PaperSwitch } from "./components/paper/PaperSwitch";
 import { ReplayBanner } from "./components/paper/ReplayBanner";
 import { ReplaySummary } from "./components/paper/ReplaySummary";
 import { PlanPage, type PlanTarget } from "./components/plan/PlanPage";
-import {
-  pageLabel,
-  pageOptions,
-  ROW_MODES,
-  themeOptions,
-  VIEW_KEYS,
-} from "./components/preferences";
+import { PageIcon, pageLabel, ROW_MODES, themeOptions, VIEW_KEYS } from "./components/preferences";
 import { clockTime } from "./components/rules/parts";
 import { RulesBanner } from "./components/rules/RulesBanner";
 import { BEAT_MS, StatusBar } from "./components/StatusBar";
@@ -1994,16 +1988,7 @@ export function App() {
                 data-active={tab.id === tabs.active || undefined}
               >
                 {tab.id === tabs.active ? (
-                  <OptionsMenu
-                    label={t("nav.menu")}
-                    heading={t("nav.menu")}
-                    triggerText={pageLabel(page)}
-                    className="app-page-menu"
-                    menuClassName="app-page-list"
-                    options={pageOptions()}
-                    value={page}
-                    onChange={goTo}
-                  />
+                  <PageLauncher page={page} onChange={goTo} />
                 ) : (
                   <button
                     type="button"
@@ -2011,7 +1996,8 @@ export function App() {
                     title={pageLabel(tab.page)}
                     onClick={() => showTabs(tabSelected(tabs, tab.id))}
                   >
-                    {pageLabel(tab.page)}
+                    <PageIcon page={tab.page} size={13} />
+                    <span className="app-tab-name">{pageLabel(tab.page)}</span>
                   </button>
                 )}
                 {tabs.tabs.length > 1 && (

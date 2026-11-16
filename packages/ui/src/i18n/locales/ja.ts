@@ -799,6 +799,13 @@ export const messages: Messages = {
   // Pages and navigation
 
   "nav.menu": "ページ",
+  "nav.jump": "ページへ移動…",
+  "nav.group.trade": "取引",
+  "nav.group.research": "リサーチ",
+  "nav.group.prepare": "準備",
+  "nav.here": "表示中",
+  "nav.open": "開く",
+  "nav.noMatch": "「{query}」に一致するページはありません。",
 
   "nav.trade": "取引",
 
