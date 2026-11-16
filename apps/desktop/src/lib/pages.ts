@@ -12,6 +12,7 @@ export const PAGES = [
   "plan",
   "traders",
   "ideas",
+  "backtest",
   "bots",
   "settings",
 ] as const;

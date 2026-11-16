@@ -7,6 +7,7 @@ import {
   LuBot,
   LuBriefcaseBusiness,
   LuChartCandlestick,
+  LuFlaskConical,
   LuLandmark,
   LuLayoutGrid,
   LuLightbulb,
@@ -71,6 +72,7 @@ const PAGE_ICONS = {
   plan: LuNotebookPen,
   traders: LuTrophy,
   ideas: LuLightbulb,
+  backtest: LuFlaskConical,
   bots: LuBot,
   settings: LuSettings,
 } as const;

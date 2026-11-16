@@ -1,4 +1,5 @@
 import { alertsEn } from "./alerts/en";
+import { backtestEn } from "./backtest/en";
 import { botsEn } from "./bots/en";
 import type { Messages } from "./en";
 import { ideasEn } from "./ideas/en";
@@ -23,6 +24,8 @@ export const messages: Messages = {
   ...alertsEn,
   // The Bots page (`bots/en.ts`).
   ...botsEn,
+  // The Backtest page (`backtest/en.ts`).
+  ...backtestEn,
   "col.price": "Preço",
   "col.size": "Tamanho",
   "col.total": "Total",

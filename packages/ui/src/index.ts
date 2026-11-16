@@ -4,6 +4,19 @@
 // Styles: import "@pewterdesk/ui/src/styles/styles.css" once at the app root.
 
 export {
+  type BacktestBar,
+  BacktestChart,
+  type BacktestChartTrade,
+  type ChartLine,
+  EquityChart,
+  type EquityLine,
+  EquityStrip,
+  MonthlyChart,
+  PeriodChart,
+  type PeriodSeries,
+  SparkChart,
+} from "./components/backtest/BacktestCharts";
+export {
   type Column,
   ColumnHeader,
   Hint,

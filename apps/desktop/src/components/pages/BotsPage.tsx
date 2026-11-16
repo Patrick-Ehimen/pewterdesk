@@ -17,14 +17,14 @@ import {
   withRun,
 } from "../../lib/bots";
 import { Backtest, type BacktestTab, runName } from "../bots/Backtest";
-import { BacktestList } from "../bots/BacktestList";
 import { BotCard } from "../bots/BotCard";
 import { NewBot } from "../bots/NewBot";
 import { PaperList } from "../bots/PaperList";
 import { type Crumb, Guide } from "../bots/ui";
 
-type Section = "bots" | "backtests" | "paper";
-const SECTIONS: readonly Section[] = ["bots", "backtests", "paper"];
+// Backtests have a page of their own (Backtest); a bot's own run still opens here.
+type Section = "bots" | "paper";
+const SECTIONS: readonly Section[] = ["bots", "paper"];
 type View =
   | { kind: "list" }
   | { kind: "new" }
@@ -234,11 +234,7 @@ export function BotsPage({
       <div className="page bots">
         <PreviewNote />
         <Backtest
-          crumbs={[
-            home,
-            { label: sectionLabel("backtests"), onClick: () => toSection("backtests") },
-            { label: spec ? `#${spec.id} · ${runName(spec)}` : t("bots.backtest") },
-          ]}
+          crumbs={[home, { label: spec ? `#${spec.id} · ${runName(spec)}` : t("bots.backtest") }]}
           runs={state.runs}
           run={view.run}
           tab={view.tab}
@@ -259,7 +255,6 @@ export function BotsPage({
   const paperBots = bots.filter((b) => b.mode === "paper");
   const count: Record<Section, number> = {
     bots: bots.length,
-    backtests: state.runs.length,
     paper: paperBots.length,
   };
   const shown = bots.filter((b) => filter === "all" || b.mode === filter);
@@ -348,15 +343,6 @@ export function BotsPage({
         </>
       )}
       {section === "bots" && <p className="bt-footnote">{t("bots.gateNote")}</p>}
-      {section === "backtests" && (
-        <BacktestList
-          runs={state.runs}
-          onOpen={(run) => openRun(run)}
-          onNew={() => setView({ kind: "new" })}
-          marketLabel={mLabel}
-          venueLabel={vLabel}
-        />
-      )}
       {section === "paper" && (
         <PaperList
           bots={paperBots}
@@ -364,7 +350,7 @@ export function BotsPage({
           onPause={pause}
           onResume={resume}
           onOpenRun={(run) => openRun(run)}
-          onPick={() => toSection("backtests")}
+          onPick={() => setView({ kind: "new" })}
           marketLabel={(b) => marketLabel(b.venue, b.market)}
           venueLabel={(b) => venueLabel(b.venue)}
         />

@@ -85,6 +85,7 @@ import { LuPlus, LuWallet, LuX } from "react-icons/lu";
 import { appClient } from "./api/appClient";
 import { blockText, venueClient } from "./api/venueClient";
 import { AboutDialog } from "./components/about/AboutDialog";
+import { BacktestPage } from "./components/backtest/BacktestPage";
 import { CommandMenu } from "./components/CommandMenu";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
@@ -887,11 +888,11 @@ export function App() {
   useEffect(() => saveTabs(tabs), [tabs]);
   const page = activePage(tabs);
   const setPage = useCallback((next: Page) => setTabs((now) => withPage(now, next)), []);
-  // The Multi-chart and Screener pages, once opened, stay mounted while
+  // The Multi-chart, Screener and Backtest pages, once opened, stay mounted while
   // another is on screen (`KeepAlive`), so coming back finds them as left.
   const [keptPages, setKeptPages] = useState<ReadonlySet<Page>>(() => new Set());
   useEffect(() => {
-    if (page !== "charts" && page !== "screener") return;
+    if (page !== "charts" && page !== "screener" && page !== "backtest") return;
     setKeptPages((was) => (was.has(page) ? was : new Set([...was, page])));
   }, [page]);
   // The pages opened this session, for stepping back and forward. However
@@ -2304,7 +2305,8 @@ export function App() {
             }}
           />
         ) : page === "charts" ||
-          page === "screener" ? // Kept mounted below, so they're as they were left.
+          page === "screener" ||
+          page === "backtest" ? // Kept mounted below, so they're as they were left.
         null : page === "maps" ? (
           <MapsPage
             venue={venue}
@@ -2506,6 +2508,24 @@ export function App() {
               onProtect={from("multichart").protect}
               onOrder={marketOrder && ((m, side, size) => marketOrder(m, side, size, "multichart"))}
               tradeUnavailable={tradeUnavailable ?? t("quick.unavailable")}
+            />
+          </KeepAlive>
+        )}
+        {/* The Backtest page too: its tab, strategy and results stay as left. */}
+        {(page === "backtest" || keptPages.has("backtest")) && (
+          <KeepAlive shown={page === "backtest"}>
+            <BacktestPage
+              venue={venue}
+              markets={marketList}
+              priceOf={(v, m) => {
+                if (v !== venue) return undefined;
+                const summaries =
+                  barSummaries.status === "live" || barSummaries.status === "closed"
+                    ? barSummaries.data
+                    : [];
+                const mark = Number(summaries.find((s) => s.market === m)?.markPrice);
+                return mark > 0 ? mark : undefined;
+              }}
             />
           </KeepAlive>
         )}
