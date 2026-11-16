@@ -129,6 +129,70 @@ impl Bots {
             .map_err(invalid)
     }
 
+    /// The Backtest page's run: `run.strategy` on its market's candles
+    /// between `run.since` and `run.until`, costed at the venue's fees.
+    pub async fn backtest_between(
+        &self,
+        run: &pewterdesk_strategy::lab::LabRun,
+    ) -> Result<pewterdesk_strategy::sim::RunResult, VenueError> {
+        run.strategy.check().map_err(invalid)?;
+        let (bars, costs) = self.lab_inputs(run).await?;
+        pewterdesk_strategy::sim::backtest(&run.strategy, costs, &bars, run.hold_out_days)
+            .map_err(invalid)
+    }
+
+    /// The Backtest page's optimizer: `run` once for every point of `sweep`,
+    /// over candles read once.
+    pub async fn optimize(
+        &self,
+        run: &pewterdesk_strategy::lab::LabRun,
+        sweep: &pewterdesk_strategy::lab::Sweep,
+    ) -> Result<Vec<pewterdesk_strategy::lab::Cell>, VenueError> {
+        let (bars, costs) = self.lab_inputs(run).await?;
+        pewterdesk_strategy::lab::optimize(&run.strategy, &costs, &bars, run.hold_out_days, sweep)
+            .map_err(invalid)
+    }
+
+    async fn lab_inputs(
+        &self,
+        run: &pewterdesk_strategy::lab::LabRun,
+    ) -> Result<
+        (
+            Vec<pewterdesk_strategy::Bar>,
+            pewterdesk_strategy::sim::Costs,
+        ),
+        VenueError,
+    > {
+        if run.until <= run.since {
+            return Err(invalid("the end comes after the start"));
+        }
+        if !(run.capital.is_finite() && run.capital > 0.0) {
+            return Err(invalid("a starting balance above zero"));
+        }
+        let host = self.host()?;
+        let mut bars =
+            history::candles(&host, run.venue, &run.market, run.interval, run.since).await?;
+        bars.retain(|b| b.time <= run.until);
+        if bars.len() < 2 {
+            return Err(invalid("no candles in that period"));
+        }
+        // Funding from the venue's history, for costs and conditions; open
+        // interest only for a strategy that reads it.
+        let open_interest = match &run.strategy {
+            pewterdesk_strategy::StrategyConfig::Custom(p) => p.reads().1,
+            _ => false,
+        };
+        history::context(&host, run.venue, &run.market, &mut bars, open_interest).await;
+        let mut costs = pewterdesk_strategy::bot::paper_costs(run.venue, run.capital);
+        if let Some(bps) = run
+            .slippage_bps
+            .filter(|b| b.is_finite() && *b >= 0.0 && *b <= 500.0)
+        {
+            costs.slippage_bps = bps;
+        }
+        Ok((bars, costs))
+    }
+
     /// Connects the engine's bots to their host, and reads the ones it kept.
     pub fn attach(&self, host: Arc<dyn Host>) {
         let kept: Vec<BotView> = host

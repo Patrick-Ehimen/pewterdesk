@@ -20,8 +20,11 @@
 //!   have come first. Either cancels the strategy's resting orders.
 //! - Within a candle: the position's exits first, then resting limits in
 //!   the order they were placed, then the strategy's turn at the close.
-//! - Funding: a long pays (a short receives) `funding_8h` of its entry
-//!   notional every 8 hours it's held, accrued each candle.
+//! - Funding: a long pays (a short receives) the candle's funding rate (the
+//!   venue's history; `funding_8h` where it has none) of its entry notional
+//!   for every 8 hours it's held, accrued each candle.
+//! - A position whose liquidation price comes before its stop is closed
+//!   there ("liquidation"), worse by the slippage.
 //! - Whatever is open at the end is closed at the last close ("end").
 //!
 //! Not modelled: queues (a limit at a price that's touched is taken to
@@ -31,7 +34,9 @@ use pewterdesk_core::Side;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::{Bar, Fill, Intent, Reason, Resting, Snapshot, Strategy, StrategyConfig, TS_FILE};
+use crate::{
+    Bar, Fill, Funnel, Intent, Reason, Resting, Snapshot, Strategy, StrategyConfig, TS_FILE,
+};
 
 const HOUR_MS: f64 = 3_600_000.0;
 const EPS: f64 = 1e-12;
@@ -115,6 +120,17 @@ pub struct StoppedOut {
     pub price: f64,
 }
 
+/// An indicator a strategy reads, one value per candle.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Study {
+    pub name: String,
+    /// In a pane of its own (an oscillator), not over the price.
+    pub pane: bool,
+    pub values: Vec<Option<f64>>,
+}
+
 /// A whole run, as the Bots page shows it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -143,6 +159,13 @@ pub struct RunResult {
     pub stopped_out: Option<StoppedOut>,
     /// Everything the strategy asked for.
     pub asked: Vec<Asked>,
+    /// How a rules strategy's conditions filtered the run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub funnel: Option<Funnel>,
+    /// The indicators a rules strategy reads.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub studies: Vec<Study>,
 }
 
 /// One open lot of the position.
@@ -171,6 +194,7 @@ struct Order {
     reduce_only: bool,
     closes: Option<String>,
     stop: Option<f64>,
+    reason: Option<Reason>,
 }
 
 /// The account a strategy trades in a run.
@@ -186,12 +210,14 @@ pub struct Session {
     stop: Option<f64>,
     target: Option<f64>,
     stop_reason: Reason,
+    liquidation: Option<f64>,
     halted: bool,
     bars: Vec<Bar>,
     trades: Vec<Trade>,
     equity: Vec<f64>,
     bars_in_market: u32,
     lines: Vec<(&'static str, Vec<Option<f64>>)>,
+    studies: Vec<Study>,
     stopped_out: Option<StoppedOut>,
     asked: Vec<Asked>,
 }
@@ -234,12 +260,14 @@ impl Session {
             stop: None,
             target: None,
             stop_reason: Reason::Stop,
+            liquidation: None,
             halted: false,
             bars: Vec::new(),
             trades: Vec::new(),
             equity: Vec::new(),
             bars_in_market: 0,
             lines: Vec::new(),
+            studies: Vec::new(),
             stopped_out: None,
             asked: Vec::new(),
         })
@@ -525,6 +553,44 @@ impl Session {
         }
         let long = pos > 0.0;
         let slip = self.slip();
+        // Liquidation, where it comes before the stop.
+        let before_stop = |liq: f64| match self.stop {
+            Some(s) => {
+                if long {
+                    liq > s
+                } else {
+                    liq < s
+                }
+            }
+            None => true,
+        };
+        let liq_hit = self
+            .liquidation
+            .filter(|l| before_stop(*l) && if long { bar.low <= *l } else { bar.high >= *l });
+        if let Some(liq) = liq_hit {
+            let at = if long {
+                liq.min(bar.open)
+            } else {
+                liq.max(bar.open)
+            };
+            let filled = if long {
+                at * (1.0 - slip)
+            } else {
+                at * (1.0 + slip)
+            };
+            self.close_all(
+                filled,
+                filled,
+                self.costs.fee,
+                at * slip,
+                Reason::Liquidation,
+            );
+            self.orders.clear();
+            self.stop = None;
+            self.target = None;
+            self.liquidation = None;
+            return;
+        }
         let stop_hit = self
             .stop
             .filter(|s| if long { bar.low <= *s } else { bar.high >= *s });
@@ -564,6 +630,7 @@ impl Session {
         self.orders.clear();
         self.stop = None;
         self.target = None;
+        self.liquidation = None;
     }
 
     /// Resting limits, against this candle, in the order they were placed.
@@ -593,11 +660,11 @@ impl Session {
             if o.reduce_only && !reduces {
                 continue;
             }
-            let reason = if o.reduce_only {
+            let reason = o.reason.unwrap_or(if o.reduce_only {
                 Reason::Grid
             } else {
                 Reason::Entry
-            };
+            });
             let maker = self.maker();
             self.trade(
                 Some(o.tag),
@@ -624,9 +691,13 @@ impl Session {
                 reduce_only,
                 reason,
                 stop,
+                liquidation,
             } => {
                 if !(size.is_finite() && size > EPS) {
                     return;
+                }
+                if !reduce_only {
+                    self.liquidation = liquidation;
                 }
                 let price = match side {
                     Side::Buy => bar.close * (1.0 + slip),
@@ -653,6 +724,7 @@ impl Session {
                 reduce_only,
                 closes,
                 stop,
+                reason,
             } => {
                 self.orders.retain(|o| o.tag != tag);
                 if price.is_finite() && price > 0.0 && size.is_finite() && size > EPS {
@@ -664,6 +736,7 @@ impl Session {
                         reduce_only,
                         closes,
                         stop,
+                        reason,
                     });
                 }
             }
@@ -712,7 +785,8 @@ impl Session {
         let hours = self.interval_ms as f64 / HOUR_MS;
         for lot in &mut self.lots {
             let dir = if lot.long { 1.0 } else { -1.0 };
-            lot.funding -= dir * lot.entry * lot.size * self.costs.funding_8h * (hours / 8.0);
+            let rate = bar.funding.unwrap_or(self.costs.funding_8h);
+            lot.funding -= dir * lot.entry * lot.size * rate * (hours / 8.0);
             let best = ((if lot.long { bar.high } else { bar.low }) - lot.entry) * lot.size * dir;
             let worst = ((if lot.long { bar.low } else { bar.high }) - lot.entry) * lot.size * dir;
             lot.mfe = lot.mfe.max(best);
@@ -758,6 +832,19 @@ impl Session {
                 }
             }
         }
+        for (name, pane, value) in self.strategy.studies() {
+            match self.studies.iter_mut().find(|st| st.name == name) {
+                Some(st) => st.values.push(value),
+                None => {
+                    let mut values = vec![None; index];
+                    values.push(value);
+                    self.studies.push(Study { name, pane, values });
+                }
+            }
+        }
+        if self.position().abs() <= EPS {
+            self.liquidation = None;
+        }
         if self.position().abs() > EPS {
             self.bars_in_market += 1;
         }
@@ -802,6 +889,8 @@ impl Session {
             bars_in_market: self.bars_in_market,
             stopped_out: self.stopped_out,
             asked: self.asked,
+            funnel: self.strategy.funnel(),
+            studies: self.studies,
         }
     }
 }

@@ -2,10 +2,12 @@
 //! (`make rust-bindings`), each on its own, without its dependencies.
 
 use pewterdesk_strategy::bot::{BotLimits, BotMode, BotSpec, BotStatus, BotView};
-use pewterdesk_strategy::sim::{Asked, Costs, RunResult, StoppedOut, Trade};
+use pewterdesk_strategy::lab::{Axis, Cell, LabRun, Summary, Sweep};
+use pewterdesk_strategy::sim::{Asked, Costs, RunResult, StoppedOut, Study, Trade};
 use pewterdesk_strategy::{
-    Bar, Compare, CustomParams, DcaParams, Direction, EmaParams, GridParams, Intent, Reason, Rule,
-    Source, StrategyConfig,
+    Bar, Compare, Cond, CoolOff, CustomParams, DcaParams, Direction, EmaParams, Funnel, GridParams,
+    Group, Guards, Hours, Intent, Match, Reason, Rule, Sizing, Source, StopRule, StrategyConfig,
+    Target, Trail,
 };
 use ts_rs::{Config, TS};
 
@@ -22,6 +24,18 @@ fn export_bindings() {
     Source::export(&cfg).unwrap();
     Compare::export(&cfg).unwrap();
     Rule::export(&cfg).unwrap();
+    Match::export(&cfg).unwrap();
+    Group::export(&cfg).unwrap();
+    Cond::export(&cfg).unwrap();
+    Sizing::export(&cfg).unwrap();
+    StopRule::export(&cfg).unwrap();
+    Trail::export(&cfg).unwrap();
+    Target::export(&cfg).unwrap();
+    CoolOff::export(&cfg).unwrap();
+    Guards::export(&cfg).unwrap();
+    Hours::export(&cfg).unwrap();
+    Funnel::export(&cfg).unwrap();
+    Study::export(&cfg).unwrap();
     CustomParams::export(&cfg).unwrap();
     StrategyConfig::export(&cfg).unwrap();
     Costs::export(&cfg).unwrap();
@@ -34,4 +48,9 @@ fn export_bindings() {
     BotMode::export(&cfg).unwrap();
     BotStatus::export(&cfg).unwrap();
     BotView::export(&cfg).unwrap();
+    LabRun::export(&cfg).unwrap();
+    Axis::export(&cfg).unwrap();
+    Sweep::export(&cfg).unwrap();
+    Summary::export(&cfg).unwrap();
+    Cell::export(&cfg).unwrap();
 }

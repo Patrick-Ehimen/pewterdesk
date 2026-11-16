@@ -10,13 +10,7 @@ use pewterdesk_strategy::{
 const H: u64 = 3_600_000;
 
 fn bar(i: u64, open: f64, high: f64, low: f64, close: f64) -> Bar {
-    Bar {
-        time: i * H,
-        open,
-        high,
-        low,
-        close,
-    }
+    Bar::ohlc(i * H, open, high, low, close)
 }
 
 /// Flat candles at each close, one an hour.
@@ -96,16 +90,13 @@ fn leaving_the_range_flattens_the_grid_and_stops_it() {
 #[test]
 fn a_stop_and_a_target_in_one_candle_count_as_the_stop() {
     let config = StrategyConfig::Custom(CustomParams {
-        side: PositionSide::Long,
-        entry: vec![Rule {
-            left: Source::Price,
-            op: Compare::Above,
-            right: Source::Value { value: 0.0 },
-        }],
-        exit: vec![],
         stop_loss: 0.05,
         take_profit: 0.05,
-        size: 1.0,
+        ..CustomParams::simple(
+            PositionSide::Long,
+            vec![Rule::new(Source::Price, Compare::Above, Source::Value { value: 0.0 }).into()],
+            vec![],
+        )
     });
     let bars = vec![
         bar(0, 100.0, 100.0, 100.0, 100.0),
@@ -119,16 +110,13 @@ fn a_stop_and_a_target_in_one_candle_count_as_the_stop() {
 #[test]
 fn market_orders_pay_slippage_and_fees_and_longs_pay_funding() {
     let config = StrategyConfig::Custom(CustomParams {
-        side: PositionSide::Long,
-        entry: vec![Rule {
-            left: Source::Price,
-            op: Compare::Above,
-            right: Source::Value { value: 0.0 },
-        }],
-        exit: vec![],
         stop_loss: 0.0,
         take_profit: 0.0,
-        size: 1.0,
+        ..CustomParams::simple(
+            PositionSide::Long,
+            vec![Rule::new(Source::Price, Compare::Above, Source::Value { value: 0.0 }).into()],
+            vec![],
+        )
     });
     let costs = Costs {
         capital: 10_000.0,

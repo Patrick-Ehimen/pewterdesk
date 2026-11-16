@@ -39,6 +39,28 @@ pub enum Line {
         prev_close: Option<f64>,
         value: Option<f64>,
     },
+    /// The candle's volume.
+    Volume,
+    /// A simple average of the volume.
+    VolumeAvg {
+        period: usize,
+        window: std::collections::VecDeque<f64>,
+        sum: f64,
+    },
+    /// The funding rate the candle carries.
+    Funding,
+    /// The open interest the candle carries.
+    OpenInterest,
+    /// `inner` on longer candles (`ms` long, from 00:00 UTC) built from
+    /// these: it's given each one once it has closed, and holds its value
+    /// in between, so it never sees a candle that hasn't.
+    Frame {
+        ms: u64,
+        inner: Box<Line>,
+        cur: Option<Bar>,
+        prev_time: Option<u64>,
+        value: Option<f64>,
+    },
 }
 
 impl Line {
@@ -78,10 +100,82 @@ impl Line {
         }
     }
 
+    pub fn volume_avg(period: usize) -> Self {
+        Line::VolumeAvg {
+            period: period.max(1),
+            window: Default::default(),
+            sum: 0.0,
+        }
+    }
+
+    /// `inner` on candles `ms` long, built from the ones pushed.
+    pub fn framed(inner: Line, ms: u64) -> Self {
+        Line::Frame {
+            ms: ms.max(1),
+            inner: Box::new(inner),
+            cur: None,
+            prev_time: None,
+            value: None,
+        }
+    }
+
     /// Takes the next candle; its value, once there's enough history.
     pub fn push(&mut self, bar: &Bar) -> Option<f64> {
         let close = bar.close;
         match self {
+            Line::Volume => Some(bar.volume),
+            Line::Funding => bar.funding,
+            Line::OpenInterest => bar.oi,
+            Line::VolumeAvg {
+                period,
+                window,
+                sum,
+            } => {
+                window.push_back(bar.volume);
+                *sum += bar.volume;
+                if window.len() > *period {
+                    *sum -= window.pop_front().unwrap_or(0.0);
+                }
+                (window.len() == *period).then(|| *sum / *period as f64)
+            }
+            Line::Frame {
+                ms,
+                inner,
+                cur,
+                prev_time,
+                value,
+            } => {
+                let start = bar.time - bar.time % *ms;
+                let step = prev_time.map(|p| bar.time.saturating_sub(p));
+                *prev_time = Some(bar.time);
+                // A new longer candle began: the one before has closed.
+                if let Some(c) = cur.take_if(|c| c.time != start) {
+                    *value = inner.push(&c);
+                }
+                let merged = match cur.take() {
+                    Some(c) => Bar {
+                        time: c.time,
+                        open: c.open,
+                        high: c.high.max(bar.high),
+                        low: c.low.min(bar.low),
+                        close: bar.close,
+                        volume: c.volume + bar.volume,
+                        funding: bar.funding,
+                        oi: bar.oi,
+                    },
+                    None => Bar {
+                        time: start,
+                        ..*bar
+                    },
+                };
+                // This candle closes it: it's done now, not at the next one.
+                if step.is_some_and(|st| st > 0 && bar.time + st >= start + *ms) {
+                    *value = inner.push(&merged);
+                } else {
+                    *cur = Some(merged);
+                }
+                *value
+            }
             Line::Price => Some(close),
             Line::Value(v) => Some(*v),
             Line::Ema {
@@ -171,13 +265,7 @@ mod tests {
     use super::*;
 
     fn bar(close: f64) -> Bar {
-        Bar {
-            time: 0,
-            open: close,
-            high: close,
-            low: close,
-            close,
-        }
+        Bar::ohlc(0, close, close, close, close)
     }
 
     fn run(mut line: Line, closes: &[f64]) -> Vec<Option<f64>> {
@@ -207,5 +295,34 @@ mod tests {
         assert_eq!(out[3], Some(100.0));
         let mixed = run(Line::rsi(2), &[10.0, 11.0, 10.0]);
         assert_eq!(mixed[2], Some(50.0));
+    }
+
+    #[test]
+    fn a_framed_line_sees_only_closed_longer_candles() {
+        // Six-hour candles from 00:00, read as days (4 a day).
+        let h = 3_600_000;
+        let mut line = Line::framed(Line::Price, 24 * h);
+        let mut out = Vec::new();
+        for i in 0..9u64 {
+            out.push(line.push(&Bar::ohlc(i * 6 * h, 0.0, 0.0, 0.0, i as f64)));
+        }
+        // Day 0 closes with its fourth candle (close 3); day 1 with the eighth.
+        assert_eq!(out[..3], [None, None, None]);
+        assert_eq!(out[3], Some(3.0));
+        assert_eq!(out[6], Some(3.0));
+        assert_eq!(out[7], Some(7.0));
+        assert_eq!(out[8], Some(7.0));
+    }
+
+    #[test]
+    fn volume_lines_read_the_volume() {
+        let mut avg = Line::volume_avg(2);
+        let v = |x: f64| Bar {
+            volume: x,
+            ..Bar::ohlc(0, 1.0, 1.0, 1.0, 1.0)
+        };
+        assert_eq!(avg.push(&v(2.0)), None);
+        assert_eq!(avg.push(&v(4.0)), Some(3.0));
+        assert_eq!(Line::Volume.push(&v(5.0)), Some(5.0));
     }
 }

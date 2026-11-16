@@ -147,13 +147,7 @@ fn wandering(n: u64) -> Vec<Bar> {
     (1..=n)
         .map(|i| {
             let c = 100.0 + 8.0 * ((i as f64) / 7.0).sin();
-            Bar {
-                time: i * H,
-                open: c - 0.5,
-                high: c + 2.0,
-                low: c - 2.0,
-                close: c,
-            }
+            Bar::ohlc(i * H, c - 0.5, c + 2.0, c - 2.0, c)
         })
         .collect()
 }
@@ -236,18 +230,11 @@ async fn a_grid_asks_the_same_in_a_backtest_and_on_paper() {
 /// flattens, and says so.
 #[tokio::test]
 async fn a_bot_at_its_daily_loss_stops_flattens_and_says_so() {
-    let always_long = StrategyConfig::Custom(CustomParams {
-        side: PositionSide::Long,
-        entry: vec![Rule {
-            left: Source::Price,
-            op: Compare::Above,
-            right: Source::Value { value: 0.0 },
-        }],
-        exit: vec![],
-        stop_loss: 0.0,
-        take_profit: 0.0,
-        size: 1.0,
-    });
+    let always_long = StrategyConfig::Custom(CustomParams::simple(
+        PositionSide::Long,
+        vec![Rule::new(Source::Price, Compare::Above, Source::Value { value: 0.0 }).into()],
+        vec![],
+    ));
     let limits = BotLimits {
         daily_loss: Some(200.0),
         ..BotLimits::default()
@@ -267,15 +254,9 @@ async fn a_bot_at_its_daily_loss_stops_flattens_and_says_so() {
         .unwrap();
     let day = 10 * DAY_MS;
     for (i, close) in [100.0, 100.0, 95.0, 90.0].into_iter().enumerate() {
-        tx.send(Bar {
-            time: day + i as u64 * H,
-            open: close,
-            high: close,
-            low: close,
-            close,
-        })
-        .await
-        .unwrap();
+        tx.send(Bar::ohlc(day + i as u64 * H, close, close, close, close))
+            .await
+            .unwrap();
     }
     let view = until(&host, &bot.id, |v| v.status != BotStatus::Running).await;
     assert_eq!(view.status, BotStatus::Limit);
@@ -345,13 +326,7 @@ async fn a_live_grid_trades_through_the_router() {
         .start_with_feed("live1", Vec::new(), rx)
         .await
         .unwrap();
-    let bar = |i: u64, c: f64| Bar {
-        time: i * H,
-        open: c,
-        high: c,
-        low: c,
-        close: c,
-    };
+    let bar = |i: u64, c: f64| Bar::ohlc(i * H, c, c, c, c);
     tx.send(bar(1, 100.0)).await.unwrap();
     until(&host, "live1", |v| v.candles == 1).await;
     // Buys rest below the price: 90 to 97.5.

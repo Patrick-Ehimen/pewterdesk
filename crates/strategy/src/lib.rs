@@ -13,6 +13,7 @@
 
 pub mod bot;
 pub mod indicators;
+pub mod lab;
 pub mod sim;
 pub mod templates;
 
@@ -34,6 +35,19 @@ pub struct Bar {
     pub high: f64,
     pub low: f64,
     pub close: f64,
+    /// Traded over the candle, in base units; 0 where unknown.
+    #[serde(default)]
+    #[ts(as = "Option<f64>", optional)]
+    pub volume: f64,
+    /// The funding rate in force at the candle's close, per 8 hours, as a
+    /// fraction; where the venue's history has it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub funding: Option<f64>,
+    /// Open interest at the candle's close, in base units; where known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub oi: Option<f64>,
 }
 
 impl Bar {
@@ -46,7 +60,24 @@ impl Bar {
             high: f(&c.high)?,
             low: f(&c.low)?,
             close: f(&c.close)?,
+            volume: f(&c.volume).unwrap_or(0.0),
+            funding: None,
+            oi: None,
         })
+    }
+
+    /// A candle of prices only.
+    pub fn ohlc(time: u64, open: f64, high: f64, low: f64, close: f64) -> Self {
+        Self {
+            time,
+            open,
+            high,
+            low,
+            close,
+            volume: 0.0,
+            funding: None,
+            oi: None,
+        }
     }
 }
 
@@ -75,6 +106,10 @@ pub enum Reason {
     Limit,
     /// An entry.
     Entry,
+    /// The position's margin ran out before its stop.
+    Liquidation,
+    /// The rule to stop at a drawdown (a guard rail).
+    Guard,
 }
 
 /// What a strategy asks for. The bot host, or the backtester, carries it
@@ -94,6 +129,11 @@ pub enum Intent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[ts(optional)]
         stop: Option<f64>,
+        /// Where the position it opens would be liquidated, if the margin
+        /// runs out before the stop (a backtest closes it there).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        liquidation: Option<f64>,
     },
     /// A resting limit, known by `tag`: one with the same tag is replaced.
     #[serde(rename_all = "camelCase")]
@@ -112,6 +152,11 @@ pub enum Intent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         #[ts(optional)]
         stop: Option<f64>,
+        /// What its fill is called in the trade list (a take-profit's
+        /// "target"); a reduce-only limit is a grid's level otherwise.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        reason: Option<Reason>,
     },
     /// Takes the resting limit `tag` off.
     Cancel { tag: String },
@@ -189,6 +234,35 @@ pub trait Strategy: Send + Sync {
     fn lines(&self) -> Vec<(&'static str, Option<f64>)> {
         Vec::new()
     }
+
+    /// How its conditions filtered the run, for a rules strategy.
+    fn funnel(&self) -> Option<Funnel> {
+        None
+    }
+
+    /// Indicators it reads, to draw with its signals, at the last candle:
+    /// a name, whether it goes in a pane of its own (an RSI), its value.
+    fn studies(&self) -> Vec<(String, bool, Option<f64>)> {
+        Vec::new()
+    }
+}
+
+/// How a rules strategy's conditions filtered a run.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Funnel {
+    /// Per entry condition, in order: the candles (while flat) on which it
+    /// and every condition before it held; with "any", on which it held.
+    pub entry: Vec<u32>,
+    /// Per exit condition: the trades it closed.
+    pub exits: Vec<u32>,
+    /// Candles (by index) on which every entry condition held while flat.
+    pub passed: Vec<u32>,
+    /// Candles on which the first entry condition held but the rest didn't.
+    pub filtered: Vec<u32>,
+    /// Signals the trading hours or a guard rail kept from opening.
+    pub blocked: u32,
 }
 
 /// Which way an EMA cross trades.
@@ -251,12 +325,46 @@ pub struct DcaParams {
 #[serde(tag = "kind", rename_all = "camelCase")]
 #[ts(export_to = TS_FILE)]
 pub enum Source {
+    /// The close.
     Price,
-    Ema { period: u32 },
-    Sma { period: u32 },
-    Rsi { period: u32 },
-    Value { value: f64 },
+    /// An average or RSI, on the run's own candles, or on longer ones
+    /// (`on`: "1d" over 4h candles) built from them - only closed ones.
+    Ema {
+        period: u32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        on: Option<CandleInterval>,
+    },
+    Sma {
+        period: u32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        on: Option<CandleInterval>,
+    },
+    Rsi {
+        period: u32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        on: Option<CandleInterval>,
+    },
+    Value {
+        value: f64,
+    },
+    /// The candle's volume.
+    Volume,
+    /// The volume's simple average over `period` candles.
+    VolumeAvg {
+        period: u32,
+    },
+    /// The funding rate per 8 hours, a fraction (0.0003 = 0.03%).
+    Funding,
+    /// Open interest, in base units.
+    OpenInterest,
+    /// Hours the position has been open; nothing while flat.
+    HeldHours,
 }
+
+pub use pewterdesk_core::CandleInterval;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -266,6 +374,10 @@ pub enum Compare {
     CrossesBelow,
     Above,
     Below,
+    /// The left side rose by more than the right (a fraction) over `hours`.
+    RisesMoreThan,
+    /// The left side fell by more than the right (a fraction) over `hours`.
+    FallsMoreThan,
 }
 
 /// "EMA 20 crosses above EMA 50", read on each candle's close.
@@ -276,27 +388,287 @@ pub struct Rule {
     pub left: Source,
     pub op: Compare,
     pub right: Source,
+    /// The window of a rise or fall, in hours (24 if unset).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub hours: Option<f64>,
 }
 
-/// In when every entry rule holds, out when any exit rule does.
+impl Rule {
+    pub fn new(left: Source, op: Compare, right: Source) -> Self {
+        Self {
+            left,
+            op,
+            right,
+            hours: None,
+        }
+    }
+}
+
+/// Whether every condition must hold, or any one.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub enum Match {
+    #[default]
+    All,
+    Any,
+}
+
+/// Conditions taken together, inside a strategy's own.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Group {
+    #[serde(rename = "match")]
+    pub when: Match,
+    pub conds: Vec<Rule>,
+}
+
+/// One condition: a rule, or a group of them.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(untagged)]
+#[ts(export_to = TS_FILE)]
+pub enum Cond {
+    Rule(Rule),
+    Group(Group),
+}
+
+impl From<Rule> for Cond {
+    fn from(r: Rule) -> Self {
+        Cond::Rule(r)
+    }
+}
+
+impl Cond {
+    pub fn rules(&self) -> Vec<&Rule> {
+        match self {
+            Cond::Rule(r) => vec![r],
+            Cond::Group(g) => g.conds.iter().collect(),
+        }
+    }
+}
+
+/// How big each trade is.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub enum Sizing {
+    /// The same notional, in the quote asset, every trade.
+    Fixed { amount: f64 },
+    /// A share of equity as notional (1 = 1x).
+    Equity { share: f64 },
+    /// Loses `risk` of equity (0.01 = 1%) at the stop.
+    Risk { risk: f64 },
+    /// Notional so the position swings `target` of equity on a typical
+    /// candle (ATR 14): smaller when the market swings more.
+    Volatility { target: f64 },
+    /// Kelly's share of equity at the stop, from the run's own win rate and
+    /// payoff so far, times `fraction` (¼), at most `max_risk`; `max_risk`
+    /// halved until ten trades have closed.
+    Kelly {
+        fraction: f64,
+        #[serde(rename = "maxRisk")]
+        max_risk: f64,
+    },
+}
+
+pub use pewterdesk_core::MarginMode;
+
+/// Where the idea is wrong.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub enum StopRule {
+    /// A fraction from the entry (0.03 = 3%).
+    Fixed {
+        pct: f64,
+    },
+    /// `mult` ATRs of `period` candles from the entry.
+    Atr {
+        mult: f64,
+        period: u32,
+    },
+    /// Beyond the lowest low (highest high, short) of the last `lookback` candles.
+    Swing {
+        lookback: u32,
+    },
+    None,
+}
+
+/// The stop trails the best price by `atr` ATR(14)s, once the trade is
+/// `from_r` in profit.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Trail {
+    pub atr: f64,
+    pub from_r: f64,
+}
+
+/// Part of the position taken off at a profit, in R.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Target {
+    pub at_r: f64,
+    /// The share of the opening size closed there (0.4 = 40%).
+    pub close: f64,
+}
+
+/// After `losses` losing trades in a row, no new trade for `hours`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct CoolOff {
+    pub losses: u32,
+    pub hours: f64,
+}
+
+/// The account's own limits, as the trading rules set them; each only
+/// keeps a trade from opening, but the drawdown, which ends the test.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Guards {
+    /// No new trades until 00:00 UTC once the day has lost this share of
+    /// its opening equity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub daily_loss: Option<f64>,
+    /// The test stops, flat, once equity is this far below its high.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub max_drawdown: Option<f64>,
+    /// The most trades opened in a UTC day.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub trades_per_day: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub cool_off: Option<CoolOff>,
+}
+
+/// When a trade may open: between two times of the UTC day (minutes from
+/// midnight; `from` after `to` wraps past midnight), weekdays only if set.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export_to = TS_FILE)]
+pub struct Hours {
+    pub from: u32,
+    pub to: u32,
+    pub weekdays: bool,
+}
+
+fn match_any() -> Match {
+    Match::Any
+}
+
+/// In when the entry conditions hold, out when the exit ones do, or at the
+/// stop or a target; sized, stopped and guarded as set.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export_to = TS_FILE)]
 pub struct CustomParams {
     pub side: pewterdesk_core::PositionSide,
-    pub entry: Vec<Rule>,
-    pub exit: Vec<Rule>,
-    /// From the entry, as fractions (0.03 = 3%); 0 for none.
+    pub entry: Vec<Cond>,
+    /// All if unset.
+    #[serde(default)]
+    #[ts(as = "Option<Match>", optional)]
+    pub entry_match: Match,
+    pub exit: Vec<Cond>,
+    /// Any if unset.
+    #[serde(default = "match_any")]
+    #[ts(as = "Option<Match>", optional)]
+    pub exit_match: Match,
+    /// From the entry, as fractions (0.03 = 3%); 0 for none. `stop` and
+    /// `targets`, when set, take their place.
     pub stop_loss: f64,
     pub take_profit: f64,
-    /// The position's notional as a fraction of equity (1 = 1x).
+    /// The position's notional as a fraction of equity (1 = 1x); `sizing`,
+    /// when set, takes its place.
     pub size: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub sizing: Option<Sizing>,
+    /// Notional at most this many times equity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub max_leverage: Option<f64>,
+    /// Isolated if unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub margin: Option<MarginMode>,
+    /// Margin in one market at most this share of equity.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub max_share: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub stop: Option<StopRule>,
+    /// The stop moves to the entry once the trade is this many R up.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub breakeven_at: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub trail: Option<Trail>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub targets: Vec<Target>,
+    #[serde(default)]
+    #[ts(as = "Option<Guards>", optional)]
+    pub guards: Guards,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub hours: Option<Hours>,
+}
+
+impl CustomParams {
+    /// Rules on `side`, sized `size` times equity, with nothing else set.
+    pub fn simple(side: pewterdesk_core::PositionSide, entry: Vec<Cond>, exit: Vec<Cond>) -> Self {
+        Self {
+            side,
+            entry,
+            entry_match: Match::All,
+            exit,
+            exit_match: Match::Any,
+            stop_loss: 0.0,
+            take_profit: 0.0,
+            size: 1.0,
+            sizing: None,
+            max_leverage: None,
+            margin: None,
+            max_share: None,
+            stop: None,
+            breakeven_at: None,
+            trail: None,
+            targets: Vec::new(),
+            guards: Guards::default(),
+            hours: None,
+        }
+    }
+
+    /// Whether it reads funding, or open interest.
+    pub fn reads(&self) -> (bool, bool) {
+        let rules = self.entry.iter().chain(&self.exit).flat_map(Cond::rules);
+        let mut funding = false;
+        let mut oi = false;
+        for r in rules {
+            for s in [&r.left, &r.right] {
+                funding |= matches!(s, Source::Funding);
+                oi |= matches!(s, Source::OpenInterest);
+            }
+        }
+        (funding, oi)
+    }
 }
 
 /// A bot's strategy: a template and its settings.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(tag = "template", rename_all = "camelCase")]
 #[ts(export_to = TS_FILE)]
+// Rules are the biggest; a strategy is made once a run, so it isn't boxed.
+#[allow(clippy::large_enum_variant)]
 pub enum StrategyConfig {
     Ema(EmaParams),
     Grid(GridParams),
@@ -363,11 +735,104 @@ impl StrategyConfig {
                 if p.entry.is_empty() {
                     return Err("a custom bot needs an entry rule".into());
                 }
+                if p.entry.iter().chain(&p.exit).any(|c| match c {
+                    Cond::Group(g) => g.conds.is_empty(),
+                    Cond::Rule(_) => false,
+                }) {
+                    return Err("a group needs a condition in it".into());
+                }
                 if !positive(p.size) || p.size > 20.0 {
                     return Err("the size is up to 20x equity".into());
                 }
                 if p.stop_loss < 0.0 || p.take_profit < 0.0 {
                     return Err("stops and targets are fractions above zero".into());
+                }
+                match &p.sizing {
+                    Some(Sizing::Fixed { amount }) if !positive(*amount) => {
+                        return Err("a fixed size needs an amount".into())
+                    }
+                    Some(Sizing::Equity { share }) if !positive(*share) || *share > 20.0 => {
+                        return Err("a share of equity is up to 20x".into())
+                    }
+                    Some(Sizing::Risk { risk }) if !positive(*risk) || *risk > 0.1 => {
+                        return Err("risk is 0 to 10% of equity a trade".into())
+                    }
+                    Some(Sizing::Volatility { target }) if !positive(*target) || *target > 0.2 => {
+                        return Err("a volatility target is 0 to 20% of equity".into())
+                    }
+                    Some(Sizing::Kelly { fraction, max_risk })
+                        if !positive(*fraction)
+                            || *fraction > 1.0
+                            || !positive(*max_risk)
+                            || *max_risk > 0.1 =>
+                    {
+                        return Err("Kelly takes a fraction up to 1, and risk up to 10%".into())
+                    }
+                    _ => {}
+                }
+                let stopped = match &p.stop {
+                    Some(StopRule::None) => false,
+                    Some(_) => true,
+                    None => p.stop_loss > 0.0,
+                };
+                if matches!(p.sizing, Some(Sizing::Risk { .. } | Sizing::Kelly { .. })) && !stopped
+                {
+                    return Err("sizing by risk needs a stop".into());
+                }
+                match &p.stop {
+                    Some(StopRule::Fixed { pct }) if !positive(*pct) || *pct >= 1.0 => {
+                        return Err("a stop is above 0% and under 100%".into())
+                    }
+                    Some(StopRule::Atr { mult, period })
+                        if !positive(*mult) || *period == 0 || *period > 200 =>
+                    {
+                        return Err("an ATR stop needs a multiple and a period".into())
+                    }
+                    Some(StopRule::Swing { lookback }) if *lookback < 2 || *lookback > 500 => {
+                        return Err("a swing stop looks back 2 to 500 candles".into())
+                    }
+                    _ => {}
+                }
+                if p.max_leverage.is_some_and(|l| !positive(l) || l > 100.0)
+                    || p.max_share.is_some_and(|s| !positive(s) || s > 1.0)
+                {
+                    return Err("leverage up to 100x, and a share of equity up to 100%".into());
+                }
+                if (p.breakeven_at.is_some() || p.trail.is_some() || !p.targets.is_empty())
+                    && !stopped
+                {
+                    return Err("moving the stop, trailing and targets in R need a stop".into());
+                }
+                if p.breakeven_at.is_some_and(|r| !positive(r))
+                    || p.trail
+                        .as_ref()
+                        .is_some_and(|t| !positive(t.atr) || t.from_r < 0.0)
+                {
+                    return Err("the stop moves once the trade is some R up".into());
+                }
+                let closed: f64 = p.targets.iter().map(|t| t.close).sum();
+                if p.targets
+                    .iter()
+                    .any(|t| !positive(t.at_r) || !positive(t.close))
+                    || closed > 1.0 + 1e-9
+                {
+                    return Err("targets are above 0R, and close at most the whole".into());
+                }
+                let g = &p.guards;
+                if g.daily_loss.is_some_and(|v| !positive(v) || v >= 1.0)
+                    || g.max_drawdown.is_some_and(|v| !positive(v) || v >= 1.0)
+                    || g.trades_per_day == Some(0)
+                    || g.cool_off
+                        .as_ref()
+                        .is_some_and(|c| c.losses == 0 || !positive(c.hours))
+                {
+                    return Err("each guard rail needs a value above zero".into());
+                }
+                if p.hours
+                    .as_ref()
+                    .is_some_and(|h| h.from >= 1440 || h.to > 1440 || h.from == h.to)
+                {
+                    return Err("trading hours are two different times of the day".into());
                 }
             }
         }

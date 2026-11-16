@@ -82,3 +82,99 @@ pub async fn candles(
     bars.dedup_by_key(|b| b.time);
     Ok(bars)
 }
+
+/// The most pages of funding history read for one backtest.
+const FUNDING_PAGES: usize = 12;
+/// The most hours of open-interest history asked for.
+const OI_HOURS: u32 = 24 * 400;
+
+/// Puts the venue's funding (per 8 hours) and, if `open_interest`, its
+/// open interest on each candle: the last known at the candle's close.
+/// Where the venue has none, the candles go without; nothing fails for it.
+pub async fn context(
+    host: &Arc<dyn Host>,
+    venue: VenueId,
+    market: &str,
+    bars: &mut [Bar],
+    open_interest: bool,
+) {
+    let (Some(first), Some(last)) = (bars.first().map(|b| b.time), bars.last().map(|b| b.time))
+    else {
+        return;
+    };
+    let step = match bars {
+        [a, b, ..] => b.time.saturating_sub(a.time).max(1),
+        _ => 1,
+    };
+    let Ok(adapter) = host.venues().adapter(venue) else {
+        return;
+    };
+    // Funding: from a day before the first candle, a page at a time.
+    let mut rates: Vec<(u64, f64)> = Vec::new();
+    let mut from = first.saturating_sub(86_400_000);
+    for _ in 0..FUNDING_PAGES {
+        let Ok(page) = adapter.funding_history(market, from).await else {
+            break;
+        };
+        let mut newest = from;
+        for r in &page {
+            if let Ok(rate) = r.rate.0.to_string().parse::<f64>() {
+                if r.time >= from && r.time <= last + step {
+                    rates.push((r.time, rate));
+                }
+            }
+            newest = newest.max(r.time);
+        }
+        if page.is_empty() || newest <= from || newest >= last {
+            break;
+        }
+        from = newest + 1;
+    }
+    rates.sort_by_key(|r| r.0);
+    rates.dedup_by_key(|r| r.0);
+    // Each rate as per 8 hours: the venue's own interval is the gap to the one before.
+    let per_8h: Vec<(u64, f64)> = rates
+        .iter()
+        .enumerate()
+        .map(|(i, (t, r))| {
+            let gap = i
+                .checked_sub(1)
+                .and_then(|j| rates.get(j))
+                .map_or(8 * 3_600_000, |(p, _)| t.saturating_sub(*p))
+                .clamp(3_600_000, 8 * 3_600_000);
+            (*t, r * (8.0 * 3_600_000.0) / gap as f64)
+        })
+        .collect();
+    fill(bars, step, &per_8h, |b, v| b.funding = Some(v));
+
+    if open_interest {
+        let hours = ((now_ms().saturating_sub(first)) / 3_600_000 + 1).min(u64::from(OI_HOURS));
+        if let Ok(points) = adapter.open_interest_history(market, hours as u32).await {
+            let mut oi: Vec<(u64, f64)> = points
+                .iter()
+                .filter_map(|p| Some((p.time, p.open_interest.0.to_string().parse::<f64>().ok()?)))
+                .collect();
+            oi.sort_by_key(|p| p.0);
+            fill(bars, step, &oi, |b, v| b.oi = Some(v));
+        }
+    }
+}
+
+/// Sets on each candle the last value known by its close (`step` after it opened).
+fn fill(bars: &mut [Bar], step: u64, values: &[(u64, f64)], set: impl Fn(&mut Bar, f64)) {
+    let mut i = 0;
+    let mut current = None;
+    for b in bars.iter_mut() {
+        let close = b.time + step;
+        while let Some((t, v)) = values.get(i) {
+            if *t > close {
+                break;
+            }
+            current = Some(*v);
+            i += 1;
+        }
+        if let Some(v) = current {
+            set(b, v);
+        }
+    }
+}

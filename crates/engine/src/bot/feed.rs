@@ -71,11 +71,14 @@ pub fn recorded(rec: &Recording, from: u64, to: u64) -> Vec<Bar> {
         .filter_map(|c| {
             let f = |s: &str| s.parse::<f64>().ok();
             Some(Bar {
-                time: c.open_time,
-                open: f(&c.open)?,
-                high: f(&c.high)?,
-                low: f(&c.low)?,
-                close: f(&c.close)?,
+                volume: f(&c.volume).unwrap_or(0.0),
+                ..Bar::ohlc(
+                    c.open_time,
+                    f(&c.open)?,
+                    f(&c.high)?,
+                    f(&c.low)?,
+                    f(&c.close)?,
+                )
             })
         })
         .collect()
