@@ -449,6 +449,9 @@ pub enum Collection {
     /// The Ideas page: a coin watched, the trader's thesis and key levels,
     /// thoughts as it plays out. Kept apart from the journal and trades.
     Ideas,
+    /// The notes panel: the trader's own free-text notes, each an id and its
+    /// text. Names no account or trade.
+    Notes,
 }
 
 impl Collection {
@@ -459,6 +462,7 @@ impl Collection {
             Self::JournalDays => "journal_days",
             Self::TradeNotes => "trade_notes",
             Self::Ideas => "ideas",
+            Self::Notes => "notes",
         }
     }
 
@@ -471,11 +475,12 @@ impl Collection {
             Self::JournalDays => "user_id,account_key,day",
             Self::TradeNotes => "user_id,account_key,trade_key",
             Self::Ideas => "id",
+            Self::Notes => "id",
         }
     }
 
     fn has_account(self) -> bool {
-        !matches!(self, Self::Playbooks | Self::Ideas)
+        !matches!(self, Self::Playbooks | Self::Ideas | Self::Notes)
     }
 
     fn has_day(self) -> bool {
@@ -576,10 +581,10 @@ fn row(collection: Collection, record: &CloudRecord) -> Result<Value, CloudError
     let mut row = serde_json::Map::new();
     match (&record.id, collection) {
         (Some(id), _) if !is_uuid(id) => return Err(CloudError::Invalid("id")),
-        (Some(id), Collection::Playbooks | Collection::Ideas) => {
+        (Some(id), Collection::Playbooks | Collection::Ideas | Collection::Notes) => {
             row.insert("id".into(), Value::String(id.clone()));
         }
-        (None, Collection::Playbooks | Collection::Ideas) => {
+        (None, Collection::Playbooks | Collection::Ideas | Collection::Notes) => {
             return Err(CloudError::Invalid("id"));
         }
         _ => {}
@@ -1304,6 +1309,13 @@ mod tests {
                 account_key: Some("bybit:1".into()),
                 ..Default::default()
             },
+            Collection::Notes
+        ));
+        assert!(bad(
+            CloudQuery {
+                account_key: Some("bybit:1".into()),
+                ..Default::default()
+            },
             Collection::Playbooks
         ));
         assert!(bad(
@@ -1342,6 +1354,11 @@ mod tests {
         let body = row(Collection::Ideas, &record).unwrap();
         let keys: Vec<_> = body.as_object().unwrap().keys().cloned().collect();
         assert_eq!(keys, ["data", "id"]);
+
+        // So is a note.
+        let body = row(Collection::Notes, &record).unwrap();
+        let keys: Vec<_> = body.as_object().unwrap().keys().cloned().collect();
+        assert_eq!(keys, ["data", "id"]);
     }
 
     #[test]
@@ -1357,6 +1374,7 @@ mod tests {
             "a playbook needs an id"
         );
         assert!(row(Collection::Ideas, &base).is_err(), "an idea needs an id");
+        assert!(row(Collection::Notes, &base).is_err(), "a note needs an id");
         let mut not_object = base.clone();
         not_object.data = serde_json::json!([1, 2]);
         assert!(row(Collection::JournalDays, &not_object).is_err());

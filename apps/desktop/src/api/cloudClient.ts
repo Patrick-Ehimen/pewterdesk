@@ -8,7 +8,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
  * session's tokens never reach the page.
  */
 
-export type Collection = "plans" | "playbooks" | "journalDays" | "tradeNotes" | "ideas";
+export type Collection = "plans" | "playbooks" | "journalDays" | "tradeNotes" | "ideas" | "notes";
 
 export interface CloudRecord<T = unknown> {
   id?: string;
