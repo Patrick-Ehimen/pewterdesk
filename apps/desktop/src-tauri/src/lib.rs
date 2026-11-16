@@ -4,6 +4,7 @@ mod about;
 mod ai_assistant;
 mod ai_providers;
 mod algos;
+mod backtest;
 mod bots;
 mod binance_key;
 mod blofin_key;
@@ -307,6 +308,8 @@ pub fn run() {
             bots::bot_resume,
             bots::bot_stop,
             bots::bot_delete,
+            backtest::backtest_run,
+            backtest::backtest_optimize,
             daemon::daemon_state,
             daemon::sync_daemon_alerts,
             daemon::set_always_on,
