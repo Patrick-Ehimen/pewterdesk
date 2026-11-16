@@ -5,6 +5,7 @@ import type { Messages } from "./en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
 import { multiEn } from "./multi/en";
+import { notesEn } from "./notes/en";
 import { rulesEn } from "./rules/en";
 import { tradersEn } from "./traders/en";
 
@@ -20,6 +21,8 @@ export const messages: Messages = {
   ...multiEn,
   // The Ideas page (`ideas/en.ts`).
   ...ideasEn,
+  // The notes panel (`notes/en.ts`).
+  ...notesEn,
   // Notifications' newer kinds and their sounds (`alerts/en.ts`).
   ...alertsEn,
   // The Bots page (`bots/en.ts`).

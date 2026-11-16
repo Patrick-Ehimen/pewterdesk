@@ -1,0 +1,345 @@
+/* The notes panel: a card at the right, under the header, over the workspace's edge. */
+.notes-panel {
+  position: fixed;
+  z-index: 60;
+  top: 72px;
+  right: 14px;
+  width: min(400px, calc(100vw - 28px));
+  height: min(620px, calc(100vh - 130px));
+  display: flex;
+  flex-direction: column;
+  background: var(--pd-surface);
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  color: var(--pd-text);
+  overflow: hidden;
+  min-width: 300px;
+  min-height: 320px;
+  animation: notes-in 160ms ease-out;
+}
+/* Resize handles: the left edge, the bottom edge, and the corner between them. */
+.notes-grip {
+  position: absolute;
+  z-index: 2;
+  touch-action: none;
+}
+.notes-grip.w {
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+.notes-grip.s {
+  left: 12px;
+  right: 12px;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+.notes-grip.sw {
+  left: 0;
+  bottom: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+.notes-grip:hover,
+.notes-grip:active {
+  background: color-mix(in srgb, var(--pd-brass) 35%, transparent);
+}
+.notes-grip.sw:hover,
+.notes-grip.sw:active {
+  background: none;
+  border-left: 2px solid var(--pd-brass);
+  border-bottom: 2px solid var(--pd-brass);
+  border-bottom-left-radius: 12px;
+}
+@keyframes notes-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notes-panel {
+    animation: none;
+  }
+}
+.notes-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.notes-icon {
+  flex: none;
+  color: var(--pd-brass);
+  margin-right: 4px;
+}
+.notes-head h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--pd-pewter);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The editor: a textarea over a copy of its text that colours the marks. */
+.notes-editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.notes-shade,
+.notes-area {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 18px 22px;
+  border: 0;
+  font-family: var(--pd-font-sans, inherit);
+  font-size: 16px;
+  line-height: 1.6;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  tab-size: 2;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.notes-shade {
+  color: var(--pd-text);
+  pointer-events: none;
+  overflow: hidden;
+}
+.notes-shade .title {
+  color: var(--pd-text);
+}
+.notes-shade .mark {
+  color: var(--pd-brass-text);
+}
+.notes-shade .mark.heading,
+.notes-shade .mark.quote {
+  color: var(--pd-pewter-dim);
+}
+.notes-shade .heading .body {
+  color: var(--pd-text);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--pd-brass) 45%, transparent);
+  text-underline-offset: 5px;
+}
+.notes-shade .done .body {
+  color: var(--pd-pewter-dim);
+  text-decoration: line-through;
+}
+.notes-area {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--pd-text);
+  outline: none;
+}
+.notes-area::placeholder {
+  color: var(--pd-pewter-dim);
+}
+.notes-area::selection {
+  background: color-mix(in srgb, var(--pd-brass) 30%, transparent);
+  color: transparent;
+}
+
+/* Every note */
+.notes-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.notes-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 12px 6px;
+  padding: 0 10px;
+  height: 34px;
+  border: 1px solid var(--pd-border);
+  border-radius: 8px;
+  background: var(--pd-bg);
+  color: var(--pd-pewter-dim);
+}
+.notes-search:focus-within {
+  border-color: var(--pd-brass);
+}
+.notes-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+/* The box's border shows the focus; the field inside draws no ring of its own. */
+.notes-search input:focus,
+.notes-search input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.notes-list ul {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 2px 6px 8px;
+  list-style: none;
+}
+.notes-list li {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+}
+.notes-list li:hover,
+.notes-list li.on {
+  background: var(--pd-surface-raised);
+}
+.notes-list li.on {
+  box-shadow: inset 2px 0 0 var(--pd-brass);
+}
+.notes-item {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  padding: 9px 10px;
+  border: 0;
+  background: none;
+  color: var(--pd-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.notes-item b {
+  font-weight: 500;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notes-item small {
+  grid-row: 1;
+  grid-column: 2;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.notes-item span {
+  grid-column: 1 / -1;
+  color: var(--pd-pewter);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notes-del {
+  flex: none;
+  align-self: center;
+  margin-right: 6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pd-pewter-dim);
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  opacity: 0;
+}
+.notes-list li:hover .notes-del,
+.notes-del:focus-visible,
+.notes-del.sure {
+  opacity: 1;
+}
+.notes-del:hover,
+.notes-del.sure {
+  color: var(--pd-warning);
+}
+.notes-empty {
+  margin: 24px 16px;
+  color: var(--pd-pewter-dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Foot: the count, where it's saved, formatting */
+.notes-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 6px 4px 14px;
+  border-top: 1px solid var(--pd-border);
+  color: var(--pd-pewter-dim);
+  font-size: 11.5px;
+}
+.notes-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notes-sync.warn {
+  color: var(--pd-warning);
+}
+.notes-spin {
+  animation: notes-spin 1s linear infinite;
+}
+@keyframes notes-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.notes-tools {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.notes-formats {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 4px;
+  border: 1px solid var(--pd-border);
+  border-radius: 7px;
+  background: var(--pd-bg);
+}
+.notes-formats button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pd-pewter);
+  cursor: pointer;
+}
+.notes-formats button:hover {
+  background: var(--pd-surface-raised);
+  color: var(--pd-text);
+}

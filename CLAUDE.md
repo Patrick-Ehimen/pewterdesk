@@ -597,7 +597,8 @@ discover it on their own. The reasoning behind the rules is in
   signing surface: nothing in it reaches the router, an account or a key. It
   holds what the trader writes (plan, playbooks, journal days, trade notes,
   the Ideas page's ideas - `ideas`, an id and its data, like a playbook -
-  PNG or JPEG screenshots), PewterDesk AI's chats (`ai_chats`: each one's
+  PNG or JPEG screenshots), the notes panel's notes (`notes`, an id and
+  its text and times, like an idea), PewterDesk AI's chats (`ai_chats`: each one's
   summary, messages, cited sources and the provider's transcript - which,
   with account access on, holds what the analyst read of the account; their
   own commands, `cloud_ai_chats` and the rest, the key checked, each part
@@ -1376,6 +1377,25 @@ trading rules where they're on, the plan where not (`lib/dayIntent.ts`; it
 only warns, the router's gate refuses), lockable and unlockable; then the
 live session (the day's closed trades and, today, the open positions) and
 the end-of-day review. Tags take a hue each from their text (`tagHue`).
+
+## Notes
+
+The notes panel (`components/notes/NotesPanel.tsx`, `lib/notes.ts`,
+`hooks/useNotes.ts`), after Raycast Notes: the header's notebook button,
+among the actions always in reach, opens a card at the right, over the
+workspace's edge rather than a page, so the chart stays in sight. Notes are
+the trader's own text, titled by their first line; typing a list continues
+it (numbered, bulleted, checklists, whose boxes tick on a click), and the
+format menu or ⇧⌘1 / 7 / 8 / 9 turns lines into a heading or a list. The
+text is drawn twice, a transparent textarea over a copy that colours the
+marks, so only colour may differ between them. Every change is kept on this
+machine at once (`pd.notes`), signed in or not; signed in to PewterDesk
+Cloud (`notes`, behind the Plan page's sign-in) each is written there a
+moment later, and on sign-in the two copies merge (`mergeNotes`: the later
+change wins, a note deleted here stays deleted). An empty note is never
+written. Its strings are `notepad.*` (`locales/notes/en.ts`; `notes.*` is
+the notification centre's), English in every language until translated.
+It writes notes and nothing else: it places nothing and reads no account.
 
 Settings › Layout shows every preset and saved layout as a card
 (`components/layout/LayoutGallery.tsx`), each with a miniature drawn from

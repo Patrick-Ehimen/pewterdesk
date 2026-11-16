@@ -99,6 +99,7 @@ import { KeepAlive } from "./components/KeepAlive";
 import { LayoutBar } from "./components/layout/LayoutBar";
 import { PanelPalette } from "./components/layout/PanelPalette";
 import { WorkspaceGrid } from "./components/layout/WorkspaceGrid";
+import { NotesPanel } from "./components/notes/NotesPanel";
 import { Onboarding } from "./components/onboarding/Onboarding";
 import { PageLauncher } from "./components/PageLauncher";
 import { AiPage } from "./components/pages/AiPage";
@@ -150,6 +151,7 @@ import { useIdeas } from "./hooks/useIdeas";
 import { useCloudAuth } from "./hooks/useJournal";
 import { useMapAlertWatch } from "./hooks/useMapAlerts";
 import { useOiRecorder } from "./hooks/useMapData";
+import { useNotes } from "./hooks/useNotes";
 import { usePaper } from "./hooks/usePaper";
 import { usePositionDetail } from "./hooks/usePositionDetail";
 import { usePumpWatchAlerts } from "./hooks/usePumpWatchAlerts";
@@ -1112,6 +1114,9 @@ export function App() {
   // filled from one. Read from PewterDesk Cloud once signed in; they place nothing.
   const ideasCloud = useCloudAuth(true);
   const { ideas } = useIdeas(ideasCloud.auth.state === "signedIn", ideasCloud.lost);
+  // The notes panel: kept on this machine, and in PewterDesk Cloud while signed in.
+  const notes_ = useNotes(ideasCloud.auth.state === "signedIn", ideasCloud.lost);
+  const [notesOpen, setNotesOpen] = useState(false);
   useIdeaAlerts(ideas);
   const ideasHere = useMemo(
     () =>
@@ -2102,6 +2107,12 @@ export function App() {
                 }}
               />
             }
+            notesOpen={notesOpen}
+            onToggleNotes={() => {
+              // Sign-in may have happened on another page since start: ask again.
+              if (!notesOpen) ideasCloud.read();
+              setNotesOpen((o) => !o);
+            }}
             notifications={
               <NotificationCentre
                 notes={notes.map((n) => ({
@@ -2139,6 +2150,15 @@ export function App() {
             onOpenAccount={() => goTo("portfolio")}
           />
         </header>
+        {notesOpen && (
+          <NotesPanel
+            notes={notes_.notes}
+            sync={notes_.sync}
+            onSave={notes_.save}
+            onRemove={notes_.remove}
+            onClose={() => setNotesOpen(false)}
+          />
+        )}
 
         {page === "portfolio" ? (
           <PortfolioPage

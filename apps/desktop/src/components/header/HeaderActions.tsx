@@ -13,6 +13,7 @@ import {
   LuGlobe,
   LuKeyRound,
   LuLayoutGrid,
+  LuNotebookPen,
   LuPalette,
   LuPictureInPicture2,
   LuSearch,
@@ -49,6 +50,8 @@ interface HeaderActionsProps {
   alerts: ReactNode;
   /** The notification centre's inbox and its panel. */
   notifications: ReactNode;
+  notesOpen: boolean;
+  onToggleNotes: () => void;
   settingsOpen: boolean;
   onToggleSettings: () => void;
   theme: Theme;
@@ -68,8 +71,9 @@ interface HeaderActionsProps {
 }
 
 /**
- * The header's right end. Six actions are always there (the watchlist star,
- * search, quick trade, the floating window, alerts and notifications); the
+ * The header's right end. Seven actions are always there (the watchlist
+ * star, search, quick trade, the floating window, notes, alerts and
+ * notifications); the
  * rest (layout, sound, language, theme, settings) roll out to their left on
  * hover. Then the wallet.
  */
@@ -86,6 +90,8 @@ export function HeaderActions({
   onSound,
   alerts,
   notifications,
+  notesOpen,
+  onToggleNotes,
   settingsOpen,
   onToggleSettings,
   theme,
@@ -164,7 +170,7 @@ export function HeaderActions({
       >
         <LuChevronsLeft size={ICON_SIZE} aria-hidden />
       </IconButton>
-      {/* The six always in reach. */}
+      {/* The seven always in reach. */}
       {marketSymbol && (
         <StarButton
           starred={starred}
@@ -185,6 +191,9 @@ export function HeaderActions({
       </IconButton>
       <IconButton label={t("float.open")} onClick={() => void appClient.toggleFloat()}>
         <LuPictureInPicture2 size={ICON_SIZE} aria-hidden />
+      </IconButton>
+      <IconButton label={t("notepad.open")} pressed={notesOpen} onClick={onToggleNotes}>
+        <LuNotebookPen size={ICON_SIZE} aria-hidden />
       </IconButton>
       {alerts}
       {notifications}
