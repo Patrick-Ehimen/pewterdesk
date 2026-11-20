@@ -46,12 +46,23 @@ import {
   LuColumns3,
   LuPlus,
   LuSearch,
+  LuSparkle,
   LuX,
 } from "react-icons/lu";
+import { useCoinSectors } from "../../hooks/useCoinSectors";
 import { useMarketHistories } from "../../hooks/useMapData";
 import { useMarketCaps, useMarketSummaries, useMarkets } from "../../hooks/useVenueFeeds";
 import { useWatchlist, watchKey } from "../../hooks/useWatchlist";
 import { dayChanges } from "../../lib/marketMovers";
+import {
+  availableChips,
+  chipMarkets,
+  isNew,
+  listedDaysAgo,
+  quoteTabs,
+  type ScreenerChip,
+  sectorCoins,
+} from "../../lib/screenerGroups";
 import { keepCurrent, keepSaved, loadCurrent, loadSaved, MAX_SAVED } from "../../lib/screens";
 import { matchesSearch } from "../../lib/tokenDetails";
 import { useLists } from "../../lib/watchlists";
@@ -191,7 +202,43 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
       })),
     [markets, summaryById, histories, now, caps],
   );
-  const rows = useMemo(() => runScreen(screen, inputs), [screen, inputs]);
+  const screened = useMemo(() => runScreen(screen, inputs), [screen, inputs]);
+
+  // The quick groups, after Bybit's: a settlement asset's tab, and a chip
+  // (the busiest, the newly listed, a sector...). Both only narrow the screen.
+  const [quote, setQuote] = useState<string>();
+  const [chip, setChip] = useState<ScreenerChip>();
+  // Another venue's tabs and chips differ: it starts on All, no chip.
+  const [groupsVenue, setGroupsVenue] = useState(venue);
+  if (groupsVenue !== venue) {
+    setGroupsVenue(venue);
+    setQuote(undefined);
+    setChip(undefined);
+  }
+  const sectors = useCoinSectors(true);
+  const sectorGroups = sectors.groups;
+  const quotes = useMemo(() => quoteTabs(markets ?? []), [markets]);
+  const inTab = useMemo(
+    () => (markets ?? []).filter((m) => quote === undefined || m.quote === quote),
+    [markets, quote],
+  );
+  const groupContext = useMemo(
+    () => ({ now, summaries: summaryById, sectors: sectorCoins(sectorGroups) }),
+    [now, summaryById, sectorGroups],
+  );
+  const chips = useMemo(() => availableChips(inTab, groupContext), [inTab, groupContext]);
+  const inGroup = useMemo(
+    () => (chip ? chipMarkets(chip, inTab, groupContext) : new Set(inTab.map((m) => m.id))),
+    [chip, inTab, groupContext],
+  );
+  const rows = useMemo(() => {
+    const kept = screened.filter((row) => inGroup.has(row.market.id));
+    // Newly listed reads newest first, whatever the screen sorts by.
+    return chip === "new"
+      ? kept.sort((a, b) => (b.market.listedAt ?? 0) - (a.market.listedAt ?? 0))
+      : kept;
+  }, [screened, inGroup, chip]);
+
   // Ranked in the screen's order, then searched: a market keeps its number.
   const [query, setQuery] = useState("");
   const found = useMemo(
@@ -317,10 +364,47 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
 
       <div className="screener-cards">
         <MarketSentiment />
-        <TrendingSectors markets={markets ?? []} onOpen={setDetails} />
+        <TrendingSectors markets={markets ?? []} sectors={sectors} onOpen={setDetails} />
         <TopMovers changes={changes} loading={waiting} onOpen={setDetails} />
         <TrendDistribution changes={changes} loading={waiting} />
       </div>
+
+      {/* Bybit's contract tabs and category chips. */}
+      <nav className="screener-groups" aria-label={t("screens.groups")}>
+        {quotes.length > 1 && (
+          <div className="screener-quotes" role="tablist">
+            {[undefined, ...quotes].map((q) => (
+              <button
+                key={q ?? "all"}
+                type="button"
+                role="tab"
+                aria-selected={quote === q}
+                onClick={() => {
+                  setQuote(q);
+                  setChip(undefined);
+                }}
+              >
+                {q === undefined ? t("screens.group.all") : t("screens.group.quote", { quote: q })}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="screener-group-chips">
+          {chips.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="screener-group-chip"
+              aria-pressed={chip === c}
+              title={t(`screens.groupHint.${c}` as MessageKey)}
+              onClick={() => setChip(chip === c ? undefined : c)}
+            >
+              {t(`screens.group.${c}` as MessageKey)}
+              {c === "new" && <LuSparkle size={10} className="screener-new-spark" aria-hidden />}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <div className="screener-bar">
         <ul className="screener-filters" aria-label={t("screens.filters")}>
@@ -460,6 +544,16 @@ export function ScreenerPage({ venue: onScreen, venues, onTrade }: ScreenerPageP
                         >
                           <TokenIcon market={market} />
                           <span>{market.symbol}</span>
+                          {isNew(market, now) && (
+                            <span
+                              className="screener-new"
+                              title={t("screens.listedAgo", {
+                                days: listedDaysAgo(market, now) ?? 0,
+                              })}
+                            >
+                              {t("screens.group.new")}
+                            </span>
+                          )}
                           {market.maxLeverage > 0 && (
                             <span
                               className="screener-lev"

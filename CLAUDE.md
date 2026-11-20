@@ -1045,7 +1045,16 @@ best coin the venue lists, which opens its details (`useCoinSectors`, no new
 source); then Top movers (gainers and losers) and Price trend (markets up,
 down and flat), from the summaries, in the screen's scope
 (`MarketMovers.tsx`, `lib/marketMovers.ts`). The four cards sit in one row,
-two by two below 1200px. Rows are numbered in the
+two by two below 1200px. Below them, after Bybit's contract list, tabs by
+settlement asset (All, USDT, USDC - only those the venue lists) and chips
+that narrow the screen (`lib/screenerGroups.ts`): Trending (the 30 busiest
+by 24h volume), New (listed in the last 30 days, newest first, from the
+venue's listing date - Bybit, Binance and BloFin give one; Hyperliquid and
+Aster don't, so they have no New chip), the venue's Innovation Zone,
+CoinGecko's sectors (from `useCoinSectors`, the Trending sectors card's
+own read, coins matched through `coinOf`) and the TradFi categories; a
+chip shows only with a market in it, and a market listed in those 30 days
+carries a NEW tag. Rows are numbered in the
 screen's order (a search keeps a market's number), searched by symbol, and
 show the market's max leverage; a row opens the token's details
 (`components/screener/TokenDetails.tsx`, `lib/tokenDetails.ts`, after

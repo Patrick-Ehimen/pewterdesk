@@ -3866,6 +3866,89 @@ button.coin-chip:hover {
   align-items: flex-start;
   justify-content: space-between;
 }
+/* Bybit's contract tabs and category chips, above the filters. */
+.screener-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.screener-quotes {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid var(--pd-border);
+}
+.screener-quotes button {
+  position: relative;
+  padding: 6px 0 10px;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.screener-quotes button:hover {
+  color: var(--pd-text);
+}
+.screener-quotes button[aria-selected="true"] {
+  color: var(--pd-text);
+  font-weight: 600;
+}
+.screener-quotes button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--pd-brass);
+}
+.screener-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.screener-group-chip {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 5px 12px;
+  color: var(--pd-pewter);
+  font: inherit;
+  font-size: 13px;
+  background: var(--pd-surface-raised);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.screener-group-chip:hover {
+  color: var(--pd-text);
+}
+.screener-group-chip[aria-pressed="true"] {
+  color: var(--pd-text);
+  border-color: var(--pd-brass);
+  background: color-mix(in srgb, var(--pd-brass) 12%, var(--pd-surface-raised));
+}
+.screener-group-chip:focus-visible,
+.screener-quotes button:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.screener-new-spark {
+  color: var(--pd-brass);
+}
+/* A market listed within the last 30 days, beside its symbol. */
+.screener-new {
+  padding: 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  color: var(--pd-brass-text);
+  background: color-mix(in srgb, var(--pd-brass) 14%, transparent);
+  border-radius: 3px;
+}
 .screener-filters {
   display: flex;
   flex: 1;

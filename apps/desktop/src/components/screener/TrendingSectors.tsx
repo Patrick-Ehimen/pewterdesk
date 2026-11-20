@@ -1,7 +1,7 @@
 import type { Market } from "@pewterdesk/core";
 import { formatSigned, t, trendClass } from "@pewterdesk/ui";
 import { useMemo } from "react";
-import { useCoinSectors } from "../../hooks/useCoinSectors";
+import type { useCoinSectors } from "../../hooks/useCoinSectors";
 import { marketForCoin } from "../../lib/marketMovers";
 import { trendingSectors } from "../../lib/sectorTrends";
 import { RowsSkeleton } from "./CardSkeletons";
@@ -18,13 +18,16 @@ const pct = (v: number) => `${formatSigned(v * 100, 2)}%`;
 
 export function TrendingSectors({
   markets,
+  sectors,
   onOpen,
 }: {
+  /** CoinGecko's sectors, read once by the page (its chips use them too). */
+  sectors: ReturnType<typeof useCoinSectors>;
   /** The venue's markets, to find a leader's own. */
   markets: readonly Market[];
   onOpen: (market: string) => void;
 }) {
-  const { groups, done, total, error } = useCoinSectors(true);
+  const { groups, done, total, error } = sectors;
   const trends = useMemo(
     () => trendingSectors(groups, SHOWN, (symbol) => marketForCoin(markets, symbol) !== undefined),
     [groups, markets],
