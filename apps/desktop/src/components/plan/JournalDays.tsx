@@ -494,7 +494,10 @@ export function DayList({
   );
 }
 
-/** A month of days, each tinted by its bias, a dot where it was journaled. */
+/**
+ * A month of days, each green or red by its P&L (a day with trades that came
+ * to nothing stays plain), its bias as a pill, a dot where it was journaled.
+ */
 export function DayMonth({
   shown,
   days,
@@ -518,14 +521,27 @@ export function DayMonth({
     setMonth(d.toISOString().slice(0, 7));
   };
   const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+  // The month at a glance, beside its name: net P&L and green / red days.
+  const traded = shown.filter((s) => s.day.startsWith(month) && s.group.trades > 0);
+  const net = traded.reduce((sum, s) => sum + s.group.pnl, 0);
+  const green = traded.filter((s) => s.group.pnl > 0).length;
+  const red = traded.filter((s) => s.group.pnl < 0).length;
   return (
     <section className="jr-bigcal">
       <header className="jr-bigcal-head">
         <h3>{dateFormat(MONTH).format(Date.parse(first))}</h3>
+        {traded.length > 0 && (
+          <span className="jr-bigcal-sum pd-num">
+            <Money value={net} />
+            <span className="jr-muted">
+              <span className="pd-up">{green}</span> / <span className="pd-down">{red}</span>
+            </span>
+          </span>
+        )}
         <span className="jr-grow" />
         <span className="jr-bigcal-legend">
-          <span data-kind="long">{t("plan.bias.long")}</span>
-          <span data-kind="short">{t("plan.bias.short")}</span>
+          <span data-kind="up">{t("plan.j.greenDay")}</span>
+          <span data-kind="down">{t("plan.j.redDay")}</span>
           <span data-kind="journaled">{t("plan.journaled")}</span>
         </span>
         <button
@@ -556,12 +572,20 @@ export function DayMonth({
           const s = byDay.get(d);
           const entry = days.get(d);
           const journaled = entry?.review.savedAt !== undefined;
+          const tone =
+            s && s.group.trades > 0
+              ? s.group.pnl > 0
+                ? "up"
+                : s.group.pnl < 0
+                  ? "down"
+                  : undefined
+              : undefined;
           return (
             <button
               key={d}
               type="button"
               className="jr-bigcal-day"
-              data-bias={s ? entry?.intent.bias : undefined}
+              data-tone={tone}
               data-today={d === today || undefined}
               data-has={s ? true : undefined}
               disabled={d > today}
@@ -569,7 +593,7 @@ export function DayMonth({
               onClick={() => actions.open(d)}
             >
               <span className="jr-bigcal-n">
-                {Number(d.slice(8))}
+                <span className="jr-bigcal-date">{Number(d.slice(8))}</span>
                 {journaled && <span className="jr-bigcal-dot" title={t("plan.journaled")} />}
                 {entry?.pinned && <LuStar size={11} aria-hidden className="jr-bigcal-pin" />}
               </span>

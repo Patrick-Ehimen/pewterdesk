@@ -444,6 +444,8 @@ export const journalEn = {
   "plan.j.prevMonth": "Previous month",
   "plan.j.nextMonth": "Next month",
   "plan.j.greenRed": "Green / red days",
+  "plan.j.greenDay": "Green day",
+  "plan.j.redDay": "Red day",
   "plan.j.finishedHow": "How you finished",
   "plan.j.view": "View",
   "plan.j.days": "Days",

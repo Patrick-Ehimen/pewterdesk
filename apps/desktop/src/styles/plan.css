@@ -5533,120 +5533,151 @@ span[data-tone="warn"]:not(.jr-chip):not(.jr-pill) {
 .jr-bigcal {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  width: 100%;
+  max-width: 1080px;
+  margin-inline: auto;
 }
 .jr-bigcal-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px 12px;
 }
 .jr-bigcal-head h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
+}
+.jr-bigcal-sum {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  font-size: 12.5px;
 }
 .jr-bigcal-legend {
   display: inline-flex;
-  gap: 16px;
-  margin-right: 8px;
+  gap: 14px;
+  margin-right: 6px;
   color: var(--pd-pewter);
-  font-size: 13.5px;
+  font-size: 12px;
 }
 .jr-bigcal-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
 }
 .jr-bigcal-legend span::before {
   content: "";
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 3px;
 }
-.jr-bigcal-legend [data-kind="long"]::before {
-  background: color-mix(in srgb, var(--pd-buy) 45%, var(--pd-surface));
+.jr-bigcal-legend [data-kind="up"]::before {
+  background: color-mix(in srgb, var(--pd-buy) 22%, transparent);
+  box-shadow: inset 0 0 0 1px var(--pd-buy);
 }
-.jr-bigcal-legend [data-kind="short"]::before {
-  background: color-mix(in srgb, var(--pd-sell) 45%, var(--pd-surface));
+.jr-bigcal-legend [data-kind="down"]::before {
+  background: color-mix(in srgb, var(--pd-sell) 22%, transparent);
+  box-shadow: inset 0 0 0 1px var(--pd-sell);
 }
 .jr-bigcal-legend [data-kind="journaled"]::before {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--pd-info);
 }
 .jr-bigcal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 10px;
+  gap: 6px;
 }
 .jr-bigcal-wd {
-  padding-bottom: 6px;
-  color: var(--pd-pewter);
-  font-size: 12.5px;
+  padding: 0 0 2px 10px;
+  color: var(--pd-pewter-dim);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-align: center;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* A day: plain until it trades, then green or red by its P&L - a soft wash
+   and a border in the same colour. */
 .jr-bigcal-day {
-  --bias: var(--pd-border-strong);
+  --tone: var(--pd-border);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
-  min-height: 116px;
-  padding: 12px 14px;
+  gap: 4px;
+  min-height: 78px;
+  padding: 8px 10px;
   background: var(--pd-surface);
-  border: 1px solid var(--pd-border);
-  border-radius: calc(var(--pd-radius) + 6px);
+  border: 1px solid var(--tone);
+  border-radius: 10px;
   color: var(--pd-text);
   font: inherit;
   text-align: left;
   cursor: pointer;
   transition:
     border-color 0.15s,
+    background-color 0.15s,
     transform 0.15s;
 }
-.jr-bigcal-day:disabled {
-  cursor: default;
-  opacity: 0.45;
-}
 .jr-bigcal-day:hover:not(:disabled) {
-  border-color: var(--pd-border-strong);
   transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--tone) 60%, var(--pd-text));
 }
 .jr-bigcal-day:focus-visible {
   outline: none;
   box-shadow: var(--pd-focus);
 }
-.jr-bigcal-day[data-bias="long"] {
-  --bias: var(--pd-buy);
+/* Days still to come: an outline, nothing to open. */
+.jr-bigcal-day:disabled {
+  background: none;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--pd-border) 70%, transparent);
+  cursor: default;
 }
-.jr-bigcal-day[data-bias="short"] {
-  --bias: var(--pd-sell);
+.jr-bigcal-day:disabled .jr-bigcal-n {
+  color: var(--pd-pewter-dim);
 }
-.jr-bigcal-day[data-bias] {
-  background: color-mix(in srgb, var(--bias) 12%, var(--pd-surface));
-  border-color: color-mix(in srgb, var(--bias) 35%, transparent);
+.jr-bigcal-day[data-tone="up"] {
+  --tone: color-mix(in srgb, var(--pd-buy) 70%, transparent);
+  background: color-mix(in srgb, var(--pd-buy) 13%, var(--pd-surface));
 }
-.jr-bigcal-day[data-today] {
-  border-color: var(--pd-brass);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pd-brass) 15%, transparent);
+.jr-bigcal-day[data-tone="down"] {
+  --tone: color-mix(in srgb, var(--pd-sell) 70%, transparent);
+  background: color-mix(in srgb, var(--pd-sell) 13%, var(--pd-surface));
 }
 .jr-bigcal-n {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--pd-pewter);
-  font: 500 15px var(--pd-font-mono);
+  font: 500 12.5px var(--pd-font-mono);
 }
-.jr-bigcal-day[data-has] .jr-bigcal-n {
+.jr-bigcal-day[data-tone] .jr-bigcal-n {
   color: var(--pd-text);
 }
+.jr-bigcal-date {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin: -2px 0 0 -4px;
+  border-radius: 999px;
+}
+/* Today: its date in a brass ring, so the day keeps its green or red. */
+.jr-bigcal-day[data-today] .jr-bigcal-date {
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+  font-weight: 600;
+}
 .jr-bigcal-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--pd-info);
 }
@@ -5658,18 +5689,19 @@ span[data-tone="warn"]:not(.jr-chip):not(.jr-pill) {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 3px;
   margin-top: auto;
-  font-size: 13px;
+  font: 600 13px var(--pd-font-mono);
 }
 .jr-bigcal-body .jr-biaspill {
-  height: 22px;
-  padding: 0 9px;
-  font-size: 11px;
+  height: 18px;
+  padding: 0 7px;
+  font-size: 10px;
 }
 .jr-bigcal-meta {
-  color: var(--pd-brass-text);
-  font-size: 11.5px;
+  color: var(--pd-pewter);
+  font-size: 11px;
+  font-weight: 400;
 }
 .jr-bigcal-meta[data-tone="fair"],
 .jr-bigcal-meta[data-tone="poor"] {
@@ -5998,26 +6030,6 @@ span[data-tone="warn"]:not(.jr-chip):not(.jr-pill) {
 }
 .jr-tl-text {
   font-size: 13px;
-}
-
-.jr-bigcal-day {
-  min-height: 96px;
-  padding: 10px 12px;
-}
-.jr-bigcal-n {
-  font-size: 13px;
-}
-.jr-bigcal-wd,
-.jr-bigcal-legend {
-  font-size: 11.5px;
-}
-.jr-bigcal-head h3 {
-  font-size: 16px;
-}
-.jr-bigcal-body .jr-biaspill {
-  height: 20px;
-  padding: 0 8px;
-  font-size: 10.5px;
 }
 
 /* ---------- Today's rail, in colour ----------
