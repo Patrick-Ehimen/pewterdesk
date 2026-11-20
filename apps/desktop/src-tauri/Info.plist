@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Dictation (src/dictation.rs): asked the first time the hotkey is held. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PewterDesk listens only while you hold the dictation key, to type what you say where the cursor is.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>PewterDesk turns what you say into text on this Mac, while you hold the dictation key. The audio never leaves the machine.</string>
+</dict>
+</plist>

@@ -91,6 +91,7 @@ export const HOTKEYS: Record<HotkeyGroup, readonly HotkeyRow[]> = {
     { id: "settings", keys: [["mod", ","]] },
     { id: "help", keys: [["?"]] },
     { id: "float", keys: [["Ctrl", "Alt", "Space"]] },
+    { id: "dictate", keys: [["RightAlt"]] },
   ],
   pages: [
     { id: "newTab", keys: [["mod", "T"]] },
@@ -146,6 +147,8 @@ export const pageRows = (): { page: Page; keys: readonly KeyName[] }[] =>
 /** A key's label on this machine. */
 export function keyLabel(key: KeyName, mac: boolean): string {
   if (key === "mod") return mac ? "⌘" : "Ctrl";
+  // Held, not pressed: the right-hand one only.
+  if (key === "RightAlt") return mac ? "Right ⌥ (hold)" : "Right Alt (hold)";
   if (key === "Alt") return mac ? "⌥" : "Alt";
   if (key === "Ctrl") return mac ? "⌃" : "Ctrl";
   if (key === "Shift") return mac ? "⇧" : "Shift";

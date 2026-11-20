@@ -88,6 +88,7 @@ import { BacktestPage } from "./components/backtest/BacktestPage";
 import { CommandMenu } from "./components/CommandMenu";
 import { ConnectionBanner } from "./components/ConnectionBanner";
 import { ago } from "./components/ConnectionPanel";
+import { DictationPill } from "./components/DictationPill";
 import { FeedView } from "./components/FeedView";
 import { AppLogo } from "./components/header/AppLogo";
 import { HeaderActions } from "./components/header/HeaderActions";
@@ -145,6 +146,7 @@ import { isLightTheme, THEMES, useAppearance } from "./hooks/useAppearance";
 import { useBotNotices } from "./hooks/useBotNotices";
 import { useClosedLeverage } from "./hooks/useClosedLeverage";
 import { useConnection } from "./hooks/useConnection";
+import { useDictation } from "./hooks/useDictation";
 import { useFeedAge } from "./hooks/useFeedAge";
 import { useIdeaAlerts } from "./hooks/useIdeaAlerts";
 import { useIdeas } from "./hooks/useIdeas";
@@ -1123,6 +1125,8 @@ export function App() {
   // The notes panel: kept on this machine, and in PewterDesk Cloud while signed in.
   const notes_ = useNotes(ideasCloud.auth.state === "signedIn", ideasCloud.lost);
   const [notesOpen, setNotesOpen] = useState(false);
+  // Hold the right Option key, speak, let go: typed where the cursor is.
+  const dictation = useDictation();
   useIdeaAlerts(ideas);
   const ideasHere = useMemo(
     () =>
@@ -2159,6 +2163,7 @@ export function App() {
             onOpenAccount={() => goTo("portfolio")}
           />
         </header>
+        <DictationPill dictation={dictation} />
         {notesOpen && (
           <NotesPanel
             notes={notes_.notes}

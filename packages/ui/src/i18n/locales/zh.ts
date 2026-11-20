@@ -1,6 +1,7 @@
 import { alertsEn } from "./alerts/en";
 import { backtestEn } from "./backtest/en";
 import { botsEn } from "./bots/en";
+import { dictationEn } from "./dictation/en";
 import type { Messages } from "./en";
 import { ideasEn } from "./ideas/en";
 import { journalEn } from "./journal/en";
@@ -23,6 +24,8 @@ export const messages: Messages = {
   ...ideasEn,
   // The notes panel (`notes/en.ts`).
   ...notesEn,
+  // Dictation (`dictation/en.ts`).
+  ...dictationEn,
   // Notifications' newer kinds and their sounds (`alerts/en.ts`).
   ...alertsEn,
   // The Bots page (`bots/en.ts`).

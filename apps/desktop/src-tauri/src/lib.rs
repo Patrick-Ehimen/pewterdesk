@@ -15,6 +15,7 @@ mod cloud;
 mod coin_info;
 mod coin_overview;
 mod daemon;
+mod dictation;
 mod econ_calendar;
 mod exchange_notices;
 mod fear_greed;
@@ -310,6 +311,9 @@ pub fn run() {
             bots::bot_delete,
             backtest::backtest_run,
             backtest::backtest_optimize,
+            dictation::dictation_start,
+            dictation::dictation_stop,
+            dictation::dictation_cancel,
             daemon::daemon_state,
             daemon::sync_daemon_alerts,
             daemon::set_always_on,

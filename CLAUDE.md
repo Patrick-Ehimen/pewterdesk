@@ -641,6 +641,19 @@ discover it on their own. The reasoning behind the rules is in
   fixed set of sites and passes a caption, and Rust builds the URL itself,
   the caption percent-encoded into its one query value - never a URL from
   the UI. The image goes by the clipboard, not through any site link.
+- `apps/desktop/src-tauri/src/dictation.rs` - dictation, and the app's only
+  use of the microphone (`Info.plist` says why, for macOS's prompts). macOS
+  only: `AVAudioEngine` feeds Apple's Speech framework with
+  `requiresOnDeviceRecognition`, so the audio never leaves the machine; a
+  Mac or language that can't recognize on the device is refused
+  (`NotOnDevice`), never sent to Apple's servers. Nothing recorded is kept or
+  written anywhere; the microphone is open only between `dictation_start`
+  and `dictation_stop` / `dictation_cancel`, which the page calls while the
+  key is held. What it heard reaches the page as bounded text in `dictation`
+  events, and the page types it only into the text box that had the cursor
+  (`hooks/useDictation.ts`): never a command, an order or another app.
+  Sending audio anywhere, keeping it, or letting dictated text do more than
+  type is a security-relevant change.
 - `apps/desktop/src-tauri/src/float.rs` and `apps/desktop/src/float/` - the
   floating window: a second window (the same frontend at `#float`) that stays
   over other apps and can reach the trading commands above. It adds none: its
@@ -1386,6 +1399,19 @@ trading rules where they're on, the plan where not (`lib/dayIntent.ts`; it
 only warns, the router's gate refuses), lockable and unlockable; then the
 live session (the day's closed trades and, today, the open positions) and
 the end-of-day review. Tags take a hue each from their text (`tagHue`).
+
+## Dictation
+
+Hold the right Option key a moment (`HOLD_MS`, so a tap or an Option
+shortcut does nothing), speak, and let go: the words are typed where the
+cursor was in this window, through the browser's own editing so Undo takes
+them back (`hooks/useDictation.ts`, `lib/dictation.ts`: a space where words
+would run together, the first letter lowered mid-sentence). Recognized on
+this Mac by `dictation.rs`. Any other key while it's held, Esc, or leaving
+the window throws it away. A pill at the foot of the window
+(`components/DictationPill.tsx`) shows what it hears as it hears it, or
+why it can't (no text box, permission off, not on the device). Settings ›
+Hotkeys lists it. The main window only; macOS only.
 
 ## Notes
 

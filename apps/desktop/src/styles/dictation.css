@@ -1,0 +1,80 @@
+/* Dictation's pill: at the foot of the window, over everything, while listening. */
+.dictation-pill {
+  position: fixed;
+  z-index: 90;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(640px, calc(100vw - 40px));
+  padding: 8px 10px 8px 8px;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  color: var(--pd-text);
+  font-size: 13px;
+  animation: dictation-in 140ms ease-out;
+}
+@keyframes dictation-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+.dictation-pill.note {
+  padding: 8px 14px;
+  color: var(--pd-pewter);
+}
+.dictation-pill.note.warn {
+  color: var(--pd-warning);
+}
+.dictation-mic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+.dictation-pill.listening .dictation-mic {
+  animation: dictation-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dictation-pulse {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--pd-brass) 25%, transparent);
+  }
+}
+.dictation-pill.finishing .dictation-mic {
+  background: var(--pd-border-strong);
+  color: var(--pd-text);
+}
+.dictation-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dictation-text em {
+  font-style: normal;
+  color: var(--pd-pewter);
+}
+.dictation-pill kbd {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  color: var(--pd-pewter-dim);
+  font: inherit;
+  font-size: 11px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dictation-pill,
+  .dictation-pill.listening .dictation-mic {
+    animation: none;
+  }
+}

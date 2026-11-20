@@ -13,6 +13,7 @@ import "./styles/settings.css";
 import "./styles/multiVenue.css";
 import "./styles/ideas.css";
 import "./styles/notes.css";
+import "./styles/dictation.css";
 import "./styles/bots.css";
 import "./styles/backtest.css";
 import "./styles/tray.css";
