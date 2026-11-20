@@ -1418,6 +1418,13 @@ export const messages: Messages = {
 
   "stats.marketInfo": "{venue} · 최대 {leverage}x · 호가 단위 {tick} · 최소 수량 {min}",
 
+  "chart.haltedTitle": "거래 중단",
+  "chart.haltedBody":
+    "{venue}에서 {symbol}의 거래를 중단했습니다(계약 조정 등). 거래소가 다시 열면 자동으로 재개됩니다.",
+  "chart.haltedAnnouncements": "공지 보기",
+  "stats.halted": "거래 중단",
+  "stats.haltedHint":
+    "{venue}에서 이 마켓의 거래를 일시 중단했습니다(예: 계약 조정). 재개될 때까지 가격이 멈춰 있습니다.",
   "stats.markHint": "마크 가격: 증거금, 손익, 청산의 기준입니다.",
 
   "stats.mid": "중간가",
@@ -1703,6 +1710,7 @@ export const messages: Messages = {
     "이 계정의 주문은 {venue}의 실제 자금을 사용합니다. 켜면 주문 티켓, 빠른 거래, 플로팅 창, 명령 팔레트에서 주문을 넣고 취소할 수 있습니다. 크기 제한은 없습니다.",
   "live.checkingWallet": "{venue}에서 API 지갑 확인 중…",
   "live.cancel": "꺼 둔 채로 두기",
+  "ticket.halted": "이 마켓의 거래가 중단되었습니다. 거래소가 재개할 때까지 주문할 수 없습니다.",
   "ticket.liveOff": "이 계정의 실거래가 꺼져 있습니다. 계정 상세에서 켜세요.",
   "ticket.needSize": "수량을 입력하세요",
   "ticket.needPrice": "가격을 입력하세요",

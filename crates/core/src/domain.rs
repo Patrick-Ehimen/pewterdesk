@@ -162,6 +162,11 @@ pub struct MarketStats {
     /// Milliseconds since the Unix epoch.
     #[ts(type = "number")]
     pub time: u64,
+    /// The venue has stopped trading the market for now (Bybit's contract
+    /// adjustments, a stock perp's split): no book, no fills, the numbers
+    /// above frozen. Only set where the venue's data shows it.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub halted: bool,
 }
 
 /// Candle widths the terminal offers: the ones every launch venue serves,

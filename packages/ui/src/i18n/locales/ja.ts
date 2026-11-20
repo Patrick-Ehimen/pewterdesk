@@ -1423,6 +1423,13 @@ export const messages: Messages = {
 
   "stats.marketInfo": "{venue} · 最大 {leverage}x · 呼値 {tick} · 最小数量 {min}",
 
+  "chart.haltedTitle": "取引停止中",
+  "chart.haltedBody":
+    "{venue}が{symbol}の取引を停止しています（契約調整など）。取引所が再開すると自動的に戻ります。",
+  "chart.haltedAnnouncements": "お知らせを見る",
+  "stats.halted": "取引停止中",
+  "stats.haltedHint":
+    "{venue}がこの市場の取引を一時停止しています（契約調整など）。再開まで価格は止まっています。",
   "stats.markHint": "マーク価格：証拠金・損益・清算の基準です。",
 
   "stats.mid": "仲値",
@@ -1715,6 +1722,7 @@ export const messages: Messages = {
     "このアカウントの注文は{venue}の実資金を使います。オンにすると、注文チケット、クイックトレード、フローティングウィンドウ、コマンドパレットから注文の発注と取消ができます。サイズの上限はありません。",
   "live.checkingWallet": "{venue}でAPIウォレットを確認中…",
   "live.cancel": "オフのままにする",
+  "ticket.halted": "この市場の取引は停止中です。取引所が再開するまで注文できません。",
   "ticket.liveOff": "このアカウントのライブ取引はオフです。アカウントの詳細でオンにしてください。",
   "ticket.needSize": "数量を入力してください",
   "ticket.needPrice": "価格を入力してください",

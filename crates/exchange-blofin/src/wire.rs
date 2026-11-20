@@ -385,6 +385,7 @@ pub fn market_stats(
         funding_interval_secs: funding.map_or(DEFAULT_FUNDING_SECS, Funding::interval_secs),
         next_funding_time: funding.map_or(0, |f| f.funding_time),
         time,
+        halted: false,
     }
 }
 

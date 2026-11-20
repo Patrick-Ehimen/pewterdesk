@@ -1451,6 +1451,13 @@ export const messages: Messages = {
 
   "stats.marketInfo": "{venue} · hasta {leverage}x · tick {tick} · tamaño mín. {min}",
 
+  "chart.haltedTitle": "Negociación suspendida",
+  "chart.haltedBody":
+    "{venue} ha suspendido la negociación de {symbol}, por un ajuste del contrato o algo similar. Se reanuda sola cuando el exchange la reabre.",
+  "chart.haltedAnnouncements": "Ver anuncios",
+  "stats.halted": "Suspendido",
+  "stats.haltedHint":
+    "{venue} ha suspendido por ahora la negociación de este mercado (por un ajuste del contrato, por ejemplo). Los precios están congelados hasta que se reanude.",
   "stats.markHint": "Precio de marca: el que usan el margen, el PnL y las liquidaciones.",
 
   "stats.mid": "Precio medio",
@@ -1744,6 +1751,8 @@ export const messages: Messages = {
     "Las órdenes de esta cuenta usan fondos reales en {venue}. Una vez activado, el ticket, el trading rápido, la ventana flotante y la paleta de comandos pueden enviar y cancelar órdenes. No hay límite de tamaño.",
   "live.checkingWallet": "Comprobando la wallet de API con {venue}…",
   "live.cancel": "Dejarlo desactivado",
+  "ticket.halted":
+    "La negociación de este mercado está suspendida. No se pueden enviar órdenes hasta que el exchange la reanude.",
   "ticket.liveOff":
     "El trading en real está desactivado en esta cuenta. Actívalo en los detalles de la cuenta.",
   "ticket.needSize": "Indica un tamaño",

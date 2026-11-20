@@ -587,6 +587,7 @@ pub fn market_stats(
         funding_interval_secs: crate::stats::FUNDING_INTERVAL_SECS,
         next_funding_time: crate::stats::next_funding_time(now_ms),
         time: now_ms,
+        halted: false,
     }
 }
 

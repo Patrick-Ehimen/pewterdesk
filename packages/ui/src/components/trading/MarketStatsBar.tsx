@@ -1,6 +1,6 @@
 import type { Market, MarketStats, MarketSummary, VenueId } from "@pewterdesk/core";
 import { type ReactNode, useEffect, useRef, useState, type WheelEvent } from "react";
-import { LuInfo } from "react-icons/lu";
+import { LuCirclePause, LuInfo } from "react-icons/lu";
 import { t } from "../../i18n";
 import { decimalsOf, formatNumber, formatSigned, trendClass } from "../../lib/format";
 import { Tooltip } from "../common/Tooltip";
@@ -125,6 +125,8 @@ export function MarketStatsBar({
   const priceDecimals = stats ? decimalsOf(stats.markPrice) : 2;
   const mark = stats ? Number(stats.markPrice) : undefined;
   const trend = usePriceTrend(mark);
+  /** The venue has stopped trading it: its numbers are frozen, not live. */
+  const halted = stats?.halted === true;
 
   const prev = stats ? Number(stats.prevDayPrice) : Number.NaN;
   const change = mark !== undefined ? mark - prev : Number.NaN;
@@ -167,6 +169,12 @@ export function MarketStatsBar({
               <ListedBy market={market} />
             </strong>
             <span className="pd-muted">
+              {halted && (
+                <Tooltip className="pd-stats-halted" content={t("stats.haltedHint", { venue })}>
+                  <LuCirclePause size={12} aria-hidden />
+                  {t("stats.halted")}
+                </Tooltip>
+              )}
               {venue}
               {market && (
                 <Tooltip
@@ -189,14 +197,20 @@ export function MarketStatsBar({
         <div className="pd-stats-price">
           <Tooltip content={t("stats.markHint")}>
             <strong
-              className={`pd-stats-mark ${trend === "up" ? "pd-up" : trend === "down" ? "pd-down" : ""}`}
+              className={`pd-stats-mark ${halted ? "pd-muted" : trend === "up" ? "pd-up" : trend === "down" ? "pd-down" : ""}`}
             >
-              {stats ? formatNumber(stats.markPrice, priceDecimals) : <Pending width={80} />}
+              {halted ? (
+                "--"
+              ) : stats ? (
+                formatNumber(stats.markPrice, priceDecimals)
+              ) : (
+                <Pending width={80} />
+              )}
             </strong>
           </Tooltip>
           <Tooltip content={`${t("stats.mid")}: ${t("stats.midHint")}`}>
             <span className="pd-stats-mid">
-              {stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "-"}
+              {!halted && stats?.midPrice ? formatNumber(stats.midPrice, priceDecimals) : "-"}
             </span>
           </Tooltip>
         </div>
@@ -253,7 +267,8 @@ export function MarketStatsBar({
                 {formatSigned(Number(stats.fundingRate) * 100, 4)}%
               </span>
               {" / "}
-              {clock(nextFunding - now)} ({intervalHours}h)
+              {/* No funding is paid while it's halted: no countdown. */}
+              {halted ? "--" : clock(nextFunding - now)} ({intervalHours}h)
             </>
           ) : (
             <Pending width={130} />

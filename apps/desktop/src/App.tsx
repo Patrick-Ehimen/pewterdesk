@@ -1085,6 +1085,12 @@ export function App() {
   });
   const paper = replayOn ? replay.paper : venuePaper;
   const statsData = stats.status === "live" || stats.status === "closed" ? stats.data : undefined;
+  /**
+   * The venue has stopped trading the market on screen (Bybit's contract
+   * adjustments): the ticket says so rather than send what it would refuse.
+   * Paper and replay orders never reach the venue, so they carry on.
+   */
+  const marketHalted = !paperOn && !replayOn && statsData?.halted === true;
   /** The mark on screen, for an idea's "price now" entry. */
   const ideaMark = Number(statsData?.markPrice) || undefined;
   // The bottom bar's status, from what's actually arriving: offline when the
@@ -1649,6 +1655,9 @@ export function App() {
             alerts={alerts}
             onProtect={from("chart").protect}
             showChart={chartRequest}
+            halted={marketHalted}
+            // Bybit's announcements are the News page's; elsewhere there's none to open.
+            onAnnouncements={venue === "bybit" ? () => goTo("news") : undefined}
             chartOverlay={
               <>
                 <AlgoChartChips algos={algoBook.algos} market={selected} />
@@ -1912,8 +1921,8 @@ export function App() {
               fees={selected?.listedBy ? undefined : venueInfo.fees}
               maxSlippage={venueInfo.maxSlippage}
               onConnect={() => openConnect()}
-              onSubmit={from("ticket").place}
-              unavailableReason={tradeUnavailable}
+              onSubmit={marketHalted ? undefined : from("ticket").place}
+              unavailableReason={marketHalted ? t("ticket.halted") : tradeUnavailable}
               accountBadge={
                 paperOn
                   ? paperBadge

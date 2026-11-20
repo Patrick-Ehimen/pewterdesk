@@ -1386,6 +1386,11 @@ export const messages: Messages = {
 
   "stats.marketInfo": "{venue} · 最高 {leverage}x · 最小价格变动 {tick} · 最小数量 {min}",
 
+  "chart.haltedTitle": "暂停交易",
+  "chart.haltedBody": "{venue} 已暂停 {symbol} 的交易（如合约调整）。交易所重新开放后将自动恢复。",
+  "chart.haltedAnnouncements": "查看公告",
+  "stats.halted": "暂停交易",
+  "stats.haltedHint": "{venue} 已暂时停止该市场的交易（例如合约调整）。恢复前价格保持不变。",
   "stats.markHint": "标记价格：保证金、盈亏和强平都以此为准。",
 
   "stats.mid": "中间价",
@@ -1662,6 +1667,7 @@ export const messages: Messages = {
     "此账户的订单使用 {venue} 上的真实资金。开启后，下单面板、快捷交易、悬浮窗和命令面板都可以下单和撤单。没有下单大小限制。",
   "live.checkingWallet": "正在向 {venue} 核对 API 钱包…",
   "live.cancel": "保持关闭",
+  "ticket.halted": "该市场已暂停交易。请等待交易所恢复后再下单。",
   "ticket.liveOff": "此账户的实盘交易已关闭。请在账户详情中开启。",
   "ticket.needSize": "请输入数量",
   "ticket.needPrice": "请输入价格",

@@ -1455,6 +1455,13 @@ export const messages: Messages = {
 
   "stats.marketInfo": "{venue} · jusqu'à {leverage}x · pas {tick} · taille min. {min}",
 
+  "chart.haltedTitle": "Échanges suspendus",
+  "chart.haltedBody":
+    "{venue} a suspendu les échanges sur {symbol}, pour un ajustement de contrat ou autre. Ils reprennent d'eux-mêmes à la réouverture par la plateforme.",
+  "chart.haltedAnnouncements": "Voir les annonces",
+  "stats.halted": "Suspendu",
+  "stats.haltedHint":
+    "{venue} a suspendu pour l'instant les échanges sur ce marché (un ajustement de contrat, par exemple). Les prix sont figés jusqu'à la reprise.",
   "stats.markHint": "Prix de référence : celui qu'utilisent la marge, le PnL et les liquidations.",
 
   "stats.mid": "Prix médian",
@@ -1753,6 +1760,8 @@ export const messages: Messages = {
     "Les ordres de ce compte utilisent des fonds réels sur {venue}. Une fois activé, le ticket, le trading rapide, la fenêtre flottante et la palette de commandes peuvent passer et annuler des ordres. Il n’y a pas de limite de taille.",
   "live.checkingWallet": "Vérification du wallet d’API auprès de {venue}…",
   "live.cancel": "Laisser désactivé",
+  "ticket.halted":
+    "Les échanges sur ce marché sont suspendus. Aucun ordre ne peut être passé avant leur reprise par la plateforme.",
   "ticket.liveOff":
     "Le trading réel est désactivé pour ce compte. Activez-le dans les détails du compte.",
   "ticket.needSize": "Indiquez une taille",

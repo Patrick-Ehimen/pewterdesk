@@ -537,6 +537,17 @@ impl Ticker {
         (bid.0 > rust_decimal::Decimal::ZERO && ask.0 > rust_decimal::Decimal::ZERO)
             .then(|| Decimal((bid.0 + ask.0) / rust_decimal::Decimal::TWO))
     }
+    /// Bybit keeps a halted market's status at "Trading" (a contract
+    /// adjustment, say): what gives it away is a book with nothing on either
+    /// side, which a live market never has. Only a ticker that sent both
+    /// fields counts: one that hasn't said yet isn't halted.
+    pub fn halted(&self) -> bool {
+        // Sent, but no price on it ("" or "0").
+        let empty = |f: &Option<String>| {
+            f.is_some() && Self::get(f).is_none_or(|p| p.0 <= rust_decimal::Decimal::ZERO)
+        };
+        empty(&self.bid1_price) && empty(&self.ask1_price)
+    }
 }
 
 pub fn market_stats(t: &Ticker, funding_secs: u32, now: u64) -> MarketStats {
@@ -558,6 +569,7 @@ pub fn market_stats(t: &Ticker, funding_secs: u32, now: u64) -> MarketStats {
             .and_then(|s| s.parse().ok())
             .unwrap_or(0),
         time: now,
+        halted: t.halted(),
     }
 }
 
@@ -840,6 +852,31 @@ mod tests {
         assert_eq!(s.mid_price, Some(d("99.5")));
         assert_eq!(s.day_volume, d("1234.57"));
         assert_eq!(s.next_funding_time, 1_790_870_400_000);
+        assert!(!s.halted);
+    }
+
+    #[test]
+    fn an_empty_book_is_a_halt() {
+        // SNDKUSDT during its contract adjustment: status still "Trading",
+        // the ticker's best bid and ask both empty.
+        let mut t: Ticker = serde_json::from_value(json!({
+            "symbol": "SNDKUSDT", "markPrice": "699.02", "lastPrice": "699.83",
+            "bid1Price": "", "ask1Price": ""
+        }))
+        .unwrap();
+        assert!(market_stats(&t, 8 * 3600, 5).halted);
+        // Trading again once the book fills.
+        t.merge(
+            serde_json::from_value(
+                json!({ "symbol": "SNDKUSDT", "bid1Price": "87.4", "ask1Price": "87.5" }),
+            )
+            .unwrap(),
+        );
+        assert!(!market_stats(&t, 8 * 3600, 5).halted);
+        // A ticker that hasn't sent the book yet says nothing.
+        let fresh: Ticker =
+            serde_json::from_value(json!({ "symbol": "SNDKUSDT", "markPrice": "87" })).unwrap();
+        assert!(!market_stats(&fresh, 8 * 3600, 5).halted);
     }
 
     #[test]

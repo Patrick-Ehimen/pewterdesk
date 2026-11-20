@@ -497,7 +497,13 @@ nextFundingTime: number,
 /**
  * Milliseconds since the Unix epoch.
  */
-time: number, };
+time: number, 
+/**
+ * The venue has stopped trading the market for now (Bybit's contract
+ * adjustments, a stock perp's split): no book, no fills, the numbers
+ * above frozen. Only set where the venue's data shows it.
+ */
+halted: boolean, };
 
 /**
  * One market's line in a screener: enough to rank and compare markets.

@@ -705,6 +705,7 @@ pub fn market_stats(
         funding_interval_secs,
         next_funding_time: mark.next_funding_time,
         time: now,
+        halted: false,
     }
 }
 

@@ -1252,6 +1252,18 @@ input {
   gap: 5px;
   font-size: 12px;
 }
+/* The venue has stopped trading the market: a pill before the venue's name. */
+.pd-stats-halted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--pd-warning) 55%, transparent);
+  border-radius: 4px;
+  color: var(--pd-warning);
+  font-weight: 500;
+  line-height: 18px;
+}
 .pd-stats-info {
   display: inline-grid;
   color: var(--pd-pewter);

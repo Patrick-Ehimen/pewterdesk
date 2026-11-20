@@ -1394,6 +1394,13 @@ export const en = {
   "picker.venues": "Venues",
   "picker.noFavorites": "Star a market to add it here.",
   "stats.marketInfo": "{venue} · up to {leverage}x · tick {tick} · min size {min}",
+  "chart.haltedTitle": "Trading halted",
+  "chart.haltedBody":
+    "{venue} has halted trading on {symbol}, for a contract adjustment or similar. It resumes on its own once the venue reopens it.",
+  "chart.haltedAnnouncements": "View announcements",
+  "stats.halted": "Halted",
+  "stats.haltedHint":
+    "{venue} has halted trading on this market for now (a contract adjustment, say). Prices are frozen until it resumes.",
   "stats.markHint": "Mark price: what margin, PnL and liquidations use.",
   "stats.mid": "Mid price",
   "stats.midHint": "Midpoint of the best bid and ask.",
@@ -1674,6 +1681,8 @@ export const en = {
     "Orders on this account use real funds on {venue}. Once on, the ticket, quick trade, the floating window and the command palette can place and cancel orders. There is no size limit.",
   "live.checkingWallet": "Checking the API wallet with {venue}…",
   "live.cancel": "Keep it off",
+  "ticket.halted":
+    "Trading on this market is halted. No orders can be placed until the venue resumes it.",
   "ticket.liveOff": "Live trading is off for this account. Turn it on in the account's details.",
   "ticket.needSize": "Enter a size",
   "ticket.needPrice": "Enter a price",

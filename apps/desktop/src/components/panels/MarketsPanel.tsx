@@ -51,6 +51,7 @@ import { FeedView } from "../FeedView";
 import { LoadingMark } from "../Splash";
 import { type BoardAlerts, WatchlistBoard } from "../watchlist/WatchlistBoard";
 import { CoinOverview } from "./CoinOverview";
+import { HaltedChart } from "./HaltedChart";
 import { ScreenerPanel } from "./ScreenerPanel";
 import { ViewSettings } from "./ViewSettings";
 
@@ -103,6 +104,13 @@ interface MarketsPanelProps {
   showChart?: number;
   /** Drawn over the price chart: the algos running on the market on screen. */
   chartOverlay?: ReactNode;
+  /**
+   * The venue has stopped trading the market on screen: the price chart
+   * gives way to a notice saying so.
+   */
+  halted?: boolean;
+  /** Opens the venue's announcements, from that notice. */
+  onAnnouncements?: () => void;
 }
 
 /**
@@ -133,6 +141,8 @@ export function MarketsPanel({
   onProtect,
   showChart,
   chartOverlay,
+  halted,
+  onAnnouncements,
 }: MarketsPanelProps) {
   // Kept, so coming back to the Trade page finds the tab where it was left.
   const [tab, setTab] = useStoredChoice<MarketsTab>("pd.markets.tab", MARKETS_TABS, "chart");
@@ -317,7 +327,9 @@ export function MarketsPanel({
               onChange={setChartKind}
             />
           )}
-          {chartKind === "standard" ? (
+          {chartKind === "standard" && halted && market ? (
+            <HaltedChart market={market} venueName={venueName} onAnnouncements={onAnnouncements} />
+          ) : chartKind === "standard" ? (
             <div className="app-fill markets-chart">
               {chartOverlay}
               <FeedView

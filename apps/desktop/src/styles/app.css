@@ -941,6 +941,56 @@ button.app-status-venue[aria-expanded="true"] {
   display: grid;
   place-items: center;
 }
+/* In place of the price chart while the venue has the market halted. */
+.halted-chart {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.halted-chart-icon {
+  color: var(--pd-pewter-dim);
+  margin-bottom: 8px;
+}
+.halted-chart h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--pd-text);
+}
+.halted-chart p {
+  margin: 0;
+  max-width: 440px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pd-pewter);
+}
+.halted-chart-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pd-brass-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.halted-chart-link:hover {
+  color: var(--pd-brass-hover);
+}
+.halted-chart-link:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+  border-radius: 3px;
+}
 .app-status-links {
   flex: none;
   display: flex;
