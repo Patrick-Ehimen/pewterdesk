@@ -1725,7 +1725,8 @@ button.ai-src:hover {
 }
 .ai-share-canvas {
   max-width: 100%;
-  border-radius: 14px;
+  /* 24px at the preview's 520 / 720: the image itself is square. */
+  border-radius: 17px;
 }
 
 /* The analyst's thinking (components/ai/AiAnswer.tsx, Thinking): open and

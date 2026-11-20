@@ -153,13 +153,12 @@ export function drawAiShareCard(
   ctx.textBaseline = "alphabetic";
 
   // The ground: the dark set, a brass glow at the top right and a fainter
-  // one at the bottom left.
+  // one at the bottom left. Square to the edges, so the image has no
+  // see-through corners for a viewer to show as white; the dialog rounds its
+  // preview with CSS.
   ctx.fillStyle = p.bg;
-  roundRect(ctx, 0, 0, w, h, 24);
-  ctx.fill();
+  ctx.fillRect(0, 0, w, h);
   ctx.save();
-  roundRect(ctx, 0, 0, w, h, 24);
-  ctx.clip();
   const glow = (x: number, y: number, r: number, color: string, a: number) => {
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, rgba(ctx, color, a));
@@ -172,8 +171,7 @@ export function drawAiShareCard(
   ctx.restore();
   ctx.strokeStyle = rgba(ctx, p.pewter, 0.28);
   ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 24);
-  ctx.stroke();
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
   // The header: the wordmark, and "AI" in a brass pill.
   let y = PAD;

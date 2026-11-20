@@ -790,8 +790,9 @@ export function drawShareCard(
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
   // The frame: a metal bezel, dark at the top and brass at the foot, where
-  // the dates sit; the panel sits inside it.
-  const outerR = 26;
+  // the dates sit; the panel sits inside it. Square at its outer corners, so
+  // the image has no see-through pixels for a viewer to show as white; the
+  // dialog rounds its preview with CSS.
   const rim = 10;
   const foot = portrait ? 54 : 42;
   const frame = ctx.createLinearGradient(0, 0, 0, h);
@@ -800,16 +801,13 @@ export function drawShareCard(
   frame.addColorStop(0.86, alpha(ctx, p.brass, 0.7));
   frame.addColorStop(1, alpha(ctx, p.brass, 0.85));
   ctx.fillStyle = p.bg;
-  roundRect(ctx, 0, 0, w, h, outerR);
-  ctx.fill();
+  ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = frame;
-  roundRect(ctx, 0, 0, w, h, outerR);
-  ctx.fill();
+  ctx.fillRect(0, 0, w, h);
   // A highlight along the rim's inner and outer edges.
   ctx.strokeStyle = alpha(ctx, p.text, 0.18);
   ctx.lineWidth = 1;
-  roundRect(ctx, 0.5, 0.5, w - 1, h - 1, outerR);
-  ctx.stroke();
+  ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
 
   const px = rim;
   const py = rim;

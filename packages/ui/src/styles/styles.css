@@ -5521,7 +5521,8 @@ fieldset.pd-alerts-chips {
   gap: 14px;
 }
 .pd-share-canvas {
-  border-radius: 18px;
+  /* The card's own corners (26px at the preview's 0.9): the image itself is square. */
+  border-radius: 23px;
   box-shadow: 0 18px 48px -18px color-mix(in srgb, var(--pd-bg) 90%, transparent);
 }
 .pd-share-arrow {
