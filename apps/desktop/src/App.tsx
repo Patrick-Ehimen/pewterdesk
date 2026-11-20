@@ -278,6 +278,8 @@ import {
 /** The launch splash stays up at least this long after the page starts, and at most this. */
 const MIN_SPLASH_MS = 2000;
 const MAX_SPLASH_MS = 8000;
+/** A day, for today's PnL (UTC days, as the journal and trading rules count them). */
+const DAY_MS = 86_400_000;
 
 /** The venue chips in the market picker. */
 const VENUE_CHIPS = VENUE_IDS.map((id) => ({
@@ -1189,6 +1191,26 @@ export function App() {
     closedRaw.status === "live" || closedRaw.status === "closed"
       ? { status: closedRaw.status, data: closedLeverage.trades }
       : closedRaw;
+  // Today's closed trades (since 00:00 UTC, the journal's and the trading
+  // rules' day), always read: the menu bar's and the status bar's PnL counts
+  // what closed today, not only what's still open. A day's span, so it's one
+  // light read; a position closing reads it again at once.
+  const todayClosed = useClosedHistory(
+    venue,
+    paperOn ? undefined : address,
+    DAY_MS,
+    true,
+    positionsKey,
+  );
+  const todayStart = Math.floor(Date.now() / DAY_MS) * DAY_MS;
+  const closedTodayList = paperOn
+    ? paper.state.closed
+    : todayClosed.status === "live" || todayClosed.status === "closed"
+      ? todayClosed.data
+      : undefined;
+  const realizedToday = closedTodayList
+    ?.filter((c) => c.time >= todayStart)
+    .reduce((sum, c) => sum + Number(c.closedPnl), 0);
   /** Whose account is on screen: the paper one, or the venue account's. */
   const accountKey = paperOn ? `paper:${venue}` : address && `${venue}:${address}`;
   // The position open in the drawer, followed live in the account; it goes
@@ -1405,6 +1427,12 @@ export function App() {
   const [pnlDefault] = useState(defaultPnlPosition);
   const balance = accountData ? Number(accountData.equity) : undefined;
   const unrealized = accountData?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  /**
+   * The day's PnL: what closed today plus what's open now, so a closed trade
+   * still counts until 00:00 UTC. Open positions alone until today's closed
+   * trades have been read.
+   */
+  const todayPnl = unrealized === undefined ? undefined : unrealized + (realizedToday ?? 0);
   // The floating card's PnL: all time (realised over the account's life plus
   // what's open), from its last reset, sampled for its line.
   const pnlAccount = accountKey || undefined;
@@ -1442,7 +1470,7 @@ export function App() {
     setPnlStore({ account: pnlAccount, history: next });
   };
   const pnlTrend =
-    unrealized === undefined || unrealized === 0 ? undefined : unrealized > 0 ? "up" : "down";
+    todayPnl === undefined || todayPnl === 0 ? undefined : todayPnl > 0 ? "up" : "down";
   // Read only while the News page is open.
   // Bybit's, whichever venue is on screen: no other venue publishes any the app can read.
   const announcements = useAnnouncements("bybit", page === "news");
@@ -1460,6 +1488,7 @@ export function App() {
     stats: stats.status === "live" || stats.status === "closed" ? stats.data : undefined,
     // The menu bar shows real money only: never a paper account's P&L.
     account: paperOn ? undefined : accountData,
+    pnl: paperOn ? undefined : todayPnl,
   });
 
   const maxLeverageFor = useCallback(
@@ -2606,7 +2635,7 @@ export function App() {
               <LuWallet size={13} aria-hidden />
               {t("pnl.pnl")}
               <span className="pd-num" data-trend={pnlTrend}>
-                {unrealized === undefined ? "-" : formatSigned(unrealized, 2)}
+                {todayPnl === undefined ? "-" : formatSigned(todayPnl, 2)}
               </span>
             </button>
             <Movement

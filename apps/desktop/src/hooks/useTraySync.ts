@@ -38,10 +38,16 @@ export function useTraySync({
   market,
   stats,
   account,
+  pnl: dayPnl,
 }: {
   market?: Market;
   stats?: MarketStats;
   account?: AccountSnapshot;
+  /**
+   * The day's PnL (closed today plus open now), where the app has it; else
+   * the account's open positions alone.
+   */
+  pnl?: number;
 }) {
   const [mode, setMode] = useStoredChoice<TrayMode>("pd.tray.mode", TRAY_MODES, "pricePnl");
   useEffect(
@@ -57,7 +63,8 @@ export function useTraySync({
   const mark = Number(stats?.markPrice);
   const prevDay = Number(stats?.prevDayPrice);
   const change = prevDay > 0 ? (mark - prevDay) / prevDay : undefined;
-  const pnlTotal = account?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  const pnlTotal =
+    dayPnl ?? account?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
   const pnl = pnlTotal === undefined ? undefined : formatSigned(pnlTotal);
   const base = market?.base;
 
