@@ -1762,6 +1762,9 @@ export const messages: Messages = {
   "orders.cancel": "취소",
   "orders.cancelling": "취소 중…",
   "orders.cancelFailed": "주문을 취소하지 못했습니다.",
+  "accounts.vaultTitle": "키는 이 기기에만 보관됩니다",
+  "accounts.vaultBody":
+    "모든 키는 서버가 아닌 이 기기의 키체인에 저장됩니다. 실거래 키는 거래 전용이어야 합니다: 출금·이체 불가.",
   "accounts.title": "계정",
   "accounts.add": "계정 추가",
   "accounts.default": "계정 {n}",

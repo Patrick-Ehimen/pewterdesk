@@ -1734,6 +1734,9 @@ export const en = {
   "orders.cancel": "Cancel",
   "orders.cancelling": "Cancelling…",
   "orders.cancelFailed": "The order couldn't be cancelled.",
+  "accounts.vaultTitle": "Your keys stay on this machine",
+  "accounts.vaultBody":
+    "Every key lives in this machine's keychain, never on a server. Live keys must be trade-only: no withdrawals, no transfers.",
   "accounts.title": "Accounts",
   "accounts.add": "Add account",
   "accounts.default": "Account {n}",

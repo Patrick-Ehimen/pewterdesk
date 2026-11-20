@@ -3101,16 +3101,82 @@ button.ncal-title:hover {
 
 /* Portfolio's accounts: the venue's connected accounts (live and demo), the
    list the account pop-up had, as a card at the top of the page. */
-.pf-accounts {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px;
+.pf-accounts-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  padding: 5px 10px 5px 6px;
   background: var(--pd-surface);
   border: 1px solid var(--pd-border);
-  border-radius: calc(var(--pd-radius) + 4px);
+  border-radius: 8px;
+  color: var(--pd-text);
+  font: inherit;
+  cursor: pointer;
 }
-.pf-accounts .acct {
+.pf-accounts-open:hover,
+.pf-accounts-open[aria-expanded="true"] {
+  border-color: var(--pd-brass);
+}
+.pf-accounts-open:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+.pf-accounts-open > svg {
+  flex: none;
+  color: var(--pd-pewter);
+}
+.pf-accounts-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+.pf-accounts-demo {
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--pd-info) 60%, transparent);
+  border-radius: 999px;
+  color: var(--pd-info);
+  font-size: 11px;
+  line-height: 16px;
+}
+.pf-accounts-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--pd-surface-raised);
+  color: var(--pd-pewter);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+/* The accounts drawer, from the right edge (the position drawer's frame). */
+.pf-accounts-close {
+  margin-left: auto;
+}
+.pf-accounts-venue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border: 1px solid var(--pd-border);
+  border-radius: 999px;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+}
+.pf-accounts-venue img {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+.pf-accounts-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.pf-accounts-body .acct {
   margin: 0;
 }
 .pf-accounts-manage {
@@ -3118,6 +3184,204 @@ button.ncal-title:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+/* The drawer's own heading names the list: the list's matching label is
+   kept for screen readers only. */
+.pf-accounts-body .acct-head .apikey-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pf-accounts-body .acct-head {
+  justify-content: flex-end;
+}
+.pf-accounts-drawer:focus {
+  outline: none;
+}
+
+/* The keychain as a vault, in the space under the accounts: a shield in a
+   slow brass glow, dashed rings turning about it, the accounts riding them. */
+.pf-vault {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 12px 28px 32px;
+  text-align: center;
+}
+.pf-vault-art {
+  position: relative;
+  flex: none;
+  width: 260px;
+  height: 260px;
+  margin-bottom: 6px;
+}
+.pf-vault-glow {
+  position: absolute;
+  inset: 70px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--pd-brass) 32%, transparent),
+    transparent 70%
+  );
+  animation: pf-vault-breathe 4.5s ease-in-out infinite;
+}
+.pf-vault-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: -32px 0 0 -32px;
+  border: 1px solid color-mix(in srgb, var(--pd-brass) 55%, transparent);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--pd-brass) 22%, var(--pd-surface-raised)),
+    var(--pd-surface)
+  );
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--pd-brass) 7%, transparent),
+    0 0 28px color-mix(in srgb, var(--pd-brass) 25%, transparent);
+  color: var(--pd-brass-text);
+}
+.pf-vault-venue {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+/* The shield on the core's edge: the keychain that holds the venue's keys. */
+.pf-vault-badge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--pd-surface);
+  border-radius: 50%;
+  background: var(--pd-brass);
+  color: var(--pd-on-brass);
+}
+.pf-vault-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  margin: calc(var(--r) * -1) 0 0 calc(var(--r) * -1);
+  border: 1px dashed color-mix(in srgb, var(--pd-brass) 30%, var(--pd-border));
+  border-radius: 50%;
+  animation: pf-vault-turn var(--secs) linear infinite;
+}
+.pf-vault-ring[data-ring="1"] {
+  border-color: color-mix(in srgb, var(--pd-pewter) 22%, transparent);
+  animation-direction: reverse;
+}
+.pf-vault-rider {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a)) translateX(var(--r));
+}
+.pf-vault-upright {
+  position: absolute;
+  transform: translate(-50%, -50%) rotate(calc(var(--a) * -1));
+}
+.pf-vault-spin {
+  display: block;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2px var(--pd-surface),
+    0 0 0 3px color-mix(in srgb, var(--pd-brass) 45%, transparent),
+    0 4px 14px color-mix(in srgb, var(--pd-bg) 70%, transparent);
+  animation: pf-vault-unturn var(--secs) linear infinite;
+}
+.pf-vault-ring[data-ring="1"] .pf-vault-spin {
+  animation-direction: reverse;
+}
+.pf-vault-spark {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: var(--pd-brass);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--pd-brass) 60%, transparent);
+}
+.pf-vault-ring[data-ring="1"] .pf-vault-spark {
+  top: auto;
+  bottom: -3px;
+  background: var(--pd-pewter);
+  box-shadow: 0 0 8px 1px color-mix(in srgb, var(--pd-pewter) 50%, transparent);
+}
+.pf-vault-name {
+  color: var(--pd-brass-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.pf-vault h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pf-vault p {
+  max-width: 300px;
+  margin: 0;
+  color: var(--pd-pewter);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+@keyframes pf-vault-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pf-vault-unturn {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes pf-vault-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-vault-glow,
+  .pf-vault-ring,
+  .pf-vault-spin {
+    animation: none;
+  }
+}
+/* A short window: the words stay, the art gives way. */
+@media (max-height: 640px) {
+  .pf-vault-art {
+    display: none;
+  }
 }
 
 /* ---- Trading rules: groups, "?" tips, the sentence under each rule, and

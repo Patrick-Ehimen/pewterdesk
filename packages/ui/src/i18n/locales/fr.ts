@@ -1815,6 +1815,9 @@ export const messages: Messages = {
   "orders.cancel": "Annuler",
   "orders.cancelling": "Annulation…",
   "orders.cancelFailed": "Impossible d'annuler l'ordre.",
+  "accounts.vaultTitle": "Vos clés restent sur cette machine",
+  "accounts.vaultBody":
+    "Chaque clé est dans le trousseau de cette machine, jamais sur un serveur. Les clés réelles doivent être limitées au trading : ni retrait, ni transfert.",
   "accounts.title": "Comptes",
   "accounts.add": "Ajouter un compte",
   "accounts.default": "Compte {n}",

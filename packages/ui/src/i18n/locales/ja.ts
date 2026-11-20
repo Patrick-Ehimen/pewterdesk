@@ -1774,6 +1774,9 @@ export const messages: Messages = {
   "orders.cancel": "キャンセル",
   "orders.cancelling": "キャンセル中…",
   "orders.cancelFailed": "注文をキャンセルできませんでした。",
+  "accounts.vaultTitle": "キーはこのマシンから出ません",
+  "accounts.vaultBody":
+    "キーはすべてこのマシンのキーチェーンに保存され、サーバーには置かれません。ライブのキーは取引専用に限ります：出金も振替もできません。",
   "accounts.title": "アカウント",
   "accounts.add": "アカウントを追加",
   "accounts.default": "アカウント {n}",

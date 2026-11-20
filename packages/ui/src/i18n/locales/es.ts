@@ -1805,6 +1805,9 @@ export const messages: Messages = {
   "orders.cancel": "Cancelar",
   "orders.cancelling": "Cancelando…",
   "orders.cancelFailed": "No se pudo cancelar la orden.",
+  "accounts.vaultTitle": "Tus claves se quedan en este equipo",
+  "accounts.vaultBody":
+    "Cada clave vive en el llavero de este equipo, nunca en un servidor. Las claves reales deben ser solo de trading: sin retiros ni transferencias.",
   "accounts.title": "Cuentas",
   "accounts.add": "Añadir cuenta",
   "accounts.default": "Cuenta {n}",

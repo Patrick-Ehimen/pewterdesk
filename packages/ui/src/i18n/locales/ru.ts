@@ -1791,6 +1791,9 @@ export const messages: Messages = {
   "orders.cancel": "Отменить",
   "orders.cancelling": "Отмена…",
   "orders.cancelFailed": "Не удалось отменить ордер.",
+  "accounts.vaultTitle": "Ключи остаются на этом компьютере",
+  "accounts.vaultBody":
+    "Каждый ключ хранится в связке ключей этого компьютера, а не на сервере. Реальные ключи — только для торговли: без вывода и переводов.",
   "accounts.title": "Аккаунты",
   "accounts.add": "Добавить аккаунт",
   "accounts.default": "Аккаунт {n}",

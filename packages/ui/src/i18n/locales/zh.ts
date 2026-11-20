@@ -1719,6 +1719,9 @@ export const messages: Messages = {
   "orders.cancel": "撤单",
   "orders.cancelling": "撤单中…",
   "orders.cancelFailed": "无法撤销该订单。",
+  "accounts.vaultTitle": "密钥只留在本机",
+  "accounts.vaultBody":
+    "每个密钥都保存在本机的钥匙串中，绝不上传服务器。实盘密钥必须仅限交易：不能提现，不能划转。",
   "accounts.title": "账户",
   "accounts.add": "添加账户",
   "accounts.default": "账户 {n}",

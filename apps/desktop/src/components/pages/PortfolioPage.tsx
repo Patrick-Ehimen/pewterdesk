@@ -20,7 +20,7 @@ import {
   useDisplayCurrency,
 } from "@pewterdesk/ui";
 import { useEffect, useMemo, useState } from "react";
-import { LuCalendarDays, LuCircleDollarSign, LuClock, LuSettings2 } from "react-icons/lu";
+import { LuCalendarDays, LuCircleDollarSign, LuClock } from "react-icons/lu";
 import { useStoredChoice } from "../../hooks/useStoredChoice";
 import type { Feed } from "../../hooks/useVenueFeeds";
 import { type Edge, edge, extremes, type Group, RETURN_EDGES } from "../../lib/edge";
@@ -43,7 +43,7 @@ import {
   type Range,
 } from "../../lib/performance";
 import { portfolioSummary } from "../../lib/portfolio";
-import { AccountList } from "../wallet/AccountList";
+import { AccountsButton } from "../wallet/AccountsDrawer";
 import { EdgeBreakdown, HOLD_LABEL, SIZE_LABEL } from "./EdgeBreakdown";
 import { PnlCalendar } from "./PnlCalendar";
 
@@ -533,18 +533,9 @@ export function PortfolioPage({
           <LuCalendarDays size={15} aria-hidden />
           {t("portfolio.calendar")}
         </button>
+        {/* The accounts slide in from the right rather than sitting over the page. */}
+        {venueId && <AccountsButton venue={venueId} onAdd={onConnect} onManage={onManage} />}
       </header>
-      {venueId && (
-        <section className="pf-accounts" aria-label={t("accounts.title")}>
-          <AccountList venue={venueId} onAdd={onConnect} />
-          {onManage && (
-            <button type="button" className="settings-button pf-accounts-manage" onClick={onManage}>
-              <LuSettings2 size={14} aria-hidden />
-              {t("portfolio.manageAccount")}
-            </button>
-          )}
-        </section>
-      )}
 
       {account.status === "closed" && (
         <p className="pd-stale" role="status">
