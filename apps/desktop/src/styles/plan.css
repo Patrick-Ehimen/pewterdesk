@@ -3226,6 +3226,66 @@ span[data-tone="warn"]:not(.jr-chip):not(.jr-pill) {
   height: 100%;
   object-fit: cover;
 }
+.jr-thumb-open {
+  all: unset;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
+}
+.jr-thumb-open:focus-visible {
+  outline: 2px solid var(--pd-focus);
+  outline-offset: -2px;
+}
+/* A screenshot opened large, over the page. */
+.jr-viewer {
+  padding: 0;
+  border: 1px solid var(--pd-border-strong);
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  max-width: calc(100vw - 64px);
+  max-height: calc(100vh - 64px);
+  overflow: hidden;
+}
+.jr-viewer::backdrop {
+  background: color-mix(in srgb, var(--pd-bg) 85%, transparent);
+  backdrop-filter: blur(2px);
+}
+.jr-viewer img {
+  display: block;
+  max-width: calc(100vw - 66px);
+  max-height: calc(100vh - 66px);
+  object-fit: contain;
+}
+.jr-viewer .jr-icon {
+  position: absolute;
+  background: var(--pd-surface);
+}
+.jr-viewer-close {
+  top: 8px;
+  right: 8px;
+}
+.jr-viewer-prev,
+.jr-viewer-next {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.jr-viewer-prev {
+  left: 8px;
+}
+.jr-viewer-next {
+  right: 8px;
+}
+.jr-viewer-count {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: var(--pd-radius);
+  background: var(--pd-surface);
+  color: var(--pd-pewter);
+  font-size: 12px;
+}
 .jr-thumb .jr-icon {
   position: absolute;
   top: 4px;

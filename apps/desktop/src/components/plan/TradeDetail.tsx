@@ -1052,6 +1052,80 @@ function Detail({
 }
 
 /** Screenshots on the trade: pasted, dropped or picked; stored in the cloud, shown from it. */
+/**
+ * A screenshot shown large, over the page: the arrow keys (or the buttons)
+ * step through the others, Escape or a click outside the image closes it.
+ */
+function ShotViewer({
+  urls,
+  start,
+  onClose,
+}: {
+  urls: string[];
+  start: number;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [at, setAt] = useState(start);
+  const count = urls.length;
+  const step = (by: number) => setAt((i) => (i + by + count) % count);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
+  const url = urls[Math.min(at, count - 1)];
+  if (!url) return null;
+  return (
+    <dialog
+      ref={ref}
+      className="jr-viewer"
+      aria-label={t("plan.td.screenshot")}
+      onClose={onClose}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onKeyDown={(e) => {
+        if (count < 2) return;
+        if (e.key === "ArrowLeft") step(-1);
+        else if (e.key === "ArrowRight") step(1);
+      }}
+    >
+      <img src={url} alt={t("plan.td.screenshot")} />
+      <button
+        type="button"
+        className="jr-icon jr-viewer-close"
+        aria-label={t("plan.td.closeShot")}
+        onClick={onClose}
+      >
+        <LuX size={16} aria-hidden />
+      </button>
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            className="jr-icon jr-viewer-prev"
+            aria-label={t("plan.td.prevShot")}
+            onClick={() => step(-1)}
+          >
+            <LuChevronLeft size={18} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="jr-icon jr-viewer-next"
+            aria-label={t("plan.td.nextShot")}
+            onClick={() => step(1)}
+          >
+            <LuChevronRight size={18} aria-hidden />
+          </button>
+          <span className="jr-viewer-count pd-num">
+            {at + 1} / {count}
+          </span>
+        </>
+      )}
+    </dialog>
+  );
+}
+
 export function Attachments({
   paths,
   onChange,
@@ -1062,6 +1136,7 @@ export function Attachments({
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [viewing, setViewing] = useState<string>();
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1102,7 +1177,14 @@ export function Attachments({
         {paths.map((p) => (
           <figure key={p} className="jr-thumb">
             {urls[p] ? (
-              <img src={urls[p]} alt={t("plan.td.screenshot")} />
+              <button
+                type="button"
+                className="jr-thumb-open"
+                aria-label={t("plan.td.openShot")}
+                onClick={() => setViewing(p)}
+              >
+                <img src={urls[p]} alt={t("plan.td.screenshot")} />
+              </button>
             ) : (
               <span className="pd-skel" role="status" aria-label={t("plan.loading")} />
             )}
@@ -1143,6 +1225,13 @@ export function Attachments({
           onChange={(e) => e.target.files && void add([...e.target.files])}
         />
       </div>
+      {viewing && (
+        <ShotViewer
+          urls={paths.flatMap((p) => (urls[p] ? [urls[p]] : []))}
+          start={Math.max(0, paths.filter((p) => urls[p]).indexOf(viewing))}
+          onClose={() => setViewing(undefined)}
+        />
+      )}
       {error && <p className="jr-error">{error}</p>}
     </div>
   );
