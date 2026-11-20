@@ -1383,6 +1383,28 @@ export function OpenAlgoChart({
     interval?: CandleInterval;
     themed?: unknown;
   }>(undefined);
+  // An analysis the trader deleted every drawing of (Remove all drawings, or
+  // one by one): it stays off on every interval, not only the one it was
+  // deleted on, rather than coming back with the next interval's redraw.
+  const dismissed = useRef<ChartAnalysis>(undefined);
+  // Set while this chart takes its own analysis drawings off.
+  const clearing = useRef(false);
+  const clearAnalysis = useRef(onClearAnalysis);
+  clearAnalysis.current = onClearAnalysis;
+  useEffect(() => {
+    if (!widget || widget.isDestroyed) return;
+    return widget.chart.on("drawing:change", (payload) => {
+      if ((payload as { kind?: string } | undefined)?.kind !== "remove" || clearing.current) return;
+      const was = analysed.current;
+      if (was?.of !== widget || !was.analysis || was.ids.length === 0) return;
+      if (was.ids.some((id) => widget.draw.get(id) !== undefined)) return;
+      dismissed.current = was.analysis;
+      was.ids = [];
+      // Taken off where it came from too (the Maps card's levels, an
+      // idea's), so it isn't handed back to this chart or another.
+      clearAnalysis.current?.();
+    });
+  }, [widget]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `loaded` draws once a new market's candles are in, `themed` recolours them
   useEffect(() => {
     const host = hostRef.current;
@@ -1401,6 +1423,7 @@ export function OpenAlgoChart({
       return;
     }
     if (was?.of === widget) {
+      clearing.current = true;
       for (const id of was.ids) {
         try {
           draw.remove(id, { force: true });
@@ -1408,10 +1431,11 @@ export function OpenAlgoChart({
           // Deleted by the trader already.
         }
       }
+      clearing.current = false;
     }
     analysed.current = { of: widget, ids: [], analysis, interval, themed };
     const last = widget.series.getData().at(-1)?.time;
-    if (!analysis || last === undefined) return;
+    if (!analysis || analysis === dismissed.current || last === undefined) return;
     const t = tokens(host);
     const colors = {
       buy: t.buy,
