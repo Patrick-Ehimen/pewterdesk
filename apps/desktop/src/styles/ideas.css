@@ -914,7 +914,7 @@ ol.ideas-thoughts small {
 /* Scenarios: what happens, its odds, and a bar of them */
 .ideas-scrow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px minmax(0, 1.4fr) 26px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) 26px;
   align-items: center;
   gap: 8px;
 }
@@ -933,7 +933,7 @@ ol.ideas-thoughts small {
 .ideas-scenarios li {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr;
   gap: 2px 8px;
   padding: 8px 10px 10px;
   overflow: hidden;
@@ -945,21 +945,11 @@ ol.ideas-thoughts small {
 .ideas-scenarios b {
   font-weight: 500;
 }
-.ideas-scenarios li > span {
-  color: var(--pd-pewter);
-}
 .ideas-scenarios p {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--pd-pewter);
   font-size: 12px;
-}
-.ideas-odds {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: var(--pd-brass);
 }
 
 /* A level's alert bell: brass while it's on */
@@ -1590,4 +1580,14 @@ span.ideas-pk-name small {
 .ideas-first-pane {
   flex: 1;
   grid-column: auto;
+}
+
+/* The idea's own sections' headings, in the theme's accent: the thesis,
+   what would make it wrong, catalysts, key levels, scenarios, screenshots. */
+.ideas-accent,
+.ideas-sec h3.ideas-accent,
+.ideas-para h4.ideas-accent,
+.ideas-side-head h2.ideas-accent,
+.ideas-sec .jr-attachments .jr-label {
+  color: var(--pd-brass-text);
 }

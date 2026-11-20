@@ -22,7 +22,6 @@ import {
   MAX_TEXT,
   nearest,
   nextColor,
-  oddsTotal,
   pricesIn,
   rewardRisk,
   TIMEFRAMES,
@@ -121,7 +120,6 @@ export function IdeaEditor({
   ];
   const setScenario = (id: string, change: Partial<IdeaScenario>) =>
     set({ scenarios: draft.scenarios.map((sc) => (sc.id === id ? { ...sc, ...change } : sc)) });
-  const total = oddsTotal(draft.scenarios);
   const tick = market?.tickSize;
 
   const save = () => {
@@ -216,7 +214,7 @@ export function IdeaEditor({
             </div>
 
             <label className="ideas-f">
-              <span className="ideas-label">{t("ideas.editor.thesis")}</span>
+              <span className="ideas-label ideas-accent">{t("ideas.editor.thesis")}</span>
               <textarea
                 className="ideas-ta"
                 rows={4}
@@ -239,7 +237,7 @@ export function IdeaEditor({
             )}
 
             <div className="ideas-f">
-              <span className="ideas-label ideas-label-row">
+              <span className="ideas-label ideas-label-row ideas-accent">
                 {t("ideas.editor.levels")}
                 <em>{t("ideas.editor.levelsHint")}</em>
               </span>
@@ -336,7 +334,7 @@ export function IdeaEditor({
 
             <div className="ideas-row2">
               <label className="ideas-f">
-                <span className="ideas-label">{t("ideas.editor.wrongIf")}</span>
+                <span className="ideas-label ideas-accent">{t("ideas.editor.wrongIf")}</span>
                 <textarea
                   className="ideas-ta"
                   rows={2}
@@ -346,7 +344,7 @@ export function IdeaEditor({
                 />
               </label>
               <label className="ideas-f">
-                <span className="ideas-label">{t("ideas.editor.catalysts")}</span>
+                <span className="ideas-label ideas-accent">{t("ideas.editor.catalysts")}</span>
                 <textarea
                   className="ideas-ta"
                   rows={2}
@@ -390,14 +388,7 @@ export function IdeaEditor({
             </div>
 
             <div className="ideas-f">
-              <span className="ideas-label ideas-label-row">
-                {t("ideas.scenarios")}
-                {draft.scenarios.length > 0 && (
-                  <em className={total === 100 ? undefined : "ideas-warn"}>
-                    {t(total === 100 ? "ideas.odds.total" : "ideas.odds.off", { total })}
-                  </em>
-                )}
-              </span>
+              <span className="ideas-label ideas-accent">{t("ideas.scenarios")}</span>
               {draft.scenarios.map((sc) => (
                 <div key={sc.id} className="ideas-scrow">
                   <span className="rules-field" data-wide="text">
@@ -409,13 +400,6 @@ export function IdeaEditor({
                       onChange={(e) => setScenario(sc.id, { title: e.target.value })}
                     />
                   </span>
-                  <NumberField
-                    whole
-                    label={t("ideas.scenario.odds")}
-                    value={sc.odds}
-                    unit="%"
-                    onChange={(odds) => setScenario(sc.id, { odds: Math.min(100, odds) })}
-                  />
                   <span className="rules-field" data-wide="text">
                     <input
                       aria-label={t("ideas.scenario.text")}
@@ -448,7 +432,7 @@ export function IdeaEditor({
                         {
                           id: crypto.randomUUID(),
                           title: "",
-                          odds: Math.max(0, 100 - total),
+                          odds: 0,
                           text: "",
                         },
                       ],

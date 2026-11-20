@@ -31,7 +31,6 @@ import {
   matches,
   nearest,
   newIdea,
-  oddsTotal,
   rewardRisk,
   STATUSES,
   withStatus,
@@ -451,7 +450,7 @@ function IdeaDetail({
 
         <div className="ideas-detail-scroll">
           <section className="ideas-sec">
-            <h3>
+            <h3 className="ideas-accent">
               {t("ideas.thesis")}
               <button type="button" className="rules-link" onClick={onEdit}>
                 {t("ideas.edit")}
@@ -462,13 +461,13 @@ function IdeaDetail({
               <div className="ideas-paras">
                 {idea.wrongIf && (
                   <div className="ideas-para">
-                    <h4>{t("ideas.wrongIf")}</h4>
+                    <h4 className="ideas-accent">{t("ideas.wrongIf")}</h4>
                     <p>{idea.wrongIf}</p>
                   </div>
                 )}
                 {idea.catalysts && (
                   <div className="ideas-para">
-                    <h4>{t("ideas.catalysts")}</h4>
+                    <h4 className="ideas-accent">{t("ideas.catalysts")}</h4>
                     <p>{idea.catalysts}</p>
                   </div>
                 )}
@@ -547,7 +546,7 @@ function IdeaDetail({
 
       <aside className="ideas-panel ideas-side">
         <div className="ideas-side-head">
-          <h2>{t("ideas.levels")}</h2>
+          <h2 className="ideas-accent">{t("ideas.levels")}</h2>
           {price && (
             <span className="ideas-hint">{t("ideas.levelsFrom", { price: priceText(price) })}</span>
           )}
@@ -601,20 +600,13 @@ function IdeaDetail({
         {idea.scenarios.length > 0 && (
           <>
             <div className="ideas-side-head">
-              <h2>{t("ideas.scenarios")}</h2>
-              {oddsTotal(idea.scenarios) !== 100 && (
-                <span className="ideas-hint ideas-warn">
-                  {t("ideas.odds.off", { total: oddsTotal(idea.scenarios) })}
-                </span>
-              )}
+              <h2 className="ideas-accent">{t("ideas.scenarios")}</h2>
             </div>
             <ul className="ideas-scenarios">
               {idea.scenarios.map((sc) => (
                 <li key={sc.id}>
                   <b>{sc.title}</b>
-                  <span className="pd-num">{sc.odds}%</span>
                   {sc.text && <p>{sc.text}</p>}
-                  <i className="ideas-odds" style={{ width: `${sc.odds}%` }} />
                 </li>
               ))}
             </ul>

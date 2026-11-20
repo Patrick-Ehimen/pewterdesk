@@ -48,7 +48,15 @@ interface View {
   span: number;
   fromEnd: number;
 }
-const VIEWS_KEY = "pd.levelsChart.views";
+// v2: v1 kept the fitted view (every candle held) as if the trader had
+// chosen it, so every chart came back zoomed all the way out.
+const VIEWS_KEY = "pd.levelsChart.views.v2";
+/**
+ * A chart not looked at before opens on its latest candles, about this many,
+ * with a few empty slots to the right of the last, rather than every candle
+ * held squeezed into the width.
+ */
+const DEFAULT_VIEW: View = { span: 90, fromEnd: -4 };
 const MAX_VIEWS = 60;
 let views: Map<string, View> | undefined;
 
@@ -202,12 +210,14 @@ export function LevelsChart({
       })),
     );
     if (candles.length > 0 && fitted.current !== viewKey) {
-      // The view the trader left this market and interval at, else all of it.
+      // The view the trader left this market and interval at, else the
+      // latest candles at a readable size (all of them, when there are few).
       const kept = viewKey ? savedViews().get(viewKey) : undefined;
       const scale = chartRef.current?.timeScale();
-      if (kept && scale) {
-        const to = candles.length - 1 - kept.fromEnd;
-        scale.setVisibleLogicalRange({ from: to - kept.span, to });
+      const view = kept ?? DEFAULT_VIEW;
+      if (scale && (kept || candles.length > DEFAULT_VIEW.span)) {
+        const to = candles.length - 1 - view.fromEnd;
+        scale.setVisibleLogicalRange({ from: to - view.span, to });
       } else {
         scale?.fitContent();
       }
