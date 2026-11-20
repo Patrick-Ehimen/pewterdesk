@@ -623,7 +623,7 @@ function Detail({
                   open={Boolean(open)}
                   events={news.map((e) => ({
                     at: e.time,
-                    label: `${utcTime(e.time)} ${e.currency}`,
+                    label: `${utcTime(e.time)} ${e.currency} · ${e.title}`,
                   }))}
                 />
               ) : (

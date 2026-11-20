@@ -157,13 +157,14 @@ export function TradePnlChart({
             </text>
           );
         })}
+        {/* High-impact news as lines only: what each was shows on hover. */}
         {events.map((e) =>
           e.at >= t0 && e.at <= t1 ? (
-            <g key={`${e.at}:${e.label}`}>
+            <g key={`${e.at}:${e.label}`} className="jr-event">
+              <title>{e.label}</title>
               <line x1={x(e.at)} x2={x(e.at)} y1={pad.t} y2={H - pad.b} className="jr-event-line" />
-              <text x={x(e.at) + 4} y={pad.t + 10} className="jr-event-text">
-                {e.label}
-              </text>
+              {/* A wider, invisible stroke, so the dashed line is easy to hover. */}
+              <line x1={x(e.at)} x2={x(e.at)} y1={pad.t} y2={H - pad.b} className="jr-event-hit" />
             </g>
           ) : null,
         )}

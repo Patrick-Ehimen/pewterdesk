@@ -1887,9 +1887,10 @@ span[data-tone="warn"]:not(.jr-chip):not(.jr-pill) {
   stroke: var(--pd-warning);
   stroke-dasharray: 3 3;
 }
-.jr-event-text {
-  fill: var(--pd-warning);
-  font: 10px var(--pd-font-mono);
+.jr-event-hit {
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
 }
 
 /* ---------- Tables ---------- */
