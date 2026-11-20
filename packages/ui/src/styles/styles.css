@@ -1025,6 +1025,11 @@ input {
 }
 .pd-visually-hidden {
   position: absolute;
+  /* Pinned, not left where it would fall: deep in a long scrolled page, that
+     spot is measured against the window and can sit far below it, which made
+     the window itself taller than the screen and let it scroll. */
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   overflow: hidden;

@@ -2,6 +2,15 @@
    styles/layout.css; component styles in @pewterdesk/ui. Colors only from
    --pd-* tokens. */
 
+/* The window itself never scrolls: pages, panels and dialogs scroll inside
+   the frame. Without this, anything that sits past the frame's foot (a page
+   scrolled long, say) let the whole window - status bar and all - scroll. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .app {
   height: 100%;
   display: flex;
