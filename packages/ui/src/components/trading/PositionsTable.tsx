@@ -105,7 +105,11 @@ export function PositionsTable({
                   onSelect(p);
                 }}
               >
-                <td className="pd-strong">
+                <td
+                  className={`pd-strong pd-position-market ${
+                    p.side === "long" ? "pd-position-long" : "pd-position-short"
+                  }`}
+                >
                   {onSelect ? (
                     <button
                       type="button"

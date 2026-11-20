@@ -5666,6 +5666,25 @@ fieldset.pd-alerts-chips {
 .pd-position-row {
   cursor: pointer;
 }
+/* The market cell glows from its left edge in the side's colour: green
+   for a long, red for a short (market data, so buy / sell tokens). */
+.pd-position-market {
+  background-repeat: no-repeat;
+}
+.pd-position-long {
+  background-image: radial-gradient(
+    ellipse 140px 120% at 0% 50%,
+    color-mix(in srgb, var(--pd-buy) 24%, transparent),
+    transparent 75%
+  );
+}
+.pd-position-short {
+  background-image: radial-gradient(
+    ellipse 140px 120% at 0% 50%,
+    color-mix(in srgb, var(--pd-sell) 24%, transparent),
+    transparent 75%
+  );
+}
 
 /* Position drawer - one position in full, from the right edge */
 .pd-drawer {
