@@ -23,6 +23,7 @@ import {
 import { appClient } from "../api/appClient";
 import { venueClient } from "../api/venueClient";
 import { useStoredChoice } from "../hooks/useStoredChoice";
+import { todayPnl, useRealizedToday } from "../hooks/useTodayPnl";
 import { TRAY_MODE_LABEL, TRAY_MODES, type TrayMode } from "../hooks/useTraySync";
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist, watchKey } from "../hooks/useWatchlist";
@@ -315,7 +316,9 @@ export function TrayPanel() {
   const account = useAccount(ACCOUNT_VENUE, open ? address : undefined);
   const snapshot =
     account.status === "live" || account.status === "closed" ? account.data : undefined;
-  const pnl = snapshot?.positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  // Today's PnL: what closed today plus what's open, as the menu bar shows it.
+  const realized = useRealizedToday(ACCOUNT_VENUE, open ? address : undefined, snapshot?.positions);
+  const pnl = snapshot ? todayPnl(snapshot.positions, realized) : undefined;
 
   const [mode, setMode] = useStoredChoice<TrayMode>("pd.tray.mode", TRAY_MODES, "pricePnl");
   const pickMode = (next: TrayMode) => {

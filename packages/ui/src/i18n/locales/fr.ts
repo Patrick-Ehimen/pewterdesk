@@ -2074,6 +2074,7 @@ export const messages: Messages = {
   "float.cancelOrders": "Annuler les ordres · {count}",
   "float.cancelled": "{count} ordres annulés.",
   "float.toggle": "afficher",
+  "float.today": "Aujourd'hui",
   "float.upnl": "PnL latent",
   "float.pos": "{count} pos",
   "float.expand": "Agrandir",

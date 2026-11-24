@@ -161,6 +161,7 @@ import { useReplayAccount } from "./hooks/useReplayAccount";
 import { useScanAlerts } from "./hooks/useScanAlerts";
 import { useStoredChoice } from "./hooks/useStoredChoice";
 import { useThemeTransition } from "./hooks/useThemeTransition";
+import { realizedToday, useRealizedToday } from "./hooks/useTodayPnl";
 import { useTraderWatch } from "./hooks/useTraderWatch";
 import { useTradeSettings } from "./hooks/useTradeSettings";
 import { useTradingRules } from "./hooks/useTradingRules";
@@ -278,8 +279,6 @@ import {
 /** The launch splash stays up at least this long after the page starts, and at most this. */
 const MIN_SPLASH_MS = 2000;
 const MAX_SPLASH_MS = 8000;
-/** A day, for today's PnL (UTC days, as the journal and trading rules count them). */
-const DAY_MS = 86_400_000;
 
 /** The venue chips in the market picker. */
 const VENUE_CHIPS = VENUE_IDS.map((id) => ({
@@ -1191,26 +1190,16 @@ export function App() {
     closedRaw.status === "live" || closedRaw.status === "closed"
       ? { status: closedRaw.status, data: closedLeverage.trades }
       : closedRaw;
-  // Today's closed trades (since 00:00 UTC, the journal's and the trading
-  // rules' day), always read: the menu bar's and the status bar's PnL counts
-  // what closed today, not only what's still open. A day's span, so it's one
-  // light read; a position closing reads it again at once.
-  const todayClosed = useClosedHistory(
+  // What today's trades closed at (since 00:00 UTC): the menu bar's and the
+  // status bar's PnL counts them, not only what's still open.
+  const venueRealized = useRealizedToday(
     venue,
     paperOn ? undefined : address,
-    DAY_MS,
-    true,
-    positionsKey,
+    venueAccount.status === "live" || venueAccount.status === "closed"
+      ? venueAccount.data.positions
+      : undefined,
   );
-  const todayStart = Math.floor(Date.now() / DAY_MS) * DAY_MS;
-  const closedTodayList = paperOn
-    ? paper.state.closed
-    : todayClosed.status === "live" || todayClosed.status === "closed"
-      ? todayClosed.data
-      : undefined;
-  const realizedToday = closedTodayList
-    ?.filter((c) => c.time >= todayStart)
-    .reduce((sum, c) => sum + Number(c.closedPnl), 0);
+  const realized = paperOn ? realizedToday(paper.state.closed) : venueRealized;
   /** Whose account is on screen: the paper one, or the venue account's. */
   const accountKey = paperOn ? `paper:${venue}` : address && `${venue}:${address}`;
   // The position open in the drawer, followed live in the account; it goes
@@ -1432,7 +1421,7 @@ export function App() {
    * still counts until 00:00 UTC. Open positions alone until today's closed
    * trades have been read.
    */
-  const todayPnl = unrealized === undefined ? undefined : unrealized + (realizedToday ?? 0);
+  const todayPnl = unrealized === undefined ? undefined : unrealized + (realized ?? 0);
   // The floating card's PnL: all time (realised over the account's life plus
   // what's open), from its last reset, sampled for its line.
   const pnlAccount = accountKey || undefined;

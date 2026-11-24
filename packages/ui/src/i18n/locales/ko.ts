@@ -2018,6 +2018,7 @@ export const messages: Messages = {
   "float.cancelOrders": "주문 취소 · {count}",
   "float.cancelled": "주문 {count}건을 취소했습니다.",
   "float.toggle": "전환",
+  "float.today": "오늘",
   "float.upnl": "미실현 손익",
   "float.pos": "{count}개",
   "float.expand": "펼치기",

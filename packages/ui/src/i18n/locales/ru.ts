@@ -2050,6 +2050,7 @@ export const messages: Messages = {
   "float.cancelOrders": "Отменить ордера · {count}",
   "float.cancelled": "Отменено ордеров: {count}.",
   "float.toggle": "показать",
+  "float.today": "Сегодня",
   "float.upnl": "Нереал. PnL",
   "float.pos": "{count} поз.",
   "float.expand": "Развернуть",

@@ -2028,6 +2028,7 @@ export const messages: Messages = {
   "float.cancelOrders": "注文をキャンセル · {count}",
   "float.cancelled": "{count} 件の注文をキャンセルしました。",
   "float.toggle": "切替",
+  "float.today": "今日",
   "float.upnl": "含み損益",
   "float.pos": "{count} 件",
   "float.expand": "展開",

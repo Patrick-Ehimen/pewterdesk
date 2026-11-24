@@ -41,6 +41,7 @@ import { venueClient } from "../api/venueClient";
 import { HoldButton } from "../components/HoldButton";
 import { usePaper } from "../hooks/usePaper";
 import { useStoredChoice } from "../hooks/useStoredChoice";
+import { realizedToday, todayPnl, unrealizedOf, useRealizedToday } from "../hooks/useTodayPnl";
 import { useTradeSettings } from "../hooks/useTradeSettings";
 import { useAccount, useMarketSummaries, useMarkets } from "../hooks/useVenueFeeds";
 import { parseWatchlist } from "../hooks/useWatchlist";
@@ -491,7 +492,18 @@ function FloatWidget() {
     const s = summaryOf(id);
     return v === undefined ? "-" : formatNumber(v, s ? decimalsOf(s.markPrice) : 2);
   };
-  const upnl = positions.reduce((sum, p) => sum + Number(p.unrealizedPnl), 0);
+  const upnl = unrealizedOf(positions);
+  // The strip's PnL is today's: what closed today plus what's open, on the
+  // account this window trades (the paper one in paper mode).
+  const venueRealized = useRealizedToday(
+    venue,
+    paper ? undefined : active?.id,
+    paper ? undefined : positions,
+  );
+  const dayPnl = todayPnl(
+    positions,
+    paper ? realizedToday(paperAccountFeed.state.closed) : venueRealized,
+  );
   const why = paper
     ? undefined
     : !active
@@ -573,10 +585,10 @@ function FloatWidget() {
         </span>
         <span className="float-sep" aria-hidden />
         <span className="float-muted" data-tauri-drag-region>
-          {t("float.upnl")}
+          {t("float.today")}
         </span>
-        <span className={`float-num ${trendClass(upnl)}`} data-tauri-drag-region>
-          {formatSigned(upnl)}
+        <span className={`float-num ${trendClass(dayPnl)}`} data-tauri-drag-region>
+          {formatSigned(dayPnl)}
         </span>
         <span className="float-sep" aria-hidden />
         <span className="float-muted" data-tauri-drag-region>

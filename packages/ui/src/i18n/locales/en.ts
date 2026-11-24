@@ -1992,6 +1992,7 @@ export const en = {
   "float.cancelOrders": "Cancel orders · {count}",
   "float.cancelled": "Cancelled {count} orders.",
   "float.toggle": "toggle",
+  "float.today": "Today",
   "float.upnl": "uPnL",
   "float.pos": "{count} pos",
   "float.expand": "Expand",

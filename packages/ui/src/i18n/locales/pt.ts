@@ -2054,6 +2054,7 @@ export const messages: Messages = {
   "float.cancelOrders": "Cancelar ordens · {count}",
   "float.cancelled": "{count} ordens canceladas.",
   "float.toggle": "alternar",
+  "float.today": "Hoje",
   "float.upnl": "PnL não real.",
   "float.pos": "{count} pos",
   "float.expand": "Expandir",

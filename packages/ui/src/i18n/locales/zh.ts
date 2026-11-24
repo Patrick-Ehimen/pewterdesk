@@ -1961,6 +1961,7 @@ export const messages: Messages = {
   "float.cancelOrders": "撤销订单 · {count}",
   "float.cancelled": "已撤销 {count} 个订单。",
   "float.toggle": "切换",
+  "float.today": "今日",
   "float.upnl": "未实现盈亏",
   "float.pos": "{count} 个持仓",
   "float.expand": "展开",
