@@ -262,7 +262,11 @@ function chartTheme(t: Tokens): ChartTheme {
     axisLine: t.border,
     paneSeparator: t.border,
     crosshair: t.crosshair,
-    crosshairLabelBackground: t.border,
+    // The crosshair's price and date tags write in `lastPriceText` (the chart's
+    // background), so they sit on pewter: light behind dark text in a dark
+    // theme, mid-grey behind light text in a light one. The border colour
+    // they had was dark on dark.
+    crosshairLabelBackground: t.text,
     axisFontSize: 11,
     upColor: t.up,
     downColor: t.down,
